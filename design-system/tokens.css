@@ -1,0 +1,129 @@
+/* ============================================================
+   AI Elements (Vercel) — design tokens
+   Извлечено из Figma: AI Elements — ▲ Vercel (Community)
+   file key: NDctJTjd4iyzeT9zWg3WwZ
+   База: shadcn/ui (neutral) + Tailwind CSS 4, primary переопределён на blue-600
+   ============================================================ */
+
+:root {
+  /* ---- Семантические цвета (light) ---- */
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+
+  /* primary в AI Elements — СИНИЙ (blue-600), а не neutral-900 как в стоковом shadcn */
+  --primary: #155dfc;
+  --primary-foreground: #eff6ff;
+
+  --secondary: #f5f5f5;          /* фон бабла user-сообщения */
+  --secondary-foreground: #0a0a0a;
+
+  --muted: #f5f5f5;              /* фон превью вложений */
+  --muted-foreground: #737373;   /* вторичный текст: reasoning, лейблы, счётчики */
+
+  --accent: #f5f5f5;
+  --accent-foreground: #0a0a0a;
+
+  --destructive: #e7000b;
+
+  --border: #e5e5e5;
+  --input: #e5e5e5;              /* рамка PromptInput */
+  --ring: #a1a1a1;
+  --focus: #a1a1a1;              /* используется в focus-эффекте PromptInput */
+
+  --sidebar: #fafafa;
+  --sidebar-foreground: #0a0a0a;
+
+  /* ---- Компонентные ---- */
+  --components-input-bg: transparent;  /* фон PromptInput в light */
+
+  /* ---- Радиусы (px, как в Figma) ---- */
+  --radius: 10px;                /* = rounded-lg, базовый радиус системы */
+  --radius-none: 0px;
+  --radius-sm: 6px;              /* calc(--radius - 4px) */
+  --radius-default: 4px;         /* Tailwind `rounded` */
+  --radius-md: 8px;              /* calc(--radius - 2px) */
+  --radius-lg: 10px;             /* var(--radius) */
+  --radius-xl: 14px;             /* calc(--radius + 4px) */
+  --radius-2xl: 16px;
+  --radius-3xl: 24px;
+  --radius-4xl: 32px;
+  --radius-full: 9999px;
+
+  /* ---- Типографика ---- */
+  --font-sans: Geist, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+
+  --text-xs: 12px;      --text-xs--line-height: 16px;
+  --text-sm: 14px;      --text-sm--line-height: 20px;
+  --text-base: 16px;    --text-base--line-height: 24px;
+  --text-lg: 18px;      --text-lg--line-height: 28px;
+  --text-xl: 20px;      --text-xl--line-height: 28px;
+  --text-2xl: 24px;     --text-2xl--line-height: 32px;
+  --text-3xl: 30px;     --text-3xl--line-height: 36px;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+
+  /* ---- Тени ---- */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  /* «+ ring» вариант: к тени добавляется хайрлайн-обводка */
+  --shadow-ring: 0 0 0 1px rgb(10 10 10 / 0.1);
+  --shadow-xs-ring: var(--shadow-xs), var(--shadow-ring);
+  --shadow-md-ring: var(--shadow-md), var(--shadow-ring);
+}
+
+/* ---- Тёмная тема ---- */
+.dark {
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+
+  --card: #171717;
+  --card-foreground: #fafafa;
+  --popover: #171717;
+  --popover-foreground: #fafafa;
+
+  --primary: #155dfc;
+  --primary-foreground: #eff6ff;
+
+  --secondary: #262626;
+  --secondary-foreground: #fafafa;
+
+  --muted: #262626;
+  --muted-foreground: #a1a1a1;
+
+  --accent: #262626;
+  --accent-foreground: #fafafa;
+
+  --destructive: #ff6467;
+
+  --border: rgb(255 255 255 / 0.10);   /* #ffffff1a */
+  --input: rgb(255 255 255 / 0.15);    /* #ffffff26 */
+  --ring: #737373;
+  --focus: #737373;
+
+  --sidebar: #171717;
+  --sidebar-foreground: #fafafa;
+
+  /* в тёмной теме поле ввода получает едва заметную заливку */
+  --components-input-bg: rgb(255 255 255 / 0.043); /* #ffffff0b */
+}
+
+/* ---- Шкала отступов (Tailwind 4: 1 = 0.25rem = 4px) ----
+   Фактически используемые в системе значения:
+   1=4  1.5=6  2=8  2.5=10  3=12  3.5=14  4=16  5=20
+   7=28  8=32  10=40  12=48  16=64  48=192
+   ------------------------------------------------------- */
+
+/* ---- Focus-ring PromptInput (составной эффект из Figma) ---- */
+.prompt-input--focused {
+  box-shadow:
+    0 0 0 3px var(--focus),
+    0 0 0 1px var(--background),
+    inset 0 0 0 1px var(--focus);
+}

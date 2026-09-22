@@ -1,0 +1,978 @@
+<title>Отклик — чат поддержки</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+  /* =====================================================================
+     ОТКЛИК — айдентика v3
+     Ирис как основная краска. Крупные скругления по ролям.
+     Гарнитуры с родной кириллицей: Unbounded / Onest / JetBrains Mono.
+     Структура компонентов — из AI Elements.
+     ===================================================================== */
+  :root {
+    /* холст */
+    --ground:   #f1f0f7;
+    --ground-2: #e8e6f2;
+    --ink:      #15121f;
+    --ink-2:    #4c4560;
+    --ink-3:    #7d7694;
+    --rule:     #e1def0;
+
+    /* поверхности */
+    --paper:    #ffffff;
+    --paper-2:  #f7f6fc;
+    --paper-3:  #efedf8;
+    --edge:     #e7e4f2;
+    --edge-2:   #d6d2e8;
+
+    /* краска */
+    --brand:       #5b3fe9;
+    --brand-press: #4a31cc;
+    --brand-tint:  #eae5fe;
+    --on-brand:    #ffffff;
+
+    /* рельс приложения */
+    --rail:     #1b1533;
+    --rail-ink: #b9b0e0;
+    --rail-on:  #ffffff;
+
+    /* семантика */
+    --ok:        #0d9f6e;
+    --ok-tint:   #d8f5e9;
+    --warn:      #b4690e;
+    --warn-tint: #fbeeda;
+    --danger:    #cf2f24;
+
+    /* скругления по ролям */
+    --r-shell:   30px;
+    --r-surface: 24px;
+    --r-card:    18px;
+    --r-bubble:  22px;
+    --r-ctl:     14px;
+    --r-pill:    999px;
+
+    --lift:    0 2px 6px rgb(21 18 31 / .05), 0 18px 40px -20px rgb(21 18 31 / .25);
+    --lift-lg: 0 3px 8px rgb(21 18 31 / .05), 0 48px 84px -36px rgb(21 18 31 / .38);
+
+    --display: "Unbounded", ui-sans-serif, system-ui, sans-serif;
+    --ui: "Onest", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:   #0d0b15;
+      --ground-2: #131020;
+      --ink:      #eeebf7;
+      --ink-2:    #aaa4c0;
+      --ink-3:    #7c7595;
+      --rule:     #241f36;
+
+      --paper:    #15111f;
+      --paper-2:  #1b1729;
+      --paper-3:  #231d36;
+      --edge:     #272040;
+      --edge-2:   #342b52;
+
+      --brand:       #9d88ff;
+      --brand-press: #b6a6ff;
+      --brand-tint:  #241c46;
+      --on-brand:    #130a26;
+
+      --rail:     #1a1430;
+      --rail-ink: #8a82ad;
+      --rail-on:  #ffffff;
+
+      --ok:        #3ddc9a;
+      --ok-tint:   #103326;
+      --warn:      #e6a94e;
+      --warn-tint: #382913;
+      --danger:    #ff7a70;
+
+      --lift:    0 2px 6px rgb(0 0 0 / .45), 0 18px 40px -20px rgb(0 0 0 / .7);
+      --lift-lg: 0 3px 8px rgb(0 0 0 / .45), 0 48px 84px -36px rgb(0 0 0 / .9);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:   #0d0b15;
+    --ground-2: #131020;
+    --ink:      #eeebf7;
+    --ink-2:    #aaa4c0;
+    --ink-3:    #7c7595;
+    --rule:     #241f36;
+
+    --paper:    #15111f;
+    --paper-2:  #1b1729;
+    --paper-3:  #231d36;
+    --edge:     #272040;
+    --edge-2:   #342b52;
+
+    --brand:       #9d88ff;
+    --brand-press: #b6a6ff;
+    --brand-tint:  #241c46;
+    --on-brand:    #130a26;
+
+    --rail:     #1a1430;
+    --rail-ink: #8a82ad;
+    --rail-on:  #ffffff;
+
+    --ok:        #3ddc9a;
+    --ok-tint:   #103326;
+    --warn:      #e6a94e;
+    --warn-tint: #382913;
+    --danger:    #ff7a70;
+
+    --lift:    0 2px 6px rgb(0 0 0 / .45), 0 18px 40px -20px rgb(0 0 0 / .7);
+    --lift-lg: 0 3px 8px rgb(0 0 0 / .45), 0 48px 84px -36px rgb(0 0 0 / .9);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--ui);
+    font-size: 14px;
+    line-height: 20px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .shell { max-width: 1200px; margin: 0 auto; padding-inline: 16px; padding-block: 0 72px; }
+
+  :focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 6px; }
+
+  /* ===================== шапка ===================== */
+  .masthead {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 20;
+    padding: 12px 16px;
+    background: color-mix(in srgb, var(--ground) 82%, transparent);
+    backdrop-filter: blur(14px) saturate(1.3);
+  }
+  .masthead-in {
+    max-width: 1200px; margin: 0 auto;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .mark { display: flex; align-items: center; gap: 10px; margin-right: auto; }
+  .mark-glyph {
+    width: 30px; height: 30px; border-radius: 11px; flex: none;
+    background: var(--brand); color: var(--on-brand);
+    display: grid; place-items: center;
+  }
+  .mark-name { font-family: var(--display); font-weight: 700; font-size: 17px; line-height: 1; letter-spacing: -.03em; }
+  .mark-sub {
+    font-family: var(--mono); font-size: 10px; line-height: 1; color: var(--ink-3);
+    letter-spacing: .1em; text-transform: uppercase;
+    padding: 5px 9px; border-radius: var(--r-pill); background: var(--ground-2);
+  }
+
+  .seg { display: inline-flex; gap: 3px; padding: 4px; background: var(--ground-2); border-radius: var(--r-pill); }
+  .seg button {
+    appearance: none; border: 0; cursor: pointer;
+    background: transparent; color: var(--ink-2);
+    font: 500 13px/1 var(--ui);
+    padding: 9px 16px; border-radius: var(--r-pill); white-space: nowrap;
+  }
+  .seg button[aria-selected="true"] { background: var(--brand); color: var(--on-brand); }
+
+  .ghost-btn {
+    appearance: none; cursor: pointer; flex: none;
+    width: 38px; height: 38px; border-radius: var(--r-pill);
+    border: 0; background: var(--ground-2); color: var(--ink-2);
+    display: grid; place-items: center;
+  }
+  .ghost-btn:hover { color: var(--ink); }
+
+  /* ===================== тезис ===================== */
+  .thesis { padding-block: 52px 36px; display: grid; gap: 34px; }
+  .thesis h1 {
+    font-family: var(--display); font-weight: 700;
+    font-size: clamp(30px, 5vw, 56px);
+    line-height: 1.04; letter-spacing: -.045em;
+    margin: 0 0 18px; max-width: 17ch; text-wrap: balance;
+  }
+  .thesis h1 em { font-style: normal; color: var(--brand); }
+  .thesis p { margin: 0; color: var(--ink-2); font-size: 15.5px; line-height: 24px; max-width: 52ch; }
+
+  .figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr)); gap: 12px; }
+  .fig { background: var(--paper); border-radius: var(--r-card); padding: 20px 20px 18px; }
+  .fig b {
+    display: block; font-family: var(--display); font-weight: 600;
+    font-size: 34px; line-height: 1; letter-spacing: -.05em;
+    font-variant-numeric: tabular-nums; margin-bottom: 10px;
+  }
+  .fig b i { font-style: normal; font-size: 17px; color: var(--ink-3); letter-spacing: -.02em; }
+  .fig span { display: block; font-size: 13px; line-height: 18px; color: var(--ink-2); }
+
+  /* ===================== секция ===================== */
+  .section-bar { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; padding-block: 30px 18px; }
+  .section-num {
+    font-family: var(--mono); font-size: 10px; color: var(--brand);
+    letter-spacing: .12em; padding: 5px 9px; border-radius: var(--r-pill); background: var(--brand-tint);
+  }
+  .section-bar h2 { font-family: var(--display); font-weight: 600; font-size: 22px; line-height: 1.1; letter-spacing: -.04em; margin: 0; }
+  .section-bar p { margin: 0; color: var(--ink-3); font-size: 13px; }
+
+  .stage { display: grid; grid-template-columns: minmax(0, 1fr) 268px; gap: 32px; align-items: start; }
+  .stage-wide { grid-template-columns: minmax(0, 1fr); }
+
+  /* ===================== выноски ===================== */
+  .callouts { display: flex; flex-direction: column; gap: 10px; }
+  .callout { background: var(--paper); border-radius: var(--r-card); padding: 15px 17px; }
+  .callout b { display: flex; align-items: baseline; gap: 9px; font-size: 13.5px; line-height: 19px; font-weight: 600; margin-bottom: 5px; }
+  .callout b u {
+    text-decoration: none; font-family: var(--mono); font-size: 10px; color: var(--brand); flex: none;
+  }
+  .callout span { display: block; font-size: 12.5px; line-height: 18px; color: var(--ink-3); }
+
+  /* =====================================================================
+     ВИДЖЕТ
+     ===================================================================== */
+  .widget-bed {
+    background: var(--ground-2); border-radius: var(--r-shell);
+    padding: 44px 24px; display: grid; place-items: center;
+  }
+  .widget {
+    width: 100%; max-width: 412px;
+    background: var(--paper); border-radius: var(--r-surface);
+    box-shadow: var(--lift-lg); overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+
+  .w-head { display: flex; align-items: center; gap: 12px; padding: 17px 14px 17px 18px; background: var(--brand); color: var(--on-brand); }
+  .w-shop {
+    width: 36px; height: 36px; border-radius: var(--r-ctl); flex: none;
+    background: rgb(255 255 255 / .18);
+    display: grid; place-items: center;
+    font-family: var(--display); font-weight: 600; font-size: 12px; letter-spacing: -.03em;
+  }
+  :root[data-theme="dark"] .w-shop, :root:not([data-theme="light"]) .w-shop { background: rgb(19 10 38 / .16); }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .w-shop { background: rgb(255 255 255 / .18); } }
+  .w-head .who { flex: 1; min-width: 0; }
+  .w-head .who b { display: block; font-size: 15px; font-weight: 600; line-height: 20px; letter-spacing: -.01em; }
+  .w-head .who span { display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; opacity: .8; }
+  .live { width: 6px; height: 6px; border-radius: var(--r-pill); background: currentColor; flex: none; }
+  .w-head .ico {
+    appearance: none; border: 0; background: transparent; cursor: pointer; flex: none;
+    width: 30px; height: 30px; border-radius: var(--r-pill);
+    display: grid; place-items: center; color: inherit; opacity: .72;
+  }
+  .w-head .ico:hover { opacity: 1; background: rgb(255 255 255 / .16); }
+
+  .w-feed { padding: 22px 18px; display: flex; flex-direction: column; gap: 22px; overflow-y: auto; max-height: 428px; }
+
+  .stamp {
+    align-self: center; font-family: var(--mono); font-size: 10px;
+    letter-spacing: .06em; color: var(--ink-3);
+    background: var(--paper-3); padding: 5px 11px; border-radius: var(--r-pill);
+  }
+
+  .msg { display: flex; flex-direction: column; }
+  .msg.user { align-items: flex-end; }
+  .bubble {
+    background: var(--paper-3); padding: 12px 17px;
+    border-radius: var(--r-bubble) var(--r-bubble) 8px var(--r-bubble);
+    max-width: 84%; font-size: 14.5px; line-height: 22px;
+  }
+  .reply { font-size: 14.5px; line-height: 22px; }
+  .reply p { margin: 0 0 12px; }
+  .reply p:last-child { margin: 0; }
+  .reply strong { font-weight: 600; }
+  .reply .num { font-family: var(--mono); font-size: 13px; }
+
+  .cited {
+    background: var(--brand-tint); border-radius: var(--r-card);
+    padding: 12px 14px; margin-bottom: 14px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .cited-head { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--brand); }
+  .cited a { display: flex; gap: 8px; align-items: center; font-size: 12.5px; line-height: 17px; color: var(--ink-2); text-decoration: none; }
+  .cited a:hover { color: var(--brand); text-decoration: underline; }
+  .cited a svg { flex: none; opacity: .6; }
+
+  .acts { display: flex; gap: 3px; padding-top: 14px; }
+  .act {
+    appearance: none; border: 0; background: transparent; cursor: pointer;
+    width: 30px; height: 30px; border-radius: var(--r-pill);
+    display: grid; place-items: center; color: var(--ink-3);
+  }
+  .act:hover { background: var(--paper-3); color: var(--ink); }
+
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip-btn {
+    appearance: none; cursor: pointer; border: 0;
+    background: var(--paper-3); color: var(--ink);
+    font: 500 12.5px/1 var(--ui); padding: 10px 15px; border-radius: var(--r-pill);
+  }
+  .chip-btn:hover { background: var(--edge); }
+  .chip-btn.lead { background: var(--brand-tint); color: var(--brand); }
+
+  .w-foot { padding: 0 18px 18px; }
+  .field { background: var(--paper-2); border-radius: var(--r-surface); display: flex; flex-direction: column; }
+  .field-body { padding: 15px 17px 6px; }
+  .field-body .ph { color: var(--ink-3); font-size: 15px; line-height: 23px; }
+  .field-foot { display: flex; align-items: center; gap: 8px; padding: 6px 9px 9px 11px; }
+  .field-tools { flex: 1; display: flex; align-items: center; gap: 2px; min-width: 0; }
+  .tool-btn {
+    appearance: none; border: 0; background: transparent; cursor: pointer;
+    height: 30px; border-radius: var(--r-pill); color: var(--ink-3);
+    display: inline-flex; align-items: center; gap: 6px; padding: 0 11px;
+    font: 500 12px/16px var(--ui);
+  }
+  .tool-btn.only { width: 30px; padding: 0; justify-content: center; }
+  .tool-btn:hover { background: var(--paper-3); color: var(--ink); }
+  .send {
+    appearance: none; border: 0; cursor: pointer; flex: none;
+    width: 34px; height: 34px; border-radius: var(--r-pill);
+    background: var(--brand); color: var(--on-brand);
+    display: grid; place-items: center;
+  }
+  .send:hover { background: var(--brand-press); }
+  .disclaim { text-align: center; font-size: 11px; line-height: 15px; color: var(--ink-3); padding: 11px 18px 16px; }
+
+  /* =====================================================================
+     ИНБОКС
+     ===================================================================== */
+  .app {
+    display: grid; grid-template-columns: 60px 292px minmax(0, 1fr) 290px;
+    background: var(--paper); border-radius: var(--r-shell);
+    overflow: hidden; box-shadow: var(--lift); min-height: 672px;
+  }
+  .pane { min-width: 0; display: flex; flex-direction: column; }
+  .pane.list-pane { background: var(--paper-2); }
+  .pane.aside { background: var(--paper-2); }
+
+  .rail { background: var(--rail); align-items: center; padding: 16px 0; gap: 7px; }
+  .rail-glyph {
+    width: 34px; height: 34px; border-radius: var(--r-ctl); margin-bottom: 14px; flex: none;
+    background: var(--brand); color: #fff; display: grid; place-items: center;
+  }
+  .rail-btn {
+    appearance: none; border: 0; background: transparent; cursor: pointer;
+    width: 38px; height: 38px; border-radius: var(--r-ctl);
+    display: grid; place-items: center; color: var(--rail-ink);
+  }
+  .rail-btn:hover { background: rgb(255 255 255 / .07); color: var(--rail-on); }
+  .rail-btn[aria-current="true"] { background: rgb(255 255 255 / .12); color: var(--rail-on); }
+
+  .pane-head { padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 14px; }
+  .pane-head h3 { margin: 0; font-family: var(--display); font-weight: 600; font-size: 16px; letter-spacing: -.04em; }
+
+  .filters { display: flex; gap: 4px; flex-wrap: wrap; }
+  .filter {
+    appearance: none; border: 0; cursor: pointer; background: transparent;
+    color: var(--ink-3); font: 500 12px/16px var(--ui);
+    padding: 7px 11px; border-radius: var(--r-pill);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .filter[aria-selected="true"] { background: var(--brand); color: var(--on-brand); }
+  .filter .n { font-family: var(--mono); font-size: 10px; font-variant-numeric: tabular-nums; opacity: .85; }
+
+  .list { overflow-y: auto; flex: 1; padding: 0 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+  .row {
+    display: grid; grid-template-columns: 36px minmax(0,1fr); gap: 12px;
+    width: 100%; text-align: left; cursor: pointer;
+    padding: 12px 12px; background: transparent; border: 0;
+    border-radius: var(--r-card); color: inherit; font-family: var(--ui);
+  }
+  .row:hover { background: var(--paper-3); }
+  .row[aria-current="true"] { background: var(--paper); box-shadow: var(--lift); }
+  .who-ava {
+    width: 36px; height: 36px; border-radius: var(--r-ctl); flex: none;
+    background: var(--brand-tint); color: var(--brand);
+    display: grid; place-items: center;
+    font-family: var(--display); font-weight: 600; font-size: 11px; letter-spacing: -.03em;
+  }
+  .row-main { min-width: 0; }
+  .row-top { display: flex; align-items: baseline; gap: 8px; }
+  .row-top b { font-size: 13.5px; line-height: 18px; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .clock { font-family: var(--mono); font-size: 10px; color: var(--ink-3); font-variant-numeric: tabular-nums; flex: none; }
+  .row-prev { font-size: 12.5px; line-height: 17px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 3px; }
+
+  .state {
+    display: inline-flex; align-items: center; gap: 5px; margin-top: 8px;
+    font-size: 10.5px; line-height: 14px; font-weight: 500;
+    padding: 3px 9px; border-radius: var(--r-pill);
+  }
+  .state i { width: 5px; height: 5px; border-radius: var(--r-pill); background: currentColor; }
+  .state.done { color: var(--ok); background: var(--ok-tint); }
+  .state.esc  { color: var(--warn); background: var(--warn-tint); }
+  .state.wait { color: var(--ink-3); background: var(--paper-3); }
+
+  .conv-head { padding: 16px 20px; display: flex; align-items: center; gap: 11px; flex-wrap: wrap; }
+  .conv-head .who-ava { width: 32px; height: 32px; font-size: 10.5px; }
+  .conv-head b { font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+  .grow { flex: 1; }
+
+  .conv { flex: 1; padding: 6px 20px 20px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; max-height: 420px; }
+
+  .trace { border-radius: var(--r-card); background: var(--paper-2); overflow: hidden; }
+  .trace.flag { background: var(--warn-tint); }
+  .trace-top { display: flex; align-items: center; gap: 10px; padding: 12px 15px; }
+  .trace-top .fn { font-family: var(--mono); font-size: 12px; font-weight: 500; }
+  .verdict {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: .06em; text-transform: uppercase;
+    padding: 4px 9px; border-radius: var(--r-pill); background: var(--ok-tint); color: var(--ok);
+  }
+  .verdict.flag { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+  .trace-body { padding: 0 15px 13px; }
+  .trace-body pre {
+    margin: 0; font-family: var(--mono); font-size: 11px; line-height: 19px;
+    color: var(--ink-2); white-space: pre-wrap; word-break: break-word;
+  }
+
+  .thought { display: inline-flex; align-items: center; gap: 9px; font-size: 13.5px; line-height: 20px; color: var(--ink-3); }
+
+  .composer { padding: 14px 20px 20px; display: flex; flex-direction: column; gap: 12px; }
+  .modes { display: flex; gap: 7px; flex-wrap: wrap; }
+  .mode {
+    appearance: none; cursor: pointer; border: 0;
+    background: var(--paper-2); color: var(--ink-3);
+    font: 500 12px/16px var(--ui); padding: 8px 13px; border-radius: var(--r-pill);
+  }
+  .mode[aria-pressed="true"] { background: var(--brand); color: var(--on-brand); }
+
+  .panel { padding: 20px 18px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+  .panel section { background: var(--paper); border-radius: var(--r-card); padding: 15px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .panel section.bare { background: transparent; padding: 0; }
+  .panel h4 {
+    margin: 0; font-family: var(--mono); font-size: 9.5px; font-weight: 500;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3);
+  }
+  dl { margin: 0; display: flex; flex-direction: column; gap: 5px; }
+  .kv { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; line-height: 19px; }
+  .kv dt { color: var(--ink-3); margin: 0; }
+  .kv dd { margin: 0; font-weight: 500; text-align: right; }
+  .kv dd.mono { font-family: var(--mono); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+
+  .gauge { height: 6px; border-radius: var(--r-pill); background: var(--paper-3); overflow: hidden; }
+  .gauge i { display: block; height: 100%; background: var(--brand); border-radius: var(--r-pill); }
+  .gauge-cap { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag { font-size: 11px; line-height: 16px; padding: 4px 10px; border-radius: var(--r-pill); background: var(--paper-3); color: var(--ink-2); }
+
+  .p-btn {
+    appearance: none; cursor: pointer; width: 100%; border: 0;
+    background: var(--paper); color: var(--ink);
+    font: 500 13px/1 var(--ui); padding: 12px; border-radius: var(--r-ctl);
+  }
+  .p-btn:hover { background: var(--paper-3); }
+  .p-btn.solid { background: var(--brand); color: var(--on-brand); }
+  .p-btn.solid:hover { background: var(--brand-press); }
+
+  /* ===================== подвал ===================== */
+  .colophon { margin-top: 48px; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+  .colophon div { background: var(--paper); border-radius: var(--r-card); padding: 16px 18px; }
+  .colophon div b {
+    display: block; font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--ink-3); margin-bottom: 7px; font-weight: 500;
+  }
+  .colophon div span { font-size: 12.5px; line-height: 18px; color: var(--ink-2); }
+  .colophon code { font-family: var(--mono); font-size: 11px; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .row, .act, .tool-btn, .chip-btn, .filter, .rail-btn, .send, .p-btn { transition: background-color .14s ease, color .14s ease; }
+  }
+
+  /* ===================== адаптив ===================== */
+  @media (max-width: 1100px) {
+    .stage { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+    .callouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+    .app { grid-template-columns: 60px 256px minmax(0, 1fr); }
+    .pane.aside { display: none; }
+  }
+  @media (max-width: 760px) {
+    .widget-bed { padding: 0; background: transparent; }
+    .widget { max-width: none; box-shadow: var(--lift); }
+    .app { grid-template-columns: minmax(0, 1fr); min-height: 0; border-radius: var(--r-surface); }
+    .pane.rail { display: none; }
+    .pane.list-pane .list { max-height: 290px; }
+    .conv { max-height: none; }
+  }
+</style>
+
+<div class="masthead">
+  <div class="masthead-in">
+    <div class="mark">
+      <span class="mark-glyph" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9.7 9.7 0 0 1-3.5-.7L3 21l1.8-4.9A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5Z"/></svg>
+      </span>
+      <span class="mark-name">Отклик</span>
+      <span class="mark-sub">дизайн-макет</span>
+    </div>
+    <div class="seg" role="tablist" aria-label="Поверхность продукта">
+      <button id="tab-widget" role="tab" aria-selected="true" aria-controls="scene-widget" type="button">Виджет</button>
+      <button id="tab-inbox" role="tab" aria-selected="false" aria-controls="scene-inbox" type="button">Инбокс</button>
+    </div>
+    <button class="ghost-btn" id="theme" type="button" aria-label="Переключить тему">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    </button>
+  </div>
+</div>
+
+<div class="shell">
+
+  <section class="thesis">
+    <div>
+      <h1>Восемь из&nbsp;десяти&nbsp;— <em>без&nbsp;человека</em></h1>
+      <p>Покупатель спрашивает, где посылка. Отвечает ИИ, обученный на материалах магазина. Оператор подключается только там, где машина не справилась.</p>
+    </div>
+
+    <div class="figures">
+      <div class="fig"><b>79<i>%</i></b><span>обращений закрываются без оператора</span></div>
+      <div class="fig"><b>28<i>сек</i></b><span>среднее время до первого ответа</span></div>
+      <div class="fig"><b>1,80<i>₽</i></b><span>стоимость одного закрытого диалога</span></div>
+      <div class="fig"><b>24<i>/7</i></b><span>без ночных смен и выходных</span></div>
+    </div>
+  </section>
+
+  <!-- ===================== ВИДЖЕТ ===================== -->
+  <section id="scene-widget" role="tabpanel" aria-labelledby="tab-widget">
+    <div class="section-bar">
+      <span class="section-num">01</span>
+      <h2>Виджет</h2>
+      <p>то, что видит покупатель на сайте магазина</p>
+    </div>
+
+    <div class="stage">
+      <div class="widget-bed">
+        <div class="widget">
+          <div class="w-head">
+            <span class="w-shop" aria-hidden="true">ЛО</span>
+            <span class="who">
+              <b>Лавка Огородника</b>
+              <span><i class="live" aria-hidden="true"></i>Обычно отвечаем за 30 секунд</span>
+            </span>
+            <button class="ico" type="button" aria-label="Свернуть">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg>
+            </button>
+            <button class="ico" type="button" aria-label="Закрыть">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+
+          <div class="w-feed">
+            <span class="stamp">сегодня · 14:01</span>
+
+            <div class="msg">
+              <div class="reply">
+                <p>Здравствуйте! Я помощник Лавки Огородника. Отвечу по заказам, доставке и возвратам — а если не справлюсь, позову живого оператора.</p>
+              </div>
+            </div>
+
+            <div class="msg user">
+              <div class="bubble">Заказала семена 18 сентября, до сих пор нет. Где посылка?</div>
+            </div>
+
+            <div class="msg">
+              <div class="cited">
+                <span class="cited-head">Основано на 2 источниках</span>
+                <a href="#doc-delivery">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
+                  Сроки доставки по России
+                </a>
+                <a href="#doc-order">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2h8l4 4v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z"/><path d="M15 2v5h5"/></svg>
+                  Карточка заказа №4821
+                </a>
+              </div>
+
+              <div class="reply">
+                <p>Нашла ваш заказ <strong>№4821</strong> от 18 сентября. Он передан в Почту России 19 сентября, трек <span class="num">80123456789012</span>.</p>
+                <p>Сейчас посылка в сортировочном центре Екатеринбурга. Ожидаемая доставка — <strong>25 сентября</strong>, на два дня позже обещанного из-за перегрузки центра.</p>
+              </div>
+
+              <div class="acts">
+                <button class="act" type="button" aria-label="Ответить заново">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+                </button>
+                <button class="act" type="button" aria-label="Ответ помог">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h3Z"/><path d="M7 10l4-7a2.5 2.5 0 0 1 2.5 3L13 10h5.5a2 2 0 0 1 2 2.4l-1.3 6a2 2 0 0 1-2 1.6H7"/></svg>
+                </button>
+                <button class="act" type="button" aria-label="Ответ не помог">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 14V3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-3Z"/><path d="M17 14l-4 7a2.5 2.5 0 0 1-2.5-3L11 14H5.5a2 2 0 0 1-2-2.4l1.3-6a2 2 0 0 1 2-1.6H17"/></svg>
+                </button>
+                <button class="act" type="button" aria-label="Скопировать">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="13" height="13" x="9" y="9" rx="3"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="chips">
+              <button class="chip-btn" type="button">Изменить адрес</button>
+              <button class="chip-btn" type="button">Оформить возврат</button>
+              <button class="chip-btn lead" type="button">Позвать оператора</button>
+            </div>
+          </div>
+
+          <div class="w-foot">
+            <div class="field">
+              <div class="field-body"><span class="ph">Напишите сообщение…</span></div>
+              <div class="field-foot">
+                <div class="field-tools">
+                  <button class="tool-btn only" type="button" aria-label="Прикрепить файл">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                  </button>
+                  <button class="tool-btn" type="button">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19v3"/><rect width="7" height="12" x="8.5" y="2" rx="3.5"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/></svg>
+                    Голосом
+                  </button>
+                </div>
+                <button class="send" type="button" aria-label="Отправить">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+                </button>
+              </div>
+            </div>
+            <p class="disclaim">Отвечает ИИ. Оператор подключится по первому запросу.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="callouts">
+        <div class="callout">
+          <b><u>01</u>Ответ без плашки</b>
+          <span>Бабл только у покупателя. Ответ бота идёт открытым текстом — так он читается как ответ магазина, а не как реплика робота.</span>
+        </div>
+        <div class="callout">
+          <b><u>02</u>Подшивка источников</b>
+          <span>Видно, из каких документов собран ответ. Главный механизм доверия: покупатель может проверить срок сам.</span>
+        </div>
+        <div class="callout">
+          <b><u>03</u>Оценка ответа</b>
+          <span>Палец вверх и вниз — ваш поток данных о качестве. По нему решаете, какие сценарии чинить первыми.</span>
+        </div>
+        <div class="callout">
+          <b><u>04</u>Выход к человеку</b>
+          <span>«Позвать оператора» стоит рядом с подсказками и выделено краской. Спрятанная эскалация — прямой путь к злому клиенту.</span>
+        </div>
+        <div class="callout">
+          <b><u>05</u>Честная сноска</b>
+          <span>Прямо сказано, что отвечает ИИ. Это и требование регуляторов, и вопрос доверия.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== ИНБОКС ===================== -->
+  <section id="scene-inbox" role="tabpanel" aria-labelledby="tab-inbox" hidden>
+    <div class="section-bar">
+      <span class="section-num">02</span>
+      <h2>Инбокс</h2>
+      <p>рабочее место оператора поддержки</p>
+    </div>
+
+    <div class="stage stage-wide">
+      <div class="app">
+        <div class="pane rail">
+          <span class="rail-glyph" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9.7 9.7 0 0 1-3.5-.7L3 21l1.8-4.9A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5Z"/></svg>
+          </span>
+          <button class="rail-btn" type="button" aria-current="true" aria-label="Диалоги">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9.7 9.7 0 0 1-3.5-.7L3 21l1.8-4.9A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5Z"/></svg>
+          </button>
+          <button class="rail-btn" type="button" aria-label="База знаний">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
+          </button>
+          <button class="rail-btn" type="button" aria-label="Отчёты">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 3.5-4 3 2.5L20 7"/></svg>
+          </button>
+          <button class="rail-btn" type="button" aria-label="Настройки">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></svg>
+          </button>
+        </div>
+
+        <div class="pane list-pane">
+          <div class="pane-head">
+            <h3>Входящие</h3>
+            <div class="filters" role="tablist" aria-label="Фильтр">
+              <button class="filter" role="tab" aria-selected="false" type="button">Все <span class="n">24</span></button>
+              <button class="filter" role="tab" aria-selected="false" type="button">Закрыл ИИ <span class="n">19</span></button>
+              <button class="filter" role="tab" aria-selected="true" type="button">Эскалации <span class="n">5</span></button>
+            </div>
+          </div>
+          <div class="list">
+            <button class="row" type="button" aria-current="true">
+              <span class="who-ava" aria-hidden="true">МК</span>
+              <span class="row-main">
+                <span class="row-top"><b>Марина К.</b><span class="clock">14:02</span></span>
+                <span class="row-prev">Это уже вторая задержка. Хочу вернуть…</span>
+                <span class="state esc"><i></i>Нужен оператор</span>
+              </span>
+            </button>
+            <button class="row" type="button">
+              <span class="who-ava" aria-hidden="true">ДС</span>
+              <span class="row-main">
+                <span class="row-top"><b>Дмитрий С.</b><span class="clock">13:47</span></span>
+                <span class="row-prev">Спасибо, всё понятно!</span>
+                <span class="state done"><i></i>Закрыл ИИ</span>
+              </span>
+            </button>
+            <button class="row" type="button">
+              <span class="who-ava" aria-hidden="true">АВ</span>
+              <span class="row-main">
+                <span class="row-top"><b>Анна В.</b><span class="clock">13:31</span></span>
+                <span class="row-prev">А можно вернуть, если упаковка вскрыта?</span>
+                <span class="state esc"><i></i>Нужен оператор</span>
+              </span>
+            </button>
+            <button class="row" type="button">
+              <span class="who-ava" aria-hidden="true">ИП</span>
+              <span class="row-main">
+                <span class="row-top"><b>Игорь П.</b><span class="clock">12:58</span></span>
+                <span class="row-prev">Когда будет томат «Бычье сердце»?</span>
+                <span class="state done"><i></i>Закрыл ИИ</span>
+              </span>
+            </button>
+            <button class="row" type="button">
+              <span class="who-ava" aria-hidden="true">ЕР</span>
+              <span class="row-main">
+                <span class="row-top"><b>Елена Р.</b><span class="clock">12:14</span></span>
+                <span class="row-prev">Счёт на юрлицо нужен с НДС</span>
+                <span class="state wait"><i></i>Ждёт ответа</span>
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div class="pane">
+          <div class="conv-head">
+            <span class="who-ava" aria-hidden="true">МК</span>
+            <b>Марина К.</b>
+            <span class="state esc" style="margin:0"><i></i>Нужен оператор</span>
+            <span class="grow"></span>
+            <button class="act" type="button" aria-label="Закрыть диалог">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+            </button>
+          </div>
+
+          <div class="conv">
+            <div class="msg user">
+              <div class="bubble">Заказала семена 18 сентября, до сих пор нет. Где посылка?</div>
+            </div>
+
+            <div class="msg">
+              <span class="thought">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5a3 3 0 1 0-5.9.8A3 3 0 0 0 4 9.5a3 3 0 0 0 1.6 2.7A3 3 0 0 0 6.5 18 3 3 0 0 0 12 19Z"/><path d="M12 5a3 3 0 1 1 5.9.8A3 3 0 0 1 20 9.5a3 3 0 0 1-1.6 2.7A3 3 0 0 1 17.5 18 3 3 0 0 1 12 19Z"/><path d="M12 5v14"/></svg>
+                Думал 2 секунды
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+              </span>
+
+              <div class="trace" style="margin-top:14px">
+                <div class="trace-top">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--ink-3)"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                  <span class="fn">get_order_status</span>
+                  <span class="grow"></span>
+                  <span class="verdict">340 мс</span>
+                </div>
+                <div class="trace-body">
+<pre>{ "order_id": "4821", "status": "in_transit",
+  "carrier": "Почта России",
+  "track": "80123456789012",
+  "eta": "2026-09-25", "delay_days": 2 }</pre>
+                </div>
+              </div>
+
+              <div class="reply" style="margin-top:16px">
+                <p>Нашла ваш заказ <strong>№4821</strong> от 18 сентября. Ожидаемая доставка — <strong>25 сентября</strong>, на два дня позже обещанного из-за перегрузки сортировочного центра.</p>
+              </div>
+            </div>
+
+            <div class="msg user">
+              <div class="bubble">Это уже вторая задержка. Хочу вернуть деньги и говорить с человеком.</div>
+            </div>
+
+            <div class="msg">
+              <div class="trace flag">
+                <div class="trace-top">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--warn)"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+                  <span class="fn">escalate_to_human</span>
+                  <span class="grow"></span>
+                  <span class="verdict flag">передан человеку</span>
+                </div>
+                <div class="trace-body">
+<pre>причина  — прямой запрос оператора + возврат средств
+уверенность — 0.41 при пороге 0.70</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="composer">
+            <div class="modes">
+              <button class="mode" aria-pressed="true" type="button">Отвечаю сам</button>
+              <button class="mode" aria-pressed="false" type="button">Черновик от ИИ</button>
+              <button class="mode" aria-pressed="false" type="button">Вернуть диалог ИИ</button>
+            </div>
+            <div class="field">
+              <div class="field-body"><span class="ph">Ответ Марине…</span></div>
+              <div class="field-foot">
+                <div class="field-tools">
+                  <button class="tool-btn only" type="button" aria-label="Прикрепить файл">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                  </button>
+                  <button class="tool-btn" type="button">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
+                    Шаблон
+                  </button>
+                  <button class="tool-btn" type="button">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/></svg>
+                    Подсказать
+                  </button>
+                </div>
+                <button class="send" type="button" aria-label="Отправить">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pane aside">
+          <div class="panel">
+            <section>
+              <h4>Покупатель</h4>
+              <dl>
+                <div class="kv"><dt>Имя</dt><dd>Марина Кузнецова</dd></div>
+                <div class="kv"><dt>Почта</dt><dd class="mono">m.kuz@mail.ru</dd></div>
+                <div class="kv"><dt>Заказов</dt><dd class="mono">7</dd></div>
+                <div class="kv"><dt>С нами</dt><dd>с марта 2024</dd></div>
+              </dl>
+            </section>
+
+            <section>
+              <h4>Текущий заказ</h4>
+              <dl>
+                <div class="kv"><dt>Номер</dt><dd class="mono">№4821</dd></div>
+                <div class="kv"><dt>Сумма</dt><dd class="mono">2 340 ₽</dd></div>
+                <div class="kv"><dt>Статус</dt><dd>В пути, +2 дня</dd></div>
+              </dl>
+            </section>
+
+            <section>
+              <h4>Расход контекста</h4>
+              <div class="gauge"><i style="width:34%"></i></div>
+              <div class="gauge-cap"><span>44 200 токенов</span><span>34 %</span></div>
+              <dl>
+                <div class="kv"><dt>Стоимость диалога</dt><dd class="mono">1,80 ₽</dd></div>
+                <div class="kv"><dt>Модель</dt><dd class="mono">claude-sonnet-5</dd></div>
+              </dl>
+            </section>
+
+            <section>
+              <h4>Теги</h4>
+              <div class="tags">
+                <span class="tag">доставка</span>
+                <span class="tag">задержка</span>
+                <span class="tag">возврат</span>
+                <span class="tag">повторное</span>
+              </div>
+            </section>
+
+            <section class="bare">
+              <button class="p-btn solid" type="button">Взять диалог на себя</button>
+              <button class="p-btn" type="button">Оформить возврат</button>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callouts" style="margin-top:22px;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">
+      <div class="callout">
+        <b><u>01</u>Трасса вызовов</b>
+        <span>Оператор видит, какие функции дёрнул ИИ и что они вернули. Без этого не разобрать, почему бот ответил именно так.</span>
+      </div>
+      <div class="callout">
+        <b><u>02</u>Порог уверенности</b>
+        <span>0.41 при пороге 0.70 — диалог ушёл человеку. Эту ручку вы будете крутить чаще остальных.</span>
+      </div>
+      <div class="callout">
+        <b><u>03</u>Деньги на виду</b>
+        <span>Токены и рубли за диалог прямо в панели. Расход на ИИ — главная нелинейная статья.</span>
+      </div>
+      <div class="callout">
+        <b><u>04</u>Черновик от ИИ</b>
+        <span>Бот пишет, человек проверяет перед отправкой. Так запускают первых клиентов, пока доверия ещё нет.</span>
+      </div>
+    </div>
+  </section>
+
+  <footer class="colophon">
+    <div><b>Краска</b><span>Ирис как основа. Зелёный и янтарь оставлены под статусы «закрыл ИИ» и «эскалация» — брендовый цвет с ними не спорит.</span></div>
+    <div><b>Шрифты</b><span>Unbounded в заголовках, Onest в интерфейсе, JetBrains Mono на данных. У всех трёх кириллица родная.</span></div>
+    <div><b>Скругления</b><span>30 на контейнерах, 24 на поверхностях, 18 на карточках, 14 на кнопках, пилюля на чипах — по ролям, чтобы иерархия не схлопнулась.</span></div>
+    <div><b>Оговорка</b><span>«Отклик» — рабочее имя. Заказы, имена и цифры — пример, не реальные данные.</span></div>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+
+    var themeBtn = document.getElementById("theme");
+    function currentTheme() {
+      var set = root.getAttribute("data-theme");
+      if (set) { return set; }
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    themeBtn.addEventListener("click", function () {
+      var next = currentTheme() === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      try { localStorage.setItem("otklik-theme", next); } catch (e) {}
+    });
+    try {
+      var savedTheme = localStorage.getItem("otklik-theme");
+      if (savedTheme === "dark" || savedTheme === "light") { root.setAttribute("data-theme", savedTheme); }
+    } catch (e) {}
+
+    var scenes = [
+      { tab: document.getElementById("tab-widget"), panel: document.getElementById("scene-widget") },
+      { tab: document.getElementById("tab-inbox"), panel: document.getElementById("scene-inbox") }
+    ];
+    scenes.forEach(function (item) {
+      item.tab.addEventListener("click", function () {
+        scenes.forEach(function (other) {
+          var on = other === item;
+          other.tab.setAttribute("aria-selected", on ? "true" : "false");
+          other.panel.hidden = !on;
+        });
+        try { localStorage.setItem("otklik-scene", item.tab.id); } catch (e) {}
+      });
+    });
+    try {
+      if (localStorage.getItem("otklik-scene") === "tab-inbox") { document.getElementById("tab-inbox").click(); }
+    } catch (e) {}
+
+    function exclusive(nodes, attr) {
+      nodes.forEach(function (node) {
+        node.addEventListener("click", function () {
+          nodes.forEach(function (n) { n.setAttribute(attr, "false"); });
+          node.setAttribute(attr, "true");
+        });
+      });
+    }
+    exclusive([].slice.call(document.querySelectorAll(".filters .filter")), "aria-selected");
+    exclusive([].slice.call(document.querySelectorAll(".modes .mode")), "aria-pressed");
+
+    var rows = [].slice.call(document.querySelectorAll(".row"));
+    rows.forEach(function (r) {
+      r.addEventListener("click", function () {
+        rows.forEach(function (o) { o.removeAttribute("aria-current"); });
+        r.setAttribute("aria-current", "true");
+      });
+    });
+
+    var railBtns = [].slice.call(document.querySelectorAll(".rail-btn"));
+    railBtns.forEach(function (b) {
+      b.addEventListener("click", function () {
+        railBtns.forEach(function (o) { o.removeAttribute("aria-current"); });
+        b.setAttribute("aria-current", "true");
+      });
+    });
+  })();
+</script>
