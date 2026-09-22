@@ -3,10 +3,17 @@
 Для каждого компонента: **варианты в Figma** (= состояния, которые нарисованы) и
 **React API** (= пропсы из `elements.ai-sdk.dev`). Размеры в px, взяты из экспорта Figma.
 
-Страницы Figma-файла: Demo, Attachments, Context, Conversation, Checkpoint, Message,
-Message Actions, Message Response, Model Selector, Plan, Prompt Input, Queue, Reasoning,
-Sources, Suggestion, Task, Tool, Workflow Components, Artifact, File Tree, Terminal,
-Code Block, Assets, @shadcn/ui.
+В файле **60 страниц**, сгруппированных разделителями: `🤖 CHATBOT` (Attachments,
+Chain of Thought, Confirmation, Context, Conversation, Checkpoint, Inline Citation,
+Message, Message Branch, Message Actions, Message Response, Model Selector, Plan,
+Prompt Input, Queue, Reasoning, Shimmer, Sources, Suggestion, Task, Tool),
+`🔊 VOICE` (Audio Player, Mic Selector, Persona, Speech Input, Transcription, Voice Selector),
+`⚡ WORKFLOW`, `👾 CODE` (Agent, Artifact, Commit, Environment Variables, File Tree,
+Package Info, Sandbox, Schema Display, Snippet, Stack Trace, Terminal, Test Results,
+Web Preview), `🛠️ UTILITIES` (Image, Open in Chat), плюс Demo, Changelog, Assets,
+@shadcn/ui и 🚫 Deprecated.
+
+Ниже разобраны те, что нужны для чата поддержки.
 
 ---
 
