@@ -5,22 +5,31 @@ Support-chat SaaS (аналог Intercom) с ИИ-агентом. Прорабо
 
 ## Дизайн-система
 
-UI строится на **AI Elements (Vercel)** поверх shadcn/ui.
-Справочник выгружен из Figma в [design-system/](design-system/):
+Структура компонентов — **AI Elements (Vercel)** поверх shadcn/ui.
+Краска, скругления и шрифты — свои, направление **«Индиго + мягкая»**.
 
-- [design-system/README.md](design-system/README.md) — обзор, токены-сводка, установка
-- [design-system/tokens.css](design-system/tokens.css) — CSS-переменные, light + dark
+- [design-system/brand.css](design-system/brand.css) — **фирменные токены, главный файл**
+- [design-system/README.md](design-system/README.md) — обзор AI Elements, установка
+- [design-system/tokens.css](design-system/tokens.css) — исходные токены AI Elements (справочно)
 - [design-system/components.md](design-system/components.md) — инвентарь компонентов, варианты, пропсы
 - [design-system/patterns.md](design-system/patterns.md) — раскладки экранов и правила
+- [design-system/mockup/support-chat.html](design-system/mockup/support-chat.html) — макет: виджет и инбокс
+- [design-system/mockup/style-directions.html](design-system/mockup/style-directions.html) — конструктор стиля
 
 **Читать перед любой работой по UI.** Ключевое:
 
-- База — shadcn/ui `neutral`, но `--primary` = синий `#155dfc` (не почти-чёрный, как в стоке).
-- Базовый радиус 10px (`rounded-lg`), кнопки 8px (`rounded-md`).
-- Шрифт Geist. Текст сообщений — `text-sm` (14/20), поле ввода — `text-base` (16/24).
-- Сообщение пользователя — бабл `--secondary` справа, ~80% ширины.
+- Бренд — индиго `#312e81` (в тёмной теме светлеет до `#a5b4fc`). Синий и зелёный
+  как брендовые не использовать: первый — цвет всей ниши, второй занят статусом.
+- Зелёный, янтарь и красный зарезервированы под статусы «закрыл ИИ», «нужен оператор», ошибка.
+- Скругления по ролям: 30 контейнер / 24 поверхность / 18 карточка / 14 кнопка / пилюля чип.
+  Один радиус на всё не ставить — схлопывает иерархию.
+- Шрифты: Unbounded в заголовках, Onest в интерфейсе, JetBrains Mono на данных.
+  У всех кириллица родная — Geist и Bricolage Grotesque не подходят (у второй её нет).
+- Текст сообщений — 14/20, поле ввода — 16/24.
+- Сообщение пользователя — бабл `--paper-3` справа, ~80% ширины.
   Сообщение ассистента — без фона, во всю ширину.
 - Иконочные кнопки в плотных зонах — 28×28, иконка 16.
+- Накладки поверх брендовой заливки — от `--on-brand` через `color-mix`, не от белого.
 
 Источник: Figma `NDctJTjd4iyzeT9zWg3WwZ` («AI Elements — ▲ Vercel (Community)»),
 документация https://elements.ai-sdk.dev.

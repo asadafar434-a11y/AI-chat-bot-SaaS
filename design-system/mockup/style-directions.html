@@ -1,0 +1,624 @@
+<title>Стиль Отклика</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=Unbounded:wght@600;700&family=Rubik:wght@600;700&family=Manrope:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+  /* =====================================================================
+     Конструктор стиля: цвет и форма выбираются независимо.
+     Разметка виджета одна. Нейтрали выводятся из брендового цвета
+     через color-mix, поэтому каждый цвет задаётся четырьмя значениями.
+     ===================================================================== */
+
+  /* ---------- слой страницы ---------- */
+  :root {
+    --page:      #eeeef1;
+    --page-2:    #e4e4e9;
+    --page-ink:  #16161a;
+    --page-ink2: #55555f;
+    --page-ink3: #83838f;
+    --page-card: #ffffff;
+    --page-rule: #dcdce2;
+    --ui: "Onest", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --page: #0b0b0e; --page-2: #111115; --page-ink: #eeeef2;
+      --page-ink2: #a3a3ae; --page-ink3: #74747f;
+      --page-card: #141418; --page-rule: #23232a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --page: #0b0b0e; --page-2: #111115; --page-ink: #eeeef2;
+    --page-ink2: #a3a3ae; --page-ink3: #74747f;
+    --page-card: #141418; --page-rule: #23232a;
+  }
+
+  /* ---------- ЦВЕТА: только бренд и контрастный к нему ---------- */
+  [data-color="iris"]     { --b-l:#5b3fe9; --b-d:#9d88ff; --on-l:#ffffff; --on-d:#130a26; }
+  [data-color="cobalt"]   { --b-l:#1d4ed8; --b-d:#7da2ff; --on-l:#ffffff; --on-d:#06122e; }
+  [data-color="teal"]     { --b-l:#0d7d84; --b-d:#4fd1c5; --on-l:#ffffff; --on-d:#04211f; }
+  [data-color="pine"]     { --b-l:#0f5c42; --b-d:#4cba8c; --on-l:#f2f8f3; --on-d:#04160f; }
+  [data-color="plum"]     { --b-l:#7c2d5c; --b-d:#e08ab8; --on-l:#ffffff; --on-d:#24081a; }
+  [data-color="fuchsia"]  { --b-l:#c2186b; --b-d:#ff6ab0; --on-l:#ffffff; --on-d:#210713; }
+  [data-color="coffee"]   { --b-l:#6b4423; --b-d:#d0a072; --on-l:#ffffff; --on-d:#1c1008; }
+  [data-color="graphite"] { --b-l:#18181b; --b-d:#fafafa; --on-l:#ffffff; --on-d:#0a0a0b; }
+  [data-color="indigo"]   { --b-l:#312e81; --b-d:#a5b4fc; --on-l:#ffffff; --on-d:#0b0a26; }
+  [data-color="steel"]    { --b-l:#3f5a78; --b-d:#93b0cc; --on-l:#ffffff; --on-d:#0a1420; }
+  [data-color="scarlet"]  { --b-l:#c81e36; --b-d:#ff8a90; --on-l:#ffffff; --on-d:#2a0509; }
+  [data-color="brick"]    { --b-l:#9c3a24; --b-d:#e0906f; --on-l:#ffffff; --on-d:#230b05; }
+  [data-color="olive"]    { --b-l:#4d5d28; --b-d:#a9bd6a; --on-l:#ffffff; --on-d:#141a07; }
+  [data-color="aubergine"]{ --b-l:#4c1d5c; --b-d:#c79ad6; --on-l:#ffffff; --on-d:#1a0722; }
+  [data-color="sand"]     { --b-l:#8a7a5c; --b-d:#d6c6a4; --on-l:#ffffff; --on-d:#1c1710; }
+  [data-color="tangerine"]{ --b-l:#c2410c; --b-d:#fb9a5c; --on-l:#ffffff; --on-d:#260c02; }
+
+  /* ---------- ФОРМА: скругления и дисплейный шрифт ---------- */
+  [data-shape="soft"] {
+    --r-shell:30px; --r-surface:24px; --r-card:18px; --r-bubble:22px; --r-ctl:14px; --r-pill:999px;
+    --display:"Unbounded", var(--ui); --display-w:700; --display-tr:-.045em;
+  }
+  [data-shape="strict"] {
+    --r-shell:10px; --r-surface:8px; --r-card:6px; --r-bubble:8px; --r-ctl:6px; --r-pill:6px;
+    --display:var(--ui); --display-w:800; --display-tr:-.03em;
+  }
+  [data-shape="round"] {
+    --r-shell:34px; --r-surface:28px; --r-card:22px; --r-bubble:26px; --r-ctl:18px; --r-pill:999px;
+    --display:"Rubik", var(--ui); --display-w:700; --display-tr:-.035em;
+  }
+  [data-shape="calm"] {
+    --r-shell:20px; --r-surface:16px; --r-card:12px; --r-bubble:14px; --r-ctl:10px; --r-pill:999px;
+    --display:"Manrope", var(--ui); --display-w:700; --display-tr:-.03em;
+  }
+
+  /* ---------- вывод нейтралей из бренда ---------- */
+  .stage-wrap {
+    --brand: var(--b-l);
+    --brand-ink: var(--on-l);
+
+    --bg: #f2f2f6;        --bg: color-mix(in oklab, var(--brand)  6%, #f3f3f6);
+    --sunken: #e8e8ee;    --sunken: color-mix(in oklab, var(--brand) 11%, #e7e7ec);
+    --paper: #ffffff;     --paper: color-mix(in oklab, var(--brand) 2%, #ffffff);
+    --paper2: #f8f8fa;    --paper2: color-mix(in oklab, var(--brand) 5%, #fafafb);
+    --paper3: #eeeef2;    --paper3: color-mix(in oklab, var(--brand) 10%, #f0f0f3);
+    --ink: #101014;       --ink: color-mix(in oklab, var(--brand) 16%, #0e0e12);
+    --ink2: #4a4a52;      --ink2: color-mix(in oklab, var(--brand) 14%, #4b4b53);
+    --ink3: #7a7a84;      --ink3: color-mix(in oklab, var(--brand) 12%, #7c7c86);
+    --brand-tint: #eceaf8; --brand-tint: color-mix(in oklab, var(--brand) 15%, #ffffff);
+
+    --ok: #0d9f6e; --ok-tint: #d8f5e9;
+    --warn: #b4690e; --warn-tint: #fbeeda;
+  }
+  .stage-wrap.dark-tokens {
+    --brand: var(--b-d);
+    --brand-ink: var(--on-d);
+
+    --bg: #0c0c10;        --bg: color-mix(in oklab, var(--brand)  7%, #0a0a0d);
+    --sunken: #121217;    --sunken: color-mix(in oklab, var(--brand) 10%, #0f0f13);
+    --paper: #15151a;     --paper: color-mix(in oklab, var(--brand)  7%, #131317);
+    --paper2: #1b1b21;    --paper2: color-mix(in oklab, var(--brand) 10%, #18181d);
+    --paper3: #232329;    --paper3: color-mix(in oklab, var(--brand) 15%, #1f1f25);
+    --ink: #f0f0f4;       --ink: color-mix(in oklab, var(--brand) 12%, #f2f2f5);
+    --ink2: #a6a6b0;      --ink2: color-mix(in oklab, var(--brand) 14%, #a4a4ae);
+    --ink3: #76767f;      --ink3: color-mix(in oklab, var(--brand) 12%, #787881);
+    --brand-tint: #26262e; --brand-tint: color-mix(in oklab, var(--brand) 20%, #16161b);
+
+    --ok: #3ddc9a; --ok-tint: #103326;
+    --warn: #e6a94e; --warn-tint: #382913;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0; background: var(--page); color: var(--page-ink);
+    font-family: var(--ui); font-size: 14px; line-height: 20px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .shell { max-width: 1160px; margin: 0 auto; padding-inline: 16px; padding-block: 0 64px; }
+  :focus-visible { outline: 2px solid var(--page-ink); outline-offset: 3px; border-radius: 5px; }
+
+  /* ---------- шапка ---------- */
+  .top {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; padding: 12px 16px;
+    background: color-mix(in srgb, var(--page) 86%, transparent);
+    backdrop-filter: blur(12px); border-bottom: 1px solid var(--page-rule);
+  }
+  .top-in { max-width: 1160px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+  .top-in h1 { margin: 0 auto 0 0; font-size: 15px; line-height: 20px; font-weight: 600; letter-spacing: -.02em; }
+  .top-in h1 span { color: var(--page-ink3); font-weight: 400; }
+  .now {
+    font-family: var(--mono); font-size: 11px; color: var(--page-ink2);
+    background: var(--page-2); padding: 7px 12px; border-radius: 999px; white-space: nowrap;
+  }
+  .ghost {
+    appearance: none; cursor: pointer; flex: none; width: 36px; height: 36px;
+    border-radius: 999px; border: 0; background: var(--page-2); color: var(--page-ink2);
+    display: grid; place-items: center;
+  }
+
+  /* ---------- интро ---------- */
+  .intro { padding-block: 32px 24px; max-width: 58ch; }
+  .intro h2 { margin: 0 0 10px; font-size: clamp(23px, 3.8vw, 32px); line-height: 1.12; letter-spacing: -.035em; font-weight: 700; text-wrap: balance; }
+  .intro p { margin: 0; color: var(--page-ink2); font-size: 15px; line-height: 23px; }
+
+  /* ---------- оси выбора ---------- */
+  .axis { margin-bottom: 22px; }
+  .axis-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 11px; flex-wrap: wrap; }
+  .axis-head h3 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: -.01em; }
+  .axis-head p { margin: 0; font-size: 12.5px; color: var(--page-ink3); }
+
+  .colors { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 8px; }
+  .col-btn {
+    appearance: none; cursor: pointer; text-align: left; font-family: var(--ui);
+    background: var(--page-card); border: 2px solid transparent; border-radius: 13px;
+    padding: 10px 11px 11px; color: inherit; display: flex; flex-direction: column; gap: 9px;
+  }
+  .col-btn:hover { border-color: var(--page-rule); }
+  .col-btn[aria-pressed="true"] { border-color: var(--page-ink); }
+  .dot-row { display: flex; gap: 5px; align-items: center; }
+  .dot-lg { width: 26px; height: 26px; border-radius: 9px; flex: none; }
+  .dot-sm { width: 13px; height: 26px; border-radius: 5px; flex: none; }
+  .col-btn b { font-size: 13px; font-weight: 600; }
+  .col-btn em { font-style: normal; display: block; font-size: 11.5px; line-height: 15px; color: var(--page-ink3); margin-top: 2px; }
+  .clash {
+    display: inline-flex; align-items: center; gap: 4px; margin-top: 5px;
+    font-family: var(--mono); font-size: 9.5px; line-height: 13px; letter-spacing: .03em;
+    color: var(--page-ink2); background: var(--page-2);
+    padding: 3px 7px; border-radius: 999px;
+  }
+  .clash::before { content: "△"; font-size: 8px; }
+
+  .shapes { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+  .sh-btn {
+    appearance: none; cursor: pointer; text-align: left; font-family: var(--ui);
+    background: var(--page-card); border: 2px solid transparent; border-radius: 13px;
+    padding: 12px 13px; color: inherit; display: flex; align-items: center; gap: 11px;
+  }
+  .sh-btn:hover { border-color: var(--page-rule); }
+  .sh-btn[aria-pressed="true"] { border-color: var(--page-ink); }
+  .sh-demo { width: 30px; height: 30px; background: var(--page-2); flex: none; }
+  .sh-btn b { display: block; font-size: 13px; font-weight: 600; }
+  .sh-btn em { font-style: normal; display: block; font-size: 11.5px; line-height: 15px; color: var(--page-ink3); margin-top: 2px; }
+
+  /* ---------- сцена ---------- */
+  .scene { background: var(--sunken); border-radius: 26px; padding: 38px 20px; display: grid; place-items: center; margin-bottom: 12px; }
+
+  .widget {
+    width: 100%; max-width: 402px; background: var(--paper); color: var(--ink);
+    border-radius: var(--r-surface);
+    box-shadow: 0 3px 8px rgb(0 0 0 / .05), 0 40px 70px -32px rgb(0 0 0 / .34);
+    overflow: hidden; display: flex; flex-direction: column;
+  }
+  .w-head { display: flex; align-items: center; gap: 11px; padding: 16px 13px 16px 17px; background: var(--brand); color: var(--brand-ink); }
+  .w-shop {
+    width: 34px; height: 34px; border-radius: var(--r-ctl); flex: none;
+    background: color-mix(in srgb, var(--brand-ink) 18%, transparent);
+    display: grid; place-items: center;
+    font-family: var(--display); font-weight: var(--display-w); font-size: 12px; letter-spacing: var(--display-tr);
+  }
+  .w-who { flex: 1; min-width: 0; }
+  .w-who b { display: block; font-size: 14.5px; font-weight: 600; line-height: 19px; }
+  .w-who span { display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; opacity: .8; }
+  .live { width: 6px; height: 6px; border-radius: 999px; background: currentColor; flex: none; }
+  .w-ico {
+    appearance: none; border: 0; background: transparent; cursor: pointer; flex: none;
+    width: 28px; height: 28px; border-radius: var(--r-pill); display: grid; place-items: center;
+    color: inherit; opacity: .72;
+  }
+  .w-ico:hover { opacity: 1; background: color-mix(in srgb, var(--brand-ink) 16%, transparent); }
+
+  .w-feed { padding: 20px 17px; display: flex; flex-direction: column; gap: 20px; }
+  .stamp {
+    align-self: center; font-family: var(--mono); font-size: 10px; letter-spacing: .05em;
+    color: var(--ink3); background: var(--paper3); padding: 5px 11px; border-radius: var(--r-pill);
+  }
+  .msg { display: flex; flex-direction: column; }
+  .msg.user { align-items: flex-end; }
+  .bubble {
+    background: var(--paper3); padding: 11px 16px; max-width: 84%;
+    border-radius: var(--r-bubble) var(--r-bubble) calc(var(--r-bubble) / 3) var(--r-bubble);
+    font-size: 14px; line-height: 21px;
+  }
+  .reply { font-size: 14px; line-height: 21px; }
+  .reply p { margin: 0; }
+  .reply strong { font-weight: 600; }
+  .reply .num { font-family: var(--mono); font-size: 12.5px; }
+
+  .cited { background: var(--brand-tint); border-radius: var(--r-card); padding: 11px 13px; margin-bottom: 13px; display: flex; flex-direction: column; gap: 7px; }
+  .cited-head { font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--brand); }
+  .cited a { display: flex; gap: 7px; align-items: center; font-size: 12.5px; line-height: 17px; color: var(--ink2); text-decoration: none; }
+  .cited a svg { flex: none; opacity: .6; }
+
+  .acts { display: flex; gap: 3px; padding-top: 12px; }
+  .act {
+    appearance: none; border: 0; background: transparent; cursor: pointer;
+    width: 28px; height: 28px; border-radius: var(--r-pill); display: grid; place-items: center; color: var(--ink3);
+  }
+  .act:hover { background: var(--paper3); color: var(--ink); }
+
+  .chips { display: flex; gap: 7px; flex-wrap: wrap; }
+  .chip {
+    appearance: none; cursor: pointer; border: 0; background: var(--paper3); color: var(--ink);
+    font: 500 12.5px/1 var(--ui); padding: 9px 14px; border-radius: var(--r-pill);
+  }
+  .chip.lead { background: var(--brand-tint); color: var(--brand); }
+
+  .w-foot { padding: 0 17px 17px; }
+  .field { background: var(--paper2); border-radius: var(--r-surface); }
+  .field-body { padding: 14px 16px 4px; }
+  .field-body span { color: var(--ink3); font-size: 15px; line-height: 23px; }
+  .field-foot { display: flex; align-items: center; gap: 8px; padding: 6px 8px 8px 10px; }
+  .field-tools { flex: 1; display: flex; align-items: center; gap: 2px; }
+  .tbtn {
+    appearance: none; border: 0; background: transparent; cursor: pointer; height: 28px;
+    border-radius: var(--r-pill); color: var(--ink3); display: inline-flex; align-items: center;
+    gap: 6px; padding: 0 10px; font: 500 12px/16px var(--ui);
+  }
+  .tbtn.only { width: 28px; padding: 0; justify-content: center; }
+  .tbtn:hover { background: var(--paper3); color: var(--ink); }
+  .send {
+    appearance: none; border: 0; cursor: pointer; flex: none; width: 32px; height: 32px;
+    border-radius: var(--r-pill); background: var(--brand); color: var(--brand-ink);
+    display: grid; place-items: center;
+  }
+  .disclaim { text-align: center; font-size: 11px; line-height: 15px; color: var(--ink3); padding: 10px 17px 14px; }
+
+  /* ---------- детали ---------- */
+  .details {
+    background: var(--paper); color: var(--ink); border-radius: var(--r-shell); padding: 22px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px;
+  }
+  .det h5 {
+    margin: 0 0 12px; font-family: var(--mono); font-size: 9.5px; font-weight: 500;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--ink3);
+  }
+  .type-sample { font-family: var(--display); font-weight: var(--display-w); letter-spacing: var(--display-tr); font-size: 28px; line-height: 1.05; margin: 0 0 6px; }
+  .type-meta { font-family: var(--mono); font-size: 11.5px; line-height: 17px; color: var(--ink3); margin: 0; }
+  .det-row { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+  .btn-solid { border: 0; cursor: pointer; background: var(--brand); color: var(--brand-ink); font: 500 13px/1 var(--ui); padding: 10px 16px; border-radius: var(--r-ctl); }
+  .btn-soft { border: 0; cursor: pointer; background: var(--paper3); color: var(--ink); font: 500 13px/1 var(--ui); padding: 10px 16px; border-radius: var(--r-ctl); }
+  .state { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; line-height: 15px; font-weight: 500; padding: 4px 10px; border-radius: var(--r-pill); }
+  .state i { width: 5px; height: 5px; border-radius: 999px; background: currentColor; }
+  .state.done { color: var(--ok); background: var(--ok-tint); }
+  .state.esc { color: var(--warn); background: var(--warn-tint); }
+  .radii { display: flex; gap: 8px; align-items: flex-end; }
+  .radii div { background: var(--paper3); }
+  .r1 { width: 52px; height: 52px; border-radius: var(--r-shell); }
+  .r2 { width: 38px; height: 38px; border-radius: var(--r-card); }
+  .r3 { width: 28px; height: 28px; border-radius: var(--r-ctl); }
+
+  /* ---------- примечания ---------- */
+  .why { margin-top: 14px; background: var(--page-card); border-radius: 16px; padding: 18px 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px 26px; }
+  .why div b { display: block; font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--page-ink3); margin-bottom: 6px; font-weight: 500; }
+  .why div span { font-size: 13px; line-height: 19px; color: var(--page-ink2); }
+
+  .closing { margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--page-rule); font-size: 13px; line-height: 20px; color: var(--page-ink2); max-width: 72ch; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .col-btn, .sh-btn, .act, .tbtn, .chip { transition: border-color .14s ease, background-color .14s ease; }
+  }
+  @media (max-width: 640px) {
+    .scene { padding: 20px 12px; border-radius: 20px; }
+    .details { padding: 18px; }
+    .now { display: none; }
+  }
+</style>
+
+<div class="top">
+  <div class="top-in">
+    <h1>Стиль Отклика <span>· конструктор</span></h1>
+    <span class="now" id="now">Ирис · мягкая</span>
+    <button class="ghost" id="theme" type="button" aria-label="Переключить тему">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    </button>
+  </div>
+</div>
+
+<div class="shell">
+
+  <section class="intro">
+    <h2>Шестнадцать цветов, четыре формы</h2>
+    <p>Цвет и геометрия — разные решения, поэтому выбираются отдельно. Нейтральные тона, подложки и текст выводятся из брендового цвета, так что каждая комбинация остаётся собранной. Шестьдесят четыре сочетания, разметка везде одна.</p>
+  </section>
+
+  <div class="axis">
+    <div class="axis-head">
+      <h3>Цвет</h3>
+      <p>шапка виджета, кнопка отправки, ссылки на источники</p>
+    </div>
+    <div class="colors" role="group" aria-label="Цвет">
+      <button class="col-btn" type="button" data-color-pick="iris" aria-pressed="true">
+        <span class="dot-row" aria-hidden="true"><i class="dot-lg" style="background:#5b3fe9"></i><i class="dot-sm" style="background:#eae5fe"></i><i class="dot-sm" style="background:#f1f0f7"></i></span>
+        <span><b>Ирис</b><em>уходит от синего по умолчанию</em></span>
+      </button>
+      <button class="col-btn" type="button" data-color-pick="cobalt" aria-pressed="false">
+        <span class="dot-row" aria-hidden="true"><i class="dot-lg" style="background:#1d4ed8"></i><i class="dot-sm" style="background:#dbe6ff"></i><i class="dot-sm" style="background:#eef1f8"></i></span>
+        <span><b>Кобальт</b><em>привычный, но цвет всей ниши</em></span>
+      </button>
+      <button class="col-btn" type="button" data-color-pick="teal" aria-pressed="false">
+        <span class="dot-row" aria-hidden="true"><i class="dot-lg" style="background:#0d7d84"></i><i class="dot-sm" style="background:#d4eff1"></i><i class="dot-sm" style="background:#edf3f4"></i></span>
+        <span><b>Бирюза</b><em>свежий, технологичный</em><span class="clash">близко к «закрыл ИИ»</span></span>
+      </button>
+      <button class="col-btn" type="button" data-color-pick="pine" aria-pressed="false">
+        <span class="dot-row" aria-hidden="true"><i class="dot-lg" style="background:#0f5c42"></i><i class="dot-sm" style="background:#dbeade"></i><i class="dot-sm" style="background:#edf1ec"></i></span>
+        <span><b>Хвоя</b><em>спокойный, читается как «решено»</em><span class="clash">близко к «закрыл ИИ»</span></span>
+      </button>
+      <button class="col-btn" type="button" data-color-pick="plum" aria-pressed="false">
+        <span class="dot-row" aria-hidden="true"><i class="dot-lg" style="background:#7c2d5c"></i><i class="dot-sm" style="background:#f4dcea"></i><i class="dot-sm" style="background:#f4eef2"></i></span>
+        <span><b>Слива</b><em>тёплый и дорогой на вид</em></span>
+      </button>
+      <button class="col-btn" type="button" data-color-pick="fuchsia" aria-pressed="false">
+        <span class="dot-row" aria-hidden="true"><i class="dot-lg" style="background:#c2186b"></i><i class="dot-sm" style="background:#fbe0ee"></i><i class="dot-sm" style="background:#f8eff5"></i></span>
+        <span><b>Фуксия</b><em>смелый, запоминается</em></span>
+      </button>
+      <button class="col-btn" type="button" data-color-pick="coffee" aria-pressed="false">
+        <span class="dot-row" aria-hidden="true"><i class="dot-lg" style="background:#6b4423"></i><i class="dot-sm" style="background:#eee0d2"></i><i class="dot-sm" style="background:#f4f1ec"></i></span>
+        <span><b>Кофе</b><em>тёплый, почти не встречается в SaaS</em></span>
+      </button>
+      <button class="col-btn" type="button" data-color-pick="graphite" aria-pressed="false">
+        <span class="dot-row" aria-hidden="true"><i class="dot-lg" style="background:#18181b"></i><i class="dot-sm" style="background:#e7e7ea"></i><i class="dot-sm" style="background:#f4f4f5"></i></span>
+        <span><b>Графит</b><em>без цвета вообще</em></span>
+      </button>
+      <button class="col-btn" type="button" data-color-pick="indigo" aria-pressed="false">
+        <span class="dot-row" aria-hidden="true"><i class="dot-lg" style="background:#312e81"></i><i class="dot-sm" style="background:#e0e2f7"></i><i class="dot-sm" style="background:#efeff6"></i></span>
+        <span><b>Индиго</b><em>глубокий, ночной</em></span>
+      </button>
+      <button class="col-btn" type="button" data-color-pick="steel" aria-pressed="false">
+        <span class="dot-row" aria-hidden="true"><i class="dot-lg" style="background:#3f5a78"></i><i class="dot-sm" style="background:#dee6ef"></i><i class="dot-sm" style="background:#eff1f4"></i></span>
+        <span><b>Сталь</b><em>приглушённый, не кричит</em></span>
+      </button>
+      <button class="col-btn" type="button" data-color-pick="aubergine" aria-pressed="false">
+        <span class="dot-row" aria-hidden="true"><i class="dot-lg" style="background:#4c1d5c"></i><i class="dot-sm" style="background:#eddef2"></i><i class="dot-sm" style="background:#f2eef4"></i></span>
+        <span><b>Баклажан</b><em>тёмный, театральный</em></span>
+      </button>
+      <button class="col-btn" type="button" data-color-pick="sand" aria-pressed="false">
+        <span class="dot-row" aria-hidden="true"><i class="dot-lg" style="background:#8a7a5c"></i><i class="dot-sm" style="background:#eee8db"></i><i class="dot-sm" style="background:#f4f2ed"></i></span>
+        <span><b>Песок</b><em>тихий, почти нейтральный</em></span>
+      </button>
+      <button class="col-btn" type="button" data-color-pick="brick" aria-pressed="false">
+        <span class="dot-row" aria-hidden="true"><i class="dot-lg" style="background:#9c3a24"></i><i class="dot-sm" style="background:#f3ded6"></i><i class="dot-sm" style="background:#f5f0ed"></i></span>
+        <span><b>Кирпич</b><em>тёплый, земляной</em></span>
+      </button>
+      <button class="col-btn" type="button" data-color-pick="olive" aria-pressed="false">
+        <span class="dot-row" aria-hidden="true"><i class="dot-lg" style="background:#4d5d28"></i><i class="dot-sm" style="background:#e5ebd5"></i><i class="dot-sm" style="background:#f1f3ec"></i></span>
+        <span><b>Олива</b><em>землистый, сдержанный</em><span class="clash">близко к «закрыл ИИ»</span></span>
+      </button>
+      <button class="col-btn" type="button" data-color-pick="scarlet" aria-pressed="false">
+        <span class="dot-row" aria-hidden="true"><i class="dot-lg" style="background:#c81e36"></i><i class="dot-sm" style="background:#fadde1"></i><i class="dot-sm" style="background:#f6eeef"></i></span>
+        <span><b>Алый</b><em>громкий, на любителя</em><span class="clash">спорит с ошибкой</span></span>
+      </button>
+      <button class="col-btn" type="button" data-color-pick="tangerine" aria-pressed="false">
+        <span class="dot-row" aria-hidden="true"><i class="dot-lg" style="background:#c2410c"></i><i class="dot-sm" style="background:#fae0d0"></i><i class="dot-sm" style="background:#f6f0ec"></i></span>
+        <span><b>Мандарин</b><em>энергичный, тёплый</em><span class="clash">спорит с эскалацией</span></span>
+      </button>
+    </div>
+  </div>
+
+  <div class="axis">
+    <div class="axis-head">
+      <h3>Форма и шрифт</h3>
+      <p>скругления и гарнитура заголовков</p>
+    </div>
+    <div class="shapes" role="group" aria-label="Форма">
+      <button class="sh-btn" type="button" data-shape-pick="soft" aria-pressed="true">
+        <span class="sh-demo" style="border-radius:13px" aria-hidden="true"></span>
+        <span><b>Мягкая</b><em>30 / 18 / 14 · Unbounded</em></span>
+      </button>
+      <button class="sh-btn" type="button" data-shape-pick="calm" aria-pressed="false">
+        <span class="sh-demo" style="border-radius:8px" aria-hidden="true"></span>
+        <span><b>Спокойная</b><em>20 / 12 / 10 · Manrope</em></span>
+      </button>
+      <button class="sh-btn" type="button" data-shape-pick="strict" aria-pressed="false">
+        <span class="sh-demo" style="border-radius:3px" aria-hidden="true"></span>
+        <span><b>Строгая</b><em>10 / 6 / 6 · Onest</em></span>
+      </button>
+      <button class="sh-btn" type="button" data-shape-pick="round" aria-pressed="false">
+        <span class="sh-demo" style="border-radius:15px" aria-hidden="true"></span>
+        <span><b>Круглая</b><em>34 / 22 / 18 · Rubik</em></span>
+      </button>
+    </div>
+  </div>
+
+  <div class="stage-wrap" id="stage" data-color="iris" data-shape="soft">
+    <div class="scene">
+      <div class="widget">
+        <div class="w-head">
+          <span class="w-shop" aria-hidden="true">ЛО</span>
+          <span class="w-who">
+            <b>Лавка Огородника</b>
+            <span><i class="live" aria-hidden="true"></i>Обычно отвечаем за 30 секунд</span>
+          </span>
+          <button class="w-ico" type="button" aria-label="Свернуть">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg>
+          </button>
+          <button class="w-ico" type="button" aria-label="Закрыть">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div class="w-feed">
+          <span class="stamp">сегодня · 14:01</span>
+
+          <div class="msg user">
+            <div class="bubble">Заказала семена 18 сентября, до сих пор нет. Где посылка?</div>
+          </div>
+
+          <div class="msg">
+            <div class="cited">
+              <span class="cited-head">Основано на 2 источниках</span>
+              <a href="#d1">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
+                Сроки доставки по России
+              </a>
+              <a href="#d2">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2h8l4 4v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z"/><path d="M15 2v5h5"/></svg>
+                Карточка заказа №4821
+              </a>
+            </div>
+
+            <div class="reply">
+              <p>Нашла заказ <strong>№4821</strong> от 18 сентября, трек <span class="num">80123456789012</span>. Ожидаемая доставка — <strong>25 сентября</strong>, на два дня позже из-за перегрузки сортировочного центра.</p>
+            </div>
+
+            <div class="acts">
+              <button class="act" type="button" aria-label="Ответить заново">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+              </button>
+              <button class="act" type="button" aria-label="Ответ помог">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h3Z"/><path d="M7 10l4-7a2.5 2.5 0 0 1 2.5 3L13 10h5.5a2 2 0 0 1 2 2.4l-1.3 6a2 2 0 0 1-2 1.6H7"/></svg>
+              </button>
+              <button class="act" type="button" aria-label="Ответ не помог">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 14V3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-3Z"/><path d="M17 14l-4 7a2.5 2.5 0 0 1-2.5-3L11 14H5.5a2 2 0 0 1-2-2.4l1.3-6a2 2 0 0 1 2-1.6H17"/></svg>
+              </button>
+              <button class="act" type="button" aria-label="Скопировать">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="13" height="13" x="9" y="9" rx="3"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="chips">
+            <button class="chip" type="button">Изменить адрес</button>
+            <button class="chip" type="button">Вернуть товар</button>
+            <button class="chip lead" type="button">Позвать оператора</button>
+          </div>
+        </div>
+
+        <div class="w-foot">
+          <div class="field">
+            <div class="field-body"><span>Напишите сообщение…</span></div>
+            <div class="field-foot">
+              <div class="field-tools">
+                <button class="tbtn only" type="button" aria-label="Прикрепить файл">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                </button>
+                <button class="tbtn" type="button">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19v3"/><rect width="7" height="12" x="8.5" y="2" rx="3.5"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/></svg>
+                  Голосом
+                </button>
+              </div>
+              <button class="send" type="button" aria-label="Отправить">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+              </button>
+            </div>
+          </div>
+          <p class="disclaim">Отвечает ИИ. Оператор подключится по первому запросу.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="details">
+      <div class="det">
+        <h5>Заголовки</h5>
+        <p class="type-sample" id="typeName">Ирис</p>
+        <p class="type-meta" id="typeMeta">Unbounded 700</p>
+      </div>
+      <div class="det">
+        <h5>Кнопки</h5>
+        <div class="det-row">
+          <button class="btn-solid" type="button">Отправить</button>
+          <button class="btn-soft" type="button">Отмена</button>
+        </div>
+      </div>
+      <div class="det">
+        <h5>Статусы</h5>
+        <div class="det-row">
+          <span class="state done"><i></i>Закрыл ИИ</span>
+          <span class="state esc"><i></i>Нужен оператор</span>
+        </div>
+      </div>
+      <div class="det">
+        <h5>Скругления</h5>
+        <div class="radii" aria-hidden="true"><div class="r1"></div><div class="r2"></div><div class="r3"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="why">
+    <div><b>Что не меняется</b><span>Структура из AI Elements: бабл у покупателя, ответ бота без плашки, блок источников, оценка ответа, выход к оператору.</span></div>
+    <div><b>Откуда берутся нейтрали</b><span>Подложки и текст подмешивают немного брендового цвета, поэтому серый в «Кофе» тёплый, а в «Кобальте» холодный. Комбинация не разваливается.</span></div>
+    <div><b>Пометка «△»</b><span>Стоит на цветах, которые подходят близко к статусным: зелёный занят под «закрыл ИИ», янтарь под эскалацию, красный под ошибку. Не запрет — но посмотрите полоску «Статусы», там видно, спорят они или нет.</span></div>
+  </div>
+
+  <p class="closing">
+    Все сочетания работают в светлой и тёмной теме — переключатель в шапке. Кириллица родная у всех четырёх гарнитур.
+    Назовите цвет и форму — например «Слива, спокойная» — и я переведу на них виджет, инбокс и переменные в Figma.
+  </p>
+</div>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var stage = document.getElementById("stage");
+    var nowEl = document.getElementById("now");
+    var typeName = document.getElementById("typeName");
+    var typeMeta = document.getElementById("typeMeta");
+    var colBtns = [].slice.call(document.querySelectorAll(".col-btn"));
+    var shBtns = [].slice.call(document.querySelectorAll(".sh-btn"));
+
+    var COLORS = {
+      iris: "Ирис", cobalt: "Кобальт", teal: "Бирюза", pine: "Хвоя",
+      plum: "Слива", fuchsia: "Фуксия", coffee: "Кофе", graphite: "Графит",
+      indigo: "Индиго", steel: "Сталь", aubergine: "Баклажан", sand: "Песок",
+      brick: "Кирпич", olive: "Олива", scarlet: "Алый", tangerine: "Мандарин"
+    };
+    var SHAPES = {
+      soft:   { name: "мягкая",    font: "Unbounded 700" },
+      calm:   { name: "спокойная", font: "Manrope 700" },
+      strict: { name: "строгая",   font: "Onest 800" },
+      round:  { name: "круглая",   font: "Rubik 700" }
+    };
+
+    function isDark() {
+      var set = root.getAttribute("data-theme");
+      if (set) { return set === "dark"; }
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+    function sync() {
+      stage.classList.toggle("dark-tokens", isDark());
+      var c = stage.getAttribute("data-color");
+      var s = stage.getAttribute("data-shape");
+      nowEl.textContent = COLORS[c] + " · " + SHAPES[s].name;
+      typeName.textContent = COLORS[c];
+      typeMeta.textContent = SHAPES[s].font;
+    }
+    function setColor(c) {
+      stage.setAttribute("data-color", c);
+      colBtns.forEach(function (b) {
+        b.setAttribute("aria-pressed", b.getAttribute("data-color-pick") === c ? "true" : "false");
+      });
+      sync();
+      try { localStorage.setItem("otklik-color", c); } catch (e) {}
+    }
+    function setShape(s) {
+      stage.setAttribute("data-shape", s);
+      shBtns.forEach(function (b) {
+        b.setAttribute("aria-pressed", b.getAttribute("data-shape-pick") === s ? "true" : "false");
+      });
+      sync();
+      try { localStorage.setItem("otklik-shape", s); } catch (e) {}
+    }
+
+    colBtns.forEach(function (b) {
+      b.addEventListener("click", function () { setColor(b.getAttribute("data-color-pick")); });
+    });
+    shBtns.forEach(function (b) {
+      b.addEventListener("click", function () { setShape(b.getAttribute("data-shape-pick")); });
+    });
+
+    document.getElementById("theme").addEventListener("click", function () {
+      root.setAttribute("data-theme", isDark() ? "light" : "dark");
+      sync();
+      try { localStorage.setItem("otklik-theme", isDark() ? "dark" : "light"); } catch (e) {}
+    });
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", sync);
+
+    try {
+      var t = localStorage.getItem("otklik-theme");
+      if (t === "dark" || t === "light") { root.setAttribute("data-theme", t); }
+    } catch (e) {}
+    var sc = null, ss = null;
+    try { sc = localStorage.getItem("otklik-color"); ss = localStorage.getItem("otklik-shape"); } catch (e) {}
+    setColor(COLORS[sc] ? sc : "iris");
+    setShape(SHAPES[ss] ? ss : "soft");
+  })();
+</script>

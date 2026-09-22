@@ -12,29 +12,29 @@
      ===================================================================== */
   :root {
     /* холст */
-    --ground:   #f1f0f7;
-    --ground-2: #e8e6f2;
-    --ink:      #15121f;
-    --ink-2:    #4c4560;
-    --ink-3:    #7d7694;
-    --rule:     #e1def0;
+    --ground:   #eeeef6;
+    --ground-2: #e4e4f0;
+    --ink:      #14142b;
+    --ink-2:    #474763;
+    --ink-3:    #77778f;
+    --rule:     #dcdcea;
 
     /* поверхности */
     --paper:    #ffffff;
-    --paper-2:  #f7f6fc;
-    --paper-3:  #efedf8;
-    --edge:     #e7e4f2;
-    --edge-2:   #d6d2e8;
+    --paper-2:  #f6f6fb;
+    --paper-3:  #ecebf6;
+    --edge:     #e3e2f0;
+    --edge-2:   #d0cfe4;
 
     /* краска */
-    --brand:       #5b3fe9;
-    --brand-press: #4a31cc;
-    --brand-tint:  #eae5fe;
+    --brand:       #312e81;
+    --brand-press: #26246a;
+    --brand-tint:  #e2e1f3;
     --on-brand:    #ffffff;
 
     /* рельс приложения */
-    --rail:     #1b1533;
-    --rail-ink: #b9b0e0;
+    --rail:     #1a1847;
+    --rail-ink: #9b98c8;
     --rail-on:  #ffffff;
 
     /* семантика */
@@ -62,26 +62,26 @@
 
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --ground:   #0d0b15;
-      --ground-2: #131020;
-      --ink:      #eeebf7;
-      --ink-2:    #aaa4c0;
-      --ink-3:    #7c7595;
-      --rule:     #241f36;
+      --ground:   #0b0b16;
+      --ground-2: #111124;
+      --ink:      #ebebf7;
+      --ink-2:    #a6a6c2;
+      --ink-3:    #787895;
+      --rule:     #22223c;
 
-      --paper:    #15111f;
-      --paper-2:  #1b1729;
-      --paper-3:  #231d36;
-      --edge:     #272040;
-      --edge-2:   #342b52;
+      --paper:    #131324;
+      --paper-2:  #19192e;
+      --paper-3:  #21213a;
+      --edge:     #262645;
+      --edge-2:   #333359;
 
-      --brand:       #9d88ff;
-      --brand-press: #b6a6ff;
-      --brand-tint:  #241c46;
-      --on-brand:    #130a26;
+      --brand:       #a5b4fc;
+      --brand-press: #bcc6ff;
+      --brand-tint:  #22224a;
+      --on-brand:    #0b0a26;
 
-      --rail:     #1a1430;
-      --rail-ink: #8a82ad;
+      --rail:     #16163a;
+      --rail-ink: #8a88b5;
       --rail-on:  #ffffff;
 
       --ok:        #3ddc9a;
@@ -96,26 +96,26 @@
   }
 
   :root[data-theme="dark"] {
-    --ground:   #0d0b15;
-    --ground-2: #131020;
-    --ink:      #eeebf7;
-    --ink-2:    #aaa4c0;
-    --ink-3:    #7c7595;
-    --rule:     #241f36;
+    --ground:   #0b0b16;
+    --ground-2: #111124;
+    --ink:      #ebebf7;
+    --ink-2:    #a6a6c2;
+    --ink-3:    #787895;
+    --rule:     #22223c;
 
-    --paper:    #15111f;
-    --paper-2:  #1b1729;
-    --paper-3:  #231d36;
-    --edge:     #272040;
-    --edge-2:   #342b52;
+    --paper:    #131324;
+    --paper-2:  #19192e;
+    --paper-3:  #21213a;
+    --edge:     #262645;
+    --edge-2:   #333359;
 
-    --brand:       #9d88ff;
-    --brand-press: #b6a6ff;
-    --brand-tint:  #241c46;
-    --on-brand:    #130a26;
+    --brand:       #a5b4fc;
+    --brand-press: #bcc6ff;
+    --brand-tint:  #22224a;
+    --on-brand:    #0b0a26;
 
-    --rail:     #1a1430;
-    --rail-ink: #8a82ad;
+    --rail:     #16163a;
+    --rail-ink: #8a88b5;
     --rail-on:  #ffffff;
 
     --ok:        #3ddc9a;
@@ -246,12 +246,10 @@
   .w-head { display: flex; align-items: center; gap: 12px; padding: 17px 14px 17px 18px; background: var(--brand); color: var(--on-brand); }
   .w-shop {
     width: 36px; height: 36px; border-radius: var(--r-ctl); flex: none;
-    background: rgb(255 255 255 / .18);
+    background: color-mix(in srgb, var(--on-brand) 18%, transparent);
     display: grid; place-items: center;
     font-family: var(--display); font-weight: 600; font-size: 12px; letter-spacing: -.03em;
   }
-  :root[data-theme="dark"] .w-shop, :root:not([data-theme="light"]) .w-shop { background: rgb(19 10 38 / .16); }
-  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .w-shop { background: rgb(255 255 255 / .18); } }
   .w-head .who { flex: 1; min-width: 0; }
   .w-head .who b { display: block; font-size: 15px; font-weight: 600; line-height: 20px; letter-spacing: -.01em; }
   .w-head .who span { display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; opacity: .8; }
@@ -261,7 +259,7 @@
     width: 30px; height: 30px; border-radius: var(--r-pill);
     display: grid; place-items: center; color: inherit; opacity: .72;
   }
-  .w-head .ico:hover { opacity: 1; background: rgb(255 255 255 / .16); }
+  .w-head .ico:hover { opacity: 1; background: color-mix(in srgb, var(--on-brand) 16%, transparent); }
 
   .w-feed { padding: 22px 18px; display: flex; flex-direction: column; gap: 22px; overflow-y: auto; max-height: 428px; }
 
@@ -903,7 +901,7 @@
   </section>
 
   <footer class="colophon">
-    <div><b>Краска</b><span>Ирис как основа. Зелёный и янтарь оставлены под статусы «закрыл ИИ» и «эскалация» — брендовый цвет с ними не спорит.</span></div>
+    <div><b>Краска</b><span>Индиго <code>#312e81</code> как основа. Зелёный и янтарь оставлены под статусы «закрыл ИИ» и «эскалация» — брендовый цвет с ними не спорит.</span></div>
     <div><b>Шрифты</b><span>Unbounded в заголовках, Onest в интерфейсе, JetBrains Mono на данных. У всех трёх кириллица родная.</span></div>
     <div><b>Скругления</b><span>30 на контейнерах, 24 на поверхностях, 18 на карточках, 14 на кнопках, пилюля на чипах — по ролям, чтобы иерархия не схлопнулась.</span></div>
     <div><b>Оговорка</b><span>«Отклик» — рабочее имя. Заказы, имена и цифры — пример, не реальные данные.</span></div>
