@@ -150,6 +150,18 @@ const LTV = gpM * life;              // 32 760 ₽
 const CAC_CASH = 6500;
 const CAC_FULL = 18500;
 
+/* пример магазина для разговора о цене — те же числа, что в главном риске части 0 */
+const TARIF = 1490;
+const EX_REQ = 340;                  // обращений в месяц
+const EX_TYP = 200;                  // из них типовых
+const EX_MIN = 3.5;                  // минут на типовое обращение [ДОПУЩЕНИЕ]
+const exHours = Math.round((EX_TYP * EX_MIN) / 60);  // 12 ч
+const hourPrice = Math.round(TARIF / exHours);       // 124 ₽
+const STAFF_PAY = [30000, 50000];    // зарплата сотрудника поддержки, ₽/мес [ДОПУЩЕНИЕ]
+const STAFF_LOAD = 1.3;              // со страховыми взносами
+const STAFF_HOURS = 165;             // рабочих часов в месяц
+const staffHour = STAFF_PAY.map((s) => Math.round((s * STAFF_LOAD) / STAFF_HOURS / 10) * 10);  // 240 / 390 ₽
+
 /* маркетинговый бюджет по месяцам (часть 12) */
 const MKT = (m) => (m <= 6 ? 5000 : m <= 12 ? 10000 : m <= 18 ? 20000 : 50000);
 
@@ -235,6 +247,7 @@ module.exports = {
   runs, H1, H2, H3, P, NOTE, BUL, NUM, GAP, TCAP, TBL, cell,
   RATE, BUDGET, ARPA, GM, FIXED, LIVING, CHURN, DLG, TOK,
   cLite, cPro, cYa, cMix, gpM, life, LTV, CAC_CASH, CAC_FULL, MKT,
+  TARIF, EX_REQ, EX_TYP, EX_MIN, exHours, hourPrice, STAFF_PAY, STAFF_LOAD, STAFF_HOURS, staffHour,
   A, AM, BM, PM, OM, model, PLAN_BASE, PLAN_PESS, PLAN_OPT,
   fmt, dec, low, firstNeg, opZero, quarters,
   LEVELS, INFRA, aiCost, infraSum, totalCost, perClient, aiShare, marginAt,
