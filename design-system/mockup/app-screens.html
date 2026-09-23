@@ -1,0 +1,1068 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Отклик — кликабельный прототип</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  /* =====================================================================
+     ОТКЛИК — токены (см. design-system/brand.css)
+     ===================================================================== */
+  :root {
+    --ground:   #eeeef6; --ground-2: #e4e4f0;
+    --ink:      #14142b; --ink-2: #474763; --ink-3: #77778f;
+    --rule:     #dcdcea;
+    --paper:    #ffffff; --paper-2: #f6f6fb; --paper-3: #ecebf6;
+    --edge:     #e3e2f0; --edge-2: #d0cfe4;
+    --brand:       #312e81; --brand-press: #26246a; --brand-tint: #e2e1f3; --on-brand: #ffffff;
+    --rail:     #1a1847; --rail-ink: #9b98c8; --rail-on: #ffffff;
+    --ok:        #0d9f6e; --ok-tint: #d8f5e9;
+    --warn:      #b4690e; --warn-tint: #fbeeda;
+    --danger:    #cf2f24;
+    --r-shell:   30px; --r-surface: 24px; --r-card: 18px; --r-bubble: 22px; --r-ctl: 14px; --r-pill: 999px;
+    --lift:    0 2px 6px rgb(21 18 31 / .05), 0 18px 40px -20px rgb(21 18 31 / .25);
+    --lift-lg: 0 3px 8px rgb(21 18 31 / .05), 0 48px 84px -36px rgb(21 18 31 / .38);
+    --display: "Unbounded", ui-sans-serif, system-ui, sans-serif;
+    --ui: "Onest", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0b0b16; --ground-2:#111124; --ink:#ebebf7; --ink-2:#a6a6c2; --ink-3:#787895; --rule:#22223c;
+      --paper:#131324; --paper-2:#19192e; --paper-3:#21213a; --edge:#262645; --edge-2:#333359;
+      --brand:#a5b4fc; --brand-press:#bcc6ff; --brand-tint:#22224a; --on-brand:#0b0a26;
+      --rail:#16163a; --rail-ink:#8a88b5; --rail-on:#ffffff;
+      --ok:#3ddc9a; --ok-tint:#103326; --warn:#e2a34a; --warn-tint:#352812; --danger:#ff7a70;
+      --lift: 0 2px 6px rgb(0 0 0 / .45), 0 18px 40px -20px rgb(0 0 0 / .7);
+      --lift-lg: 0 3px 8px rgb(0 0 0 / .45), 0 48px 84px -36px rgb(0 0 0 / .9);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0b0b16; --ground-2:#111124; --ink:#ebebf7; --ink-2:#a6a6c2; --ink-3:#787895; --rule:#22223c;
+    --paper:#131324; --paper-2:#19192e; --paper-3:#21213a; --edge:#262645; --edge-2:#333359;
+    --brand:#a5b4fc; --brand-press:#bcc6ff; --brand-tint:#22224a; --on-brand:#0b0a26;
+    --rail:#16163a; --rail-ink:#8a88b5; --rail-on:#ffffff;
+    --ok:#3ddc9a; --ok-tint:#103326; --warn:#e2a34a; --warn-tint:#352812; --danger:#ff7a70;
+    --lift: 0 2px 6px rgb(0 0 0 / .45), 0 18px 40px -20px rgb(0 0 0 / .7);
+    --lift-lg: 0 3px 8px rgb(0 0 0 / .45), 0 48px 84px -36px rgb(0 0 0 / .9);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--ui); font-size: 14px; line-height: 20px; -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 6px; }
+  button { font-family: inherit; }
+
+  /* ===================== переключатель прототипа (не часть продукта) ===================== */
+  .proto-bar {
+    position: sticky; top: 0; z-index: 30;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 10px 16px; background: color-mix(in srgb, var(--ground) 88%, transparent);
+    backdrop-filter: blur(14px) saturate(1.3); border-bottom: 1px solid var(--rule);
+  }
+  .proto-mark { display: flex; align-items: center; gap: 8px; margin-right: auto; }
+  .proto-glyph {
+    width: 26px; height: 26px; border-radius: 9px; flex: none;
+    background: var(--brand); color: var(--on-brand); display: grid; place-items: center;
+  }
+  .proto-mark b { font-family: var(--display); font-weight: 700; font-size: 14px; letter-spacing: -.03em; }
+  .proto-mark span {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-3); padding: 4px 8px; border-radius: var(--r-pill); background: var(--ground-2);
+  }
+  .seg { display: inline-flex; gap: 3px; padding: 4px; background: var(--ground-2); border-radius: var(--r-pill); }
+  .seg button {
+    appearance: none; border: 0; cursor: pointer; background: transparent; color: var(--ink-2);
+    font: 500 12.5px/1 var(--ui); padding: 8px 14px; border-radius: var(--r-pill); white-space: nowrap;
+  }
+  .seg button[aria-selected="true"] { background: var(--brand); color: var(--on-brand); }
+  .ghost-btn {
+    appearance: none; cursor: pointer; flex: none; width: 34px; height: 34px; border-radius: var(--r-pill);
+    border: 0; background: var(--ground-2); color: var(--ink-2); display: grid; place-items: center;
+  }
+  .ghost-btn:hover { color: var(--ink); }
+
+  .stage {
+    min-height: calc(100vh - 54px);
+    display: flex; align-items: stretch; justify-content: center;
+  }
+  .screen { display: none; width: 100%; }
+  .screen[data-active="true"] { display: block; }
+
+  /* =====================================================================
+     ЭКРАН 1 — ВИДЖЕТ (лаунчер + открытая панель, реально переключается)
+     ===================================================================== */
+  #screen-widget {
+    position: relative; padding: 32px 20px 90px; min-height: calc(100vh - 54px);
+    background:
+      radial-gradient(720px 420px at 12% -8%, color-mix(in srgb, var(--brand) 10%, transparent), transparent 60%),
+      var(--ground-2);
+  }
+  .site-mock { max-width: 640px; margin: 0 auto; }
+  .site-card { background: var(--paper); border-radius: var(--r-card); padding: 22px; box-shadow: var(--lift); }
+  .site-card h2 { margin: 0 0 8px; font-family: var(--display); font-size: 20px; letter-spacing: -.03em; }
+  .site-card p { margin: 0 0 14px; color: var(--ink-2); font-size: 13.5px; line-height: 20px; }
+  .site-skel { display: flex; flex-direction: column; gap: 10px; }
+  .site-skel i { display: block; height: 12px; border-radius: 6px; background: var(--paper-3); }
+  .site-skel i:nth-child(1) { width: 92%; }
+  .site-skel i:nth-child(2) { width: 76%; }
+  .site-skel i:nth-child(3) { width: 84%; }
+
+  .launcher {
+    position: fixed; right: 24px; bottom: 24px; z-index: 40;
+    width: 58px; height: 58px; border-radius: var(--r-pill); border: 0; cursor: pointer;
+    background: var(--brand); color: var(--on-brand); box-shadow: var(--lift-lg);
+    display: grid; place-items: center;
+  }
+  .launcher:hover { background: var(--brand-press); }
+  .launcher .ic-close { display: none; }
+  .launcher[aria-expanded="true"] .ic-open { display: none; }
+  .launcher[aria-expanded="true"] .ic-close { display: block; }
+
+  .widget-panel {
+    position: fixed; right: 24px; bottom: 94px; z-index: 39;
+    width: 100%; max-width: 400px;
+    background: var(--paper); border-radius: var(--r-surface);
+    box-shadow: var(--lift-lg); overflow: hidden; display: flex; flex-direction: column;
+    transform: translateY(12px) scale(.98); opacity: 0; pointer-events: none;
+    transition: transform .18s ease, opacity .18s ease;
+  }
+  .widget-panel[data-open="true"] { transform: translateY(0) scale(1); opacity: 1; pointer-events: auto; }
+
+  .w-head { display: flex; align-items: center; gap: 12px; padding: 16px 12px 16px 16px; background: var(--brand); color: var(--on-brand); flex: none; }
+  .w-shop { width: 34px; height: 34px; border-radius: var(--r-ctl); flex: none; background: color-mix(in srgb, var(--on-brand) 18%, transparent); display: grid; place-items: center; font-family: var(--display); font-weight: 600; font-size: 11px; letter-spacing: -.03em; }
+  .w-head .who { flex: 1; min-width: 0; }
+  .w-head .who b { display: block; font-size: 14.5px; font-weight: 600; line-height: 19px; letter-spacing: -.01em; }
+  .w-head .who span { display: flex; align-items: center; gap: 6px; font-size: 11.5px; line-height: 15px; opacity: .82; }
+  .live { width: 6px; height: 6px; border-radius: var(--r-pill); background: currentColor; flex: none; }
+  .w-head .ico { appearance: none; border: 0; background: transparent; cursor: pointer; flex: none; width: 28px; height: 28px; border-radius: var(--r-pill); display: grid; place-items: center; color: inherit; opacity: .78; }
+  .w-head .ico:hover { opacity: 1; background: color-mix(in srgb, var(--on-brand) 16%, transparent); }
+
+  .w-feed { padding: 18px 16px; display: flex; flex-direction: column; gap: 18px; overflow-y: auto; max-height: 388px; flex: 1; }
+  .stamp { align-self: center; font-family: var(--mono); font-size: 10px; letter-spacing: .06em; color: var(--ink-3); background: var(--paper-3); padding: 5px 11px; border-radius: var(--r-pill); }
+  .msg { display: flex; flex-direction: column; }
+  .msg.user { align-items: flex-end; }
+  .bubble { background: var(--paper-3); padding: 11px 15px; border-radius: var(--r-bubble) var(--r-bubble) 8px var(--r-bubble); max-width: 84%; font-size: 14px; line-height: 21px; }
+  .reply { font-size: 14px; line-height: 21px; }
+  .reply p { margin: 0 0 10px; }
+  .reply p:last-child { margin: 0; }
+  .reply strong { font-weight: 600; }
+  .reply .num { font-family: var(--mono); font-size: 12.5px; }
+  .cited { background: var(--brand-tint); border-radius: var(--r-card); padding: 11px 13px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 7px; }
+  .cited-head { font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--brand); }
+  .cited a { display: flex; gap: 8px; align-items: center; font-size: 12px; line-height: 16px; color: var(--ink-2); text-decoration: none; }
+  .cited a:hover { color: var(--brand); text-decoration: underline; }
+  .cited a svg { flex: none; opacity: .6; }
+  .acts { display: flex; gap: 3px; padding-top: 12px; }
+  .act { appearance: none; border: 0; background: transparent; cursor: pointer; width: 28px; height: 28px; border-radius: var(--r-pill); display: grid; place-items: center; color: var(--ink-3); }
+  .act:hover { background: var(--paper-3); color: var(--ink); }
+  .act[aria-pressed="true"] { color: var(--brand); background: var(--brand-tint); }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip-btn { appearance: none; cursor: pointer; border: 0; background: var(--paper-3); color: var(--ink); font: 500 12.5px/1 var(--ui); padding: 10px 14px; border-radius: var(--r-pill); }
+  .chip-btn:hover { background: var(--edge); }
+  .chip-btn.lead { background: var(--brand-tint); color: var(--brand); }
+
+  .w-foot { padding: 0 16px 16px; flex: none; }
+  .field { background: var(--paper-2); border-radius: var(--r-surface); display: flex; flex-direction: column; }
+  .field-body textarea {
+    width: 100%; border: 0; background: transparent; resize: none; outline: none;
+    font: 400 15px/23px var(--ui); color: var(--ink); padding: 14px 16px 4px; min-height: 44px; max-height: 120px;
+  }
+  .field-body textarea::placeholder { color: var(--ink-3); }
+  .field-foot { display: flex; align-items: center; gap: 8px; padding: 4px 8px 8px 10px; }
+  .field-tools { flex: 1; display: flex; align-items: center; gap: 2px; min-width: 0; }
+  .tool-btn { appearance: none; border: 0; background: transparent; cursor: pointer; height: 28px; border-radius: var(--r-pill); color: var(--ink-3); display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; font: 500 11.5px/16px var(--ui); }
+  .tool-btn.only { width: 28px; padding: 0; justify-content: center; }
+  .tool-btn:hover { background: var(--paper-3); color: var(--ink); }
+  .send { appearance: none; border: 0; cursor: pointer; flex: none; width: 32px; height: 32px; border-radius: var(--r-pill); background: var(--brand); color: var(--on-brand); display: grid; place-items: center; }
+  .send:hover { background: var(--brand-press); }
+  .send:disabled { opacity: .45; cursor: default; background: var(--brand); }
+  .disclaim { text-align: center; font-size: 10.5px; line-height: 14px; color: var(--ink-3); padding: 10px 16px 14px; }
+  .typing { display: flex; gap: 4px; padding: 2px 0; }
+  .typing i { width: 6px; height: 6px; border-radius: 999px; background: var(--ink-3); animation: bounce 1.1s infinite ease-in-out; }
+  .typing i:nth-child(2) { animation-delay: .15s; }
+  .typing i:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-4px); opacity: 1; } }
+
+  /* =====================================================================
+     ЭКРАН 2 — ИНБОКС (список ↔ диалог ↔ панель, данные реально переключаются)
+     ===================================================================== */
+  #screen-inbox { padding: 20px; justify-content: center; }
+  #screen-inbox[data-active="true"] { display: flex; }
+  .app {
+    width: 100%; max-width: 1280px;
+    display: grid; grid-template-columns: 60px 296px minmax(0, 1fr) 296px;
+    background: var(--paper); border-radius: var(--r-shell); overflow: hidden;
+    box-shadow: var(--lift); min-height: 720px;
+  }
+  .pane { min-width: 0; display: flex; flex-direction: column; }
+  .pane.list-pane, .pane.aside { background: var(--paper-2); }
+  .rail { background: var(--rail); align-items: center; padding: 16px 0; gap: 7px; }
+  .rail-glyph { width: 34px; height: 34px; border-radius: var(--r-ctl); margin-bottom: 14px; flex: none; background: var(--brand); color: #fff; display: grid; place-items: center; }
+  .rail-btn { appearance: none; border: 0; background: transparent; cursor: pointer; width: 38px; height: 38px; border-radius: var(--r-ctl); display: grid; place-items: center; color: var(--rail-ink); }
+  .rail-btn:hover { background: rgb(255 255 255 / .07); color: var(--rail-on); }
+  .rail-btn[aria-current="true"] { background: rgb(255 255 255 / .12); color: var(--rail-on); }
+
+  .pane-head { padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 14px; flex: none; }
+  .pane-head h3 { margin: 0; font-family: var(--display); font-weight: 600; font-size: 16px; letter-spacing: -.04em; }
+  .filters { display: flex; gap: 4px; flex-wrap: wrap; }
+  .filter { appearance: none; border: 0; cursor: pointer; background: transparent; color: var(--ink-3); font: 500 12px/16px var(--ui); padding: 7px 11px; border-radius: var(--r-pill); display: inline-flex; align-items: center; gap: 6px; }
+  .filter[aria-selected="true"] { background: var(--brand); color: var(--on-brand); }
+  .filter .n { font-family: var(--mono); font-size: 10px; font-variant-numeric: tabular-nums; opacity: .85; }
+
+  .list { overflow-y: auto; flex: 1; padding: 0 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+  .row { display: grid; grid-template-columns: 36px minmax(0,1fr); gap: 12px; width: 100%; text-align: left; cursor: pointer; padding: 12px; background: transparent; border: 0; border-radius: var(--r-card); color: inherit; font-family: var(--ui); }
+  .row:hover { background: var(--paper-3); }
+  .row[aria-current="true"] { background: var(--paper); box-shadow: var(--lift); }
+  .row.hidden-by-filter { display: none; }
+  .who-ava { width: 36px; height: 36px; border-radius: var(--r-ctl); flex: none; background: var(--brand-tint); color: var(--brand); display: grid; place-items: center; font-family: var(--display); font-weight: 600; font-size: 11px; letter-spacing: -.03em; }
+  .row-main { min-width: 0; }
+  .row-top { display: flex; align-items: baseline; gap: 8px; }
+  .row-top b { font-size: 13.5px; line-height: 18px; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .clock { font-family: var(--mono); font-size: 10px; color: var(--ink-3); font-variant-numeric: tabular-nums; flex: none; }
+  .row-prev { font-size: 12.5px; line-height: 17px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 3px; }
+  .state { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; font-size: 10.5px; line-height: 14px; font-weight: 500; padding: 3px 9px; border-radius: var(--r-pill); }
+  .state i { width: 5px; height: 5px; border-radius: var(--r-pill); background: currentColor; }
+  .state.done { color: var(--ok); background: var(--ok-tint); }
+  .state.esc { color: var(--warn); background: var(--warn-tint); }
+  .state.wait { color: var(--ink-3); background: var(--paper-3); }
+
+  .conv-head { padding: 16px 20px; display: flex; align-items: center; gap: 11px; flex-wrap: wrap; flex: none; border-bottom: 1px solid var(--rule); }
+  .conv-head .who-ava { width: 32px; height: 32px; font-size: 10.5px; }
+  .conv-head b { font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+  .grow { flex: 1; }
+  .conv { flex: 1; padding: 18px 20px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+  .trace { border-radius: var(--r-card); background: var(--paper-2); overflow: hidden; }
+  .trace.flag { background: var(--warn-tint); }
+  .trace-top { display: flex; align-items: center; gap: 10px; padding: 12px 15px; }
+  .trace-top .fn { font-family: var(--mono); font-size: 12px; font-weight: 500; }
+  .verdict { font-family: var(--mono); font-size: 9.5px; letter-spacing: .06em; text-transform: uppercase; padding: 4px 9px; border-radius: var(--r-pill); background: var(--ok-tint); color: var(--ok); }
+  .verdict.flag { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+  .trace-body { padding: 0 15px 13px; }
+  .trace-body pre { margin: 0; font-family: var(--mono); font-size: 11px; line-height: 19px; color: var(--ink-2); white-space: pre-wrap; word-break: break-word; }
+  .thought { display: inline-flex; align-items: center; gap: 9px; font-size: 13.5px; line-height: 20px; color: var(--ink-3); }
+
+  .composer { padding: 14px 20px 20px; display: flex; flex-direction: column; gap: 12px; flex: none; }
+  .modes { display: flex; gap: 7px; flex-wrap: wrap; }
+  .mode { appearance: none; cursor: pointer; border: 0; background: var(--paper-2); color: var(--ink-3); font: 500 12px/16px var(--ui); padding: 8px 13px; border-radius: var(--r-pill); }
+  .mode[aria-pressed="true"] { background: var(--brand); color: var(--on-brand); }
+
+  .panel { padding: 20px 18px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+  .panel section { background: var(--paper); border-radius: var(--r-card); padding: 15px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .panel section.bare { background: transparent; padding: 0; }
+  .panel h4 { margin: 0; font-family: var(--mono); font-size: 9.5px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+  dl { margin: 0; display: flex; flex-direction: column; gap: 5px; }
+  .kv { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; line-height: 19px; }
+  .kv dt { color: var(--ink-3); margin: 0; }
+  .kv dd { margin: 0; font-weight: 500; text-align: right; }
+  .kv dd.mono { font-family: var(--mono); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+  .gauge { height: 6px; border-radius: var(--r-pill); background: var(--paper-3); overflow: hidden; }
+  .gauge i { display: block; height: 100%; background: var(--brand); border-radius: var(--r-pill); }
+  .gauge-cap { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag { font-size: 11px; line-height: 16px; padding: 4px 10px; border-radius: var(--r-pill); background: var(--paper-3); color: var(--ink-2); }
+  .p-btn { appearance: none; cursor: pointer; width: 100%; border: 0; background: var(--paper); color: var(--ink); font: 500 13px/1 var(--ui); padding: 12px; border-radius: var(--r-ctl); }
+  .p-btn:hover { background: var(--paper-3); }
+  .p-btn.solid { background: var(--brand); color: var(--on-brand); }
+  .p-btn.solid:hover { background: var(--brand-press); }
+  .p-btn:disabled { opacity: .5; cursor: default; }
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 12px);
+    background: var(--ink); color: var(--paper); font-size: 13px; padding: 11px 18px;
+    border-radius: var(--r-ctl); box-shadow: var(--lift-lg); opacity: 0; pointer-events: none;
+    transition: transform .18s ease, opacity .18s ease; z-index: 50;
+  }
+  .toast[data-show="true"] { opacity: 1; transform: translate(-50%, 0); }
+
+  /* =====================================================================
+     ЭКРАН 3 — БАЗА ЗНАНИЙ (список статей ↔ редактор)
+     ===================================================================== */
+  #screen-kb { padding: 20px; justify-content: center; }
+  #screen-kb[data-active="true"] { display: flex; }
+  .kb-app {
+    width: 100%; max-width: 1280px;
+    display: grid; grid-template-columns: 60px 340px minmax(0, 1fr);
+    background: var(--paper); border-radius: var(--r-shell); overflow: hidden;
+    box-shadow: var(--lift); min-height: 720px;
+  }
+  .kb-list { overflow-y: auto; flex: 1; padding: 0 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+  .kb-row { display: flex; flex-direction: column; gap: 4px; width: 100%; text-align: left; cursor: pointer; padding: 13px 14px; background: transparent; border: 0; border-radius: var(--r-card); color: inherit; font-family: var(--ui); }
+  .kb-row:hover { background: var(--paper-3); }
+  .kb-row[aria-current="true"] { background: var(--paper); box-shadow: var(--lift); }
+  .kb-row b { font-size: 13.5px; line-height: 18px; font-weight: 600; }
+  .kb-row span { font-size: 12px; line-height: 17px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .kb-row .kb-meta { display: flex; gap: 8px; align-items: center; margin-top: 2px; }
+  .kb-badge { font-size: 10px; font-family: var(--mono); letter-spacing: .04em; padding: 3px 8px; border-radius: var(--r-pill); background: var(--ok-tint); color: var(--ok); }
+  .kb-badge.draft { background: var(--paper-3); color: var(--ink-3); }
+  .kb-add { margin: 10px 10px 4px; }
+
+  .kb-editor { padding: 24px 32px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; }
+  .kb-editor-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .kb-title { font-family: var(--display); font-weight: 600; font-size: 22px; letter-spacing: -.03em; margin: 0; }
+  .kb-sub { color: var(--ink-3); font-size: 12.5px; margin-top: 4px; }
+  .kb-actions { display: flex; gap: 8px; flex: none; }
+  .kb-btn { appearance: none; cursor: pointer; border: 0; background: var(--paper-2); color: var(--ink); font: 500 12.5px/1 var(--ui); padding: 10px 15px; border-radius: var(--r-ctl); display: inline-flex; align-items: center; gap: 6px; }
+  .kb-btn:hover { background: var(--paper-3); }
+  .kb-btn.solid { background: var(--brand); color: var(--on-brand); }
+  .kb-btn.solid:hover { background: var(--brand-press); }
+  .kb-body { font-size: 14px; line-height: 22px; color: var(--ink-2); max-width: 68ch; }
+  .kb-body p { margin: 0 0 14px; }
+  .kb-body strong { color: var(--ink); font-weight: 600; }
+  .kb-used { background: var(--paper-2); border-radius: var(--r-card); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; max-width: 68ch; }
+  .kb-used h4 { margin: 0; font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+  .kb-used-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12.5px; }
+  .kb-used-row span:first-child { color: var(--ink-2); }
+  .kb-used-row span:last-child { font-family: var(--mono); color: var(--ink-3); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .row, .kb-row, .act, .tool-btn, .chip-btn, .filter, .rail-btn, .send, .p-btn, .kb-btn { transition: background-color .14s ease, color .14s ease; }
+  }
+
+  @media (max-width: 1100px) {
+    .app { grid-template-columns: 60px 256px minmax(0, 1fr); }
+    .pane.aside { display: none; }
+    .kb-app { grid-template-columns: 60px 280px minmax(0, 1fr); }
+  }
+  @media (max-width: 760px) {
+    .app, .kb-app { grid-template-columns: minmax(0, 1fr); min-height: 0; border-radius: var(--r-surface); }
+    .pane.rail, .kb-app .rail { display: none; }
+    .pane.list-pane .list, .kb-list { max-height: 320px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="proto-bar">
+  <div class="proto-mark">
+    <span class="proto-glyph" aria-hidden="true">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9.7 9.7 0 0 1-3.5-.7L3 21l1.8-4.9A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5Z"/></svg>
+    </span>
+    <b>Отклик</b>
+    <span>кликабельный прототип</span>
+  </div>
+  <div class="seg" role="tablist" aria-label="Экран">
+    <button id="tab-widget" role="tab" aria-selected="true" aria-controls="screen-widget" type="button">Виджет</button>
+    <button id="tab-inbox" role="tab" aria-selected="false" aria-controls="screen-inbox" type="button">Инбокс</button>
+    <button id="tab-kb" role="tab" aria-selected="false" aria-controls="screen-kb" type="button">База знаний</button>
+  </div>
+  <button class="ghost-btn" id="theme" type="button" aria-label="Переключить тему">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+  </button>
+</div>
+
+<div class="stage">
+
+  <!-- ===================== ЭКРАН 1: ВИДЖЕТ ===================== -->
+  <section id="screen-widget" class="screen" data-active="true" role="tabpanel" aria-labelledby="tab-widget">
+    <div class="site-mock">
+      <div class="site-card">
+        <h2>Лавка Огородника</h2>
+        <p>Это макет сайта клиента — виджет живёт поверх него в правом нижнем углу. Нажмите на кружок, чтобы открыть чат.</p>
+        <div class="site-skel"><i></i><i></i><i></i></div>
+      </div>
+    </div>
+
+    <button class="launcher" id="launcher" type="button" aria-expanded="false" aria-controls="widget-panel" aria-label="Открыть чат поддержки">
+      <svg class="ic-open" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9.7 9.7 0 0 1-3.5-.7L3 21l1.8-4.9A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5Z"/></svg>
+      <svg class="ic-close" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+
+    <div class="widget-panel" id="widget-panel" data-open="false">
+      <div class="w-head">
+        <span class="w-shop" aria-hidden="true">ЛО</span>
+        <span class="who">
+          <b>Лавка Огородника</b>
+          <span><i class="live" aria-hidden="true"></i>Обычно отвечаем за 30 секунд</span>
+        </span>
+        <button class="ico" id="widget-collapse" type="button" aria-label="Свернуть">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg>
+        </button>
+      </div>
+
+      <div class="w-feed" id="w-feed">
+        <span class="stamp">сегодня · 14:01</span>
+
+        <div class="msg">
+          <div class="reply"><p>Здравствуйте! Я помощник Лавки Огородника. Отвечу по заказам, доставке и возвратам — а если не справлюсь, позову живого оператора.</p></div>
+        </div>
+
+        <div class="msg user">
+          <div class="bubble">Заказала семена 18 сентября, до сих пор нет. Где посылка?</div>
+        </div>
+
+        <div class="msg">
+          <div class="cited">
+            <span class="cited-head">Основано на 2 источниках</span>
+            <a href="#" onclick="return false">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
+              Сроки доставки по России
+            </a>
+            <a href="#" onclick="return false">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2h8l4 4v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z"/><path d="M15 2v5h5"/></svg>
+              Карточка заказа №4821
+            </a>
+          </div>
+          <div class="reply">
+            <p>Нашла ваш заказ <strong>№4821</strong> от 18 сентября. Он передан в Почту России 19 сентября, трек <span class="num">80123456789012</span>.</p>
+            <p>Сейчас посылка в сортировочном центре Екатеринбурга. Ожидаемая доставка — <strong>25 сентября</strong>, на два дня позже обещанного из-за перегрузки центра.</p>
+          </div>
+          <div class="acts">
+            <button class="act" type="button" aria-label="Ответить заново">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+            </button>
+            <button class="act like" type="button" aria-pressed="false" aria-label="Ответ помог">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h3Z"/><path d="M7 10l4-7a2.5 2.5 0 0 1 2.5 3L13 10h5.5a2 2 0 0 1 2 2.4l-1.3 6a2 2 0 0 1-2 1.6H7"/></svg>
+            </button>
+            <button class="act dislike" type="button" aria-pressed="false" aria-label="Ответ не помог">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 14V3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-3Z"/><path d="M17 14l-4 7a2.5 2.5 0 0 1-2.5-3L11 14H5.5a2 2 0 0 1-2-2.4l1.3-6a2 2 0 0 1 2-1.6H17"/></svg>
+            </button>
+            <button class="act" type="button" id="copy-btn" aria-label="Скопировать">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="13" height="13" x="9" y="9" rx="3"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="chips" id="w-chips">
+          <button class="chip-btn" type="button" data-chip="Изменить адрес">Изменить адрес</button>
+          <button class="chip-btn" type="button" data-chip="Оформить возврат">Оформить возврат</button>
+          <button class="chip-btn lead" type="button" data-chip="Позвать оператора">Позвать оператора</button>
+        </div>
+      </div>
+
+      <div class="w-foot">
+        <div class="field">
+          <div class="field-body">
+            <textarea id="w-input" rows="1" placeholder="Напишите сообщение…"></textarea>
+          </div>
+          <div class="field-foot">
+            <div class="field-tools">
+              <button class="tool-btn only" type="button" aria-label="Прикрепить файл">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+              <button class="tool-btn" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19v3"/><rect width="7" height="12" x="8.5" y="2" rx="3.5"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/></svg>
+                Голосом
+              </button>
+            </div>
+            <button class="send" id="w-send" type="button" aria-label="Отправить" disabled>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+            </button>
+          </div>
+        </div>
+        <p class="disclaim">Отвечает ИИ. Оператор подключится по первому запросу.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== ЭКРАН 2: ИНБОКС ===================== -->
+  <section id="screen-inbox" class="screen" role="tabpanel" aria-labelledby="tab-inbox">
+    <div class="app">
+      <div class="pane rail">
+        <span class="rail-glyph" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9.7 9.7 0 0 1-3.5-.7L3 21l1.8-4.9A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5Z"/></svg>
+        </span>
+        <button class="rail-btn" type="button" aria-current="true" aria-label="Диалоги">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9.7 9.7 0 0 1-3.5-.7L3 21l1.8-4.9A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5Z"/></svg>
+        </button>
+        <button class="rail-btn" type="button" aria-label="База знаний" id="rail-to-kb">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
+        </button>
+        <button class="rail-btn" type="button" aria-label="Отчёты">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 3.5-4 3 2.5L20 7"/></svg>
+        </button>
+        <button class="rail-btn" type="button" aria-label="Настройки">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></svg>
+        </button>
+      </div>
+
+      <div class="pane list-pane">
+        <div class="pane-head">
+          <h3>Входящие</h3>
+          <div class="filters" role="tablist" aria-label="Фильтр" id="inbox-filters">
+            <button class="filter" role="tab" aria-selected="true" data-filter="all" type="button">Все <span class="n">5</span></button>
+            <button class="filter" role="tab" aria-selected="false" data-filter="done" type="button">Закрыл ИИ <span class="n">2</span></button>
+            <button class="filter" role="tab" aria-selected="false" data-filter="esc" type="button">Эскалации <span class="n">2</span></button>
+          </div>
+        </div>
+        <div class="list" id="inbox-list"></div>
+      </div>
+
+      <div class="pane" id="inbox-conv"></div>
+
+      <div class="pane aside" id="inbox-aside"></div>
+    </div>
+  </section>
+
+  <!-- ===================== ЭКРАН 3: БАЗА ЗНАНИЙ ===================== -->
+  <section id="screen-kb" class="screen" role="tabpanel" aria-labelledby="tab-kb">
+    <div class="kb-app">
+      <div class="pane rail">
+        <span class="rail-glyph" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9.7 9.7 0 0 1-3.5-.7L3 21l1.8-4.9A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5Z"/></svg>
+        </span>
+        <button class="rail-btn" type="button" aria-label="Диалоги" id="rail-to-inbox">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9.7 9.7 0 0 1-3.5-.7L3 21l1.8-4.9A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5Z"/></svg>
+        </button>
+        <button class="rail-btn" type="button" aria-current="true" aria-label="База знаний">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
+        </button>
+        <button class="rail-btn" type="button" aria-label="Отчёты">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 3.5-4 3 2.5L20 7"/></svg>
+        </button>
+        <button class="rail-btn" type="button" aria-label="Настройки">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></svg>
+        </button>
+      </div>
+
+      <div class="pane list-pane">
+        <div class="pane-head">
+          <h3>База знаний</h3>
+        </div>
+        <div class="kb-list" id="kb-list"></div>
+        <div class="kb-add">
+          <button class="p-btn" type="button" id="kb-add-btn">+ Добавить статью</button>
+        </div>
+      </div>
+
+      <div class="kb-editor" id="kb-editor"></div>
+    </div>
+  </section>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- тема ---------- */
+  var root = document.documentElement;
+  function currentTheme() {
+    var set = root.getAttribute("data-theme");
+    if (set) { return set; }
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  document.getElementById("theme").addEventListener("click", function () {
+    var next = currentTheme() === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("otklik-proto-theme", next); } catch (e) {}
+  });
+  try {
+    var savedTheme = localStorage.getItem("otklik-proto-theme");
+    if (savedTheme === "dark" || savedTheme === "light") { root.setAttribute("data-theme", savedTheme); }
+  } catch (e) {}
+
+  /* ---------- переключение экранов ---------- */
+  var screens = [
+    { tab: document.getElementById("tab-widget"), panel: document.getElementById("screen-widget") },
+    { tab: document.getElementById("tab-inbox"), panel: document.getElementById("screen-inbox") },
+    { tab: document.getElementById("tab-kb"), panel: document.getElementById("screen-kb") }
+  ];
+  function activate(id) {
+    screens.forEach(function (s) {
+      var on = s.tab.id === id;
+      s.tab.setAttribute("aria-selected", on ? "true" : "false");
+      s.panel.setAttribute("data-active", on ? "true" : "false");
+    });
+    try { localStorage.setItem("otklik-proto-screen", id); } catch (e) {}
+  }
+  screens.forEach(function (s) { s.tab.addEventListener("click", function () { activate(s.tab.id); }); });
+  document.getElementById("rail-to-kb").addEventListener("click", function () { activate("tab-kb"); });
+  document.getElementById("rail-to-inbox").addEventListener("click", function () { activate("tab-inbox"); });
+  try {
+    var savedScreen = localStorage.getItem("otklik-proto-screen");
+    if (savedScreen) { activate(savedScreen); }
+  } catch (e) {}
+
+  function toast(text) {
+    var t = document.getElementById("toast");
+    t.textContent = text;
+    t.setAttribute("data-show", "true");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { t.setAttribute("data-show", "false"); }, 1800);
+  }
+
+  /* =====================================================================
+     ЭКРАН 1 — ВИДЖЕТ
+     ===================================================================== */
+  var launcher = document.getElementById("launcher");
+  var widgetPanel = document.getElementById("widget-panel");
+  function setWidgetOpen(open) {
+    launcher.setAttribute("aria-expanded", open ? "true" : "false");
+    widgetPanel.setAttribute("data-open", open ? "true" : "false");
+  }
+  launcher.addEventListener("click", function () {
+    setWidgetOpen(widgetPanel.getAttribute("data-open") !== "true");
+  });
+  document.getElementById("widget-collapse").addEventListener("click", function () { setWidgetOpen(false); });
+
+  document.querySelectorAll("#screen-widget .act.like, #screen-widget .act.dislike").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var group = btn.parentElement.querySelectorAll(".like, .dislike");
+      var wasPressed = btn.getAttribute("aria-pressed") === "true";
+      group.forEach(function (b) { b.setAttribute("aria-pressed", "false"); });
+      if (!wasPressed) { btn.setAttribute("aria-pressed", "true"); }
+    });
+  });
+  document.getElementById("copy-btn").addEventListener("click", function () { toast("Скопировано"); });
+
+  var wFeed = document.getElementById("w-feed");
+  var wInput = document.getElementById("w-input");
+  var wSend = document.getElementById("w-send");
+
+  function autosize() {
+    wInput.style.height = "auto";
+    wInput.style.height = Math.min(wInput.scrollHeight, 120) + "px";
+    wSend.disabled = wInput.value.trim().length === 0;
+  }
+  wInput.addEventListener("input", autosize);
+  wInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendUserMessage(); }
+  });
+
+  function scrollFeedToBottom() { wFeed.scrollTop = wFeed.scrollHeight; }
+
+  function appendUserMessage(text) {
+    var el = document.createElement("div");
+    el.className = "msg user";
+    el.innerHTML = '<div class="bubble"></div>';
+    el.querySelector(".bubble").textContent = text;
+    wFeed.insertBefore(el, document.getElementById("w-chips"));
+    scrollFeedToBottom();
+  }
+
+  function appendTyping() {
+    var el = document.createElement("div");
+    el.className = "msg";
+    el.id = "w-typing";
+    el.innerHTML = '<div class="typing"><i></i><i></i><i></i></div>';
+    wFeed.insertBefore(el, document.getElementById("w-chips"));
+    scrollFeedToBottom();
+    return el;
+  }
+
+  function appendAssistantReply(text) {
+    var typingEl = document.getElementById("w-typing");
+    var el = document.createElement("div");
+    el.className = "msg";
+    el.innerHTML = '<div class="reply"><p></p></div>';
+    el.querySelector("p").textContent = text;
+    if (typingEl) { wFeed.replaceChild(el, typingEl); } else { wFeed.insertBefore(el, document.getElementById("w-chips")); }
+    scrollFeedToBottom();
+  }
+
+  function sendUserMessage(text) {
+    var value = (text || wInput.value).trim();
+    if (!value) { return; }
+    appendUserMessage(value);
+    wInput.value = "";
+    autosize();
+    appendTyping();
+    setTimeout(function () {
+      appendAssistantReply("Передала запрос оператору — он подключится в течение пары минут. Это демо-ответ прототипа.");
+    }, 900);
+  }
+  wSend.addEventListener("click", function () { sendUserMessage(); });
+
+  document.querySelectorAll("#w-chips .chip-btn").forEach(function (chip) {
+    chip.addEventListener("click", function () { sendUserMessage(chip.getAttribute("data-chip")); });
+  });
+
+  /* =====================================================================
+     ЭКРАН 2 — ИНБОКС (данные)
+     ===================================================================== */
+  var conversations = [
+    {
+      id: "marina", initials: "МК", name: "Марина Кузнецова", time: "14:02", status: "esc",
+      preview: "Это уже вторая задержка. Хочу вернуть…",
+      email: "m.kuz@mail.ru", orders: 7, since: "с марта 2024",
+      order: { num: "№4821", sum: "2 340 ₽", status: "В пути, +2 дня" },
+      tokens: "44 200 токенов", pct: 34, cost: "1,80 ₽",
+      tags: ["доставка", "задержка", "возврат", "повторное"],
+      thread: [
+        { from: "user", text: "Заказала семена 18 сентября, до сих пор нет. Где посылка?" },
+        { from: "thought", text: "Думал 2 секунды" },
+        { from: "trace", fn: "get_order_status", ms: "340 мс", body: '{ "order_id": "4821", "status": "in_transit",\n  "carrier": "Почта России",\n  "track": "80123456789012",\n  "eta": "2026-09-25", "delay_days": 2 }' },
+        { from: "assistant", text: "Нашла ваш заказ №4821 от 18 сентября. Ожидаемая доставка — 25 сентября, на два дня позже обещанного из-за перегрузки сортировочного центра." },
+        { from: "user", text: "Это уже вторая задержка. Хочу вернуть деньги и говорить с человеком." },
+        { from: "trace", fn: "escalate_to_human", ms: "передан человеку", flag: true, body: "причина  — прямой запрос оператора + возврат средств\nуверенность — 0.41 при пороге 0.70" }
+      ]
+    },
+    {
+      id: "dmitry", initials: "ДС", name: "Дмитрий Смирнов", time: "13:47", status: "done",
+      preview: "Спасибо, всё понятно!",
+      email: "d.smirnov@gmail.com", orders: 2, since: "с июня 2025",
+      order: { num: "№4790", sum: "890 ₽", status: "Доставлен" },
+      tokens: "12 100 токенов", pct: 9, cost: "0,60 ₽",
+      tags: ["самовывоз", "статус заказа"],
+      thread: [
+        { from: "user", text: "Можно забрать заказ сегодня вечером из пункта на Ленина?" },
+        { from: "thought", text: "Думал 1 секунду" },
+        { from: "trace", fn: "get_pickup_hours", ms: "180 мс", body: '{ "point": "Ленина, 14", "hours": "10:00–21:00" }' },
+        { from: "assistant", text: "Да, пункт на Ленина, 14 работает до 21:00 сегодня. Ваш заказ №4790 уже там ждёт." },
+        { from: "user", text: "Спасибо, всё понятно!" }
+      ]
+    },
+    {
+      id: "anna", initials: "АВ", name: "Анна Волкова", time: "13:31", status: "esc",
+      preview: "А можно вернуть, если упаковка вскрыта?",
+      email: "anna.volkova@yandex.ru", orders: 4, since: "с ноября 2024",
+      order: { num: "№4805", sum: "1 560 ₽", status: "Доставлен" },
+      tokens: "28 400 токенов", pct: 21, cost: "1,10 ₽",
+      tags: ["возврат", "качество товара"],
+      thread: [
+        { from: "user", text: "Пришли семена в порванном пакете, часть просыпалась. Можно вернуть, если упаковка вскрыта?" },
+        { from: "thought", text: "Думал 3 секунды" },
+        { from: "trace", fn: "search_kb", ms: "410 мс", body: '{ "query": "возврат повреждённая упаковка",\n  "matches": 2 }' },
+        { from: "trace", fn: "escalate_to_human", ms: "передан человеку", flag: true, body: "причина  — повреждение товара, нужна оценка фото\nуверенность — 0.52 при пороге 0.70" }
+      ]
+    },
+    {
+      id: "igor", initials: "ИП", name: "Игорь Петров", time: "12:58", status: "done",
+      preview: "Когда будет томат «Бычье сердце»?",
+      email: "igor.p@mail.ru", orders: 11, since: "с января 2023",
+      order: { num: "—", sum: "—", status: "Нет активного заказа" },
+      tokens: "8 700 токенов", pct: 6, cost: "0,35 ₽",
+      tags: ["наличие товара"],
+      thread: [
+        { from: "user", text: "Когда будет томат «Бычье сердце»? Весь сезон не могу найти." },
+        { from: "thought", text: "Думал 2 секунды" },
+        { from: "trace", fn: "check_stock", ms: "260 мс", body: '{ "sku": "tomat-buhye-serdce",\n  "in_stock": false, "restock_eta": "2026-10-05" }' },
+        { from: "assistant", text: "Сейчас этого сорта нет в наличии, ожидаем поставку к 5 октября. Могу прислать уведомление, как только появится." }
+      ]
+    },
+    {
+      id: "elena", initials: "ЕР", name: "Елена Романова", time: "12:14", status: "wait",
+      preview: "Счёт на юрлицо нужен с НДС",
+      email: "e.romanova@corp.ru", orders: 1, since: "с сентября 2026",
+      order: { num: "№4830", sum: "18 400 ₽", status: "Ожидает оплаты" },
+      tokens: "4 200 токенов", pct: 3, cost: "0,18 ₽",
+      tags: ["юрлицо", "документы"],
+      thread: [
+        { from: "user", text: "Добрый день! Нужен счёт на юрлицо с НДС по заказу №4830." },
+        { from: "thought", text: "Думал 1 секунду" },
+        { from: "trace", fn: "search_kb", ms: "190 мс", body: '{ "query": "счёт юрлицо НДС", "matches": 1 }' },
+        { from: "assistant", text: "Пришлите, пожалуйста, реквизиты вашей организации — выставлю счёт с НДС в течение рабочего дня." }
+      ]
+    }
+  ];
+
+  var stateLabel = { done: "Закрыл ИИ", esc: "Нужен оператор", wait: "Ждёт ответа" };
+  var activeConvId = conversations[0].id;
+  var activeFilter = "all";
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+
+  function renderInboxList() {
+    var list = document.getElementById("inbox-list");
+    list.innerHTML = conversations.map(function (c) {
+      var hide = activeFilter !== "all" && c.status !== activeFilter;
+      return '<button class="row' + (hide ? " hidden-by-filter" : "") + '" type="button" data-id="' + c.id + '"' +
+        (c.id === activeConvId ? ' aria-current="true"' : '') + '>' +
+        '<span class="who-ava" aria-hidden="true">' + c.initials + '</span>' +
+        '<span class="row-main">' +
+          '<span class="row-top"><b>' + escapeHtml(c.name) + '</b><span class="clock">' + c.time + '</span></span>' +
+          '<span class="row-prev">' + escapeHtml(c.preview) + '</span>' +
+          '<span class="state ' + c.status + '"><i></i>' + stateLabel[c.status] + '</span>' +
+        '</span>' +
+      '</button>';
+    }).join("");
+    list.querySelectorAll(".row").forEach(function (row) {
+      row.addEventListener("click", function () {
+        activeConvId = row.getAttribute("data-id");
+        renderInboxList();
+        renderConversation();
+        renderAside();
+      });
+    });
+  }
+
+  function threadItemHtml(item) {
+    if (item.from === "user") {
+      return '<div class="msg user"><div class="bubble">' + escapeHtml(item.text) + '</div></div>';
+    }
+    if (item.from === "assistant") {
+      return '<div class="msg"><div class="reply"><p>' + escapeHtml(item.text) + '</p></div></div>';
+    }
+    if (item.from === "thought") {
+      return '<div class="msg"><span class="thought">' +
+        '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5a3 3 0 1 0-5.9.8A3 3 0 0 0 4 9.5a3 3 0 0 0 1.6 2.7A3 3 0 0 0 6.5 18 3 3 0 0 0 12 19Z"/><path d="M12 5a3 3 0 1 1 5.9.8A3 3 0 0 1 20 9.5a3 3 0 0 1-1.6 2.7A3 3 0 0 1 17.5 18 3 3 0 0 1 12 19Z"/><path d="M12 5v14"/></svg>' +
+        escapeHtml(item.text) +
+        '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>' +
+        '</span></div>';
+    }
+    if (item.from === "trace") {
+      return '<div class="msg"><div class="trace' + (item.flag ? " flag" : "") + '">' +
+        '<div class="trace-top">' +
+        '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:' + (item.flag ? "var(--warn)" : "var(--ink-3)") + '">' +
+        (item.flag
+          ? '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>'
+          : '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>') +
+        '</svg>' +
+        '<span class="fn">' + item.fn + '</span><span class="grow"></span>' +
+        '<span class="verdict' + (item.flag ? " flag" : "") + '">' + item.ms + '</span>' +
+        '</div><div class="trace-body"><pre>' + escapeHtml(item.body) + '</pre></div></div></div>';
+    }
+    return "";
+  }
+
+  function renderConversation() {
+    var c = conversations.filter(function (x) { return x.id === activeConvId; })[0];
+    var pane = document.getElementById("inbox-conv");
+    pane.innerHTML =
+      '<div class="conv-head">' +
+        '<span class="who-ava" aria-hidden="true">' + c.initials + '</span>' +
+        '<b>' + escapeHtml(c.name) + '</b>' +
+        '<span class="state ' + c.status + '" style="margin:0"><i></i>' + stateLabel[c.status] + '</span>' +
+        '<span class="grow"></span>' +
+        '<button class="act" type="button" aria-label="Закрыть диалог" id="close-conv">' +
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>' +
+        '</button>' +
+      '</div>' +
+      '<div class="conv" id="conv-body">' + c.thread.map(threadItemHtml).join("") + '</div>' +
+      '<div class="composer">' +
+        '<div class="modes" id="conv-modes">' +
+          '<button class="mode" aria-pressed="true" type="button">Отвечаю сам</button>' +
+          '<button class="mode" aria-pressed="false" type="button">Черновик от ИИ</button>' +
+          '<button class="mode" aria-pressed="false" type="button">Вернуть диалог ИИ</button>' +
+        '</div>' +
+        '<div class="field">' +
+          '<div class="field-body"><textarea rows="1" id="conv-input" placeholder="Ответ ' + escapeHtml(c.name.split(" ")[0]) + '…"></textarea></div>' +
+          '<div class="field-foot">' +
+            '<div class="field-tools">' +
+              '<button class="tool-btn only" type="button" aria-label="Прикрепить файл"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>' +
+              '<button class="tool-btn" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>Шаблон</button>' +
+              '<button class="tool-btn" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/></svg>Подсказать</button>' +
+            '</div>' +
+            '<button class="send" type="button" id="conv-send" aria-label="Отправить" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg></button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    var convBody = document.getElementById("conv-body");
+    convBody.scrollTop = convBody.scrollHeight;
+
+    document.querySelectorAll("#conv-modes .mode").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        document.querySelectorAll("#conv-modes .mode").forEach(function (b) { b.setAttribute("aria-pressed", "false"); });
+        btn.setAttribute("aria-pressed", "true");
+      });
+    });
+
+    var convInput = document.getElementById("conv-input");
+    var convSend = document.getElementById("conv-send");
+    convInput.addEventListener("input", function () {
+      convInput.style.height = "auto";
+      convInput.style.height = Math.min(convInput.scrollHeight, 140) + "px";
+      convSend.disabled = convInput.value.trim().length === 0;
+    });
+    function sendOperatorReply() {
+      var value = convInput.value.trim();
+      if (!value) { return; }
+      var el = document.createElement("div");
+      el.className = "msg user";
+      el.innerHTML = '<div class="bubble"></div>';
+      el.querySelector(".bubble").textContent = value;
+      convBody.appendChild(el);
+      convBody.scrollTop = convBody.scrollHeight;
+      convInput.value = "";
+      convInput.style.height = "auto";
+      convSend.disabled = true;
+      toast("Ответ отправлен клиенту");
+    }
+    convSend.addEventListener("click", sendOperatorReply);
+    convInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendOperatorReply(); }
+    });
+
+    document.getElementById("close-conv").addEventListener("click", function () {
+      c.status = "done";
+      renderInboxList();
+      renderConversation();
+      renderAside();
+      toast("Диалог закрыт");
+    });
+  }
+
+  function renderAside() {
+    var c = conversations.filter(function (x) { return x.id === activeConvId; })[0];
+    var pane = document.getElementById("inbox-aside");
+    pane.innerHTML =
+      '<div class="panel">' +
+        '<section>' +
+          '<h4>Покупатель</h4>' +
+          '<dl>' +
+            '<div class="kv"><dt>Имя</dt><dd>' + escapeHtml(c.name) + '</dd></div>' +
+            '<div class="kv"><dt>Почта</dt><dd class="mono">' + escapeHtml(c.email) + '</dd></div>' +
+            '<div class="kv"><dt>Заказов</dt><dd class="mono">' + c.orders + '</dd></div>' +
+            '<div class="kv"><dt>С нами</dt><dd>' + escapeHtml(c.since) + '</dd></div>' +
+          '</dl>' +
+        '</section>' +
+        '<section>' +
+          '<h4>Текущий заказ</h4>' +
+          '<dl>' +
+            '<div class="kv"><dt>Номер</dt><dd class="mono">' + c.order.num + '</dd></div>' +
+            '<div class="kv"><dt>Сумма</dt><dd class="mono">' + c.order.sum + '</dd></div>' +
+            '<div class="kv"><dt>Статус</dt><dd>' + escapeHtml(c.order.status) + '</dd></div>' +
+          '</dl>' +
+        '</section>' +
+        '<section>' +
+          '<h4>Расход контекста</h4>' +
+          '<div class="gauge"><i style="width:' + c.pct + '%"></i></div>' +
+          '<div class="gauge-cap"><span>' + c.tokens + '</span><span>' + c.pct + ' %</span></div>' +
+          '<dl>' +
+            '<div class="kv"><dt>Стоимость диалога</dt><dd class="mono">' + c.cost + '</dd></div>' +
+            '<div class="kv"><dt>Модель</dt><dd class="mono">claude-sonnet-5</dd></div>' +
+          '</dl>' +
+        '</section>' +
+        '<section>' +
+          '<h4>Теги</h4>' +
+          '<div class="tags">' + c.tags.map(function (t) { return '<span class="tag">' + escapeHtml(t) + '</span>'; }).join("") + '</div>' +
+        '</section>' +
+        '<section class="bare">' +
+          '<button class="p-btn solid" type="button" id="take-over"' + (c.status === "esc" ? '' : ' disabled') + '>Взять диалог на себя</button>' +
+          '<button class="p-btn" type="button">Оформить возврат</button>' +
+        '</section>' +
+      '</div>';
+    var takeOver = document.getElementById("take-over");
+    if (takeOver && !takeOver.disabled) {
+      takeOver.addEventListener("click", function () { toast("Диалог взят в работу"); });
+    }
+  }
+
+  document.getElementById("inbox-filters").addEventListener("click", function (e) {
+    var btn = e.target.closest(".filter");
+    if (!btn) { return; }
+    activeFilter = btn.getAttribute("data-filter");
+    document.querySelectorAll("#inbox-filters .filter").forEach(function (b) { b.setAttribute("aria-selected", b === btn ? "true" : "false"); });
+    renderInboxList();
+  });
+
+  renderInboxList();
+  renderConversation();
+  renderAside();
+
+  /* =====================================================================
+     ЭКРАН 3 — БАЗА ЗНАНИЙ
+     ===================================================================== */
+  var articles = [
+    {
+      id: "delivery", title: "Сроки доставки по России", status: "live",
+      updated: "обновлено 3 дня назад",
+      body: [
+        "Стандартная доставка Почтой России занимает 5–9 рабочих дней в зависимости от региона. По крупным городам (Москва, Санкт-Петербург, Екатеринбург) — 3–5 дней.",
+        "При перегрузке сортировочных центров возможна задержка до 3 дней сверх срока — предупреждайте клиента заранее, если ИИ видит статус «in_transit» дольше 7 дней."
+      ],
+      used: [
+        { label: "Марина Кузнецова · сегодня 14:01", meta: "источник №1" },
+        { label: "Дмитрий Смирнов · вчера 18:20", meta: "источник №1" }
+      ]
+    },
+    {
+      id: "order-card", title: "Карточка заказа №4821", status: "live",
+      updated: "автосинхронизация из CRM",
+      body: [
+        "Заказ №4821 от 18.09.2026, покупатель Марина Кузнецова, сумма 2 340 ₽, состав: семена томата 3 уп., семена огурца 2 уп.",
+        "Передан в Почту России 19.09.2026, трек 80123456789012. Ожидаемая доставка — 25.09.2026."
+      ],
+      used: [
+        { label: "Марина Кузнецова · сегодня 14:01", meta: "источник №2" }
+      ]
+    },
+    {
+      id: "returns", title: "Возврат и обмен товара", status: "live",
+      updated: "обновлено неделю назад",
+      body: [
+        "Возврат возможен в течение 14 дней с момента получения при сохранении товарного вида и упаковки.",
+        "Если упаковка повреждена при доставке — запрос уходит оператору с фото повреждения, ИИ самостоятельно решение не принимает."
+      ],
+      used: [
+        { label: "Анна Волкова · сегодня 13:31", meta: "источник №1" }
+      ]
+    },
+    {
+      id: "invoices", title: "Счета и работа с юрлицами", status: "draft",
+      updated: "черновик, не опубликовано",
+      body: [
+        "Для юрлиц счёт с НДС выставляется вручную бухгалтерией в течение 1 рабочего дня после получения реквизитов.",
+        "ИИ запрашивает реквизиты и передаёт заявку, но сам счета не формирует — статья ещё не готова к публикации."
+      ],
+      used: []
+    }
+  ];
+  var activeArticleId = articles[0].id;
+
+  function renderKbList() {
+    var list = document.getElementById("kb-list");
+    list.innerHTML = articles.map(function (a) {
+      return '<button class="kb-row" type="button" data-id="' + a.id + '"' + (a.id === activeArticleId ? ' aria-current="true"' : '') + '>' +
+        '<b>' + escapeHtml(a.title) + '</b>' +
+        '<div class="kb-meta"><span class="kb-badge' + (a.status === "draft" ? " draft" : "") + '">' + (a.status === "draft" ? "черновик" : "опубликовано") + '</span></div>' +
+        '<span>' + escapeHtml(a.updated) + '</span>' +
+      '</button>';
+    }).join("");
+    list.querySelectorAll(".kb-row").forEach(function (row) {
+      row.addEventListener("click", function () {
+        activeArticleId = row.getAttribute("data-id");
+        renderKbList();
+        renderKbEditor();
+      });
+    });
+  }
+
+  function renderKbEditor() {
+    var a = articles.filter(function (x) { return x.id === activeArticleId; })[0];
+    var editor = document.getElementById("kb-editor");
+    editor.innerHTML =
+      '<div class="kb-editor-head">' +
+        '<div>' +
+          '<h2 class="kb-title">' + escapeHtml(a.title) + '</h2>' +
+          '<div class="kb-sub">' + escapeHtml(a.updated) + '</div>' +
+        '</div>' +
+        '<div class="kb-actions">' +
+          '<button class="kb-btn" type="button" id="kb-publish">' + (a.status === "draft" ? "Опубликовать" : "Снять с публикации") + '</button>' +
+          '<button class="kb-btn solid" type="button" id="kb-save">Сохранить</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="kb-body">' + a.body.map(function (p) { return '<p>' + escapeHtml(p) + '</p>'; }).join("") + '</div>' +
+      (a.used.length
+        ? '<div class="kb-used"><h4>Использовано в диалогах</h4>' +
+          a.used.map(function (u) { return '<div class="kb-used-row"><span>' + escapeHtml(u.label) + '</span><span>' + escapeHtml(u.meta) + '</span></div>'; }).join("") +
+          '</div>'
+        : '<div class="kb-used"><h4>Использовано в диалогах</h4><div class="kb-used-row"><span>Пока не использовалась в ответах ИИ</span><span></span></div></div>');
+
+    document.getElementById("kb-save").addEventListener("click", function () { toast("Статья сохранена"); });
+    document.getElementById("kb-publish").addEventListener("click", function () {
+      a.status = a.status === "draft" ? "live" : "draft";
+      a.updated = a.status === "draft" ? "черновик, не опубликовано" : "опубликовано только что";
+      renderKbList();
+      renderKbEditor();
+      toast(a.status === "draft" ? "Статья снята с публикации" : "Статья опубликована");
+    });
+  }
+
+  document.getElementById("kb-add-btn").addEventListener("click", function () {
+    var id = "new-" + Date.now();
+    articles.unshift({ id: id, title: "Новая статья", status: "draft", updated: "черновик, не опубликовано", body: ["Начните писать текст статьи — это то, чем будет пользоваться ИИ, отвечая покупателям."], used: [] });
+    activeArticleId = id;
+    renderKbList();
+    renderKbEditor();
+  });
+
+  renderKbList();
+  renderKbEditor();
+})();
+</script>
+</body>
+</html>
