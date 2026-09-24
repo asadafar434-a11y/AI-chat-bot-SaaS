@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Главный экран</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@600;700&display=swap">
+<style>
+  /* Токены — design-system/brand.css («Индиго + мягкая»), как в supplier-workspace.html */
+  :root {
+    --ground: #eeeef6; --ink: #14142b; --ink-2: #474763; --ink-3: #77778f; --rule: #dcdcea;
+    --paper: #ffffff; --paper-2: #f6f6fb; --paper-3: #ecebf6; --edge-2: #d0cfe4;
+    --brand: #312e81; --brand-press: #26246a; --brand-tint: #e2e1f3; --on-brand: #ffffff;
+    --ok: #0d9f6e; --ok-tint: #d8f5e9;
+    --warn: #b4690e; --warn-tint: #fbeeda;
+    --danger: #cf2f24;
+    --danger-tint: color-mix(in srgb, var(--danger) 12%, var(--paper));
+    --r-surface: 24px; --r-card: 18px; --r-bubble: 22px; --r-ctl: 14px; --r-pill: 999px;
+    --lift: 0 2px 6px rgb(20 20 43 / .05), 0 18px 40px -20px rgb(20 20 43 / .25);
+    --display: "Unbounded", ui-sans-serif, system-ui, sans-serif;
+    --ui: "Onest", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #0b0b16; --ink: #ebebf7; --ink-2: #a6a6c2; --ink-3: #8a8aa6; --rule: #22223c;
+      --paper: #131324; --paper-2: #19192e; --paper-3: #21213a; --edge-2: #333359;
+      --brand: #a5b4fc; --brand-press: #bcc6ff; --brand-tint: #22224a; --on-brand: #0b0a26;
+      --ok: #3ddc9a; --ok-tint: #103326; --warn: #e2a34a; --warn-tint: #352812; --danger: #ff7a70;
+      --lift: 0 2px 6px rgb(0 0 0 / .45), 0 18px 40px -20px rgb(0 0 0 / .7);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #0b0b16; --ink: #ebebf7; --ink-2: #a6a6c2; --ink-3: #8a8aa6; --rule: #22223c;
+    --paper: #131324; --paper-2: #19192e; --paper-3: #21213a; --edge-2: #333359;
+    --brand: #a5b4fc; --brand-press: #bcc6ff; --brand-tint: #22224a; --on-brand: #0b0a26;
+    --ok: #3ddc9a; --ok-tint: #103326; --warn: #e2a34a; --warn-tint: #352812; --danger: #ff7a70;
+    --lift: 0 2px 6px rgb(0 0 0 / .45), 0 18px 40px -20px rgb(0 0 0 / .7);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 16px/25px var(--ui); -webkit-font-smoothing: antialiased; }
+  button, input, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+  .wrap { max-width: 680px; margin-inline: auto; padding-inline: 16px; }
+  .top { padding-block: 20px 0; }
+  .logo {
+    appearance: none; border: 0; background: none; padding: 0; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 10px; font: 700 16px/1 var(--display); letter-spacing: -.03em;
+  }
+  .logo-mark { width: 30px; height: 30px; border-radius: 11px; display: grid; place-items: center; background: var(--brand); color: var(--on-brand); }
+  main { padding-block: 8px 40px; }
+
+  h1, h2.title { margin: 0; font-family: var(--display); font-weight: 700; font-size: clamp(21px, 4.4vw, 26px); line-height: 1.2; letter-spacing: -.04em; text-wrap: balance; }
+  .lead { margin: 0; font-size: 16px; line-height: 24px; color: var(--ink-2); max-width: 50ch; }
+
+  .btn {
+    appearance: none; border: 0; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    min-height: 52px; padding: 0 24px; border-radius: var(--r-ctl);
+    background: var(--paper); color: var(--ink); font-weight: 600; font-size: 16px;
+    box-shadow: inset 0 0 0 1.5px var(--edge-2);
+  }
+  .btn.main { background: var(--brand); color: var(--on-brand); box-shadow: none; }
+  .btn.main:hover { background: var(--brand-press); }
+  .link {
+    appearance: none; border: 0; background: none; padding: 0; cursor: pointer;
+    color: var(--brand); font-weight: 600; text-decoration: underline; text-underline-offset: 4px;
+    text-decoration-color: color-mix(in srgb, var(--brand) 40%, transparent);
+  }
+  .back {
+    appearance: none; border: 0; background: none; padding: 0; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px; margin: 18px 0 14px;
+    color: var(--ink-3); font-weight: 500; font-size: 15px;
+  }
+  .back:hover { color: var(--ink); }
+
+  /* ---------- вопрос ---------- */
+  .ask { margin-top: 18px; padding: 22px; border-radius: var(--r-surface); background: var(--paper); display: grid; gap: 14px; }
+  .field { display: flex; align-items: flex-end; gap: 6px; padding: 8px; border-radius: var(--r-surface); background: var(--paper); }
+  .ask .field { box-shadow: inset 0 0 0 1.5px var(--edge-2); }
+  .ask .field:focus-within { box-shadow: inset 0 0 0 2px var(--brand); }
+  .field textarea { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; resize: none; overflow-y: hidden; font-size: 16px; line-height: 24px; padding: 7px 0; max-height: 120px; }
+  .field textarea::placeholder { color: var(--ink-3); }
+  .icon-btn { appearance: none; border: 0; cursor: pointer; flex: none; width: 38px; height: 38px; border-radius: var(--r-pill); display: grid; place-items: center; background: transparent; color: var(--ink-3); }
+  .icon-btn:hover { background: var(--paper-2); color: var(--ink); }
+  .send { appearance: none; border: 0; cursor: pointer; flex: none; width: 38px; height: 38px; border-radius: var(--r-pill); display: grid; place-items: center; background: var(--brand); color: var(--on-brand); }
+  .send:hover { background: var(--brand-press); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { appearance: none; border: 0; cursor: pointer; text-align: left; padding: 9px 15px; border-radius: var(--r-pill); background: var(--paper-2); font-weight: 500; font-size: 15px; line-height: 20px; }
+  .chip:hover { background: var(--paper-3); }
+
+  /* ---------- закупки ---------- */
+  .section-head { margin-top: 34px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; }
+  .cards { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 10px; }
+  .card {
+    appearance: none; border: 0; cursor: pointer; width: 100%; text-align: left;
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 14px; align-items: center;
+    padding: 18px 20px; border-radius: var(--r-card); background: var(--paper);
+  }
+  .card:hover { box-shadow: var(--lift); }
+  .card-title { font-weight: 700; font-size: 17px; line-height: 24px; }
+  .card-sub { font-size: 14.5px; line-height: 21px; color: var(--ink-3); grid-column: 1; }
+  .chev { grid-column: 2; grid-row: 1 / span 3; color: var(--ink-3); }
+  .soon { color: var(--warn); font-weight: 600; }
+  .good { color: var(--ok); font-weight: 600; }
+  .tags { grid-column: 1; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .tag { display: inline-flex; align-items: center; padding: 4px 11px; border-radius: var(--r-pill); font-size: 13.5px; line-height: 19px; font-weight: 600; background: var(--paper-2); color: var(--ink-2); }
+  .tag.warn { background: var(--warn-tint); color: var(--warn); }
+  .tag.bad { background: var(--danger-tint); color: var(--danger); }
+  .tag.ok { background: var(--ok-tint); color: var(--ok); }
+  .foot { margin: 36px 0 0; font-size: 13px; color: var(--ink-3); }
+
+  /* ---------- чат ---------- */
+  .chatbox { margin-top: 20px; padding: 18px; border-radius: var(--r-surface); background: var(--paper); display: grid; gap: 18px; }
+  .msg { font-size: 15px; line-height: 23px; }
+  .msg.user { justify-self: end; max-width: 80%; padding: 10px 15px; background: var(--paper-3); border-radius: var(--r-bubble) var(--r-bubble) 8px var(--r-bubble); }
+  .msg.bot p { margin: 0 0 8px; }
+  .msg.bot p:last-child { margin: 0; }
+  .bot-meta { margin-top: 8px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; font-size: 14px; color: var(--ink-3); }
+  .thinking { margin: 0; color: var(--ink-3); animation: pulse 1.2s ease-in-out infinite; }
+  .ask-bar { position: sticky; bottom: 0; z-index: 5; padding-block: 14px calc(14px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to bottom, transparent, var(--ground) 30%); }
+  .ask-bar .field { box-shadow: var(--lift); }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); z-index: 80;
+    transform: translate(-50%, 12px); opacity: 0; pointer-events: none;
+    width: max-content; max-width: min(460px, calc(100% - 32px));
+    padding: 12px 18px; border-radius: var(--r-ctl); background: var(--ink); color: var(--paper);
+    font-size: 14px; line-height: 20px; box-shadow: var(--lift); transition: opacity .18s ease, transform .18s ease;
+  }
+  .toast[data-show="true"] { opacity: 1; transform: translate(-50%, 0); }
+
+  @keyframes pulse { 50% { opacity: .45; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+  @media (max-width: 480px) {
+    .ask { padding: 18px 16px; }
+    .card { padding: 16px; }
+    .section-head .btn { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<header class="wrap top">
+  <button class="logo" type="button" data-go="home" aria-label="Тендерный юрист — главная">
+    <span class="logo-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+    </span>
+    Тендерный юрист
+  </button>
+</header>
+
+<main class="wrap" id="view"></main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const fmt = (t) => t.split("\n\n").map((p) => `<p>${esc(p).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")}</p>`).join("");
+  const quick = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const CHEV = '<svg class="chev" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
+  const SEND = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>';
+  const CLIP = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>';
+  const BACK = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>';
+
+  // Готовые ответы на подсказки. Нормы — общим порядком, без сроков, которые зависят от редакции закона.
+  const QA = [
+    {
+      q: "Заказчик не подписывает акт — что делать?",
+      a: "**Сошлитесь на срок приёмки из контракта.**\n\nСроки приёмки и оплаты задаёт контракт, общий порядок — статья 94 закона 44-ФЗ. Если срок прошёл, направьте заказчику письменную претензию со ссылкой на пункт контракта и сохраните подтверждение отправки.\n\nЕсли заказчик так и не подпишет, спор решается в суде — до этого покажите документы юристу.",
+      src: "44-ФЗ, ст. 94",
+    },
+    {
+      q: "Как вернуть обеспечение заявки?",
+      a: "**Если вносили деньгами на спецсчёт, писать никуда не нужно.**\n\nБанк сам снимет блокировку, когда закупка для вас закончится. Порядок и сроки — в статье 44 закона 44-ФЗ.\n\nЕсли деньги так и не разблокировали, напишите в банк и оператору площадки.",
+      src: "44-ФЗ, ст. 44",
+    },
+  ];
+
+  // Закупки из прототипа supplier-workspace.html; состояние — на 24 сентября 2026.
+  const PURCHASES = [
+    {
+      title: "Церемония «Педагог года — 2026»",
+      due: 'Подать до 30 сентября, 10:00 · <span class="soon">осталось 6 дней</span>',
+      tags: [["warn", "ТП: впишите 2 пункта"], ["bad", "Заявка: 1 ошибка"]],
+    },
+    {
+      title: "Новогодние представления в детских садах",
+      due: "Подать до 14 октября, 9:00 · осталось 20 дней",
+      tags: [["", "ТП не составлено"], ["", "Заявка не проверена"]],
+    },
+    {
+      title: "Выездной семинар для сотрудников",
+      due: '<span class="good">Заявка подана 17 сентября</span> · итоги до 29 сентября',
+      tags: [["ok", "ТП готово"], ["ok", "Ошибок нет"]],
+    },
+  ];
+
+  const state = { screen: "home", messages: [] };
+
+  const field = (placeholder) => `
+    <form class="field" id="ask-form">
+      <button class="icon-btn" type="button" data-act="attach" aria-label="Прикрепить документ">${CLIP}</button>
+      <textarea id="ask-input" rows="1" placeholder="${placeholder}" aria-label="Вопрос"></textarea>
+      <button class="send" type="submit" aria-label="Отправить">${SEND}</button>
+    </form>`;
+
+  function homeHTML() {
+    return `<h1 class="sr-only">Главная</h1>
+      <section class="ask" aria-labelledby="ask-title">
+        <h2 class="title" id="ask-title">Спросите про тендер</h2>
+        <p class="lead">Отвечу по 44-ФЗ, 223-ФЗ и вашим документам — со ссылкой на статью и пункт.</p>
+        ${field("Ваш вопрос…")}
+        <div class="chips">${QA.map((x, i) => `<button class="chip" type="button" data-q="${i}">${esc(x.q)}</button>`).join("")}</div>
+      </section>
+
+      <section aria-labelledby="list-title">
+        <div class="section-head">
+          <h2 class="title" id="list-title">Мои закупки</h2>
+          <button class="btn main" type="button" data-act="new">+ Новая закупка</button>
+        </div>
+        <ul class="cards">${PURCHASES.map((p) => `<li>
+          <button class="card" type="button" data-act="open">
+            <span class="card-title">${esc(p.title)}</span>
+            <span class="card-sub">${p.due}</span>
+            <span class="tags">${p.tags.map(([tone, t]) => `<span class="tag ${tone}">${esc(t)}</span>`).join("")}</span>
+            ${CHEV}
+          </button></li>`).join("")}</ul>
+      </section>
+      <p class="foot">Макет главного экрана. Вопрос открывает чат, закупка — свой экран с разделами. Все закупки вымышленные.</p>`;
+  }
+
+  function chatHTML() {
+    return `<button class="back" type="button" data-go="home">${BACK}Главная</button>
+      <h1>Вопрос по тендерам</h1>
+      <p class="lead" style="margin-top:10px">Отвечаю по закону и вашим документам — со ссылкой на статью.</p>
+      <div class="chatbox" id="feed">${feedHTML()}</div>
+      <div class="ask-bar">${field("Спросите ещё…")}</div>`;
+  }
+
+  function feedHTML() {
+    return state.messages.map((m) => {
+      if (m.role === "user") return `<div class="msg user">${esc(m.text)}</div>`;
+      if (m.pending) return '<p class="thinking">Смотрю закон и документы…</p>';
+      const meta = m.src ? `<div class="bot-meta"><span>Источник: ${esc(m.src)}</span><button class="link" type="button" data-act="lawyer">Спросить юриста</button></div>` : "";
+      return `<div class="msg bot">${fmt(m.text)}${meta}</div>`;
+    }).join("");
+  }
+
+  function render() {
+    $("#view").innerHTML = state.screen === "home" ? homeHTML() : chatHTML();
+    window.scrollTo(0, 0);
+  }
+
+  function ask(text, answer) {
+    state.screen = "chat";
+    state.messages.push({ role: "user", text }, { role: "bot", pending: true });
+    render();
+    setTimeout(() => {
+      state.messages[state.messages.length - 1] = answer
+        ? { role: "bot", text: answer.a, src: answer.src }
+        : { role: "bot", text: "Это макет: в рабочей версии здесь будет ответ со ссылкой на статью закона и пункт документа." };
+      $("#feed").innerHTML = feedHTML();
+    }, quick ? 0 : 900);
+  }
+
+  let toastTimer;
+  function toast(text) {
+    const t = $("#toast");
+    t.textContent = text;
+    t.dataset.show = "true";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (t.dataset.show = "false"), 3200);
+  }
+
+  const HINTS = {
+    attach: "Прикрепите извещение, контракт или протокол — отвечу по нему. В макете файлы не читаются.",
+    new: "Здесь откроется загрузка документов новой закупки.",
+    open: "Здесь откроется закупка: требования, техническое предложение, проверка заявки, вопросы.",
+    lawyer: "В рабочей версии вопрос уйдёт юристу по закупкам, ответ — в течение дня.",
+  };
+
+  document.addEventListener("click", (e) => {
+    const el = e.target.closest("[data-go], [data-act], [data-q]");
+    if (!el) return;
+    if (el.dataset.go) { state.screen = "home"; state.messages = []; render(); }
+    else if (el.dataset.q) { const x = QA[Number(el.dataset.q)]; ask(x.q, x); }
+    else toast(HINTS[el.dataset.act]);
+  });
+
+  document.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const input = $("#ask-input");
+    const text = input.value.trim();
+    if (!text) { input.focus(); return; }
+    ask(text, QA.find((x) => x.q.toLowerCase() === text.toLowerCase()));
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.target.id === "ask-input" && e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      e.target.form.requestSubmit();
+    }
+  });
+
+  document.addEventListener("input", (e) => {
+    if (e.target.id !== "ask-input") return;
+    e.target.style.height = "auto";
+    e.target.style.height = `${e.target.scrollHeight}px`;
+    e.target.style.overflowY = e.target.scrollHeight > 120 ? "auto" : "hidden";
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
