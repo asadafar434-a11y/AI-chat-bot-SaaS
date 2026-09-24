@@ -1,8 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { MAX_CONTEXT_CHARS, type ChatDocument } from "@/lib/chat-types";
+import { CLAUDE_MODEL } from "@/lib/claude";
 import { claudeErrorText } from "@/lib/claude-errors";
-import { quoteFound, TpDraftSchema, type TpResponse } from "@/lib/tp";
+import { quoteFound } from "@/lib/quotes";
+import { TpDraftSchema, type TpResponse } from "@/lib/tp";
 import { TP_SYSTEM_PROMPT, TP_TASK } from "@/lib/tp-prompt";
 import { SAMPLE_ITEMS, SAMPLE_SUBJECT } from "@/lib/tp-sample";
 
@@ -43,7 +45,7 @@ export async function POST(request: Request) {
     const client = new Anthropic();
     const stream = client.beta.messages.stream(
       {
-        model: "claude-opus-5",
+        model: CLAUDE_MODEL,
         max_tokens: 64000,
         betas: ["server-side-fallback-2026-07-01"],
         fallbacks: "default",

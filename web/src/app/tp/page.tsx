@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { AlertTriangleIcon, CheckIcon, PencilIcon, UploadIcon } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangleIcon, CheckIcon, PencilIcon } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
-import type { ChatDocument } from "@/lib/chat-types";
+import { FileDrop } from "@/components/file-drop";
+import { WorkingSteps } from "@/components/working-steps";
+import { plural } from "@/lib/plural";
+import { readDocuments, type SentDocument } from "@/lib/read-documents";
 import type { TpItem, TpResponse } from "@/lib/tp";
 
 type Stage =
   | { kind: "upload"; error?: string }
   | { kind: "working" }
   | { kind: "draft"; files: string[]; subject: string; notice?: string };
-
-type Extracted = { documents: ChatDocument[]; failed: { name: string; reason: string }[] };
 
 const WORKING_STEPS = [
   "Читаю ТЗ…",
@@ -21,12 +22,6 @@ const WORKING_STEPS = [
 ];
 
 const needsFill = (text: string) => /\[[^\]]+\]/.test(text);
-
-const plural = (n: number, one: string, few: string, many: string) => {
-  const a = Math.abs(n) % 100;
-  const b = a % 10;
-  return a > 10 && a < 20 ? many : b === 1 ? one : b >= 2 && b <= 4 ? few : many;
-};
 
 function OfferText({ text }: { text: string }) {
   return (
@@ -44,20 +39,6 @@ function OfferText({ text }: { text: string }) {
   );
 }
 
-function Working() {
-  const [step, setStep] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setStep((s) => Math.min(s + 1, WORKING_STEPS.length - 1)), 2500);
-    return () => clearInterval(id);
-  }, []);
-  return (
-    <div className="mt-12 grid gap-2" aria-live="polite">
-      <p className="animate-pulse text-lg font-semibold">{WORKING_STEPS[step]}</p>
-      <p className="text-[15px] text-muted-foreground">Обычно это занимает 1–2 минуты.</p>
-    </div>
-  );
-}
-
 export default function TpPage() {
   const [stage, setStage] = useState<Stage>({ kind: "upload" });
   const [items, setItems] = useState<TpItem[]>([]);
@@ -65,28 +46,11 @@ export default function TpPage() {
   const [quoteOpen, setQuoteOpen] = useState<number | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
-  const [over, setOver] = useState(false);
-  const fileInput = useRef<HTMLInputElement>(null);
 
   async function compose(files: File[] | null) {
     setStage({ kind: "working" });
     try {
-      let documents: Pick<ChatDocument, "name" | "text">[] = [];
-      if (files) {
-        const form = new FormData();
-        files.forEach((f) => form.append("files", f));
-        const res = await fetch("/api/documents", { method: "POST", body: form });
-        if (!res.ok) throw new Error("Не удалось прочитать файлы — попробуйте ещё раз.");
-        const { documents: read, failed }: Extracted = await res.json();
-        if (read.length === 0) {
-          throw new Error(
-            failed.length
-              ? `Не получилось прочитать: ${failed.map((f) => `${f.name} — ${f.reason}`).join("; ")}.`
-              : "В файлах нет текста."
-          );
-        }
-        documents = read.map(({ name, text }) => ({ name, text }));
-      }
+      const documents: SentDocument[] = files ? (await readDocuments(files)).documents : [];
 
       const res = await fetch("/api/tp", {
         method: "POST",
@@ -104,11 +68,6 @@ export default function TpPage() {
     } catch (e) {
       setStage({ kind: "upload", error: (e as Error).message });
     }
-  }
-
-  function pick(list: FileList | null) {
-    const files = list ? [...list] : [];
-    if (files.length) void compose(files);
   }
 
   async function download(subject: string) {
@@ -162,46 +121,16 @@ export default function TpPage() {
                 {stage.error}
               </p>
             )}
-            <div
-              onDragOver={(e) => { e.preventDefault(); setOver(true); }}
-              onDragLeave={() => setOver(false)}
-              onDrop={(e) => { e.preventDefault(); setOver(false); pick(e.dataTransfer.files); }}
-              className={`mt-7 grid justify-items-center gap-4 rounded-[var(--r-surface)] px-6 py-9 text-center ${
-                over ? "bg-[var(--brand-tint)] ring-2 ring-primary ring-inset" : "bg-card ring-2 ring-[var(--edge-2)] ring-inset"
-              }`}
-            >
-              <UploadIcon className="size-8 text-primary" />
-              <p className="text-[var(--ink-2)]">Перетащите файл ТЗ сюда — PDF или Word</p>
-              <button
-                type="button"
-                onClick={() => fileInput.current?.click()}
-                className="min-h-[52px] rounded-[var(--r-ctl)] bg-primary px-6 font-semibold text-primary-foreground hover:opacity-90"
-              >
-                Загрузить ТЗ
-              </button>
-              <input
-                ref={fileInput}
-                type="file"
-                multiple
-                accept=".pdf,.docx,.doc,.txt,.md"
-                className="hidden"
-                onChange={(e) => { pick(e.currentTarget.files); e.currentTarget.value = ""; }}
-              />
-              <span className="text-[15px] text-muted-foreground">
-                или{" "}
-                <button
-                  type="button"
-                  onClick={() => void compose(null)}
-                  className="font-semibold text-primary underline underline-offset-4"
-                >
-                  посмотреть на примере
-                </button>
-              </span>
-            </div>
+            <FileDrop
+              hint="Перетащите файл ТЗ сюда — PDF или Word"
+              button="Загрузить ТЗ"
+              onFiles={(files) => void compose(files)}
+              onSample={() => void compose(null)}
+            />
           </>
         )}
 
-        {stage.kind === "working" && <Working />}
+        {stage.kind === "working" && <WorkingSteps steps={WORKING_STEPS} />}
 
         {stage.kind === "draft" && (
           <>

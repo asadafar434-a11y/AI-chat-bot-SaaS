@@ -4,6 +4,11 @@ import { AppHeader } from "@/components/app-header";
 
 const SECTIONS = [
   {
+    href: "/requirements",
+    title: "Требования",
+    text: "Загрузите документы закупки — выпишу, что подать, что требует ТЗ, сроки и деньги.",
+  },
+  {
     href: "/tp",
     title: "Техническое предложение",
     text: "Загрузите ТЗ — составлю черновик по каждому пункту и соберу файл Word.",

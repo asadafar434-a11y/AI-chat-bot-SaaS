@@ -1,12 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import { MAX_CONTEXT_CHARS, type ChatDocument, type ChatMessage } from "@/lib/chat-types";
+import { CLAUDE_MODEL } from "@/lib/claude";
 import { claudeErrorText } from "@/lib/claude-errors";
 import { SYSTEM_PROMPT } from "@/lib/legal-prompt";
 
 export const maxDuration = 300;
-
-const MODEL = "claude-opus-5";
 
 type ChatRequest = {
   messages: ChatMessage[];
@@ -108,7 +107,7 @@ export async function POST(request: Request) {
         const client = new Anthropic();
         const response = client.beta.messages.stream(
           {
-            model: MODEL,
+            model: CLAUDE_MODEL,
             max_tokens: 64000,
             betas: ["server-side-fallback-2026-07-01"],
             fallbacks: "default",
