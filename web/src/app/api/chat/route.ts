@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import { MAX_CONTEXT_CHARS, type ChatDocument, type ChatMessage } from "@/lib/chat-types";
+import { claudeErrorText } from "@/lib/claude-errors";
 import { SYSTEM_PROMPT } from "@/lib/legal-prompt";
 
 export const maxDuration = 300;
@@ -47,25 +48,6 @@ function toClaudeMessages(
     out[0] = { role: "user", content: [...blocks, ...first.content] };
   }
   return out;
-}
-
-function errorText(error: unknown): string {
-  if (error instanceof Anthropic.AuthenticationError) {
-    return "Ключ Anthropic не подошёл — проверьте ANTHROPIC_API_KEY в web/.env.local.";
-  }
-  if (error instanceof Anthropic.PermissionDeniedError) {
-    return "Anthropic отклонил запрос: у ключа нет доступа к модели или API недоступен из этого региона.";
-  }
-  if (error instanceof Anthropic.RateLimitError) {
-    return "Слишком много запросов к модели — повторите через минуту.";
-  }
-  if (error instanceof Anthropic.APIConnectionError) {
-    return "Нет связи с Anthropic — проверьте интернет и повторите.";
-  }
-  if (error instanceof Anthropic.APIError) {
-    return `Ошибка модели (${error.status ?? "без кода"}) — повторите запрос.`;
-  }
-  return "Не удалось получить ответ — повторите запрос.";
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -160,7 +142,7 @@ export async function POST(request: Request) {
     },
     onError(error) {
       console.error(error);
-      return errorText(error);
+      return claudeErrorText(error);
     },
   });
 

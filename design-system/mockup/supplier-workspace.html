@@ -1,0 +1,887 @@
+<title>Рабочее место поставщика</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@600;700&display=swap">
+<style>
+  /* Токены — design-system/brand.css («Индиго + мягкая») */
+  :root {
+    --ground: #eeeef6; --ink: #14142b; --ink-2: #474763; --ink-3: #77778f; --rule: #dcdcea;
+    --paper: #ffffff; --paper-2: #f6f6fb; --paper-3: #ecebf6; --edge-2: #d0cfe4;
+    --brand: #312e81; --brand-press: #26246a; --brand-tint: #e2e1f3; --on-brand: #ffffff;
+    --ok: #0d9f6e; --ok-tint: #d8f5e9;
+    --warn: #b4690e; --warn-tint: #fbeeda;
+    --danger: #cf2f24;
+    --danger-tint: color-mix(in srgb, var(--danger) 12%, var(--paper));
+    --scrim: rgb(20 20 43 / .42);
+    --r-surface: 24px; --r-card: 18px; --r-bubble: 22px; --r-ctl: 14px; --r-pill: 999px;
+    --lift: 0 2px 6px rgb(20 20 43 / .05), 0 18px 40px -20px rgb(20 20 43 / .25);
+    --display: "Unbounded", ui-sans-serif, system-ui, sans-serif;
+    --ui: "Onest", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #0b0b16; --ink: #ebebf7; --ink-2: #a6a6c2; --ink-3: #8a8aa6; --rule: #22223c;
+      --paper: #131324; --paper-2: #19192e; --paper-3: #21213a; --edge-2: #333359;
+      --brand: #a5b4fc; --brand-press: #bcc6ff; --brand-tint: #22224a; --on-brand: #0b0a26;
+      --ok: #3ddc9a; --ok-tint: #103326; --warn: #e2a34a; --warn-tint: #352812; --danger: #ff7a70;
+      --scrim: rgb(0 0 0 / .6);
+      --lift: 0 2px 6px rgb(0 0 0 / .45), 0 18px 40px -20px rgb(0 0 0 / .7);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #0b0b16; --ink: #ebebf7; --ink-2: #a6a6c2; --ink-3: #8a8aa6; --rule: #22223c;
+    --paper: #131324; --paper-2: #19192e; --paper-3: #21213a; --edge-2: #333359;
+    --brand: #a5b4fc; --brand-press: #bcc6ff; --brand-tint: #22224a; --on-brand: #0b0a26;
+    --ok: #3ddc9a; --ok-tint: #103326; --warn: #e2a34a; --warn-tint: #352812; --danger: #ff7a70;
+    --scrim: rgb(0 0 0 / .6);
+    --lift: 0 2px 6px rgb(0 0 0 / .45), 0 18px 40px -20px rgb(0 0 0 / .7);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 16px/25px var(--ui); -webkit-font-smoothing: antialiased; }
+  [hidden] { display: none !important; }
+  button, input, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+  .wrap { max-width: 680px; margin-inline: auto; padding-inline: 16px; }
+  .top { padding-block: 20px 0; }
+  .logo {
+    appearance: none; border: 0; background: none; padding: 0; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 10px; font: 700 16px/1 var(--display); letter-spacing: -.03em;
+  }
+  .logo-mark { width: 30px; height: 30px; border-radius: 11px; display: grid; place-items: center; background: var(--brand); color: var(--on-brand); }
+  main { padding-block: 8px 40px; }
+
+  .back {
+    appearance: none; border: 0; background: none; padding: 0; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px; margin-top: 18px;
+    color: var(--ink-3); font-weight: 500; font-size: 15px;
+  }
+  .back:hover { color: var(--ink); }
+  h1 { margin: 14px 0 10px; font-family: var(--display); font-weight: 700; font-size: clamp(23px, 5vw, 30px); line-height: 1.18; letter-spacing: -.04em; text-wrap: balance; }
+  .lead { margin: 0; font-size: 17px; line-height: 26px; color: var(--ink-2); max-width: 48ch; }
+  .muted { color: var(--ink-3); }
+
+  .btn {
+    appearance: none; border: 0; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    min-height: 52px; padding: 0 24px; border-radius: var(--r-ctl);
+    background: var(--paper); color: var(--ink); font-weight: 600; font-size: 16px;
+    box-shadow: inset 0 0 0 1.5px var(--edge-2);
+  }
+  .btn:hover { background: var(--paper-2); }
+  .btn.main { background: var(--brand); color: var(--on-brand); box-shadow: none; }
+  .btn.main:hover { background: var(--brand-press); }
+  .btn:has(input:focus-visible), .ref:has(input:focus-visible) { outline: 2px solid var(--brand); outline-offset: 3px; }
+  .link, .ref {
+    appearance: none; border: 0; background: none; padding: 0; cursor: pointer;
+    color: var(--brand); font-weight: 600; text-decoration: underline; text-underline-offset: 4px;
+    text-decoration-color: color-mix(in srgb, var(--brand) 40%, transparent);
+  }
+  .ref { font-size: 14px; font-weight: 500; }
+
+  /* ---------- мои закупки ---------- */
+  .cards { list-style: none; margin: 22px 0 0; padding: 0; display: grid; gap: 10px; }
+  .card {
+    appearance: none; border: 0; cursor: pointer; width: 100%; text-align: left;
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 14px; align-items: center;
+    padding: 18px 20px; border-radius: var(--r-card); background: var(--paper);
+  }
+  .card:hover { box-shadow: var(--lift); }
+  .card-title { font-weight: 700; font-size: 17px; line-height: 24px; }
+  .card-sub { font-size: 14.5px; color: var(--ink-3); grid-column: 1; }
+  .chev { grid-column: 2; grid-row: 1 / span 2; color: var(--ink-3); }
+  .soon { color: var(--warn); font-weight: 600; }
+  .good { color: var(--ok); font-weight: 600; }
+  .bad-t { color: var(--danger); font-weight: 600; }
+  .new-btn { margin-top: 22px; }
+
+  /* ---------- закупка ---------- */
+  .kind { margin: 20px 0 0; font-size: 14.5px; color: var(--ink-3); }
+  .pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: var(--r-pill); font-weight: 600; font-size: 14.5px; background: var(--paper); color: var(--ink-2); }
+  .pill.soon { background: var(--warn-tint); color: var(--warn); }
+  .pill.good { background: var(--ok-tint); color: var(--ok); }
+  .facts { margin: 16px 0 0; display: grid; gap: 4px; font-size: 15.5px; color: var(--ink-2); }
+  .facts b { color: var(--ink); font-weight: 600; }
+  .menu { list-style: none; margin: 24px 0 0; padding: 0; border-radius: var(--r-surface); background: var(--paper); overflow: hidden; }
+  .menu li + li { border-top: 1px solid var(--rule); }
+  .menu .card { border-radius: 0; background: transparent; padding: 20px; }
+  .menu .card:hover { box-shadow: none; background: var(--paper-2); }
+  .docs-line { margin: 20px 0 0; font-size: 14px; line-height: 21px; color: var(--ink-3); }
+
+  /* ---------- требования ---------- */
+  .group { margin-top: 26px; }
+  .group h2 { margin: 0 0 10px; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+  .list { list-style: none; margin: 0; padding: 0; border-radius: var(--r-card); background: var(--paper); }
+  .list li { padding: 14px 18px; display: grid; gap: 2px; }
+  .list li + li { border-top: 1px solid var(--rule); }
+  .list .ref { justify-self: start; }
+
+  /* ---------- загрузка и ожидание ---------- */
+  .drop {
+    margin-top: 26px; padding: 36px 24px; border-radius: var(--r-surface);
+    background: var(--paper); box-shadow: inset 0 0 0 2px var(--edge-2);
+    display: grid; justify-items: center; gap: 16px; text-align: center;
+  }
+  .drop.over { background: var(--brand-tint); box-shadow: inset 0 0 0 2px var(--brand); }
+  .drop p { margin: 0; color: var(--ink-2); }
+  .drop-icon { color: var(--brand); }
+  .or { font-size: 15px; color: var(--ink-3); }
+  .busy { margin-top: 48px; display: grid; gap: 18px; }
+  .busy-text { margin: 0; font-size: 18px; font-weight: 600; }
+  .track { height: 6px; border-radius: var(--r-pill); background: var(--paper); overflow: hidden; }
+  .track i { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--brand); transition: width .6s ease; }
+
+  /* ---------- техническое предложение ---------- */
+  .note { margin-top: 20px; padding: 14px 18px; border-radius: var(--r-card); display: flex; align-items: center; gap: 12px; font-weight: 600; }
+  .note.warn { background: var(--warn-tint); color: var(--warn); }
+  .note.ok { background: var(--ok-tint); color: var(--ok); }
+  .note svg { flex: none; }
+  .items { list-style: none; margin: 16px 0 0; padding: 0; border-radius: var(--r-surface); background: var(--paper); }
+  .item { padding: 18px 20px; display: grid; gap: 6px; }
+  .item + .item { border-top: 1px solid var(--rule); }
+  .item-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .item-head h2 { margin: 0; font-size: 16px; font-weight: 700; }
+  .flag { font-size: 13px; font-weight: 600; color: var(--warn); }
+  .need { margin: 0; font-size: 14.5px; line-height: 21px; color: var(--ink-3); }
+  .offer { margin-inline: -8px; padding: 6px 8px; border-radius: 10px; outline: none; cursor: text; white-space: pre-wrap; }
+  .offer:hover { background: var(--paper-2); }
+  .offer:focus { background: var(--paper-2); box-shadow: inset 0 0 0 2px var(--brand); }
+  mark.fill { background: var(--warn-tint); color: var(--warn); border-radius: 6px; padding: 1px 5px; font-weight: 600; }
+  .actions {
+    position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 10px;
+    margin-top: 8px; padding-block: 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(to bottom, transparent, var(--ground) 28%);
+  }
+
+  /* ---------- проверка ---------- */
+  .findings { list-style: none; margin: 22px 0 0; padding: 0; display: grid; gap: 10px; }
+  .finding { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; padding: 16px 18px; border-radius: var(--r-card); background: var(--paper); }
+  .finding p { margin: 0; }
+  .finding .what { font-weight: 600; }
+  .finding .todo { color: var(--ink-2); }
+  .ico { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 15px; }
+  .bad .ico { background: var(--danger-tint); color: var(--danger); }
+  .warn .ico { background: var(--warn-tint); color: var(--warn); }
+  .ok .ico { background: var(--ok-tint); color: var(--ok); }
+  .finding.ok { background: transparent; }
+  .finding.ok .what { color: var(--ok); }
+  .under { margin: 22px 0 0; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 6px 18px; }
+
+  /* ---------- вопросы ---------- */
+  .chatbox { margin-top: 22px; padding: 18px; border-radius: var(--r-surface); background: var(--paper); display: grid; gap: 18px; }
+  .chatbox .empty { margin: 0; color: var(--ink-3); font-size: 15px; }
+  .msg { font-size: 15px; line-height: 23px; }
+  .msg.user { justify-self: end; max-width: 80%; padding: 10px 15px; background: var(--paper-3); border-radius: var(--r-bubble) var(--r-bubble) 8px var(--r-bubble); }
+  .msg.bot p { margin: 0 0 8px; }
+  .msg.bot p:last-child { margin: 0; }
+  .bot-meta { margin-top: 8px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; font-size: 14px; color: var(--ink-3); }
+  .thinking { margin: 0; color: var(--ink-3); animation: pulse 1.2s ease-in-out infinite; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .chip { appearance: none; border: 0; cursor: pointer; text-align: left; padding: 10px 15px; border-radius: var(--r-pill); background: var(--paper); font-weight: 500; font-size: 15px; line-height: 20px; }
+  .chip:hover { background: var(--paper-2); }
+  .ask-bar { position: sticky; bottom: 0; z-index: 5; padding-block: 14px calc(14px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to bottom, transparent, var(--ground) 30%); }
+  .field { display: flex; align-items: flex-end; gap: 8px; padding: 8px 8px 8px 16px; border-radius: var(--r-surface); background: var(--paper); box-shadow: var(--lift); }
+  .field textarea { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; resize: none; font-size: 16px; line-height: 24px; padding: 6px 0; max-height: 120px; }
+  .field textarea::placeholder { color: var(--ink-3); }
+  .send { appearance: none; border: 0; cursor: pointer; flex: none; width: 38px; height: 38px; border-radius: var(--r-pill); display: grid; place-items: center; background: var(--brand); color: var(--on-brand); }
+  .send:hover { background: var(--brand-press); }
+
+  /* ---------- цитата, уведомление ---------- */
+  .modal-scrim { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: var(--scrim); }
+  .modal { width: min(500px, 100%); max-height: calc(100% - 32px); overflow-y: auto; display: grid; gap: 14px; padding: 22px; border-radius: var(--r-surface); background: var(--paper); box-shadow: var(--lift); }
+  .modal h2 { margin: 0; font-size: 17px; font-weight: 700; }
+  .modal .eyebrow { font-size: 13px; color: var(--ink-3); }
+  .quote { margin: 0; padding: 14px 16px; border-radius: 14px; background: var(--paper-2); font-size: 15.5px; line-height: 24px; }
+  .quote mark { background: var(--warn-tint); color: var(--ink); border-radius: 4px; padding: 0 3px; }
+  .modal .btn { justify-self: end; }
+  .toast {
+    position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); z-index: 80;
+    transform: translate(-50%, 12px); opacity: 0; pointer-events: none;
+    width: max-content; max-width: min(460px, calc(100% - 32px));
+    padding: 12px 18px; border-radius: var(--r-ctl); background: var(--ink); color: var(--paper);
+    font-size: 14px; line-height: 20px; box-shadow: var(--lift); transition: opacity .18s ease, transform .18s ease;
+  }
+  .toast[data-show="true"] { opacity: 1; transform: translate(-50%, 0); }
+  .foot { margin: 36px 0 0; font-size: 13px; color: var(--ink-3); }
+
+  @keyframes pulse { 50% { opacity: .45; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+  @media (max-width: 480px) {
+    .btn { width: 100%; }
+    .actions { flex-direction: column; }
+    .item, .card, .menu .card { padding: 16px; }
+  }
+</style>
+
+<header class="wrap top">
+  <button class="logo" type="button" data-go="home" aria-label="Тендерный юрист — мои закупки">
+    <span class="logo-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+    </span>
+    Тендерный юрист
+  </button>
+</header>
+
+<main class="wrap" id="view"></main>
+
+<div class="modal-scrim" id="modal" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  const TODAY = new Date(2026, 8, 24); // дата, от которой считаются сроки в примере
+
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const plural = (n, one, few, many) => { const a = Math.abs(n) % 100, b = a % 10; return a > 10 && a < 20 ? many : b === 1 ? one : b >= 2 && b <= 4 ? few : many; };
+  const rub = (n) => n.toLocaleString("ru-RU") + " ₽";
+  const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+  const human = (iso) => { const [, m, d] = iso.split("-").map(Number); return `${d} ${MONTHS[m - 1]}`; };
+  const daysTo = (iso) => { const [y, m, d] = iso.split("-").map(Number); return Math.round((new Date(y, m - 1, d) - TODAY) / 86400000); };
+  const quick = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const CHEV = '<svg class="chev" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
+  const UPLOAD = '<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M12 17v-6"/><path d="m9 14 3-3 3 3"/></svg>';
+  const SEND = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>';
+  const PEN = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+  const TICK = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+
+  const S = (label, doc, place, file, quote, mark) => ({ label, doc, place, file, quote, mark });
+  const LAW = (label, text) => ({ label, doc: "Закон № 44-ФЗ", place: label.split(", ")[1], quote: text, law: true });
+  const LAW43 = LAW("44-ФЗ, ст. 43", "Статья 43 определяет состав заявки на участие в закупке: какие сведения и документы в неё входят.");
+  const LAW44 = LAW("44-ФЗ, ст. 44", "Статья 44 регулирует обеспечение заявок: размер, способы внесения — деньгами на специальном счёте или независимой гарантией — и когда обеспечение возвращают.");
+
+  const PURCHASES = [
+    {
+      id: "p1", short: "Церемония «Педагог года — 2026»",
+      title: "Торжественная церемония награждения «Педагог года — 2026»",
+      kind: "44-ФЗ · электронный конкурс", customer: "Управление образования администрации г. Энска", nmck: 685000,
+      deadline: "2026-09-30", time: "10:00",
+      docs: ["Извещение.pdf", "Техническое задание.docx", "Проект контракта.pdf", "Порядок оценки.pdf"],
+      sources: {
+        izv4: S("Извещение, раздел 4", "Извещение", "раздел 4", "Извещение.pdf", "Дата и время окончания срока подачи заявок: 30.09.2026 10:00 (МСК).", "30.09.2026 10:00"),
+        izv7: S("Извещение, раздел 7", "Извещение", "раздел 7", "Извещение.pdf", "Размер обеспечения заявки: 1% от начальной (максимальной) цены контракта — 6 850,00 руб. Обеспечение предоставляется путём блокирования денежных средств на специальном счёте участника или независимой гарантией.", "6 850,00 руб."),
+        izv8: S("Извещение, раздел 8", "Извещение", "раздел 8", "Извещение.pdf", "Декларация о соответствии участника закупки единым требованиям формируется с использованием программно-аппаратных средств электронной площадки.", "формируется с использованием программно-аппаратных средств электронной площадки"),
+        izv9: S("Извещение, раздел 9", "Извещение", "раздел 9", "Извещение.pdf", "Дата подведения итогов определения поставщика: не позднее 06.10.2026.", "не позднее 06.10.2026"),
+        izv11: S("Извещение, раздел 11", "Извещение", "раздел 11", "Извещение.pdf", "Размер обеспечения исполнения контракта: 5% от цены контракта.", "5% от цены контракта"),
+        d513: S("Документация, п. 5.1.3", "Требования к содержанию заявки", "пункт 5.1.3", "Извещение.pdf", "Предложение участника закупки в отношении объекта закупки должно содержать проект программы мероприятия с указанием тайминга, а также описание порядка оказания услуг.", "проект программы мероприятия с указанием тайминга"),
+        oc2: S("Порядок оценки, п. 2", "Порядок оценки заявок", "пункт 2", "Порядок оценки.pdf", "Критерий «Качественные характеристики объекта закупки»: оценивается детальность программы мероприятия и описания порядка оказания услуг.", "детальность программы мероприятия"),
+        oc3: S("Порядок оценки, п. 3", "Порядок оценки заявок", "пункт 3", "Порядок оценки.pdf", "Критерий «Квалификация участника закупки»: наличие опыта по успешному исполнению контрактов на организацию мероприятий, подтверждённого исполненными контрактами и актами о приёмке.", "исполненными контрактами и актами о приёмке"),
+        tz13: S("ТЗ, п. 1.3", "Техническое задание", "пункт 1.3", "Техническое задание.docx", "Дата и время проведения мероприятия: 27 ноября 2026 г., с 15:00 до 19:00.", "27 ноября 2026 г., с 15:00 до 19:00"),
+        tz21: S("ТЗ, п. 2.1", "Техническое задание", "пункт 2.1", "Техническое задание.docx", "Исполнитель обеспечивает площадку проведения: зал вместимостью не менее 150 мест в пределах г. Энска, с гардеробом и условиями доступности для маломобильных граждан.", "не менее 150 мест"),
+        tz22: S("ТЗ, п. 2.2", "Техническое задание", "пункт 2.2", "Техническое задание.docx", "Количество участников мероприятия: не менее 120 человек.", "не менее 120 человек"),
+        tz31: S("ТЗ, п. 3.1", "Техническое задание", "пункт 3.1", "Техническое задание.docx", "Программа мероприятия согласовывается с Заказчиком не позднее чем за 10 рабочих дней до даты проведения.", "за 10 рабочих дней"),
+        tz34: S("ТЗ, п. 3.4", "Техническое задание", "пункт 3.4", "Техническое задание.docx", "Ведущий мероприятия — с опытом проведения официальных мероприятий не менее 3 лет.", "не менее 3 лет"),
+        tz41: S("ТЗ, п. 4.1", "Техническое задание", "пункт 4.1", "Техническое задание.docx", "Звуковое и световое оборудование, светодиодный экран размером не менее 3×2 м, не менее 2 радиомикрофонов.", "не менее 3×2 м"),
+        tz43: S("ТЗ, п. 4.3", "Техническое задание", "пункт 4.3", "Техническое задание.docx", "Фотосъёмка мероприятия; передача Заказчику не менее 100 обработанных фотографий в течение 5 рабочих дней после мероприятия.", "в течение 5 рабочих дней"),
+        tz51: S("ТЗ, п. 5.1", "Техническое задание", "пункт 5.1", "Техническое задание.docx", "Кофе-брейк на 120 человек: чай, кофе, не менее 2 наименований выпечки на человека.", "не менее 2 наименований выпечки"),
+        tz62: S("ТЗ, п. 6.2", "Техническое задание", "пункт 6.2", "Техническое задание.docx", "По итогам оказания услуг Исполнитель представляет акт оказанных услуг и фотоотчёт.", "акт оказанных услуг и фотоотчёт"),
+        k25: S("Контракт, п. 2.5", "Проект контракта", "пункт 2.5", "Проект контракта.pdf", "Оплата производится в течение 7 рабочих дней с даты подписания Заказчиком документа о приёмке.", "в течение 7 рабочих дней"),
+        k43: S("Контракт, п. 4.3", "Проект контракта", "пункт 4.3", "Проект контракта.pdf", "Заказчик в течение 3 рабочих дней с даты получения проекта программы согласовывает его либо направляет мотивированные замечания.", "в течение 3 рабочих дней"),
+        law43: LAW43, law44: LAW44,
+      },
+      requirements: [
+        { title: "Что подать в заявке", items: [
+          { t: "Программа мероприятия с таймингом и описание, как будете оказывать услуги — за это дают баллы", src: "d513" },
+          { t: "Опыт: исполненные контракты на организацию мероприятий с актами — тоже добавляет баллы", src: "oc3" },
+          { t: "Декларация о соответствии требованиям — её формирует площадка", src: "izv8" },
+        ] },
+        { title: "Что требует ТЗ", items: [
+          { t: "27 ноября 2026 г., с 15:00 до 19:00", src: "tz13" },
+          { t: "Зал от 150 мест в пределах города, гардероб, доступ для маломобильных граждан", src: "tz21" },
+          { t: "Не менее 120 участников", src: "tz22" },
+          { t: "Программу согласовать не позднее чем за 10 рабочих дней", src: "tz31" },
+          { t: "Ведущий с опытом официальных мероприятий от 3 лет", src: "tz34" },
+          { t: "Звук, свет, экран от 3×2 м, минимум 2 радиомикрофона", src: "tz41" },
+          { t: "Не менее 100 обработанных фото в течение 5 рабочих дней", src: "tz43" },
+          { t: "Кофе-брейк на 120 человек: чай, кофе, от 2 видов выпечки", src: "tz51" },
+          { t: "Акт оказанных услуг и фотоотчёт", src: "tz62" },
+        ] },
+        { title: "Сроки и деньги", items: [
+          { t: "Подать заявку до 30 сентября, 10:00 по Москве", src: "izv4" },
+          { t: "Итоги — не позднее 6 октября", src: "izv9" },
+          { t: "Обеспечение заявки — 6 850 ₽ (1% от НМЦК)", src: "izv7" },
+          { t: "Обеспечение контракта — 34 250 ₽ (5% от НМЦК)", src: "izv11" },
+          { t: "Оплата — в течение 7 рабочих дней после приёмки", src: "k25" },
+        ] },
+      ],
+      tpDraft: [
+        { name: "Дата и время", need: "27 ноября 2026 г., с 15:00 до 19:00", src: "tz13", offer: "27 ноября 2026 г., с 15:00 до 19:00." },
+        { name: "Площадка", need: "зал от 150 мест, гардероб, доступ для маломобильных граждан", src: "tz21", offer: "[название и адрес зала], вместимость — [число] мест, гардероб, пандус и доступный вход для маломобильных граждан." },
+        { name: "Участники", need: "не менее 120 человек", src: "tz22", offer: "Проведём мероприятие для 120 участников." },
+        { name: "Программа", need: "согласовать не позднее чем за 10 рабочих дней", src: "tz31", offer: "Проект программы с таймингом — в приложении 1. Согласуем программу с заказчиком не позднее чем за 10 рабочих дней до мероприятия." },
+        { name: "Ведущий", need: "опыт официальных мероприятий от 3 лет", src: "tz34", offer: "Ведущий — [ФИО], опыт проведения официальных мероприятий — [число] лет." },
+        { name: "Техника", need: "звук, свет, экран от 3×2 м, от 2 радиомикрофонов", src: "tz41", offer: "Звуковое и световое оборудование, светодиодный экран 4×2,5 м, 2 радиомикрофона." },
+        { name: "Фотоотчёт", need: "от 100 фото в течение 5 рабочих дней", src: "tz43", offer: "Передадим 120 обработанных фотографий в течение 5 рабочих дней после мероприятия." },
+        { name: "Кофе-брейк", need: "на 120 человек: чай, кофе, от 2 видов выпечки", src: "tz51", offer: "Кофе-брейк на 120 человек: чай, кофе, 2 вида выпечки на человека." },
+        { name: "Отчётность", need: "акт оказанных услуг и фотоотчёт", src: "tz62", offer: "Акт оказанных услуг и фотоотчёт по итогам мероприятия." },
+      ],
+      tpState: "done",
+      findings: [
+        { kind: "bad", what: "Зал на 120 мест, а по ТЗ нужно не меньше 150.", todo: "За это заявку могут отклонить. Укажите зал вместимостью от 150 мест.", src: "tz21" },
+        { kind: "warn", what: "Написано «за 10 дней», а в ТЗ — «за 10 рабочих дней».", todo: "Допишите слово «рабочих».", src: "tz31" },
+        { kind: "warn", what: "Не указан срок передачи фотографий.", todo: "Добавьте: «в течение 5 рабочих дней».", src: "tz43" },
+      ],
+      okCount: 6, checkState: "none",
+      chat: [
+        { role: "user", text: "Какое обеспечение заявки и как его внести?" },
+        { role: "bot", text: "**6 850 ₽ — 1% от НМЦК.**\n\nВнести можно деньгами на специальный счёт участника закупок или независимой гарантией — способ выбираете сами.", src: ["izv7", "law44"] },
+      ],
+      suggest: [
+        { q: "Нужно ли прикладывать программу к заявке?", a: "**Да, и от неё зависят баллы.**\n\nПроект программы с таймингом входит в предложение участника. Его оценивают по качеству: чем подробнее программа и описание, как вы будете оказывать услуги, тем выше баллы.", src: ["d513", "oc2", "law43"] },
+        { q: "Заказчик не согласует программу — что делать?", a: "**Опирайтесь на контракт: на согласование у заказчика 3 рабочих дня.**\n\nЕсли срок прошёл, направьте письменное требование со ссылкой на этот пункт контракта и сохраните подтверждение отправки — это защитит вас, если из-за задержки сдвинутся сроки. Если заказчик продолжает молчать, покажите переписку юристу.", src: ["k43"] },
+        { q: "Когда подведут итоги?", a: "**Не позднее 6 октября.**\n\nПротокол подведения итогов опубликуют в ЕИС и на площадке.", src: ["izv9"] },
+      ],
+    },
+    {
+      id: "p2", short: "Новогодние представления в детских садах",
+      title: "Новогодние представления для воспитанников детских садов",
+      kind: "44-ФЗ · электронный конкурс", customer: "МКУ «Центр обеспечения дошкольного образования» г. Энска", nmck: 412000,
+      deadline: "2026-10-14", time: "09:00",
+      docs: ["Извещение.pdf", "Техническое задание.pdf", "Проект контракта.pdf"],
+      sources: {
+        izv4: S("Извещение, раздел 4", "Извещение", "раздел 4", "Извещение.pdf", "Дата и время окончания срока подачи заявок: 14.10.2026 09:00 (МСК).", "14.10.2026 09:00"),
+        izv7: S("Извещение, раздел 7", "Извещение", "раздел 7", "Извещение.pdf", "Размер обеспечения заявки: 1% от начальной (максимальной) цены контракта — 4 120,00 руб.", "4 120,00 руб."),
+        izv9: S("Извещение, раздел 9", "Извещение", "раздел 9", "Извещение.pdf", "Дата подведения итогов определения поставщика: не позднее 20.10.2026.", "не позднее 20.10.2026"),
+        d42: S("Документация, п. 4.2", "Требования к содержанию заявки", "пункт 4.2", "Извещение.pdf", "Предложение участника должно содержать сценарий представления и перечень персонажей.", "сценарий представления и перечень персонажей"),
+        tz1: S("ТЗ, п. 1", "Техническое задание", "пункт 1", "Техническое задание.pdf", "Количество представлений: 14 — по одному в каждом дошкольном учреждении согласно приложению 2.", "14"),
+        tz2: S("ТЗ, п. 2", "Техническое задание", "пункт 2", "Техническое задание.pdf", "Продолжительность каждого представления — не менее 40 минут.", "не менее 40 минут"),
+        tz3: S("ТЗ, п. 3", "Техническое задание", "пункт 3", "Техническое задание.pdf", "Персонажи: Дед Мороз, Снегурочка и не менее двух сказочных персонажей в тематических костюмах.", "не менее двух сказочных персонажей"),
+        tz4: S("ТЗ, п. 4", "Техническое задание", "пункт 4", "Техническое задание.pdf", "Период оказания услуг: с 15 по 26 декабря 2026 г. по графику, согласованному с Заказчиком.", "с 15 по 26 декабря 2026 г."),
+        tz5: S("ТЗ, п. 5", "Техническое задание", "пункт 5", "Техническое задание.pdf", "Музыкальное сопровождение обеспечивается аппаратурой Исполнителя.", "аппаратурой Исполнителя"),
+        k27: S("Контракт, п. 2.7", "Проект контракта", "пункт 2.7", "Проект контракта.pdf", "Оплата производится в течение 7 рабочих дней с даты подписания документа о приёмке.", "в течение 7 рабочих дней"),
+        law44: LAW44,
+      },
+      requirements: [
+        { title: "Что подать в заявке", items: [
+          { t: "Сценарий представления и перечень персонажей — за это дают баллы", src: "d42" },
+        ] },
+        { title: "Что требует ТЗ", items: [
+          { t: "14 представлений — по одному в каждом детском саду", src: "tz1" },
+          { t: "Каждое представление — не менее 40 минут", src: "tz2" },
+          { t: "Дед Мороз, Снегурочка и ещё минимум 2 персонажа в костюмах", src: "tz3" },
+          { t: "С 15 по 26 декабря 2026 г. по графику заказчика", src: "tz4" },
+          { t: "Музыка на своей аппаратуре", src: "tz5" },
+        ] },
+        { title: "Сроки и деньги", items: [
+          { t: "Подать заявку до 14 октября, 09:00 по Москве", src: "izv4" },
+          { t: "Итоги — не позднее 20 октября", src: "izv9" },
+          { t: "Обеспечение заявки — 4 120 ₽ (1% от НМЦК)", src: "izv7" },
+          { t: "Оплата — в течение 7 рабочих дней после приёмки", src: "k27" },
+        ] },
+      ],
+      tpDraft: [
+        { name: "Количество", need: "14 представлений", src: "tz1", offer: "14 представлений — по одному в каждом детском саду из приложения 2 к ТЗ." },
+        { name: "Продолжительность", need: "не менее 40 минут", src: "tz2", offer: "Продолжительность каждого представления — 45 минут." },
+        { name: "Персонажи", need: "Дед Мороз, Снегурочка и ещё минимум 2", src: "tz3", offer: "Дед Мороз, Снегурочка и [ещё 2 персонажа — каких] в тематических костюмах." },
+        { name: "Период", need: "с 15 по 26 декабря по графику", src: "tz4", offer: "С 15 по 26 декабря 2026 г. по графику, согласованному с заказчиком." },
+        { name: "Музыка", need: "своя аппаратура", src: "tz5", offer: "Музыкальное сопровождение — на собственной аппаратуре." },
+      ],
+      tpState: "none",
+      findings: [
+        { kind: "bad", what: "Написано «30–40 минут», а по ТЗ нужно не меньше 40.", todo: "Укажите одно значение от 40 минут — диапазон не подходит.", src: "tz2" },
+      ],
+      okCount: 4, checkState: "none",
+      chat: [],
+      suggest: [
+        { q: "Какое обеспечение заявки?", a: "**4 120 ₽ — 1% от НМЦК.**\n\nВносится деньгами на специальный счёт или независимой гарантией.", src: ["izv7", "law44"] },
+        { q: "Что должно быть в предложении?", a: "**Сценарий представления и перечень персонажей.**\n\nПерсонажей должно быть не меньше, чем в ТЗ: Дед Мороз, Снегурочка и ещё минимум двое.", src: ["d42", "tz3"] },
+      ],
+    },
+    {
+      id: "p3", short: "Выездной семинар для сотрудников",
+      title: "Выездной обучающий семинар для сотрудников",
+      kind: "223-ФЗ · запрос предложений", customer: "АО «Энскводоканал»", nmck: 960000,
+      deadline: "2026-09-17", time: "12:00", sent: "2026-09-17", results: "2026-09-29",
+      docs: ["Извещение.pdf", "Документация.pdf", "Техническое задание.docx"],
+      sources: {
+        izv12: S("Извещение, п. 12", "Извещение", "пункт 12", "Извещение.pdf", "Подведение итогов закупки: не позднее 29.09.2026.", "не позднее 29.09.2026"),
+        pol: S("Документация, раздел 1", "Документация о закупке", "раздел 1", "Документация.pdf", "Закупка проводится в соответствии с Положением о закупке товаров, работ, услуг АО «Энскводоканал».", "Положением о закупке"),
+        tz1: S("ТЗ, п. 1", "Техническое задание", "пункт 1", "Техническое задание.docx", "Семинар для 45 участников продолжительностью 2 дня: 16–17 октября 2026 г.", "45 участников"),
+        tz2: S("ТЗ, п. 2", "Техническое задание", "пункт 2", "Техническое задание.docx", "Размещение в загородном отеле не далее 60 км от г. Энска, одноместные номера.", "не далее 60 км"),
+        tz3: S("ТЗ, п. 3", "Техническое задание", "пункт 3", "Техническое задание.docx", "Трансфер участников от офиса Заказчика до места проведения и обратно.", "Трансфер участников"),
+      },
+      requirements: [
+        { title: "Что требует ТЗ", items: [
+          { t: "45 участников, 2 дня: 16–17 октября 2026 г.", src: "tz1" },
+          { t: "Загородный отель не дальше 60 км, одноместные номера", src: "tz2" },
+          { t: "Трансфер от офиса заказчика и обратно", src: "tz3" },
+        ] },
+        { title: "Сроки и порядок", items: [
+          { t: "Итоги — не позднее 29 сентября", src: "izv12" },
+          { t: "Правила закупки задаёт положение о закупке заказчика, а не 44-ФЗ", src: "pol" },
+        ] },
+      ],
+      tpDraft: [
+        { name: "Участники и даты", need: "45 человек, 16–17 октября", src: "tz1", offer: "Семинар для 45 участников, 16–17 октября 2026 г." },
+        { name: "Размещение", need: "отель до 60 км, одноместные номера", src: "tz2", offer: "Загородный отель «Сосновый бор», 38 км от г. Энска, одноместные номера для всех участников." },
+        { name: "Трансфер", need: "от офиса и обратно", src: "tz3", offer: "Трансфер от офиса заказчика до отеля и обратно — автобус на 50 мест." },
+      ],
+      tpState: "done",
+      findings: [], okCount: 3, checkState: "done",
+      chat: [],
+      suggest: [
+        { q: "Когда подведут итоги?", a: "**Не позднее 29 сентября.**\n\nПротокол опубликуют в ЕИС.", src: ["izv12"] },
+        { q: "Почему здесь не 44-ФЗ?", a: "**Заказчик закупает по 223-ФЗ.**\n\nВодоканал ведёт регулируемую деятельность в сфере водоснабжения, поэтому порядок закупки задаёт его положение о закупке, а не 44-ФЗ.", src: ["pol"] },
+      ],
+    },
+  ];
+
+  const NEW_TEMPLATE = {
+    id: "p4", short: "Концерт ко Дню матери",
+    title: "Праздничный концерт ко Дню матери",
+    kind: "44-ФЗ · электронный конкурс", customer: "Дом культуры «Юность» г. Энска", nmck: 530000,
+    deadline: "2026-10-09", time: "10:00",
+    docs: ["Извещение.pdf", "Техническое задание.docx", "Проект контракта.pdf"],
+    sources: {
+      izv4: S("Извещение, раздел 4", "Извещение", "раздел 4", "Извещение.pdf", "Дата и время окончания срока подачи заявок: 09.10.2026 10:00 (МСК).", "09.10.2026 10:00"),
+      izv7: S("Извещение, раздел 7", "Извещение", "раздел 7", "Извещение.pdf", "Размер обеспечения заявки: 1% от начальной (максимальной) цены контракта — 5 300,00 руб.", "5 300,00 руб."),
+      izv9: S("Извещение, раздел 9", "Извещение", "раздел 9", "Извещение.pdf", "Дата подведения итогов определения поставщика: не позднее 15.10.2026.", "не позднее 15.10.2026"),
+      d51: S("Документация, п. 5.1", "Требования к содержанию заявки", "пункт 5.1", "Извещение.pdf", "Предложение участника должно содержать концертную программу с перечнем номеров.", "концертную программу с перечнем номеров"),
+      tz1: S("ТЗ, п. 1", "Техническое задание", "пункт 1", "Техническое задание.docx", "Дата и время: 29 ноября 2026 г., с 14:00 до 16:00.", "29 ноября 2026 г."),
+      tz2: S("ТЗ, п. 2", "Техническое задание", "пункт 2", "Техническое задание.docx", "Концертная программа продолжительностью не менее 90 минут, не менее 6 номеров.", "не менее 6 номеров"),
+      tz3: S("ТЗ, п. 3", "Техническое задание", "пункт 3", "Техническое задание.docx", "Ведущий концерта с опытом работы на сцене не менее 2 лет.", "не менее 2 лет"),
+      tz4: S("ТЗ, п. 4", "Техническое задание", "пункт 4", "Техническое задание.docx", "Цветочное оформление сцены и зрительного зала.", "Цветочное оформление"),
+      k26: S("Контракт, п. 2.6", "Проект контракта", "пункт 2.6", "Проект контракта.pdf", "Оплата производится в течение 7 рабочих дней с даты подписания документа о приёмке.", "в течение 7 рабочих дней"),
+      law44: LAW44,
+    },
+    requirements: [
+      { title: "Что подать в заявке", items: [ { t: "Концертная программа с перечнем номеров — за это дают баллы", src: "d51" } ] },
+      { title: "Что требует ТЗ", items: [
+        { t: "29 ноября 2026 г., с 14:00 до 16:00", src: "tz1" },
+        { t: "Программа от 90 минут, не менее 6 номеров", src: "tz2" },
+        { t: "Ведущий с опытом работы на сцене от 2 лет", src: "tz3" },
+        { t: "Цветочное оформление сцены и зала", src: "tz4" },
+      ] },
+      { title: "Сроки и деньги", items: [
+        { t: "Подать заявку до 9 октября, 10:00 по Москве", src: "izv4" },
+        { t: "Итоги — не позднее 15 октября", src: "izv9" },
+        { t: "Обеспечение заявки — 5 300 ₽ (1% от НМЦК)", src: "izv7" },
+        { t: "Оплата — в течение 7 рабочих дней после приёмки", src: "k26" },
+      ] },
+    ],
+    tpDraft: [
+      { name: "Дата и время", need: "29 ноября, с 14:00 до 16:00", src: "tz1", offer: "29 ноября 2026 г., с 14:00 до 16:00." },
+      { name: "Программа", need: "от 90 минут, не менее 6 номеров", src: "tz2", offer: "Концертная программа 95 минут из [число, не меньше 6] номеров: [перечислите номера]." },
+      { name: "Ведущий", need: "опыт на сцене от 2 лет", src: "tz3", offer: "Ведущий — [ФИО], опыт работы на сцене — [число] лет." },
+      { name: "Оформление", need: "цветочное оформление сцены и зала", src: "tz4", offer: "Оформление сцены и зрительного зала живыми цветами." },
+    ],
+    tpState: "none",
+    findings: [
+      { kind: "warn", what: "Номера программы не перечислены, а по ТЗ их должно быть не меньше шести.", todo: "Перечислите номера концерта.", src: "tz2" },
+    ],
+    okCount: 3, checkState: "none",
+    chat: [],
+    suggest: [
+      { q: "Какое обеспечение заявки?", a: "**5 300 ₽ — 1% от НМЦК.**\n\nВносится деньгами на специальный счёт или независимой гарантией.", src: ["izv7", "law44"] },
+      { q: "Что должно быть в предложении?", a: "**Концертная программа с перечнем номеров.**\n\nНомеров — не меньше шести, продолжительность — от 90 минут.", src: ["d51", "tz2"] },
+    ],
+  };
+
+  const FALLBACK = "В прототипе ответы заготовлены — попробуйте вопросы-подсказки. В рабочей версии я отвечу и на этот вопрос по документам закупки: с цитатой из пункта и ссылкой на статью закона.";
+
+  const prepare = (p) => { p.tp = p.tpState === "done" ? p.tpDraft.map((r) => ({ ...r })) : []; };
+  PURCHASES.forEach(prepare);
+
+  const state = { screen: "home", id: "p1" };
+  const byId = (id) => PURCHASES.find((p) => p.id === id);
+  const cur = () => byId(state.id);
+
+  /* ---------- общие кусочки ---------- */
+  const fmt = (t) => t.split(/\n{2,}/).map((para) => `<p>${esc(para).replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")}</p>`).join("");
+  const needsFill = (t) => /\[[^\]]+\]/.test(t);
+  const offerHTML = (t) => esc(t).replace(/\[[^\]]+\]/g, (m) => `<mark class="fill">${m}</mark>`);
+  const refBtn = (key, label) => `<button class="ref" type="button" data-act="quote" data-src="${key}">${esc(label || cur().sources[key].label)}</button>`;
+  const back = (label, go) => `<button class="back" type="button" data-go="${go}">← ${esc(label)}</button>`;
+  const fillCount = (p) => p.tp.filter((r) => needsFill(r.offer)).length;
+  const counts = (p) => ({ bad: p.findings.filter((f) => f.kind === "bad").length, warn: p.findings.filter((f) => f.kind === "warn").length });
+  const markIn = (text, phrase) => {
+    const safe = esc(text);
+    if (!phrase) return safe;
+    const m = esc(phrase), i = safe.indexOf(m);
+    return i < 0 ? safe : safe.slice(0, i) + "<mark>" + m + "</mark>" + safe.slice(i + m.length);
+  };
+
+  function dueLine(p) {
+    if (p.sent) return `<span class="good">Заявка подана</span> · итоги до ${human(p.results)}`;
+    const d = daysTo(p.deadline);
+    const left = `осталось ${d} ${plural(d, "день", "дня", "дней")}`;
+    return `Подать до ${human(p.deadline)} · <span class="${d <= 7 ? "soon" : ""}">${left}</span>`;
+  }
+
+  /* ---------- экраны ---------- */
+  function homeHTML() {
+    return `<h1>Мои закупки</h1>
+      <ul class="cards">${PURCHASES.map((p) => `<li>
+        <button class="card" type="button" data-go="purchase" data-id="${p.id}">
+          <span class="card-title">${esc(p.short)}</span>
+          <span class="card-sub">${dueLine(p)}</span>
+          ${CHEV}
+        </button></li>`).join("")}</ul>
+      <button class="btn main new-btn" type="button" data-go="new">+ Новая закупка</button>
+      <p class="foot">Прототип: все закупки, документы и ответы — вымышленный пример. Нажимайте на всё: кнопки работают, но файлы не читаются и ничего никуда не отправляется.</p>`;
+  }
+
+  function purchaseHTML(p) {
+    const reqN = p.requirements.reduce((n, g) => n + g.items.length, 0);
+    const fill = fillCount(p);
+    const tpSub = p.tpState !== "done"
+      ? "Ещё не составлено — составлю по ТЗ за пару минут"
+      : fill ? `<span class="soon">Черновик готов · впишите ${fill} ${plural(fill, "пункт", "пункта", "пунктов")}</span>` : '<span class="good">Черновик готов</span>';
+    let checkSub = "Не проверена — загрузите заявку перед подачей";
+    if (p.checkState === "done") {
+      const { bad, warn } = counts(p);
+      if (bad) checkSub = `<span class="bad-t">${bad} ${plural(bad, "ошибка", "ошибки", "ошибок")}${warn ? `, ${warn} ${plural(warn, "замечание", "замечания", "замечаний")}` : ""}</span>`;
+      else if (warn) checkSub = `<span class="soon">${warn} ${plural(warn, "замечание", "замечания", "замечаний")}</span>`;
+      else checkSub = '<span class="good">Ошибок нет</span>';
+    }
+    const asked = p.chat.filter((m) => m.role === "user").length;
+    const chatSub = asked ? `${asked} ${plural(asked, "вопрос", "вопроса", "вопросов")} · спросите ещё` : "Сроки, обеспечение, требования — отвечу со ссылкой на пункт";
+    const row = (go, title, sub) => `<li><button class="card" type="button" data-go="${go}"><span class="card-title">${title}</span><span class="card-sub">${sub}</span>${CHEV}</button></li>`;
+    const pill = p.sent
+      ? `<span class="pill good">Заявка подана ${human(p.sent)} · итоги до ${human(p.results)}</span>`
+      : (() => { const d = daysTo(p.deadline); return `<span class="pill ${d <= 7 ? "soon" : ""}">Подать до ${human(p.deadline)}, ${p.time} МСК · осталось ${d} ${plural(d, "день", "дня", "дней")}</span>`; })();
+    return `${back("Мои закупки", "home")}
+      <p class="kind">${esc(p.kind)}</p>
+      <h1>${esc(p.title)}</h1>
+      ${pill}
+      <div class="facts"><span>Заказчик: <b>${esc(p.customer)}</b></span><span>Начальная цена: <b>${rub(p.nmck)}</b></span></div>
+      <ul class="menu">
+        ${row("req", "Требования", `${reqN} ${plural(reqN, "пункт", "пункта", "пунктов")}: что подать, что требует ТЗ, сроки и деньги`)}
+        ${row("tp", "Техническое предложение", tpSub)}
+        ${row("check", "Проверка заявки", checkSub)}
+        ${row("chat", "Вопросы по закупке", chatSub)}
+      </ul>
+      <p class="docs-line">Документы: ${p.docs.map(esc).join(", ")} · <label class="ref" for="add-doc">добавить<input id="add-doc" type="file" multiple class="sr-only"></label></p>`;
+  }
+
+  function reqHTML(p) {
+    return `${back(p.short, "purchase")}
+      <h1>Требования</h1>
+      <p class="lead">Всё, что нужно для заявки, — из документов закупки. Нажмите на ссылку под пунктом, чтобы увидеть точную цитату.</p>
+      ${p.requirements.map((g) => `<section class="group"><h2>${g.title}</h2><ul class="list">${g.items.map((it) =>
+        `<li><span>${esc(it.t)}</span>${refBtn(it.src)}</li>`).join("")}</ul></section>`).join("")}`;
+  }
+
+  function tpHTML(p) {
+    const head = `${back(p.short, "purchase")}<h1>Техническое предложение</h1>`;
+    if (p.tpState !== "done") {
+      return `${head}
+        <p class="lead">Пройду ТЗ пункт за пунктом и напишу предложение, которое совпадает с требованиями заказчика. Вам останется вписать то, что знаете только вы.</p>
+        <div class="actions"><button class="btn main" type="button" data-act="compose">Составить черновик</button></div>`;
+    }
+    const fill = fillCount(p);
+    const note = fill
+      ? `<div class="note warn" id="tp-note">${PEN}Впишите свои данные в ${fill} ${plural(fill, "пункт", "пункта", "пунктов")} — они выделены жёлтым. Нажмите на текст, чтобы исправить.</div>`
+      : `<div class="note ok" id="tp-note">${TICK}Всё заполнено — можно скачивать.</div>`;
+    return `${head}${note}
+      <ol class="items">${p.tp.map((it, i) => `<li class="item">
+        <div class="item-head"><h2>${i + 1}. ${esc(it.name)}</h2>${needsFill(it.offer) ? '<span class="flag" data-flag>впишите данные</span>' : ""}</div>
+        <p class="need">В ТЗ: ${esc(it.need)} · ${refBtn(it.src)}</p>
+        <div class="offer" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Предложение: ${esc(it.name)}" data-i="${i}">${offerHTML(it.offer)}</div>
+      </li>`).join("")}</ol>
+      <div class="actions">
+        <button class="btn main" type="button" data-act="download">Скачать в Word</button>
+        <button class="btn" type="button" data-go="check">Проверить мою заявку</button>
+      </div>`;
+  }
+
+  function checkHTML(p) {
+    const head = back(p.short, "purchase");
+    if (p.checkState !== "done") {
+      return `${head}
+        <h1>Проверим заявку перед подачей</h1>
+        <p class="lead">Загрузите свою заявку или техническое предложение. Я сверю их с ТЗ по каждому пункту и скажу, за что могут отклонить.</p>
+        <div class="drop" id="drop-app">
+          <span class="drop-icon">${UPLOAD}</span>
+          <p>Перетащите файл заявки сюда</p>
+          <label class="btn main" for="file-app">Загрузить заявку<input id="file-app" type="file" class="sr-only"></label>
+          <span class="or">или <button class="link" type="button" data-act="sample-check">проверить пример</button></span>
+        </div>`;
+    }
+    const { bad, warn } = counts(p);
+    const parts = [];
+    if (bad) parts.push(`<span class="bad-t">${bad} ${plural(bad, "ошибку", "ошибки", "ошибок")}</span>`);
+    if (warn) parts.push(`<span class="soon">${warn} ${plural(warn, "замечание", "замечания", "замечаний")}</span>`);
+    const title = parts.length ? `Нашёл ${parts.join(" и ")}` : "Ошибок нет";
+    const lead = bad ? "Исправьте ошибку до подачи — замечания тоже лучше поправить." : warn ? "Отклонять не за что, но замечания лучше поправить." : "Заявка соответствует ТЗ по всем пунктам.";
+    return `${head}
+      <h1>${title}</h1>
+      <p class="lead">${lead}</p>
+      <ul class="findings">${p.findings.map((f) => `<li class="finding ${f.kind}">
+        <span class="ico" aria-hidden="true">${f.kind === "bad" ? "✕" : "!"}</span>
+        <div><p class="what">${esc(f.what)}</p><p class="todo">${esc(f.todo)}</p>${refBtn(f.src)}</div>
+      </li>`).join("")}
+        <li class="finding ok"><span class="ico" aria-hidden="true">✓</span><div><p class="what">${p.findings.length ? "Остальные" : "Все"} ${p.okCount} ${plural(p.okCount, "пункт", "пункта", "пунктов")} — в порядке.</p></div></li>
+      </ul>
+      <p class="under"><span>Сомневаетесь? <button class="link" type="button" data-act="lawyer">Спросить юриста</button></span><button class="link" type="button" data-act="recheck">Проверить другой файл</button></p>`;
+  }
+
+  function chatHTML(p) {
+    return `${back(p.short, "purchase")}
+      <h1>Вопросы по закупке</h1>
+      <p class="lead">Отвечаю по документам этой закупки — со ссылкой на пункт и статью закона.</p>
+      <div class="chatbox" id="feed">${feedHTML(p)}</div>
+      <div class="chips" id="chips">${chipsHTML(p)}</div>
+      <form class="ask-bar" id="ask-form">
+        <div class="field">
+          <textarea id="ask-input" rows="1" placeholder="Задайте свой вопрос…" aria-label="Вопрос по закупке"></textarea>
+          <button class="send" type="submit" aria-label="Отправить">${SEND}</button>
+        </div>
+      </form>`;
+  }
+
+  function feedHTML(p) {
+    if (!p.chat.length && !p.thinking) return '<p class="empty">Спросите что угодно про эту закупку или нажмите на готовый вопрос ниже.</p>';
+    return p.chat.map((m) => {
+      if (m.role === "user") return `<div class="msg user">${esc(m.text)}</div>`;
+      const done = m.done !== false;
+      const refs = (m.src || []).map((k) => refBtn(k)).join(" · ");
+      return `<div class="msg bot">${fmt(done ? m.text : m.shown)}${done ? `<div class="bot-meta">${refs ? `<span>Источник: ${refs}</span>` : ""}<button class="link" type="button" data-act="lawyer">Спросить юриста</button></div>` : ""}</div>`;
+    }).join("") + (p.thinking ? '<p class="thinking">Ищу в документах…</p>' : "");
+  }
+
+  function chipsHTML(p) {
+    return p.suggest.filter((s) => !s.used).map((s) => `<button class="chip" type="button" data-act="suggest" data-q="${esc(s.q)}">${esc(s.q)}</button>`).join("");
+  }
+
+  function newHTML() {
+    return `${back("Мои закупки", "home")}
+      <h1>Новая закупка</h1>
+      <p class="lead">Загрузите извещение, ТЗ и проект контракта — выпишу требования и сроки и подготовлю черновик технического предложения.</p>
+      <div class="drop" id="drop-new">
+        <span class="drop-icon">${UPLOAD}</span>
+        <p>Перетащите документы закупки сюда</p>
+        <label class="btn main" for="file-new">Загрузить документы<input id="file-new" type="file" multiple class="sr-only"></label>
+        <span class="or">или <button class="link" type="button" data-act="sample-new">взять пример</button></span>
+      </div>`;
+  }
+
+  /* ---------- навигация и отрисовка ---------- */
+  function render() {
+    const p = cur();
+    const view = $("#view");
+    const screens = { home: homeHTML, new: newHTML, purchase: () => purchaseHTML(p), req: () => reqHTML(p), tp: () => tpHTML(p), check: () => checkHTML(p), chat: () => chatHTML(p) };
+    view.innerHTML = screens[state.screen]();
+  }
+
+  function go(screen, id) {
+    state.screen = screen;
+    if (id) state.id = id;
+    render();
+    window.scrollTo(0, 0);
+    const h = $("#view h1");
+    if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+  }
+
+  function busy(lines, done) {
+    $("#view").innerHTML = '<div class="busy" aria-live="polite"><p class="busy-text" id="busy-text"></p><div class="track"><i id="busy-bar"></i></div></div>';
+    window.scrollTo(0, 0);
+    let i = 0;
+    const step = () => {
+      if (i === lines.length) { done(); return; }
+      $("#busy-text").textContent = lines[i];
+      i += 1;
+      $("#busy-bar").style.width = Math.round((i / lines.length) * 100) + "%";
+      setTimeout(step, quick ? 60 : 850);
+    };
+    step();
+  }
+
+  let toastTimer;
+  function toast(text) {
+    const t = $("#toast");
+    t.textContent = text;
+    t.dataset.show = "true";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.dataset.show = "false"; }, 3800);
+  }
+
+  let lastFocus = null;
+  function openQuote(key) {
+    const s = cur().sources[key];
+    lastFocus = document.activeElement;
+    const m = $("#modal");
+    m.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="${esc(s.doc)}">
+      <span class="eyebrow">${s.law ? "Закон" : "Цитата из документа"}</span>
+      <h2>${esc(s.doc)}, ${esc(s.place)}</h2>
+      <blockquote class="quote">${markIn(s.quote, s.mark)}</blockquote>
+      <p class="muted" style="margin:0;font-size:14px">${s.law ? "В рабочей версии здесь будет выдержка из действующей редакции закона." : "Файл: " + esc(s.file)}</p>
+      <button class="btn" type="button" data-act="close">Закрыть</button>
+    </div>`;
+    m.hidden = false;
+    $(".modal .btn").focus();
+  }
+  function closeModal() {
+    const m = $("#modal");
+    if (m.hidden) return false;
+    m.hidden = true;
+    m.innerHTML = "";
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+    return true;
+  }
+
+  function refreshChat(p) {
+    if (state.screen !== "chat" || cur() !== p) return;
+    $("#feed").innerHTML = feedHTML(p);
+    $("#chips").innerHTML = chipsHTML(p);
+    window.scrollTo(0, document.documentElement.scrollHeight);
+  }
+
+  function ask(p, question) {
+    const s = p.suggest.find((x) => x.q === question);
+    if (s) s.used = true;
+    const answer = s ? { text: s.a, src: s.src } : { text: FALLBACK, src: [] };
+    p.chat.push({ role: "user", text: question });
+    p.thinking = true;
+    refreshChat(p);
+    setTimeout(() => {
+      p.thinking = false;
+      const m = { role: "bot", text: answer.text, src: answer.src, shown: "", done: false };
+      p.chat.push(m);
+      const tokens = answer.text.match(/\*\*[^*]+\*\*|\S+\s*|\s+/g) || [];
+      let k = 0;
+      const tick = () => {
+        m.shown += tokens[k++] || "";
+        if (k < tokens.length) { refreshChat(p); setTimeout(tick, quick ? 0 : 26); }
+        else { m.done = true; refreshChat(p); }
+      };
+      tick();
+    }, quick ? 0 : 650);
+  }
+
+  /* ---------- действия ---------- */
+  function compose(p) {
+    busy(["Читаю ТЗ…", "Разбираю требования по пунктам…", "Пишу предложение по каждому пункту…"], () => {
+      p.tp = p.tpDraft.map((r) => ({ ...r }));
+      p.tpState = "done";
+      go("tp");
+    });
+  }
+
+  function runCheck(p) {
+    busy(["Читаю вашу заявку…", "Сверяю с ТЗ по каждому пункту…"], () => {
+      p.checkState = "done";
+      go("check");
+    });
+  }
+
+  function createPurchase(files) {
+    busy(["Читаю извещение…", "Выписываю требования из ТЗ…", "Проверяю сроки и суммы…"], () => {
+      let p = byId("p4");
+      if (!p) {
+        p = JSON.parse(JSON.stringify(NEW_TEMPLATE));
+        prepare(p);
+        PURCHASES.unshift(p);
+      }
+      if (files.length) p.docs = files;
+      go("purchase", p.id);
+      toast("Закупка добавлена: требования и сроки выписаны.");
+    });
+  }
+
+  document.addEventListener("click", (e) => {
+    if (e.target.id === "modal") { closeModal(); return; }
+    const nav = e.target.closest("[data-go]");
+    if (nav) { go(nav.dataset.go, nav.dataset.id); return; }
+    const t = e.target.closest("[data-act]");
+    if (!t) return;
+    const p = cur();
+    const act = t.dataset.act;
+    if (act === "compose") compose(p);
+    else if (act === "download") toast("В рабочей версии здесь скачается готовый файл Word с этим текстом.");
+    else if (act === "sample-check") runCheck(p);
+    else if (act === "recheck") { p.checkState = "none"; go("check"); }
+    else if (act === "quote") openQuote(t.dataset.src);
+    else if (act === "close") closeModal();
+    else if (act === "lawyer") toast("В рабочей версии вопрос уйдёт юристу по закупкам, ответ — в течение дня. Сейчас ничего не отправляется.");
+    else if (act === "suggest") ask(p, t.dataset.q);
+    else if (act === "sample-new") createPurchase([]);
+  });
+
+  document.addEventListener("submit", (e) => {
+    if (e.target.id !== "ask-form") return;
+    e.preventDefault();
+    const input = $("#ask-input");
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = "";
+    input.style.height = "";
+    ask(cur(), text);
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { closeModal(); return; }
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.target.id === "ask-input") {
+      e.preventDefault();
+      e.target.form.requestSubmit();
+    }
+  });
+
+  document.addEventListener("input", (e) => {
+    if (e.target.id === "ask-input") {
+      e.target.style.height = "auto";
+      e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+      return;
+    }
+    const cell = e.target.closest && e.target.closest(".offer");
+    if (!cell) return;
+    const p = cur();
+    const it = p.tp[Number(cell.dataset.i)];
+    it.offer = cell.innerText.replace(/\n{3,}/g, "\n\n").trim();
+    const flag = cell.closest(".item").querySelector("[data-flag]");
+    if (!needsFill(it.offer) && flag) flag.remove();
+    const fill = fillCount(p);
+    $("#tp-note").outerHTML = fill
+      ? `<div class="note warn" id="tp-note">${PEN}Впишите свои данные в ${fill} ${plural(fill, "пункт", "пункта", "пунктов")} — они выделены жёлтым. Нажмите на текст, чтобы исправить.</div>`
+      : `<div class="note ok" id="tp-note">${TICK}Всё заполнено — можно скачивать.</div>`;
+  });
+
+  document.addEventListener("focusout", (e) => {
+    const cell = e.target.closest && e.target.closest(".offer");
+    if (cell) cell.innerHTML = offerHTML(cur().tp[Number(cell.dataset.i)].offer);
+  });
+
+  document.addEventListener("change", (e) => {
+    const input = e.target;
+    if (input.type !== "file" || !input.files.length) return;
+    const names = [...input.files].map((f) => f.name);
+    const p = cur();
+    if (input.id === "file-app") runCheck(p);
+    else if (input.id === "file-new") createPurchase(names);
+    else if (input.id === "add-doc") {
+      p.docs.push(...names);
+      render();
+      toast(`Добавлено: ${names.join(", ")}. В рабочей версии я перечитаю требования с учётом нового файла.`);
+    }
+  });
+
+  document.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    const zone = e.target.closest && e.target.closest(".drop");
+    if (zone) zone.classList.add("over");
+  });
+  document.addEventListener("dragleave", (e) => {
+    const zone = e.target.closest && e.target.closest(".drop");
+    if (zone && !zone.contains(e.relatedTarget)) zone.classList.remove("over");
+  });
+  document.addEventListener("drop", (e) => {
+    e.preventDefault();
+    const zone = e.target.closest && e.target.closest(".drop");
+    if (!zone) return;
+    zone.classList.remove("over");
+    const names = [...((e.dataTransfer && e.dataTransfer.files) || [])].map((f) => f.name);
+    if (!names.length) return;
+    if (zone.id === "drop-app") runCheck(cur());
+    else if (zone.id === "drop-new") createPurchase(names);
+  });
+
+  render();
+})();
+</script>
