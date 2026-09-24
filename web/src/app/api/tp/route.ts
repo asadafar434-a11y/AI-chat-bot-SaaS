@@ -1,98 +1,63 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
-import { MAX_CONTEXT_CHARS, type ChatDocument } from "@/lib/chat-types";
-import { CLAUDE_MODEL } from "@/lib/claude";
-import { claudeErrorText } from "@/lib/claude-errors";
+import { claudeErrorText, NO_KEY_TEXT } from "@/lib/claude-errors";
+import { askJson, ModelStop } from "@/lib/claude-request";
+import { MAX_CONTEXT_CHARS } from "@/lib/chat-types";
 import { quoteFound } from "@/lib/quotes";
-import { TpDraftSchema, type TpResponse } from "@/lib/tp";
-import { TP_SYSTEM_PROMPT, TP_TASK } from "@/lib/tp-prompt";
-import { SAMPLE_ITEMS, SAMPLE_SUBJECT } from "@/lib/tp-sample";
+import type { SentDocument } from "@/lib/read-documents";
+import { SAMPLES_LIMIT, TpDraftSchema, type TpResponse } from "@/lib/tp";
+import { SAMPLES_NOTE, TP_INSTRUCTIONS } from "@/lib/tp-prompt";
 
 export const maxDuration = 300;
 
-type TpRequest = {
-  documents?: Pick<ChatDocument, "name" | "text">[];
-  sample?: boolean;
-};
+type TpRequest = { documents?: SentDocument[]; samples?: SentDocument[] };
 
 const fail = (message: string, status: number) => new Response(message, { status });
 
 export async function POST(request: Request) {
-  const { documents = [], sample = false }: TpRequest = await request.json();
-
-  if (sample || !process.env.ANTHROPIC_API_KEY) {
-    const body: TpResponse = {
-      mode: "demo",
-      notice: sample
-        ? undefined
-        : "ИИ пока не подключён, поэтому показан пример черновика на тестовом ТЗ. Когда добавим ключ, черновик будет по вашему файлу.",
-      subject: SAMPLE_SUBJECT,
-      items: SAMPLE_ITEMS,
-    };
-    return Response.json(body);
+  const { documents = [], samples: rawSamples = [] }: TpRequest = await request.json();
+  const samples = Array.isArray(rawSamples) ? rawSamples.filter((s) => typeof s?.text === "string" && s.text.trim()) : [];
+  if (samples.reduce((sum, s) => sum + s.text.length, 0) > SAMPLES_LIMIT * 1.1) {
+    return fail("Образцов слишком много — оставьте в «Моих данных» самые удачные.", 413);
   }
+  if (!process.env.ANTHROPIC_API_KEY) return fail(NO_KEY_TEXT, 503);
 
-  if (documents.length === 0) return fail("Загрузите ТЗ.", 400);
+  if (documents.length === 0) return fail("В закупке нет документов — добавьте ТЗ.", 400);
   const total = documents.reduce((sum, d) => sum + d.text.length, 0);
   if (total > MAX_CONTEXT_CHARS) {
     return fail(
-      `Документы слишком большие: ${total.toLocaleString("ru-RU")} символов при лимите ${MAX_CONTEXT_CHARS.toLocaleString("ru-RU")}. Загрузите только ТЗ.`,
+      `Документы слишком большие: ${total.toLocaleString("ru-RU")} символов при лимите ${MAX_CONTEXT_CHARS.toLocaleString("ru-RU")}. Уберите из закупки лишние файлы.`,
       413
     );
   }
 
   try {
-    const client = new Anthropic();
-    const stream = client.beta.messages.stream(
-      {
-        model: CLAUDE_MODEL,
-        max_tokens: 64000,
-        betas: ["server-side-fallback-2026-07-01"],
-        fallbacks: "default",
-        cache_control: { type: "ephemeral" },
-        system: TP_SYSTEM_PROMPT,
-        output_config: { format: betaZodOutputFormat(TpDraftSchema) },
-        messages: [
-          {
-            role: "user",
-            content: [
-              ...documents.map((doc) => ({
-                type: "document" as const,
-                source: { type: "text" as const, media_type: "text/plain" as const, data: doc.text },
-                title: doc.name,
-              })),
-              { type: "text", text: TP_TASK },
-            ],
-          },
-        ],
-      },
-      { signal: request.signal }
-    );
-
-    const final = await stream.finalMessage();
-    const { usage } = final;
-    console.log(
-      `tp ${final.model}: вход ${usage.input_tokens}, из кеша ${usage.cache_read_input_tokens ?? 0}, выход ${usage.output_tokens}, stop ${final.stop_reason}`
-    );
-
-    if (final.stop_reason === "refusal") {
-      return fail("Модель отказалась обрабатывать этот документ. Проверьте, что загружено ТЗ закупки.", 422);
-    }
-    if (final.stop_reason === "max_tokens") {
-      return fail("ТЗ слишком длинное для одного прохода. Загрузите его частями — например, по разделам.", 422);
-    }
-    const draft = final.parsed_output;
-    if (!draft) return fail("Не удалось разобрать ответ модели. Попробуйте ещё раз.", 502);
+    const draft = await askJson({
+      label: "tp",
+      documents,
+      // Образцы — после документов закупки, со своей меткой кеша: при «Составить заново» они не читаются заново по полной цене.
+      extra: samples.map((sample, i) => ({
+        type: "document" as const,
+        source: { type: "text" as const, media_type: "text/plain" as const, data: sample.text },
+        title: `Образец участника: ${sample.name}`,
+        ...(i === samples.length - 1 && { cache_control: { type: "ephemeral" as const } }),
+      })),
+      instructions: samples.length ? SAMPLES_NOTE + TP_INSTRUCTIONS : TP_INSTRUCTIONS,
+      schema: TpDraftSchema,
+      signal: request.signal,
+    });
 
     const texts = documents.map((d) => d.text);
+    const checked = <T extends { quote: string }>(item: T) => ({ ...item, verified: quoteFound(item.quote, texts) });
     const body: TpResponse = {
-      mode: "ai",
-      subject: draft.subject,
-      items: draft.items.map((item) => ({ ...item, verified: quoteFound(item.quote, texts) })),
+      form: draft.form,
+      goods: draft.goods.map(checked),
+      items: draft.items.map(checked),
+      antiDumping: draft.antiDumping.rule
+        ? checked(draft.antiDumping)
+        : { ...draft.antiDumping, verified: false },
     };
     return Response.json(body);
   } catch (error) {
     console.error(error);
-    return fail(claudeErrorText(error), 502);
+    return fail(error instanceof ModelStop ? error.message : claudeErrorText(error), error instanceof ModelStop ? 422 : 502);
   }
 }

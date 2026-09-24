@@ -7,7 +7,7 @@ type FileDropProps = {
   hint: string;
   button: string;
   onFiles: (files: File[]) => void;
-  onSample: () => void;
+  onSample?: () => void;
 };
 
 export function FileDrop({ hint, button, onFiles, onSample }: FileDropProps) {
@@ -45,12 +45,14 @@ export function FileDrop({ hint, button, onFiles, onSample }: FileDropProps) {
         className="hidden"
         onChange={(e) => { pick(e.currentTarget.files); e.currentTarget.value = ""; }}
       />
-      <span className="text-[15px] text-muted-foreground">
-        или{" "}
-        <button type="button" onClick={onSample} className="font-semibold text-primary underline underline-offset-4">
-          посмотреть на примере
-        </button>
-      </span>
+      {onSample && (
+        <span className="text-[15px] text-muted-foreground">
+          или{" "}
+          <button type="button" onClick={onSample} className="font-semibold text-primary underline underline-offset-4">
+            посмотреть на примере
+          </button>
+        </span>
+      )}
     </div>
   );
 }

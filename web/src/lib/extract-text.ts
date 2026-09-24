@@ -26,7 +26,9 @@ export async function extractText(file: File): Promise<ExtractResult> {
       const parser = new PDFParse({ data: new Uint8Array(await file.arrayBuffer()) });
       try {
         const { text } = await parser.getText();
-        if (!text.trim()) {
+        // В скане нет букв — только разделители страниц «-- 1 of 3 --», которые добавляет pdf-parse.
+        const letters = text.replace(/-- \d+ of \d+ --/g, "").replace(/[^\p{L}]/gu, "").length;
+        if (letters < 20) {
           return { ok: false, reason: "в PDF нет текстового слоя — похоже на скан, нужен OCR" };
         }
         return { ok: true, text };

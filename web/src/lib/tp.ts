@@ -1,24 +1,91 @@
 import * as z from "zod/v4";
 
+const quote = z
+  .string()
+  .describe("Короткая дословная цитата из ТЗ, на которой основана строка: одна фраза или фрагмент одной ячейки таблицы");
+
 export const TpDraftSchema = z.object({
-  subject: z.string().describe("Предмет закупки из ТЗ одной строкой; пустая строка, если не указан"),
-  items: z.array(
-    z.object({
-      clause: z.string().describe("Номер пункта ТЗ, как в документе, например «2.1»; пустая строка, если номера нет"),
-      topic: z.string().describe("Короткое название требования, 1–3 слова"),
-      requirement: z.string().describe("Суть требования заказчика своими словами, коротко"),
-      quote: z.string().describe("Дословная цитата из ТЗ, на которой основан пункт"),
-      offer: z.string().describe("Текст предложения участника; неизвестные данные участника — в квадратных скобках с подсказкой"),
-    })
-  ),
+  form: z.object({
+    title: z
+      .string()
+      .describe("Название документа по форме заказчика, например «Заявка на участие в запросе котировок в электронной форме»; «Техническое предложение», если формы в документах нет"),
+    source: z
+      .string()
+      .describe("Где в документах эта форма, например «Извещение, приложение № 1 к информационной карте»; пустая строка, если формы нет"),
+    participantFields: z
+      .array(z.string())
+      .describe("Строки раздела о сведениях об участнике из формы, дословно, например «Наименование», «Место нахождения»; пустой список, если такого раздела нет"),
+    consent: z
+      .string()
+      .describe("Текст согласия участника из формы, дословно; пропуски — в квадратных скобках с подсказкой; пустая строка, если согласия в форме нет"),
+    hasPrice: z.boolean().describe("Форма требует указать цену договора в самой заявке"),
+    priceNote: z
+      .string()
+      .describe("Постоянный текст раздела о цене из формы, который идёт после суммы, — например, что входит в цену, — дословно; пустая строка, если цены в форме нет"),
+    smeDeclaration: z
+      .string()
+      .describe("Текст декларации о принадлежности к малому (и среднему) предпринимательству из формы, дословно, с пропусками в квадратных скобках; пустая строка, если её нет в форме"),
+  }),
+  goods: z
+    .array(
+      z.object({
+        name: z.string().describe("Наименование товара или оборудования, как в ТЗ"),
+        characteristics: z.string().describe("Конкретные характеристики, которые предлагает участник: модель и значения, каждая с новой строки"),
+        quantity: z.string().describe("Количество с единицей измерения, как в ТЗ; пустая строка, если не указано"),
+        source: z.string().describe("Где в ТЗ требование к товару, коротко, например «ТЗ, прил. 5, п. 1»"),
+        quote,
+      })
+    )
+    .describe("Товары и оборудование, если форма требует сведения о товаре; иначе пустой список"),
+  items: z
+    .array(
+      z.object({
+        clause: z.string().describe("Номер пункта ТЗ, как в документе, например «2.1»; пустая строка, если номера нет"),
+        topic: z.string().describe("Короткое название требования, 1–3 слова"),
+        requirement: z.string().describe("Суть требования заказчика своими словами, коротко"),
+        quote,
+        offer: z.string().describe("Текст предложения участника; неизвестные данные участника — в квадратных скобках с подсказкой"),
+      })
+    )
+    .describe("Предложение по требованиям к услугам и работам, если его требуют форма или документы; иначе пустой список"),
+  antiDumping: z.object({
+    rule: z
+      .string()
+      .describe("Что обязан сделать участник, если снизит цену на 25% и более, по документам закупки, коротко и со ссылкой на пункт; пустая строка, если таких условий нет"),
+    quote: z.string().describe("Дословная цитата с этим условием; пустая строка, если условий нет"),
+  }),
 });
 
 export type TpDraft = z.infer<typeof TpDraftSchema>;
+export type TpForm = TpDraft["form"];
+export type TpGood = TpDraft["goods"][number] & { verified: boolean };
 export type TpItem = TpDraft["items"][number] & { verified: boolean };
+export type TpAntiDumping = TpDraft["antiDumping"] & { verified: boolean };
 
-export type TpResponse = {
-  mode: "ai" | "demo";
-  notice?: string;
-  subject: string;
-  items: TpItem[];
+export type TpResult = { form: TpForm; goods: TpGood[]; items: TpItem[]; antiDumping: TpAntiDumping };
+export type TpResponse = TpResult;
+
+// Документ без формы заказчика — обычное техническое предложение по пунктам ТЗ.
+export const PLAIN_FORM: TpForm = {
+  title: "Техническое предложение",
+  source: "",
+  participantFields: [],
+  consent: "",
+  hasPrice: false,
+  priceNote: "",
+  smeDeclaration: "",
 };
+
+export const NO_ANTI_DUMPING: TpAntiDumping = { rule: "", quote: "", verified: false };
+
+// Сколько текста образцов участника уходит в запрос ТП: нескольких примеров ИИ достаточно,
+// а каждый лишний образец — это деньги на каждом черновике.
+export const SAMPLES_LIMIT = 60_000;
+
+export const needsFill = (text: string) => /\[[^\]]+\]/.test(text);
+
+// Сколько мест в черновике ждут данных участника: поля «[…]» в характеристиках, предложениях и согласии.
+export const fillCount = (tp: TpResult) =>
+  tp.goods.filter((g) => needsFill(g.characteristics)).length +
+  tp.items.filter((it) => needsFill(it.offer)).length +
+  (needsFill(tp.form.consent) ? 1 : 0);

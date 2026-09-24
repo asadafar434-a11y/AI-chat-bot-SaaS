@@ -1,10 +1,17 @@
-import type { ReqGroupKey, ReqItem, RequirementsResponse } from "@/lib/requirements";
+import type { PurchaseSummary, ReqGroupKey, ReqItem } from "@/lib/requirements";
 import { SAMPLE_SUBJECT } from "@/lib/tp-sample";
 
-type SampleItem = Omit<ReqItem, "verified">;
-
 // Та же вымышленная закупка, что и в примере технического предложения.
-const GROUPS: Record<ReqGroupKey, SampleItem[]> = {
+export const SAMPLE_SUMMARY: PurchaseSummary = {
+  short: "Церемония «Педагог года — 2026»",
+  subject: SAMPLE_SUBJECT,
+  kind: "44-ФЗ · электронный конкурс",
+  customer: "Управление образования администрации г. Энска",
+  price: "685 000 ₽",
+  deadline: { date: "2026-09-30", time: "10:00", zone: "МСК" },
+};
+
+export const SAMPLE_GROUPS: Record<ReqGroupKey, Omit<ReqItem, "verified">[]> = {
   who: [
     {
       text: "Только для малого бизнеса и социально ориентированных НКО",
@@ -15,7 +22,7 @@ const GROUPS: Record<ReqGroupKey, SampleItem[]> = {
   submit: [
     {
       text: "Программа мероприятия с таймингом и описание, как будете оказывать услуги",
-      source: "Требования к содержанию заявки, п. 5.1.3",
+      source: "Извещение, п. 5.1.3",
       quote: "Предложение участника закупки в отношении объекта закупки должно содержать проект программы мероприятия с указанием тайминга, а также описание порядка оказания услуг.",
     },
     {
@@ -115,16 +122,3 @@ const GROUPS: Record<ReqGroupKey, SampleItem[]> = {
   ],
 };
 
-const verified = (items: SampleItem[]): ReqItem[] => items.map((item) => ({ ...item, verified: true }));
-
-export const SAMPLE_REQUIREMENTS: Omit<RequirementsResponse, "mode" | "notice"> = {
-  subject: SAMPLE_SUBJECT,
-  kind: "44-ФЗ · электронный конкурс",
-  deadline: { date: "2026-09-30", time: "10:00", zone: "МСК" },
-  groups: {
-    who: verified(GROUPS.who),
-    submit: verified(GROUPS.submit),
-    scope: verified(GROUPS.scope),
-    terms: verified(GROUPS.terms),
-  },
-};

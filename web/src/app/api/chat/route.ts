@@ -1,15 +1,17 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import { MAX_CONTEXT_CHARS, type ChatDocument, type ChatMessage } from "@/lib/chat-types";
-import { CLAUDE_MODEL } from "@/lib/claude";
 import { claudeErrorText } from "@/lib/claude-errors";
-import { SYSTEM_PROMPT } from "@/lib/legal-prompt";
+import { baseRequest, documentBlocks, usageLine } from "@/lib/claude-request";
+import { CHAT_INSTRUCTIONS, GENERAL_CHAT_INSTRUCTIONS } from "@/lib/legal-prompt";
 
 export const maxDuration = 300;
 
 type ChatRequest = {
   messages: ChatMessage[];
   documents?: Pick<ChatDocument, "name" | "text">[];
+  // Общий чат с главной: вопросы не об одной закупке.
+  general?: boolean;
 };
 
 const textOf = (message: ChatMessage) =>
@@ -20,7 +22,8 @@ const textOf = (message: ChatMessage) =>
 
 function toClaudeMessages(
   messages: ChatMessage[],
-  documents: Pick<ChatDocument, "name" | "text">[]
+  documents: Pick<ChatDocument, "name" | "text">[],
+  instructions: string
 ): Anthropic.Beta.BetaMessageParam[] {
   const out: Anthropic.Beta.BetaMessageParam[] = [];
   for (const message of messages) {
@@ -34,33 +37,36 @@ function toClaudeMessages(
     }
   }
 
+  // Начало — как у требований и ТП: документы из общего кеша, потом задание чата и первый вопрос.
   const first = out[0];
-  if (documents.length > 0 && first?.role === "user" && Array.isArray(first.content)) {
-    // Документы — данные пользователя, поэтому они в сообщении, а не в system.
-    // Метка кеша на последнем документе: всё до неё переиспользуется между вопросами.
-    const blocks: Anthropic.Beta.BetaRequestDocumentBlock[] = documents.map((doc, i) => ({
-      type: "document",
-      source: { type: "text", media_type: "text/plain", data: doc.text },
-      title: doc.name,
-      ...(i === documents.length - 1 && { cache_control: { type: "ephemeral", ttl: "1h" } }),
-    }));
-    out[0] = { role: "user", content: [...blocks, ...first.content] };
+  if (first?.role === "user" && Array.isArray(first.content)) {
+    out[0] = {
+      role: "user",
+      content: [...documentBlocks(documents), { type: "text", text: instructions }, ...first.content],
+    };
   }
   return out;
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function* stubAnswer(question: string, documents: Pick<ChatDocument, "name" | "text">[], turns: number) {
+async function* stubAnswer(
+  question: string,
+  documents: Pick<ChatDocument, "name" | "text">[],
+  turns: number,
+  general: boolean
+) {
   const docs = documents.length
     ? documents.map((d) => `- ${d.name} — ${d.text.length.toLocaleString("ru-RU")} символов`).join("\n")
-    : "- нет, загрузите документ кнопкой «Документ»";
+    : general
+      ? "- нет"
+      : "- нет — добавьте их на странице закупки";
   const text = [
     "**Тестовый режим: модель не подключена.** Чтобы ассистент отвечал по-настоящему, получите ключ в [console.anthropic.com](https://console.anthropic.com), добавьте строку `ANTHROPIC_API_KEY=...` в файл `web/.env.local` и перезапустите сервер.",
     "",
     `Ваш вопрос: «${question}»`,
     "",
-    "Документы в диалоге:",
+    general ? "Приложенные документы:" : "Документы закупки:",
     docs,
     "",
     `Сообщений в истории: ${turns} — модель увидит их все.`,
@@ -72,7 +78,7 @@ async function* stubAnswer(question: string, documents: Pick<ChatDocument, "name
 }
 
 export async function POST(request: Request) {
-  const { messages, documents = [] }: ChatRequest = await request.json();
+  const { messages, documents = [], general = false }: ChatRequest = await request.json();
 
   const total = documents.reduce((sum, d) => sum + d.text.length, 0);
   if (total > MAX_CONTEXT_CHARS) {
@@ -82,7 +88,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const claudeMessages = toClaudeMessages(messages, documents);
+  const claudeMessages = toClaudeMessages(messages, documents, general ? GENERAL_CHAT_INSTRUCTIONS : CHAT_INSTRUCTIONS);
   if (claudeMessages.at(-1)?.role !== "user") {
     return new Response("Нет вопроса для ответа.", { status: 400 });
   }
@@ -102,19 +108,11 @@ export async function POST(request: Request) {
 
       if (!process.env.ANTHROPIC_API_KEY) {
         const question = textOf(messages[messages.length - 1]);
-        for await (const piece of stubAnswer(question, documents, claudeMessages.length)) say(piece);
+        for await (const piece of stubAnswer(question, documents, claudeMessages.length, general)) say(piece);
       } else {
         const client = new Anthropic();
         const response = client.beta.messages.stream(
-          {
-            model: CLAUDE_MODEL,
-            max_tokens: 64000,
-            betas: ["server-side-fallback-2026-07-01"],
-            fallbacks: "default",
-            cache_control: { type: "ephemeral" },
-            system: SYSTEM_PROMPT,
-            messages: claudeMessages,
-          },
+          { ...baseRequest, max_tokens: 64000, cache_control: { type: "ephemeral" }, messages: claudeMessages },
           { signal: request.signal }
         );
 
@@ -125,10 +123,7 @@ export async function POST(request: Request) {
         }
 
         const final = await response.finalMessage();
-        const { usage } = final;
-        console.log(
-          `claude ${final.model}: вход ${usage.input_tokens}, из кеша ${usage.cache_read_input_tokens ?? 0}, в кеш ${usage.cache_creation_input_tokens ?? 0}, выход ${usage.output_tokens}, stop ${final.stop_reason}`
-        );
+        console.log(usageLine("chat", final));
         if (final.stop_reason === "refusal") {
           say("\n\n_Модель отказалась отвечать на этот запрос. Переформулируйте вопрос._");
         } else if (final.stop_reason === "max_tokens") {

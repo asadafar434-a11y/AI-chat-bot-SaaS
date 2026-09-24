@@ -7,8 +7,11 @@ const ItemSchema = z.object({
 });
 
 export const RequirementsSchema = z.object({
+  short: z.string().describe("Короткое название закупки для списка, 2–5 слов, например «Поставка канцтоваров»"),
   subject: z.string().describe("Предмет закупки одной строкой; пустая строка, если не указан"),
   kind: z.string().describe("Закон и способ закупки, например «44-ФЗ · электронный аукцион»; пустая строка, если не указано"),
+  customer: z.string().describe("Заказчик, как в документах; пустая строка, если не указан"),
+  price: z.string().describe("Начальная (максимальная) цена контракта или договора, например «685 000 ₽»; пустая строка, если не указана"),
   deadline: z.object({
     date: z.string().describe("Дата окончания подачи заявок в формате ГГГГ-ММ-ДД; пустая строка, если её нет в документах"),
     time: z.string().describe("Время окончания подачи заявок в формате ЧЧ:ММ; пустая строка, если не указано"),
@@ -23,13 +26,9 @@ export const RequirementsSchema = z.object({
 export type RequirementsDraft = z.infer<typeof RequirementsSchema>;
 export type ReqItem = z.infer<typeof ItemSchema> & { verified: boolean };
 export type ReqGroupKey = "who" | "submit" | "scope" | "terms";
+export type ReqGroups = Record<ReqGroupKey, ReqItem[]>;
 export type Deadline = RequirementsDraft["deadline"];
+export type PurchaseSummary = Pick<RequirementsDraft, "short" | "subject" | "kind" | "customer" | "price" | "deadline">;
+export type RequirementsResponse = PurchaseSummary & { groups: ReqGroups };
 
-export type RequirementsResponse = {
-  mode: "ai" | "demo";
-  notice?: string;
-  subject: string;
-  kind: string;
-  deadline: Deadline;
-  groups: Record<ReqGroupKey, ReqItem[]>;
-};
+export const REQ_GROUP_KEYS: ReqGroupKey[] = ["who", "submit", "scope", "terms"];

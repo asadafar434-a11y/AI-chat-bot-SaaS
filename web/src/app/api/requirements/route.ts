@@ -1,36 +1,20 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
+import { claudeErrorText, NO_KEY_TEXT } from "@/lib/claude-errors";
+import { askJson, ModelStop } from "@/lib/claude-request";
 import { MAX_CONTEXT_CHARS } from "@/lib/chat-types";
-import { CLAUDE_MODEL } from "@/lib/claude";
-import { claudeErrorText } from "@/lib/claude-errors";
 import { quoteFound } from "@/lib/quotes";
 import type { SentDocument } from "@/lib/read-documents";
-import { RequirementsSchema, type RequirementsResponse } from "@/lib/requirements";
-import { REQ_SYSTEM_PROMPT, REQ_TASK } from "@/lib/requirements-prompt";
-import { SAMPLE_REQUIREMENTS } from "@/lib/requirements-sample";
+import { RequirementsSchema, type ReqItem, type RequirementsResponse } from "@/lib/requirements";
+import { REQ_INSTRUCTIONS } from "@/lib/requirements-prompt";
 
 export const maxDuration = 300;
 
-type RequirementsRequest = {
-  documents?: SentDocument[];
-  sample?: boolean;
-};
+type RequirementsRequest = { documents?: SentDocument[] };
 
 const fail = (message: string, status: number) => new Response(message, { status });
 
 export async function POST(request: Request) {
-  const { documents = [], sample = false }: RequirementsRequest = await request.json();
-
-  if (sample || !process.env.ANTHROPIC_API_KEY) {
-    const body: RequirementsResponse = {
-      mode: "demo",
-      notice: sample
-        ? undefined
-        : "ИИ пока не подключён, поэтому показан пример на тестовой закупке. Когда добавим ключ, требования будут из ваших файлов.",
-      ...SAMPLE_REQUIREMENTS,
-    };
-    return Response.json(body);
-  }
+  const { documents = [] }: RequirementsRequest = await request.json();
+  if (!process.env.ANTHROPIC_API_KEY) return fail(NO_KEY_TEXT, 503);
 
   if (documents.length === 0) return fail("Загрузите документы закупки.", 400);
   const total = documents.reduce((sum, d) => sum + d.text.length, 0);
@@ -42,65 +26,25 @@ export async function POST(request: Request) {
   }
 
   try {
-    const client = new Anthropic();
-    const stream = client.beta.messages.stream(
-      {
-        model: CLAUDE_MODEL,
-        max_tokens: 64000,
-        betas: ["server-side-fallback-2026-07-01"],
-        fallbacks: "default",
-        cache_control: { type: "ephemeral" },
-        system: REQ_SYSTEM_PROMPT,
-        output_config: { format: betaZodOutputFormat(RequirementsSchema) },
-        messages: [
-          {
-            role: "user",
-            content: [
-              ...documents.map((doc) => ({
-                type: "document" as const,
-                source: { type: "text" as const, media_type: "text/plain" as const, data: doc.text },
-                title: doc.name,
-              })),
-              { type: "text", text: REQ_TASK },
-            ],
-          },
-        ],
-      },
-      { signal: request.signal }
-    );
-
-    const final = await stream.finalMessage();
-    const { usage } = final;
-    console.log(
-      `requirements ${final.model}: вход ${usage.input_tokens}, из кеша ${usage.cache_read_input_tokens ?? 0}, выход ${usage.output_tokens}, stop ${final.stop_reason}`
-    );
-
-    if (final.stop_reason === "refusal") {
-      return fail("Модель отказалась обрабатывать эти документы. Проверьте, что загружены документы закупки.", 422);
-    }
-    if (final.stop_reason === "max_tokens") {
-      return fail("Документов слишком много для одного прохода. Загрузите главные: извещение, ТЗ и проект контракта.", 422);
-    }
-    const draft = final.parsed_output;
-    if (!draft) return fail("Не удалось разобрать ответ модели. Попробуйте ещё раз.", 502);
+    const draft = await askJson({
+      label: "requirements",
+      documents,
+      instructions: REQ_INSTRUCTIONS,
+      schema: RequirementsSchema,
+      signal: request.signal,
+    });
 
     const texts = documents.map((d) => d.text);
-    const check = (items: typeof draft.who) => items.map((item) => ({ ...item, verified: quoteFound(item.quote, texts) }));
+    const check = (items: Omit<ReqItem, "verified">[]) =>
+      items.map((item) => ({ ...item, verified: quoteFound(item.quote, texts) }));
+    const { who, submit, scope, terms, ...summary } = draft;
     const body: RequirementsResponse = {
-      mode: "ai",
-      subject: draft.subject,
-      kind: draft.kind,
-      deadline: draft.deadline,
-      groups: {
-        who: check(draft.who),
-        submit: check(draft.submit),
-        scope: check(draft.scope),
-        terms: check(draft.terms),
-      },
+      ...summary,
+      groups: { who: check(who), submit: check(submit), scope: check(scope), terms: check(terms) },
     };
     return Response.json(body);
   } catch (error) {
     console.error(error);
-    return fail(claudeErrorText(error), 502);
+    return fail(error instanceof ModelStop ? error.message : claudeErrorText(error), error instanceof ModelStop ? 422 : 502);
   }
 }

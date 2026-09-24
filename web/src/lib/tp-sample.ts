@@ -3,7 +3,7 @@ import type { TpItem } from "@/lib/tp";
 export const SAMPLE_SUBJECT =
   "Организация и проведение торжественной церемонии награждения «Педагог года — 2026»";
 
-export const SAMPLE_ITEMS: TpItem[] = [
+export const SAMPLE_ITEMS: Omit<TpItem, "verified">[] = [
   {
     clause: "1.3", topic: "Дата и время", requirement: "27 ноября 2026 г., с 15:00 до 19:00",
     quote: "Дата и время проведения мероприятия: 27 ноября 2026 г., с 15:00 до 19:00.",
@@ -49,4 +49,4 @@ export const SAMPLE_ITEMS: TpItem[] = [
     quote: "По итогам оказания услуг Исполнитель представляет акт оказанных услуг и фотоотчёт.",
     offer: "По итогам оказания услуг представим акт оказанных услуг и фотоотчёт.",
   },
-].map((item) => ({ ...item, verified: true }));
+];
