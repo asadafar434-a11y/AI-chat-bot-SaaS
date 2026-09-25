@@ -37,7 +37,7 @@ export default function PurchasesPage() {
   if (purchases?.length !== 0) return null;
 
   return (
-    <div className="grid max-w-[560px] justify-items-start gap-4 p-[var(--gutter)]">
+    <div className="island grid max-w-[560px] justify-items-start gap-3 p-[var(--pad)]">
       <h2 className="t-title">Первая закупка</h2>
       <p className="t-body text-[var(--ink-2)]">
         Загрузите документы закупки — выпишу требования и сроки, составлю черновик технического предложения и отвечу на вопросы по документам.

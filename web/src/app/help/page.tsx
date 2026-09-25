@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CheckIcon, FolderIcon, HouseIcon, ListIcon, MessageSquareIcon, PlusIcon, UserRoundIcon, type LucideIcon } from "lucide-react";
+import { Island } from "@/components/island";
 import { Note } from "@/components/note";
 import { PageBody, PageHeader } from "@/components/page-header";
 import { openSamplePurchase } from "@/lib/sample-purchase";
@@ -74,18 +75,7 @@ const MARKS: { dot: ReactNode; text: string }[] = [
   { dot: <span className="size-2.5 rounded-full bg-[var(--edge-2)]" />, text: "Серый — ещё не начато." },
 ];
 
-function Panel({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="panel overflow-hidden">
-      <div className="panel-head">
-        <h2 className="t-section">{title}</h2>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-// «Как это работает» — карта приложения: путь по закупке, что где лежит и что значат цвета.
+// «Как это работает» — карта приложения тремя островами: путь по закупке, что где лежит и что значат цвета.
 export default function HelpPage() {
   const router = useRouter();
   const [error, setError] = useState(false);
@@ -103,11 +93,11 @@ export default function HelpPage() {
     <>
       <PageHeader title="Как это работает" sub="Путь по закупке и где что лежит" />
       <PageBody>
-        <div className="grid max-w-[880px] gap-3">
-          <Panel title="Путь по одной закупке">
-            <ol className="divide-y divide-[var(--line)]">
+        <div className="grid max-w-[880px] gap-2">
+          <Island id="help-path" title="Путь по одной закупке">
+            <ol className="divide-y divide-[var(--line)] px-[var(--pad)]">
               {PATH.map((step) => (
-                <li key={step.title} className="grid grid-cols-[24px_minmax(0,1fr)] gap-3 px-[var(--pad)] py-3">
+                <li key={step.title} className="grid grid-cols-[24px_minmax(0,1fr)] gap-3 py-3">
                   <span aria-hidden className="grid size-6 place-items-center rounded-full bg-[var(--brand-tint)] font-mono text-xs font-bold text-primary">
                     {step.n}
                   </span>
@@ -121,7 +111,7 @@ export default function HelpPage() {
                 </li>
               ))}
             </ol>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-[var(--line)] px-[var(--pad)] py-3">
+            <div className="mx-[var(--pad)] flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-[var(--line)] py-3">
               <Link href="/new" className="btn">
                 <PlusIcon />
                 Новая закупка
@@ -138,13 +128,13 @@ export default function HelpPage() {
                 <Note tone="warn">{STORAGE_ERROR}</Note>
               </div>
             )}
-          </Panel>
+          </Island>
 
-          <Panel title="Разделы слева">
-            <ul className="divide-y divide-[var(--line)]">
+          <Island id="help-sections" title="Разделы слева">
+            <ul className="grid gap-0.5 px-2 pb-2">
               {SECTIONS.map(({ icon: Icon, title, href, text }) => (
                 <li key={title}>
-                  <Link href={href} className="grid grid-cols-[16px_minmax(0,1fr)] gap-3 px-[var(--pad)] py-2.5 hover:bg-[var(--hover)]">
+                  <Link href={href} className="item grid grid-cols-[16px_minmax(0,1fr)] items-start gap-3 py-2">
                     <Icon className="mt-0.5 size-4 text-[var(--ink-3)]" />
                     <span className="grid gap-0.5">
                       <span className="t-strong">{title}</span>
@@ -154,10 +144,10 @@ export default function HelpPage() {
                 </li>
               ))}
             </ul>
-          </Panel>
+          </Island>
 
-          <Panel title="Что значат цвета">
-            <ul className="grid gap-2 px-[var(--pad)] py-3">
+          <Island id="help-colors" title="Что значат цвета">
+            <ul className="grid gap-2 px-[var(--pad)] pb-4 pt-1">
               {MARKS.map((mark) => (
                 <li key={mark.text} className="grid grid-cols-[16px_minmax(0,1fr)] items-center gap-3">
                   <span className="grid place-items-center">{mark.dot}</span>
@@ -165,9 +155,9 @@ export default function HelpPage() {
                 </li>
               ))}
             </ul>
-          </Panel>
+          </Island>
 
-          <p className="t-caption text-[var(--ink-3)]">
+          <p className="t-caption px-[var(--pad)] pt-1 text-[var(--ink-3)]">
             Закупки и документы хранятся только в этом браузере. Ответы ИИ не являются юридической консультацией — проверяйте нормы по первоисточнику.
           </p>
         </div>

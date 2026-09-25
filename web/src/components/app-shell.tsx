@@ -15,8 +15,8 @@ export function useShell() {
   return shell;
 }
 
-// Каркас всех экранов: сайдбар и основная часть. От 1280 px это одна рамка с отступом от краёв окна.
-// Уже 1024 px сайдбар прячется и выезжает по кнопке из шапки, а остальная страница на это время неактивна.
+// Каркас всех экранов: на холсте — остров-сайдбар и основная часть, в которой свои острова.
+// Уже 1024 px сайдбар прячется и выезжает островом по кнопке из шапки, а остальная страница на это время неактивна.
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   // Меню открыто только на том экране, где его открыли: переход по ссылке его закрывает.
@@ -58,21 +58,21 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <ShellContext value={{ menuOpen: open, openMenu: () => setOpenAt(pathname), menuButton }}>
-      <div className="grid h-full grid-cols-[var(--side-w)_minmax(0,1fr)] bg-[var(--frame)] max-lg:grid-cols-1 xl:overflow-hidden xl:rounded-[var(--r-shell)] xl:border xl:border-[var(--line)] xl:shadow-[var(--lift)]">
+      <div className="grid h-full grid-cols-[var(--side-w)_minmax(0,1fr)] max-lg:grid-cols-1 lg:pl-2">
         <aside
           ref={side}
           id="side-nav"
           aria-label="Навигация"
-          className={`flex min-h-0 flex-col border-r border-[var(--line)] bg-[var(--frame)] max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-40 max-lg:w-[min(320px,88vw)] max-lg:border-r-0 max-lg:pb-[env(safe-area-inset-bottom,0px)] max-lg:pt-[env(safe-area-inset-top,0px)] max-lg:shadow-[var(--lift-lg)] max-lg:duration-200 motion-reduce:transition-none ${
+          className={`island flex min-h-0 flex-col lg:my-2 max-lg:fixed max-lg:bottom-[max(8px,env(safe-area-inset-bottom,0px))] max-lg:left-2 max-lg:top-[max(8px,env(safe-area-inset-top,0px))] max-lg:z-40 max-lg:w-[min(320px,calc(100vw-16px))] max-lg:shadow-[var(--float)] max-lg:duration-200 motion-reduce:transition-none ${
             // Открывается — видимо сразу, чтобы на меню встал фокус; закрывается — видимо, пока не уедет.
-            open ? "max-lg:transition-[translate]" : "max-lg:invisible max-lg:-translate-x-[102%] max-lg:transition-[translate,visibility]"
+            open ? "max-lg:transition-[translate]" : "max-lg:invisible max-lg:-translate-x-[calc(100%+16px)] max-lg:transition-[translate,visibility]"
           }`}
         >
           <SideNav onClose={close} />
         </aside>
         {open && <div className="fixed inset-0 z-30 bg-[var(--scrim)] lg:hidden" onClick={close} aria-hidden />}
 
-        <div inert={open} className="flex min-h-0 min-w-0 flex-col bg-[var(--canvas)]">
+        <div inert={open} className="flex min-h-0 min-w-0 flex-col">
           {children}
         </div>
       </div>

@@ -108,7 +108,7 @@ export function PurchaseProvider({ id, children }: { id: string; children: React
 
   if (loaded.status !== "ready") {
     return (
-      <div className="grid max-w-[560px] justify-items-start gap-2 p-[var(--gutter)]">
+      <div className="island grid max-w-[560px] justify-items-start gap-2 p-[var(--pad)]">
         <Link href="/purchases" className="link link-quiet t-body mb-2 inline-flex items-center gap-1.5 no-underline split:hidden">
           <ArrowLeftIcon aria-hidden className="size-4" />
           Все закупки
@@ -126,7 +126,7 @@ export function PurchaseProvider({ id, children }: { id: string; children: React
   return (
     <PurchaseContext.Provider value={{ purchase: loaded.purchase, documents: loaded.documents, update, replaceDocuments, remove }}>
       {saveError && (
-        <div className="flex-none px-[var(--gutter)] pt-3">
+        <div className="flex-none pb-2">
           <Note tone="warn" icon={AlertTriangleIcon}>
             Не получилось сохранить изменения в браузере. Не закрывайте страницу и попробуйте ещё раз.
           </Note>

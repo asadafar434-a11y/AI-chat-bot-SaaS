@@ -4,14 +4,16 @@ import { AlertTriangleIcon, type LucideIcon } from "lucide-react";
 const TONES = {
   warn: "t-strong bg-[var(--warn-tint)] text-[var(--warn)]",
   ok: "t-strong bg-[var(--ok-tint)] text-[var(--ok)]",
-  info: "t-body bg-[var(--paper-2)] text-[var(--ink-2)]",
+  // Серая справка: на холсте — белым островом, внутри острова — серой плашкой (см. .note-info)
+  info: "t-body note-info text-[var(--ink-2)]",
 };
 
 type NoteProps = { tone: keyof typeof TONES; icon?: LucideIcon; className?: string; children: ReactNode };
 
+// Скругление задаёт класс note: на холсте плашка — отдельный блок, как остров, внутри острова — мельче.
 export function Note({ tone, icon: Icon, className = "", children }: NoteProps) {
   return (
-    <div className={`flex items-start gap-2.5 rounded-[var(--r-card)] px-3 py-2.5 ${TONES[tone]} ${className}`}>
+    <div className={`note flex items-start gap-2.5 px-3 py-2.5 ${TONES[tone]} ${className}`}>
       {Icon && <Icon className="mt-0.5 size-4 shrink-0" />}
       <div className="min-w-0">{children}</div>
     </div>

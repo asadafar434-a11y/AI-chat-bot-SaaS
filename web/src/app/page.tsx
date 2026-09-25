@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangleIcon, ChevronRightIcon, FolderIcon, PlusIcon, UserRoundIcon, type LucideIcon } from "lucide-react";
 import { AskBox } from "@/components/ask-box";
+import { Island } from "@/components/island";
 import { Note } from "@/components/note";
 import { PageBody, PageHeader } from "@/components/page-header";
 import { daysText, LawBadge } from "@/components/purchase-bits";
@@ -64,22 +65,9 @@ const DOT = {
   calm: "bg-[var(--edge-2)] shadow-[0_0_0_3px_var(--paper-2)]",
 };
 
-const ROW = "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2.5 px-[var(--pad)] py-2.5 hover:bg-[var(--hover)]";
-
-function Panel({ id, title, count, action, children }: { id: string; title: string; count?: number; action?: ReactNode; children: ReactNode }) {
-  return (
-    <section aria-labelledby={id} className="panel overflow-hidden">
-      <div className="panel-head">
-        <h2 id={id} className="t-section flex items-baseline gap-2">
-          {title}
-          {count !== undefined && <span className="count">{count}</span>}
-        </h2>
-        {action}
-      </div>
-      {children}
-    </section>
-  );
-}
+// Строка-пункт в острове, как в карточке меню: значок, текст, стрелка; без разделителей.
+const ROW = "item grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-2.5 py-2";
+const ROWS = "grid gap-0.5 px-2 pb-2";
 
 function DueText({ purchase }: { purchase: Purchase }) {
   const due = dueLine(purchase.deadline, false);
@@ -105,13 +93,13 @@ function DataRow({ href, icon: Icon, title, sub, children }: { href: string; ico
           <span className="t-caption truncate text-[var(--ink-3)]">{sub}</span>
           {children}
         </span>
-        <ChevronRightIcon className="size-4 text-[var(--ink-3)]" />
+        <ChevronRightIcon className="my-auto size-4 text-[var(--ink-3)]" />
       </Link>
     </li>
   );
 }
 
-// Первый запуск: весь путь в трёх шагах и одна главная кнопка.
+// Первый запуск: весь путь в трёх шагах и одна главная кнопка — одним островом.
 function Start({ onSample }: { onSample: () => void }) {
   const steps = [
     { n: "1", title: "Загрузите документы закупки", text: "Извещение, ТЗ и проект контракта — PDF, Word, сканы или фото." },
@@ -119,18 +107,18 @@ function Start({ onSample }: { onSample: () => void }) {
     { n: "3", title: "Подайте заявку на площадке", text: "Срок подачи и сколько дней осталось — всегда в шапке закупки." },
   ];
   return (
-    <section aria-labelledby="start-title" className="panel overflow-hidden">
-      <div className="panel-head">
-        <h2 id="start-title" className="t-section">
-          С чего начать
-        </h2>
+    <Island
+      id="start-title"
+      title="С чего начать"
+      action={
         <Link href="/help" className="link link-quiet t-caption">
           Как это работает
         </Link>
-      </div>
-      <ol className="grid gap-px bg-[var(--line)] md:grid-cols-3">
+      }
+    >
+      <ol className="grid gap-x-6 gap-y-4 px-[var(--pad)] pb-4 pt-2 md:grid-cols-3">
         {steps.map((s) => (
-          <li key={s.n} className="grid content-start gap-1 bg-card p-[var(--pad)]">
+          <li key={s.n} className="grid content-start gap-1">
             <span aria-hidden className="mb-1 grid size-6 place-items-center rounded-full bg-[var(--brand-tint)] font-mono text-xs font-bold text-primary">
               {s.n}
             </span>
@@ -139,7 +127,7 @@ function Start({ onSample }: { onSample: () => void }) {
           </li>
         ))}
       </ol>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-[var(--line)] px-[var(--pad)] py-3">
+      <div className="mx-[var(--pad)] flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-[var(--line)] py-3">
         <Link href="/new" className="btn">
           <PlusIcon />
           Загрузить документы закупки
@@ -151,7 +139,7 @@ function Start({ onSample }: { onSample: () => void }) {
           </button>
         </span>
       </div>
-    </section>
+    </Island>
   );
 }
 
@@ -227,8 +215,8 @@ export default function HomePage() {
         }
       />
       <PageBody>
-        <div className="grid items-start gap-3 split:grid-cols-[minmax(0,1.6fr)_minmax(300px,1fr)]">
-          <div className="grid min-w-0 gap-3">
+        <div className="grid items-start gap-2 split:grid-cols-[minmax(0,1.6fr)_minmax(300px,1fr)]">
+          <div className="grid min-w-0 gap-2">
             {(error || sampleError) && (
               <Note tone="warn" icon={AlertTriangleIcon}>
                 {STORAGE_ERROR}
@@ -238,30 +226,30 @@ export default function HomePage() {
             {fresh && <Start onSample={() => void sample()} />}
 
             {tasks && (
-              <Panel id="todo-title" title="Что сделать сейчас" count={tasks.length}>
+              <Island id="todo-title" title="Что сделать сейчас" count={tasks.length}>
                 {tasks.length === 0 ? (
-                  <p className="p-[var(--pad)] text-[var(--ink-3)]">Всё сделано: по открытым закупкам делать нечего.</p>
+                  <p className="px-[var(--pad)] pb-3 pt-1 text-[var(--ink-3)]">Всё сделано: по открытым закупкам делать нечего.</p>
                 ) : (
-                  <ul className="divide-y divide-[var(--line)]">
+                  <ul className={ROWS}>
                     {tasks.map((t) => (
                       <li key={t.key}>
                         <Link href={t.href} className={ROW}>
-                          <span aria-hidden className={`mx-[11px] size-2.5 rounded-full ${DOT[t.tone]}`} />
+                          <span aria-hidden className={`mx-[11px] my-auto size-2.5 rounded-full ${DOT[t.tone]}`} />
                           <span className="grid min-w-0">
                             <span className="t-strong line-clamp-2">{t.text}</span>
                             <span className="t-caption truncate text-[var(--ink-3)]">{t.sub}</span>
                           </span>
-                          <ChevronRightIcon className="size-4 text-[var(--ink-3)]" />
+                          <ChevronRightIcon className="my-auto size-4 text-[var(--ink-3)]" />
                         </Link>
                       </li>
                     ))}
                   </ul>
                 )}
-              </Panel>
+              </Island>
             )}
 
             {purchases && purchases.length > 0 && (
-              <Panel
+              <Island
                 id="deals-title"
                 title="Мои закупки"
                 count={purchases.length}
@@ -271,7 +259,7 @@ export default function HomePage() {
                   </Link>
                 }
               >
-                <ul className="divide-y divide-[var(--line)]">
+                <ul className={ROWS}>
                   {purchases.map((p) => {
                     const stage = stageOf(p);
                     return (
@@ -288,24 +276,24 @@ export default function HomePage() {
                             </span>
                             <span className={`t-tag mt-0.5 ${TONE_TEXT[stage.tone]}`}>{stage.text}</span>
                           </span>
-                          <ChevronRightIcon className="size-4 text-[var(--ink-3)]" />
+                          <ChevronRightIcon className="my-auto size-4 text-[var(--ink-3)]" />
                         </Link>
                       </li>
                     );
                   })}
                 </ul>
-              </Panel>
+              </Island>
             )}
           </div>
 
-          <div className="grid min-w-0 gap-3">
+          <div className="grid min-w-0 gap-2">
             <AskBox />
-            <Panel
+            <Island
               id="mine-title"
               title="Данные компании"
               action={fresh ? <span className="t-caption text-[var(--ink-3)]">можно заполнить заранее</span> : undefined}
             >
-              <ul className="divide-y divide-[var(--line)]">
+              <ul className={ROWS}>
                 <DataRow
                   href="/me/profile"
                   icon={UserRoundIcon}
@@ -329,11 +317,11 @@ export default function HomePage() {
                   }
                 />
               </ul>
-            </Panel>
+            </Island>
           </div>
         </div>
 
-        <p className="t-caption mt-3 max-w-[90ch] text-[var(--ink-3)]">
+        <p className="t-caption mt-3 max-w-[90ch] px-[var(--pad)] text-[var(--ink-3)]">
           Закупки хранятся в этом браузере. Ответы ИИ не являются юридической консультацией — проверяйте нормы по первоисточнику.
         </p>
       </PageBody>

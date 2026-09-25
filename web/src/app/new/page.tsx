@@ -60,7 +60,7 @@ export default function NewPurchasePage() {
     <>
       <PageHeader title="Новая закупка" sub="Начало пути: загрузите документы — дальше шаги подскажут, что делать" />
       <PageBody>
-        <section className="panel max-w-[880px] p-[var(--pad)]">
+        <section className="island max-w-[880px] p-[var(--pad)]">
           {working ? (
             <WorkingSteps steps={WORKING_STEPS} />
           ) : (

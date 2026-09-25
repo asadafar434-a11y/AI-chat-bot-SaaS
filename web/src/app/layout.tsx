@@ -27,7 +27,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="ru"
       className={`${montserrat.variable} ${jetbrains.variable} h-full antialiased`}
     >
-      <body className="overflow-hidden xl:p-2">
+      <body className="overflow-hidden">
         <TooltipProvider>
           <AppShell>{children}</AppShell>
         </TooltipProvider>

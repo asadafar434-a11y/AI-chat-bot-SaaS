@@ -60,8 +60,6 @@
 
 /* Фирменные токены — источник: design-system/brand.css */
 :root {
-  --ground: #eceef3;
-  --ground-2: #e3e5ec;
   --ink: #101227;
   --ink-2: #454a5f;
   --ink-3: #626880;
@@ -81,23 +79,25 @@
   --warn-tint: #fbeeda;
   --danger: #cf2f24;
 
-  --r-shell: 16px;
+  --r-island: 16px;
   --r-surface: 12px;
   --r-card: 10px;
   --r-bubble: 16px;
   --r-ctl: 8px;
   --r-pill: 999px;
 
-  /* Рабочее место: рамка с сайдбаром, холст за панелями, панели с тонкой рамкой */
-  --frame: #ffffff;
-  --canvas: #f6f7fa;
+  /* Острова на холсте: каждый блок экрана — белая карточка с кольцом 1 px и мягкой тенью,
+     как карточка меню AI Elements в Figma (OpenInContent). Между островами — 8 px холста. */
+  --canvas: #eff1f5;
   --line: #e6e8ee;
   --hover: #f3f4f7;
   --select: #eef0ff;
   --hairline: 0 1px 2px rgb(16 18 39 / .05);
   --focus-ring: 0 0 0 3px color-mix(in srgb, var(--brand) 22%, transparent);
-  --lift: 0 1px 2px rgb(16 18 39 / .05), 0 8px 24px -12px rgb(16 18 39 / .16);
-  --lift-lg: 0 2px 6px rgb(16 18 39 / .06), 0 24px 48px -16px rgb(16 18 39 / .28);
+  --island-ring: rgb(16 18 39 / .1);
+  --island-shadow: 0 0 0 1px var(--island-ring), 0 1px 2px rgb(16 18 39 / .04), 0 4px 10px -4px rgb(16 18 39 / .08);
+  /* Всплывающие острова — меню, сведения поверх закупки, плавающая панель: тень lg из Figma */
+  --float: 0 0 0 1px var(--island-ring), 0 4px 6px -4px rgb(16 18 39 / .1), 0 10px 15px -3px rgb(16 18 39 / .1);
   --scrim: rgb(16 18 39 / .42);
 
   /* Гарнитуры: Montserrat — заголовки и интерфейс, JetBrains Mono — цифры */
@@ -105,11 +105,10 @@
   --ui: var(--font-montserrat), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: var(--font-jetbrains), ui-monospace, "SFMono-Regular", Consolas, monospace;
 
-  /* Плотная раскладка: сайдбар 224, список закупок 288, сведения 272; поля 16 */
+  /* Плотная раскладка: сайдбар 224, список закупок 288, сведения 272; поля внутри острова 16 */
   --side-w: 224px;
   --list-w: 288px;
   --info-w: 272px;
-  --gutter: 16px;
   --pad: 16px;
 
   --background: var(--canvas);
@@ -136,7 +135,7 @@
   --chart-4: var(--ink-3);
   --chart-5: var(--edge-2);
   --radius: 0.5rem;
-  --sidebar: var(--frame);
+  --sidebar: var(--card);
   --sidebar-foreground: var(--ink);
   --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: var(--on-brand);
@@ -149,8 +148,6 @@
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --ground: #08090f;
-    --ground-2: #0f1019;
     --ink: #eceef6;
     --ink-2: #b1b4c8;
     --ink-3: #9296ad;
@@ -170,14 +167,14 @@
     --warn-tint: #2f2413;
     --danger: #ff7a70;
 
-    --frame: #13141e;
-    --canvas: #0c0d15;
+    --canvas: #0b0c13;
     --line: #242636;
     --hover: #1a1b28;
     --select: #1e2040;
     --hairline: 0 1px 2px rgb(0 0 0 / .3);
-    --lift: 0 1px 2px rgb(0 0 0 / .4), 0 8px 24px -12px rgb(0 0 0 / .6);
-    --lift-lg: 0 2px 6px rgb(0 0 0 / .45), 0 24px 48px -16px rgb(0 0 0 / .8);
+    --island-ring: rgb(255 255 255 / .08);
+    --island-shadow: 0 0 0 1px var(--island-ring), 0 1px 2px rgb(0 0 0 / .3), 0 4px 10px -4px rgb(0 0 0 / .4);
+    --float: 0 0 0 1px var(--island-ring), 0 4px 6px -4px rgb(0 0 0 / .5), 0 10px 15px -3px rgb(0 0 0 / .5);
     --scrim: rgb(0 0 0 / .6);
     --card: #13141e;
   }
@@ -185,7 +182,6 @@
 
 @media (width < 64rem) {
   :root {
-    --gutter: 12px;
     --pad: 12px;
   }
 }
@@ -255,7 +251,7 @@
     height: 100%;
   }
   body {
-    background: var(--ground);
+    background: var(--canvas);
     color: var(--ink);
     font: 500 13px/20px var(--ui);
     letter-spacing: -0.005em;
@@ -408,23 +404,60 @@
     box-shadow: var(--focus-ring);
   }
 
-  /* Панель: белая поверхность с тонкой рамкой; внутри — плоские списки с разделителями */
-  .panel {
+  /* Остров: белая карточка на холсте. Каждый смысловой блок — отдельный остров, чтобы экран
+     читался блоками: навигация, список, шапка закупки, группа требований, «Дальше». */
+  .island {
     min-width: 0;
-    border: 1px solid var(--line);
-    border-radius: var(--r-surface);
+    border-radius: var(--r-island);
     background: var(--card);
-    box-shadow: var(--hairline);
+    box-shadow: var(--island-shadow);
   }
-  .panel-head {
+  /* Заголовок острова — без черты: название, счётчик и справа одно действие */
+  .island-head {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 4px 12px;
-    min-height: 48px;
-    padding: 12px var(--pad);
-    border-bottom: 1px solid var(--line);
+    min-height: 40px;
+    padding: 10px var(--pad) 2px;
+  }
+
+  /* Пункт меню и строка списка в острове — как пункт карточки в Figma: скругление 8, подсветка
+     при наведении, выбранный — индиго-тинт. Разделителей между пунктами нет. */
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    padding: 6px 8px;
+    border-radius: var(--r-ctl);
+    text-align: left;
+  }
+  @media (hover: hover) {
+    .item:hover {
+      background: var(--hover);
+    }
+  }
+  .item[aria-current="true"],
+  .item[aria-current="page"] {
+    background: var(--select);
+  }
+
+  /* Плашка-заметка: на холсте — отдельный блок со скруглением острова, внутри острова — плашка */
+  .note {
+    border-radius: var(--r-island);
+  }
+  .island .note {
+    border-radius: var(--r-card);
+  }
+  .note-info {
+    background: var(--card);
+    box-shadow: var(--island-shadow);
+  }
+  .island .note-info {
+    background: var(--paper-2);
+    box-shadow: none;
   }
 
   /* Счётчик рядом с названием: моноширинные цифры одной ширины */

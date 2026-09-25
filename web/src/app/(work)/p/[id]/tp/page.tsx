@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangleIcon, ArrowRightIcon, CheckIcon, PencilIcon } from "lucide-react";
+import { Island } from "@/components/island";
 import { Note, Warnings } from "@/components/note";
 import { scrollToTop } from "@/components/page-header";
 import { SourceQuote } from "@/components/purchase-bits";
 import { usePurchase } from "@/components/purchase-provider";
-import { TabBody } from "@/components/purchase-view";
+import { StepIntro, TabBody } from "@/components/purchase-view";
 import { WorkingSteps } from "@/components/working-steps";
 import { getProfile, listMyDocuments, samplesOf, type MyDocument } from "@/lib/me-store";
 import { PART_SAMPLE_KIND, type PartKey } from "@/lib/my-docs";
@@ -54,14 +55,14 @@ function Editable({ value, label, onChange }: { value: string; label: string; on
       onChange={(e) => onChange(e.target.value)}
       onBlur={() => setEditing(false)}
       aria-label={label}
-      className="t-doc field-sizing-content -mx-2 min-h-12 resize-none rounded-[var(--r-ctl)] bg-[var(--paper-2)] px-2 py-1 outline-none ring-2 ring-primary"
+      className="t-doc field-sizing-content -mx-2 min-h-12 max-w-[80ch] resize-none rounded-[var(--r-ctl)] bg-[var(--paper-2)] px-2 py-1 outline-none ring-2 ring-primary"
     />
   ) : (
     <button
       type="button"
       onClick={() => setEditing(true)}
       aria-label={`Изменить: ${label}`}
-      className="t-doc -mx-2 cursor-text whitespace-pre-wrap rounded-[var(--r-ctl)] px-2 py-1 text-left hover:bg-[var(--hover)]"
+      className="t-doc -mx-2 max-w-[80ch] cursor-text whitespace-pre-wrap rounded-[var(--r-ctl)] px-2 py-1 text-left hover:bg-[var(--hover)]"
     >
       <FieldText text={value} />
     </button>
@@ -122,7 +123,7 @@ function PriceBlock({ tp, price, nmck, onChange }: {
   const percent = drop !== null ? drop.toLocaleString("ru-RU", { maximumFractionDigits: 1 }) : "";
 
   return (
-    <section className="mt-4 grid gap-1.5 rounded-[var(--r-card)] bg-[var(--paper-2)] px-3 py-3">
+    <section className="island grid gap-1.5 px-[var(--pad)] py-3">
       <label htmlFor="tp-price" className="t-strong">
         Цена вашего предложения
       </label>
@@ -302,9 +303,11 @@ export default function TpPage() {
     return (
       <TabBody>
         {working ? (
-          <WorkingSteps steps={WORKING_STEPS} />
+          <div className="island px-[var(--pad)]">
+            <WorkingSteps steps={WORKING_STEPS} />
+          </div>
         ) : (
-          <div className="grid justify-items-start gap-3">
+          <div className="island grid justify-items-start gap-3 p-[var(--pad)]">
             <p className="max-w-[70ch] text-[var(--ink-2)]">
               Шаг 2 — техническое предложение. Найду в документах форму заявки и заполню её, как тендерный юрист: товары с конкретными характеристиками, предложение по пунктам ТЗ, цена. Вам останется вписать то, что знаете только вы.
             </p>
@@ -337,33 +340,31 @@ export default function TpPage() {
   return (
     <>
       <TabBody>
-        <p className="max-w-[70ch] text-[var(--ink-2)]">
+        <StepIntro>
           {tp.form.source
             ? `По форме заказчика: ${tp.form.title} (${tp.form.source}). Каждая часть заявки — отдельным файлом.`
             : "Формы заявки в документах нет — составлено как техническое предложение по пунктам ТЗ."}{" "}
           Техническое предложение идёт в первую часть заявки, поэтому в нём нет ни названия, ни ИНН, ни подписи участника.
-        </p>
+        </StepIntro>
 
-        <div className="mt-4 grid gap-2">
-          {fill ? (
-            <Note tone="warn" icon={PencilIcon}>
-              {`Впишите свои данные в ${fill} ${plural(fill, "пункт", "пункта", "пунктов")} — они выделены жёлтым. Нажмите на текст, чтобы исправить.`}
-            </Note>
-          ) : (
-            <Note tone="ok" icon={CheckIcon}>
-              Все пункты заполнены.
-            </Note>
-          )}
-          <Warnings
-            items={[
-              leaks.length > 0 &&
-                `В техническом предложении есть ваши данные: ${leaks.map((v) => `«${v}»`).join(", ")}. Уберите их — ТП подают в первую часть заявки анонимно, иначе заявку отклонят.`,
-              unverified > 0 &&
-                `В ${unverified} ${plural(unverified, "строке", "строках", "строках")} цитата не найдена в документах дословно — сверьте их вручную.`,
-              scanWarning(documents),
-            ]}
-          />
-        </div>
+        {fill ? (
+          <Note tone="warn" icon={PencilIcon}>
+            {`Впишите свои данные в ${fill} ${plural(fill, "пункт", "пункта", "пунктов")} — они выделены жёлтым. Нажмите на текст, чтобы исправить.`}
+          </Note>
+        ) : (
+          <Note tone="ok" icon={CheckIcon}>
+            Все пункты заполнены.
+          </Note>
+        )}
+        <Warnings
+          items={[
+            leaks.length > 0 &&
+              `В техническом предложении есть ваши данные: ${leaks.map((v) => `«${v}»`).join(", ")}. Уберите их — ТП подают в первую часть заявки анонимно, иначе заявку отклонят.`,
+            unverified > 0 &&
+              `В ${unverified} ${plural(unverified, "строке", "строках", "строках")} цитата не найдена в документах дословно — сверьте их вручную.`,
+            scanWarning(documents),
+          ]}
+        />
 
         {tp.form.hasPrice && (
           <PriceBlock
@@ -375,9 +376,8 @@ export default function TpPage() {
         )}
 
         {tp.goods.length > 0 && (
-          <section className="mt-5">
-            <h3 className="t-over mb-1.5 text-[var(--ink-3)]">Товары и оборудование — {tp.goods.length}</h3>
-            <ol className="divide-y divide-[var(--line)] border-y border-[var(--line)]">
+          <Island id="tp-goods" level={3} title="Товары и оборудование" count={tp.goods.length}>
+            <ol className="divide-y divide-[var(--line)] px-[var(--pad)] pb-1">
               {tp.goods.map((g, i) => (
                 <li key={i} className="grid gap-1.5 py-3">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -399,13 +399,12 @@ export default function TpPage() {
                 </li>
               ))}
             </ol>
-          </section>
+          </Island>
         )}
 
         {tp.items.length > 0 && (
-          <section className="mt-5">
-            <h3 className="t-over mb-1.5 text-[var(--ink-3)]">Предложение по пунктам ТЗ — {tp.items.length}</h3>
-            <ol className="divide-y divide-[var(--line)] border-y border-[var(--line)]">
+          <Island id="tp-items" level={3} title="Предложение по пунктам ТЗ" count={tp.items.length}>
+            <ol className="divide-y divide-[var(--line)] px-[var(--pad)] pb-1">
               {tp.items.map((it, i) => (
                 <li key={i} className="grid gap-1.5 py-3">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -429,12 +428,12 @@ export default function TpPage() {
                 </li>
               ))}
             </ol>
-          </section>
+          </Island>
         )}
 
-        <div className="mt-4">
+        <div className="grid gap-2">
           {confirmRedo ? (
-            <div className="grid gap-2.5 rounded-[var(--r-card)] bg-[var(--paper-2)] p-3">
+            <div className="island grid gap-2.5 p-3">
               <p className="t-strong">Составить черновик заново? Ваши правки в этом черновике пропадут.</p>
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={() => void compose()} className="btn btn-xs">
@@ -446,7 +445,7 @@ export default function TpPage() {
               </div>
             </div>
           ) : (
-            <p className="text-[var(--ink-3)]">
+            <p className="px-[var(--pad)] py-1 text-[var(--ink-3)]">
               Добавили документы или черновик не подходит?{" "}
               <button type="button" onClick={() => setConfirmRedo(true)} className="link">
                 Составить заново
@@ -454,15 +453,14 @@ export default function TpPage() {
             </p>
           )}
           {error && (
-            <Note tone="warn" icon={AlertTriangleIcon} className="mt-3">
+            <Note tone="warn" icon={AlertTriangleIcon}>
               {error}
             </Note>
           )}
         </div>
 
-        <section className="mt-5">
-          <h3 className="t-over mb-1.5 text-[var(--ink-3)]">Остальные части заявки — отдельными файлами</h3>
-          <ul className="divide-y divide-[var(--line)] border-y border-[var(--line)]">
+        <Island id="tp-parts" level={3} title="Остальные части заявки" sub="Каждая — отдельным файлом Word">
+          <ul className="divide-y divide-[var(--line)] px-[var(--pad)]">
             {partsOf(tp.form)
               .filter((part): part is PartKey => part !== "tp")
               .map((part) => {
@@ -513,7 +511,7 @@ export default function TpPage() {
                 );
               })}
           </ul>
-          <p className="mt-2 text-[var(--ink-3)]">
+          <p className="mx-[var(--pad)] border-t border-[var(--line)] py-2.5 text-[var(--ink-3)]">
             Реквизиты берутся из{" "}
             <Link href="/me/profile" className="link">
               «Реквизитов»
@@ -525,29 +523,33 @@ export default function TpPage() {
             . Чего там нет — выделено в Word жёлтым.
           </p>
           {partNote && (
-            <Note tone="info" className="mt-3">
-              {partNote}
-            </Note>
+            <div className="px-[var(--pad)] pb-3">
+              <Note tone="info">{partNote}</Note>
+            </div>
           )}
-        </section>
+        </Island>
       </TabBody>
 
-      <div className="sticky bottom-0 z-[5] mt-auto grid gap-2 border-t border-[var(--line)] bg-[color-mix(in_srgb,var(--card)_92%,transparent)] px-[var(--gutter)] pb-[calc(12px+env(safe-area-inset-bottom,0px))] pt-3 backdrop-blur-[6px]">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => void download(tp, "tp")}
-            disabled={downloading !== null}
-            className="btn max-sm:flex-1"
-          >
-            {downloading === "tp" ? "Собираю файл…" : "Скачать техническое предложение"}
-          </button>
-          <Link href={`/p/${purchase.id}/check`} className="btn btn-line max-sm:flex-1">
-            Дальше: проверка заявки
-            <ArrowRightIcon />
-          </Link>
+      {/* Главное действие шага — плавающим островом внизу, пока листаете черновик.
+          Полоса холста под ним закрывает черновик до края окна. */}
+      <div className="sticky -bottom-2 z-[5] -mx-2 -mb-2 mt-auto bg-[linear-gradient(to_top,var(--canvas)_8px,transparent_8px)] px-2 pb-2 pt-2">
+        <div className="island grid gap-2 p-2 shadow-[var(--float)]">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void download(tp, "tp")}
+              disabled={downloading !== null}
+              className="btn max-sm:flex-1"
+            >
+              {downloading === "tp" ? "Собираю файл…" : "Скачать техническое предложение"}
+            </button>
+            <Link href={`/p/${purchase.id}/check`} className="btn btn-line max-sm:flex-1">
+              Дальше: проверка заявки
+              <ArrowRightIcon />
+            </Link>
+          </div>
+          {downloadError && <p className="t-strong px-1 text-destructive">{downloadError}</p>}
         </div>
-        {downloadError && <p className="t-strong text-destructive">{downloadError}</p>}
       </div>
     </>
   );

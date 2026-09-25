@@ -37,9 +37,14 @@ const ADDING_STEPS = [
   "Сверяю цитаты с документами…",
 ];
 
-// Тело шага: текст с одного края с названием закупки, строка не шире 760.
+// Тело шага — стопка островов под шапкой закупки, по 8 px между ними.
 export function TabBody({ children }: { children: ReactNode }) {
-  return <div className="w-full max-w-[760px] px-[var(--gutter)] pb-6 pt-4">{children}</div>;
+  return <div className="grid content-start gap-2">{children}</div>;
+}
+
+// Пояснение к шагу — прямо на холсте, по краю текста в островах.
+export function StepIntro({ children }: { children: ReactNode }) {
+  return <p className="max-w-[80ch] px-[var(--pad)] py-1 text-[var(--ink-2)]">{children}</p>;
 }
 
 const DOT = {
@@ -55,13 +60,7 @@ function StepLink({ step, current }: { step: Step; current: boolean }) {
   const full = step.key === "tp" ? "sr-only @min-[840px]:not-sr-only" : "sr-only @min-[760px]:not-sr-only";
   const short = step.key === "tp" ? "@min-[840px]:hidden" : "@min-[760px]:hidden";
   return (
-    <Link
-      href={step.href}
-      aria-current={current ? "page" : undefined}
-      className={`-mb-px flex flex-none items-center gap-2 border-b-2 px-2 py-1.5 ${
-        current ? "border-primary" : "border-transparent hover:bg-[var(--hover)]"
-      }`}
-    >
+    <Link href={step.href} aria-current={current ? "page" : undefined} className="item flex-none gap-2 py-1">
       <span aria-hidden className={`grid size-5 flex-none place-items-center rounded-full font-mono text-xs font-bold ${dot}`}>
         {step.state === "done" ? <CheckIcon className="size-3" strokeWidth={3} /> : step.n}
       </span>
@@ -121,12 +120,9 @@ export function NextStep({ from }: { from: StepKey }) {
   if (!next) return null;
 
   return (
-    <section
-      aria-label={next.label}
-      className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--paper-2)] px-4 py-3"
-    >
+    <section aria-label={next.label} className="island flex flex-wrap items-center justify-between gap-3 px-[var(--pad)] py-3">
       <div className="grid min-w-0 gap-0.5">
-        <p className={`t-over ${next.href ? "text-[var(--ink-3)]" : "text-[var(--ok)]"}`}>{next.label}</p>
+        <p className={`t-over ${next.href ? "text-primary" : "text-[var(--ok)]"}`}>{next.label}</p>
         <p className="t-section">{next.title}</p>
         <p className="text-[var(--ink-2)]">{next.text}</p>
       </div>
@@ -140,23 +136,24 @@ export function NextStep({ from }: { from: StepKey }) {
   );
 }
 
+// Остров сведений, который можно свернуть по названию.
 function Fold({ title, count, children }: { title: string; count?: number; children: ReactNode }) {
   const [open, setOpen] = useState(true);
   return (
-    <section className="border-b border-[var(--line)]">
+    <section className="island">
       <h3>
         <button
           type="button"
           aria-expanded={open}
           onClick={() => setOpen(!open)}
-          className="t-section flex min-h-11 w-full items-center gap-2 px-[var(--pad)] py-3 text-left"
+          className="t-section flex min-h-10 w-full items-center gap-2 rounded-[var(--r-island)] px-[var(--pad)] py-2.5 text-left"
         >
           {title}
           {count !== undefined && <span className="count">{count}</span>}
           <ChevronDownIcon className={`ml-auto size-4 text-[var(--ink-3)] transition-transform ${open ? "" : "-rotate-90"}`} />
         </button>
       </h3>
-      {open && <div className="grid gap-3 px-[var(--pad)] pb-4">{children}</div>}
+      {open && <div className="grid gap-3 px-[var(--pad)] pb-4 pt-0.5">{children}</div>}
     </section>
   );
 }
@@ -217,8 +214,8 @@ function InfoPane({ purchase, documents, onAdd, onClose, closeButton }: {
   }
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-      <div className="relative grid justify-items-center gap-1.5 border-b border-[var(--line)] px-[var(--pad)] pb-4 pt-5 text-center">
+    <div className="grid min-h-0 flex-1 content-start gap-2 overflow-y-auto overscroll-contain pb-2 pl-px pt-1 wide:-mr-2 wide:-mt-1 wide:pr-2 wide:[scrollbar-gutter:stable] max-wide:p-2">
+      <div className="island relative grid justify-items-center gap-1.5 px-[var(--pad)] pb-4 pt-5 text-center">
         <button ref={closeButton} type="button" onClick={onClose} aria-label="Скрыть сведения" className="icon-btn absolute right-2 top-2 wide:hidden">
           <XIcon className="size-4" />
         </button>
@@ -280,36 +277,30 @@ function InfoPane({ purchase, documents, onAdd, onClose, closeButton }: {
         </button>
       </Fold>
 
-      <div className="px-[var(--pad)] pb-5 pt-4">
-        {deleteError && (
-          <Note tone="warn" className="mb-3">
-            Не получилось удалить закупку — попробуйте ещё раз.
-          </Note>
-        )}
-        {confirmDelete ? (
-          <div className="grid gap-2.5 rounded-[var(--r-card)] bg-[var(--paper-2)] p-3">
-            <p className="t-strong">Удалить закупку вместе с документами, черновиком и вопросами? Вернуть её не получится.</p>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => void deleteIt()} className="btn btn-danger btn-xs">
-                Удалить
-              </button>
-              <button type="button" onClick={() => setConfirmDelete(false)} className="btn btn-line btn-xs">
-                Отмена
-              </button>
-            </div>
+      {deleteError && <Note tone="warn">Не получилось удалить закупку — попробуйте ещё раз.</Note>}
+      {confirmDelete ? (
+        <div className="island grid gap-2.5 p-3">
+          <p className="t-strong">Удалить закупку вместе с документами, черновиком и вопросами? Вернуть её не получится.</p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => void deleteIt()} className="btn btn-danger btn-xs">
+              Удалить
+            </button>
+            <button type="button" onClick={() => setConfirmDelete(false)} className="btn btn-line btn-xs">
+              Отмена
+            </button>
           </div>
-        ) : (
-          <button type="button" onClick={() => setConfirmDelete(true)} className="link link-quiet link-del">
-            Удалить закупку
-          </button>
-        )}
-      </div>
+        </div>
+      ) : (
+        <button type="button" onClick={() => setConfirmDelete(true)} className="link link-quiet link-del mx-[var(--pad)] my-1 justify-self-start">
+          Удалить закупку
+        </button>
+      )}
     </div>
   );
 }
 
-// Открытая закупка: шапка со сроком, шаги подготовки заявки, тело шага и сведения.
-// От 1560 px сведения — третьей панелью, уже — поверх закупки по кнопке «Сведения».
+// Открытая закупка: остров-шапка со сроком и шагами подготовки заявки, под ним острова шага, справа сведения.
+// От 1560 px сведения — третьим столбиком, уже — листом поверх закупки по кнопке «Сведения».
 export function PurchaseView({ children }: { children: ReactNode }) {
   const { purchase, documents, replaceDocuments } = usePurchase();
   const pathname = usePathname();
@@ -375,103 +366,110 @@ export function PurchaseView({ children }: { children: ReactNode }) {
   const onChat = pathname === `${base}/chat`;
 
   return (
-    <div className="relative flex min-h-0 flex-1">
+    <div className="relative flex min-h-0 flex-1 gap-2">
       <section aria-labelledby="pd-title" className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="@container flex min-h-14 flex-none items-center gap-2.5 py-2 pl-[var(--gutter)] pr-3 max-split:pl-1.5">
-          <Link href="/purchases" aria-label="Все закупки" className="icon-btn split:hidden">
-            <ArrowLeftIcon className="size-4" />
-          </Link>
-          <span className="contents max-sm:hidden">
-            <LawBadge purchase={purchase} />
-          </span>
-          <div className="min-w-0 flex-1">
-            <h2 id="pd-title" className="t-title truncate max-sm:line-clamp-2 max-sm:whitespace-normal">
-              {titleOf(purchase)}
-            </h2>
-            <p className="t-caption truncate text-[var(--ink-3)]">
-              {due ? (
-                <>
-                  {due.head}
-                  {due.left && (
+        {/* Шапка закупки — остров над шагом. Место под полосу прокрутки справа у шапки и у тела одно и то же,
+            поэтому острова шага встают ровно под ней. */}
+        <div className="-mx-2 -mt-1 flex-none overflow-hidden px-2 pb-1.5 pt-1 [scrollbar-gutter:stable]">
+          <div className="island">
+            <div className="@container flex min-h-14 items-center gap-2.5 py-2 pl-[var(--pad)] pr-2 max-split:pl-2">
+              <Link href="/purchases" aria-label="Все закупки" className="icon-btn split:hidden">
+                <ArrowLeftIcon className="size-4" />
+              </Link>
+              <span className="contents max-sm:hidden">
+                <LawBadge purchase={purchase} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2 id="pd-title" className="t-title truncate max-sm:line-clamp-2 max-sm:whitespace-normal">
+                  {titleOf(purchase)}
+                </h2>
+                <p className="t-caption truncate text-[var(--ink-3)]">
+                  {due ? (
                     <>
-                      {" · "}
-                      <span className={due.tone === "soon" ? "t-tag text-[var(--warn)]" : ""}>{due.left}</span>
+                      {due.head}
+                      {due.left && (
+                        <>
+                          {" · "}
+                          <span className={due.tone === "soon" ? "t-tag text-[var(--warn)]" : ""}>{due.left}</span>
+                        </>
+                      )}
                     </>
+                  ) : (
+                    "Срок подачи не найден в документах"
                   )}
-                </>
-              ) : (
-                "Срок подачи не найден в документах"
-              )}
-              {purchase.sample && " · пример"}
-            </p>
-          </div>
-          <div className="flex flex-none items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => input.current?.click()}
-              disabled={adding}
-              aria-label="Добавить документы закупки"
-              title="Добавить документы закупки"
-              className="btn btn-line btn-xs"
+                  {purchase.sample && " · пример"}
+                </p>
+              </div>
+              <div className="flex flex-none items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => input.current?.click()}
+                  disabled={adding}
+                  aria-label="Добавить документы закупки"
+                  title="Добавить документы закупки"
+                  className="btn btn-line btn-xs"
+                >
+                  <PaperclipIcon />
+                  <span className="@max-[560px]:hidden">Добавить документы</span>
+                </button>
+                <button
+                  ref={infoToggle}
+                  type="button"
+                  onClick={() => toggleInfo(!infoOpen)}
+                  aria-controls="ws-info"
+                  aria-expanded={infoOpen}
+                  aria-label="Сведения о закупке"
+                  title="Сведения о закупке"
+                  className="btn btn-line btn-xs wide:hidden"
+                >
+                  <PanelRightIcon />
+                  <span className="@max-[460px]:hidden">Сведения</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Шаги подготовки заявки по порядку; «Вопросы» — не шаг, стоят отдельно справа */}
+            <nav
+              aria-label="Подготовка заявки"
+              className="@container flex items-stretch overflow-x-auto border-t border-[var(--line)] px-2 py-1.5 [scrollbar-width:none]"
             >
-              <PaperclipIcon />
-              <span className="@max-[560px]:hidden">Добавить документы</span>
-            </button>
-            <button
-              ref={infoToggle}
-              type="button"
-              onClick={() => toggleInfo(!infoOpen)}
-              aria-controls="ws-info"
-              aria-expanded={infoOpen}
-              aria-label="Сведения о закупке"
-              title="Сведения о закупке"
-              className="btn btn-line btn-xs wide:hidden"
-            >
-              <PanelRightIcon />
-              <span className="@max-[460px]:hidden">Сведения</span>
-            </button>
+              <ol className="flex items-stretch">
+                {steps.map((step, i) => (
+                  <li key={step.key} className="flex items-stretch">
+                    {i > 0 && <ChevronRightIcon aria-hidden className="mx-0.5 my-auto size-3.5 flex-none text-[var(--ink-3)] opacity-60" />}
+                    <StepLink step={step} current={pathname === step.href} />
+                  </li>
+                ))}
+              </ol>
+              <Link
+                href={`${base}/chat`}
+                aria-current={onChat ? "page" : undefined}
+                className={`item ml-auto flex-none ${onChat ? "t-strong" : "t-label text-[var(--ink-2)]"}`}
+              >
+                <MessageSquareIcon className="size-4 text-[var(--ink-3)]" />
+                <span className="@max-[660px]:sr-only">Вопросы</span>
+                {asked > 0 && <span className="count rounded-md bg-[var(--paper-2)] px-1.5">{asked}</span>}
+              </Link>
+            </nav>
           </div>
         </div>
 
-        {/* Шаги подготовки заявки по порядку; «Вопросы» — не шаг, стоят отдельно справа */}
-        <nav
-          aria-label="Подготовка заявки"
-          className="@container flex flex-none items-stretch overflow-x-auto border-y border-[var(--line)] px-[calc(var(--gutter)-8px)] [scrollbar-width:none]"
+        <div
+          data-scroll-root
+          className="-mx-2 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-2 pb-2 pt-0.5 [scrollbar-gutter:stable]"
         >
-          <ol className="flex items-stretch">
-            {steps.map((step, i) => (
-              <li key={step.key} className="flex items-stretch">
-                {i > 0 && <ChevronRightIcon aria-hidden className="mx-0.5 my-auto size-3.5 flex-none text-[var(--ink-3)] opacity-60" />}
-                <StepLink step={step} current={pathname === step.href} />
-              </li>
-            ))}
-          </ol>
-          <Link
-            href={`${base}/chat`}
-            aria-current={onChat ? "page" : undefined}
-            className={`-mb-px ml-auto flex flex-none items-center gap-2 border-b-2 px-2 ${
-              onChat ? "t-strong border-primary" : "t-label border-transparent text-[var(--ink-2)] hover:bg-[var(--hover)]"
-            }`}
-          >
-            <MessageSquareIcon className="size-4 text-[var(--ink-3)]" />
-            <span className="@max-[660px]:sr-only">Вопросы</span>
-            {asked > 0 && <span className="count rounded-md bg-[var(--paper-2)] px-1.5">{asked}</span>}
-          </Link>
-        </nav>
-
-        <div data-scroll-root className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
           {adding ? (
             <TabBody>
-              <WorkingSteps steps={ADDING_STEPS} />
+              <div className="island px-[var(--pad)]">
+                <WorkingSteps steps={ADDING_STEPS} />
+              </div>
             </TabBody>
           ) : (
             <>
               {error && (
-                <div className="w-full max-w-[760px] px-[var(--gutter)] pt-4">
-                  <Note tone="warn" icon={AlertTriangleIcon}>
-                    {error}
-                  </Note>
-                </div>
+                <Note tone="warn" icon={AlertTriangleIcon} className="mb-2">
+                  {error}
+                </Note>
               )}
               {children}
             </>
@@ -479,10 +477,11 @@ export function PurchaseView({ children }: { children: ReactNode }) {
         </div>
       </section>
 
+      {/* Сведения: от 1560 px — столбик островов справа, уже — лист поверх закупки с теми же островами */}
       <aside
         id="ws-info"
         aria-label="Сведения о закупке"
-        className={`flex w-[var(--info-w)] flex-none flex-col border-l border-[var(--line)] bg-card max-wide:absolute max-wide:inset-y-0 max-wide:right-0 max-wide:z-10 max-wide:w-[min(320px,100%)] max-wide:shadow-[var(--lift-lg)] ${
+        className={`flex w-[var(--info-w)] flex-none flex-col max-wide:absolute max-wide:inset-y-0 max-wide:right-0 max-wide:z-10 max-wide:w-[min(320px,100%)] max-wide:overflow-hidden max-wide:rounded-[var(--r-island)] max-wide:bg-[var(--canvas)] max-wide:shadow-[var(--float)] ${
           infoOpen ? "" : "max-wide:hidden"
         }`}
       >

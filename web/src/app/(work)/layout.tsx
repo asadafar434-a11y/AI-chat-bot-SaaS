@@ -11,8 +11,8 @@ import { dueLine } from "@/lib/deadline";
 import { plural } from "@/lib/plural";
 import { usePurchases } from "@/lib/use-purchases";
 
-// «Закупки» — как мессенджер: список слева остаётся на месте, справа открыта закупка.
-// От 1180 px видны обе панели, уже — одна: список или закупка с кнопкой «назад».
+// «Закупки» — как мессенджер: остров-список слева остаётся на месте, справа открыта закупка.
+// От 1180 px видны оба, уже — что-то одно: список или закупка с кнопкой «назад».
 export default function WorkLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const openId = /^\/p\/([^/]+)/.exec(pathname)?.[1];
@@ -42,10 +42,10 @@ export default function WorkLayout({ children }: { children: ReactNode }) {
         }
       />
       <PageBody fill>
-        <div className="grid min-h-0 flex-1 grid-cols-[var(--list-w)_minmax(0,1fr)] overflow-hidden rounded-[var(--r-surface)] border border-[var(--line)] bg-card shadow-[var(--hairline)] max-split:grid-cols-1">
+        <div className="grid min-h-0 flex-1 grid-cols-[var(--list-w)_minmax(0,1fr)] gap-2 max-split:grid-cols-1">
           <section
             aria-label="Мои закупки"
-            className={`flex min-h-0 min-w-0 flex-col border-r border-[var(--line)] max-split:border-r-0 ${openId ? "max-split:hidden" : ""}`}
+            className={`island flex min-h-0 min-w-0 flex-col overflow-hidden ${openId ? "max-split:hidden" : ""}`}
           >
             <PurchaseListPane purchases={purchases} error={error} openId={openId} />
           </section>

@@ -52,13 +52,13 @@ export function AskBox() {
   }
 
   return (
-    <section aria-labelledby="ask-title" className="panel overflow-hidden">
-      <div className="panel-head">
+    <section aria-labelledby="ask-title" className="island">
+      <div className="island-head">
         <h2 id="ask-title" className="t-section">
           Спросить про тендер
         </h2>
       </div>
-      <div className="grid gap-3 p-[var(--pad)]">
+      <div className="grid gap-3 px-[var(--pad)] pb-[var(--pad)] pt-1">
         <p className="text-[var(--ink-2)]">Отвечу по 44-ФЗ, 223-ФЗ и вашим документам — со ссылкой на статью и пункт.</p>
 
         <form

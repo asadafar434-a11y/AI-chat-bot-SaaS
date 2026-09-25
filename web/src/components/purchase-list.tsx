@@ -23,7 +23,7 @@ function Days({ purchase }: { purchase: Purchase }) {
 }
 
 // Список закупок как список переписок: значок закона, название, заказчик и шаг, на котором закупка;
-// справа — сколько дней до подачи.
+// справа — сколько дней до подачи. Строки — пункты острова, как в меню: без разделителей, открытая — тинтом.
 export function PurchaseListPane({ purchases, error, openId }: { purchases: Purchase[] | null; error: boolean; openId?: string }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -45,7 +45,7 @@ export function PurchaseListPane({ purchases, error, openId }: { purchases: Purc
 
   return (
     <>
-      <div className="flex min-h-14 flex-none items-center px-3 py-2">
+      <div className="flex flex-none items-center px-2 pb-1 pt-2">
         <label className="field flex items-center gap-2 text-[var(--ink-3)]">
           <SearchIcon className="size-3.5 shrink-0" />
           <input
@@ -60,14 +60,15 @@ export function PurchaseListPane({ purchases, error, openId }: { purchases: Purc
         </label>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-[var(--line)]">
+      {/* Сверху 4 px — чтобы рамка фокуса первой строки не обрезалась краем прокрутки */}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-2 pt-1">
         {(error || sampleError) && (
-          <div className="p-[var(--pad)]">
+          <div className="pb-2">
             <Note tone="warn">{STORAGE_ERROR}</Note>
           </div>
         )}
         {purchases?.length === 0 && (
-          <div className="grid justify-items-start gap-3 p-[var(--pad)]">
+          <div className="grid justify-items-start gap-3 px-2 py-2">
             <p className="text-[var(--ink-2)]">Закупок пока нет. Загрузите документы — выпишу требования и сроки.</p>
             {/* На широком экране кнопки стоят в основной панели, в списке их не повторяем */}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2 split:hidden">
@@ -85,10 +86,10 @@ export function PurchaseListPane({ purchases, error, openId }: { purchases: Purc
           </div>
         )}
         {purchases && purchases.length > 0 && shown.length === 0 && (
-          <p className="p-[var(--pad)] text-[var(--ink-3)]">Ничего не нашлось. Поиск идёт по названию, заказчику и закону.</p>
+          <p className="px-2 py-2 text-[var(--ink-3)]">Ничего не нашлось. Поиск идёт по названию, заказчику и закону.</p>
         )}
         {shown.length > 0 && (
-          <ul className="divide-y divide-[var(--line)]">
+          <ul className="grid gap-0.5">
             {shown.map((p) => {
               const current = p.id === openId;
               const stage = stageOf(p);
@@ -97,9 +98,7 @@ export function PurchaseListPane({ purchases, error, openId }: { purchases: Purc
                   <Link
                     href={`/p/${p.id}`}
                     aria-current={current ? "true" : undefined}
-                    className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2.5 gap-y-0.5 px-3 py-2.5 ${
-                      current ? "bg-[var(--select)]" : "hover:bg-[var(--hover)]"
-                    }`}
+                    className="item grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2.5 gap-y-0.5 py-2"
                   >
                     <span className="row-span-2 grid">
                       <LawBadge purchase={p} selected={current} />

@@ -4,11 +4,13 @@ import type { ReactNode } from "react";
 import { MenuIcon } from "lucide-react";
 import { useShell } from "@/components/app-shell";
 
-// Шапка экрана на холсте: заголовок, под ним главная цифра экрана, справа — одно главное действие.
+// Шапка экрана на холсте: заголовок, рядом главная цифра экрана, справа — одно главное действие.
+// Заголовок стоит на одной линии со знаком в сайдбаре и по левому краю островов под ним. Справа шапка
+// оставляет место под полосу прокрутки, как острова под ней, — края кнопки и островов совпадают.
 export function PageHeader({ title, sub, actions }: { title: ReactNode; sub?: ReactNode; actions?: ReactNode }) {
   const { menuOpen, openMenu, menuButton } = useShell();
   return (
-    <header className="flex min-h-14 flex-none items-center gap-x-3 gap-y-2 px-[var(--gutter)] py-2.5 max-lg:pl-1.5">
+    <header className="flex min-h-16 flex-none items-center gap-x-3 gap-y-2 overflow-hidden px-2 pt-2 [scrollbar-gutter:stable] max-lg:min-h-14 max-lg:py-2">
       <button
         ref={menuButton}
         type="button"
@@ -29,13 +31,14 @@ export function PageHeader({ title, sub, actions }: { title: ReactNode; sub?: Re
   );
 }
 
-// Прокручиваемая часть экрана под шапкой. fill — для экранов, где панели прокручиваются сами.
+// Холст под шапкой, на нём острова. fill — для экранов, где острова прокручиваются сами.
+// Поля по 8 px вокруг — место для кольца и тени островов, иначе край прокрутки их срежет.
 export function PageBody({ fill = false, children }: { fill?: boolean; children: ReactNode }) {
   return (
     <main
       data-scroll-root={fill ? undefined : ""}
-      className={`min-h-0 flex-1 px-[var(--gutter)] pb-[var(--gutter)] ${
-        fill ? "flex flex-col overflow-hidden" : "overflow-y-auto overscroll-contain"
+      className={`min-h-0 flex-1 px-2 pt-1 ${
+        fill ? "flex flex-col overflow-hidden pb-2" : "overflow-y-auto overscroll-contain pb-4 [scrollbar-gutter:stable]"
       }`}
     >
       {children}

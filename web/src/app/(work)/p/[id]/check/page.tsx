@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { AlertTriangleIcon, CheckIcon, FileTextIcon, XIcon } from "lucide-react";
 import { FileDrop } from "@/components/file-drop";
+import { Island } from "@/components/island";
 import { Note, Warnings } from "@/components/note";
 import { scrollToTop } from "@/components/page-header";
 import { usePurchase } from "@/components/purchase-provider";
-import { NextStep, TabBody } from "@/components/purchase-view";
+import { NextStep, StepIntro, TabBody } from "@/components/purchase-view";
 import { WorkingSteps } from "@/components/working-steps";
 import { checkCounts, docsKeyOf, type CheckFinding, type CheckResponse, type CheckResult } from "@/lib/check";
 import { sampleCheck } from "@/lib/check-sample";
@@ -114,7 +115,8 @@ function verdict(check: CheckResult) {
 const when = (iso: string) =>
   new Date(iso).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
-// Вкладка «Проверка заявки»: участник загружает свою заявку, ИИ сверяет её с документами закупки.
+// Шаг 3 «Проверка заявки»: участник загружает свою заявку, ИИ сверяет её с документами закупки.
+// Итог и главное действие — в первом острове, найденное по пунктам — во втором.
 // В примере вместо загруженного файла проверяется вымышленная заявка — бесплатно и без ИИ.
 export default function CheckPage() {
   const { purchase, documents, update } = usePurchase();
@@ -159,7 +161,9 @@ export default function CheckPage() {
   if (working) {
     return (
       <TabBody>
-        <WorkingSteps steps={WORKING_STEPS} />
+        <div className="island px-[var(--pad)]">
+          <WorkingSteps steps={WORKING_STEPS} />
+        </div>
       </TabBody>
     );
   }
@@ -167,15 +171,15 @@ export default function CheckPage() {
   if (!check) {
     return (
       <TabBody>
-        <div className="grid gap-4">
-          <p className="max-w-[70ch] text-[var(--ink-2)]">
-            Шаг 3 — перед подачей. Загрузите заявку или техническое предложение, которые собираетесь подавать: сверю их с извещением и ТЗ по каждому пункту и скажу, за что могут отклонить.
-          </p>
-          {error && (
-            <Note tone="warn" icon={AlertTriangleIcon}>
-              {error}
-            </Note>
-          )}
+        <StepIntro>
+          Шаг 3 — перед подачей. Загрузите заявку или техническое предложение, которые собираетесь подавать: сверю их с извещением и ТЗ по каждому пункту и скажу, за что могут отклонить.
+        </StepIntro>
+        {error && (
+          <Note tone="warn" icon={AlertTriangleIcon}>
+            {error}
+          </Note>
+        )}
+        <div className="island p-2">
           <FileDrop
             hint="Перетащите сюда файлы заявки — можно сразу несколько"
             button="Загрузить заявку"
@@ -191,53 +195,62 @@ export default function CheckPage() {
 
   return (
     <TabBody>
-      <h3 className="t-title">{title}</h3>
-      <p className="mt-1 max-w-[70ch] text-[var(--ink-2)]">{lead}</p>
-      <p className="t-caption mt-1 text-[var(--ink-3)]">
-        Проверено: {check.files.join(", ")} · {when(check.checkedAt)}
-      </p>
+      <section aria-labelledby="check-verdict" className="island grid gap-1 px-[var(--pad)] pb-4 pt-3">
+        <h3 id="check-verdict" className="t-title">
+          {title}
+        </h3>
+        <p className="max-w-[70ch] text-[var(--ink-2)]">{lead}</p>
+        <p className="t-caption text-[var(--ink-3)]">
+          Проверено: {check.files.join(", ")} · {when(check.checkedAt)}
+        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <button
+            type="button"
+            onClick={() => (purchase.sample ? void run([]) : input.current?.click())}
+            className={`btn ${check.findings.length ? "" : "btn-line"}`}
+          >
+            {check.findings.length ? "Проверить исправленный файл" : "Проверить другой файл"}
+          </button>
+          <Link href={`/p/${purchase.id}/chat`} className="link">
+            Сомневаетесь — спросите по закупке
+          </Link>
+        </div>
+      </section>
 
-      <div className="mt-4 grid gap-2 empty:hidden">
-        {purchase.sample && <Note tone="info">Это пример: проверена вымышленная заявка к вымышленной закупке.</Note>}
-        <Warnings
-          items={[
-            !purchase.sample && check.docsKey !== docsKey && "После проверки в закупку добавили документы — проверьте заявку заново.",
-            notice,
-            error,
-          ]}
-        />
-      </div>
+      {purchase.sample && <Note tone="info">Это пример: проверена вымышленная заявка к вымышленной закупке.</Note>}
+      <Warnings
+        items={[
+          !purchase.sample && check.docsKey !== docsKey && "После проверки в закупку добавили документы — проверьте заявку заново.",
+          notice,
+          error,
+        ]}
+      />
 
-      <ul className="mt-4 divide-y divide-[var(--line)] border-y border-[var(--line)]">
-        {check.findings.map((f, i) => (
-          <Finding key={i} finding={f} open={open === i} onToggle={() => setOpen(open === i ? null : i)} />
-        ))}
-        {check.okCount > 0 && (
-          <li className="grid grid-cols-[24px_minmax(0,1fr)] items-center gap-2.5 py-3">
-            <span aria-hidden className={`${ICON} bg-[var(--ok-tint)] text-[var(--ok)]`}>
-              <CheckIcon className="size-3.5" />
-            </span>
-            <p className="t-strong text-[var(--ok)]">
-              {check.findings.length ? "Остальные" : "Все"} {check.okCount} {plural(check.okCount, "пункт", "пункта", "пунктов")} — в порядке.
-            </p>
-          </li>
-        )}
-      </ul>
+      <Island
+        id="check-findings"
+        level={3}
+        title={check.findings.length ? "Что исправить" : "Проверенные пункты"}
+        count={check.findings.length || undefined}
+      >
+        <ul className="divide-y divide-[var(--line)] px-[var(--pad)] pb-1">
+          {check.findings.map((f, i) => (
+            <Finding key={i} finding={f} open={open === i} onToggle={() => setOpen(open === i ? null : i)} />
+          ))}
+          {check.okCount > 0 && (
+            <li className="grid grid-cols-[24px_minmax(0,1fr)] items-center gap-2.5 py-3">
+              <span aria-hidden className={`${ICON} bg-[var(--ok-tint)] text-[var(--ok)]`}>
+                <CheckIcon className="size-3.5" />
+              </span>
+              <p className="t-strong text-[var(--ok)]">
+                {check.findings.length ? "Остальные" : "Все"} {check.okCount} {plural(check.okCount, "пункт", "пункта", "пунктов")} — в порядке.
+              </p>
+            </li>
+          )}
+        </ul>
+      </Island>
 
       <NextStep from="check" />
 
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <button
-          type="button"
-          onClick={() => (purchase.sample ? void run([]) : input.current?.click())}
-          className={`btn ${check.findings.length ? "" : "btn-line"}`}
-        >
-          {check.findings.length ? "Проверить исправленный файл" : "Проверить другой файл"}
-        </button>
-        <Link href={`/p/${purchase.id}/chat`} className="link">
-          Сомневаетесь — спросите по закупке
-        </Link>
-      </div>
       <input
         ref={input}
         type="file"

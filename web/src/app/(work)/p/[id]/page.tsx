@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { Island } from "@/components/island";
 import { Warnings } from "@/components/note";
 import { SourceQuote } from "@/components/purchase-bits";
 import { usePurchase } from "@/components/purchase-provider";
-import { NextStep, TabBody } from "@/components/purchase-view";
+import { NextStep, StepIntro, TabBody } from "@/components/purchase-view";
 import { plural } from "@/lib/plural";
 import { scanWarning } from "@/lib/read-documents";
 import { REQ_GROUP_KEYS, type ReqGroupKey } from "@/lib/requirements";
@@ -28,7 +29,7 @@ const GROUPS: Record<ReqGroupKey, { title: string; empty: string }> = {
   },
 };
 
-// Вкладка «Требования» — первая вкладка закупки.
+// Шаг 1 «Требования»: каждая группа требований — свой остров, в конце — остров «Дальше».
 export default function RequirementsPage() {
   const { purchase, documents } = usePurchase();
   const [open, setOpen] = useState<string | null>(null);
@@ -37,12 +38,11 @@ export default function RequirementsPage() {
 
   return (
     <TabBody>
-      <p className="mb-4 max-w-[70ch] text-[var(--ink-2)]">
+      <StepIntro>
         Шаг 1 — разобраться, подходит ли вам закупка и что подать. Всё выписано из документов закупки; нажмите на ссылку под пунктом, чтобы увидеть точную цитату.
-      </p>
+      </StepIntro>
 
       <Warnings
-        className="mb-4"
         items={[
           unreadable.length > 0 &&
             `Не получилось прочитать: ${unreadable.map((f) => `${f.name} — ${f.reason}`).join("; ")}. Требования выписаны по остальным файлам.`,
@@ -55,12 +55,11 @@ export default function RequirementsPage() {
       {REQ_GROUP_KEYS.map((key) => {
         const items = requirements[key];
         return (
-          <section key={key} className="mt-5 first-of-type:mt-0">
-            <h3 className="t-over mb-1.5 text-[var(--ink-3)]">{GROUPS[key].title}</h3>
+          <Island key={key} id={`req-${key}`} level={3} title={GROUPS[key].title} count={items.length || undefined}>
             {items.length === 0 ? (
-              <p className="border-y border-[var(--line)] py-2.5 text-[var(--ink-3)]">{GROUPS[key].empty}</p>
+              <p className="px-[var(--pad)] pb-3 pt-1 text-[var(--ink-3)]">{GROUPS[key].empty}</p>
             ) : (
-              <ul className="divide-y divide-[var(--line)] border-y border-[var(--line)]">
+              <ul className="divide-y divide-[var(--line)] px-[var(--pad)] pb-1">
                 {items.map((it, i) => {
                   const id = `${key}-${i}`;
                   return (
@@ -79,7 +78,7 @@ export default function RequirementsPage() {
                 })}
               </ul>
             )}
-          </section>
+          </Island>
         );
       })}
 

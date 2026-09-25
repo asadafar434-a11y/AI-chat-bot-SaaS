@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertTriangleIcon, CheckIcon, FileTextIcon, PlusIcon } from "lucide-react";
 import { FileDrop } from "@/components/file-drop";
+import { Island } from "@/components/island";
 import { Note } from "@/components/note";
 import { PageBody, PageHeader, scrollToTop } from "@/components/page-header";
 import {
@@ -200,8 +201,8 @@ export default function MyDocumentsPage() {
         }}
       />
       <PageBody>
-        <div className="grid max-w-[880px] gap-3">
-          <p className="max-w-[70ch] text-[var(--ink-2)]">
+        <div className="grid max-w-[880px] gap-2">
+          <p className="max-w-[70ch] px-[var(--pad)] py-1 text-[var(--ink-2)]">
             Загрузите всё, что подавали раньше: заявки целиком или по частям, анкеты, декларации, ценовые предложения, договоры и акты, протоколы. Приложение разложит их по видам — и новые документы будет писать так же, как ваши.
           </p>
 
@@ -248,7 +249,7 @@ export default function MyDocumentsPage() {
           )}
 
           {stage && (
-            <section className="panel px-[var(--pad)]">
+            <section className="island px-[var(--pad)]">
               <div className="grid gap-1 py-6" aria-live="polite">
                 <p className="t-section animate-pulse">{STAGE_TEXT[stage]}</p>
                 <p className="text-[var(--ink-3)]">Сканы и фото распознаются дольше — примерно минута на каждые 10 страниц.</p>
@@ -257,17 +258,8 @@ export default function MyDocumentsPage() {
           )}
 
           {groups.map(([kind, list], gi) => (
-            <section key={kind} aria-labelledby={`dg-${gi}`} className="panel">
-              <div className="panel-head">
-                <div className="grid gap-0.5">
-                  <h2 id={`dg-${gi}`} className="t-section flex items-baseline gap-2">
-                    {DOC_KINDS[kind].group}
-                    <span className="count">{list.length}</span>
-                  </h2>
-                  <p className="t-caption text-[var(--ink-3)]">{DOC_KINDS[kind].use}</p>
-                </div>
-              </div>
-              <ul className="divide-y divide-[var(--line)]">
+            <Island key={kind} id={`dg-${gi}`} title={DOC_KINDS[kind].group} count={list.length} sub={DOC_KINDS[kind].use}>
+              <ul className="divide-y divide-[var(--line)] px-[var(--pad)] pb-1">
                 {list.map((doc) => {
                   const key = `${kind}:${doc.id}`;
                   const others = doc.kinds.filter((k) => k !== kind);
@@ -280,7 +272,7 @@ export default function MyDocumentsPage() {
                     ...(unused ? ["не используется: образцов уже достаточно"] : []),
                   ].join(" · ");
                   return (
-                    <li key={doc.id} className="grid gap-2 px-[var(--pad)] py-3">
+                    <li key={doc.id} className="grid gap-2 py-3">
                       <div className="grid grid-cols-[28px_minmax(0,1fr)] items-start gap-2.5">
                         <span
                           className={`grid size-7 place-items-center rounded-md ${
@@ -335,11 +327,11 @@ export default function MyDocumentsPage() {
                   );
                 })}
               </ul>
-            </section>
+            </Island>
           ))}
 
           {!stage && (
-            <section className="panel p-[var(--pad)]">
+            <section className="island p-2">
               <FileDrop
                 hint="Перетащите сюда свои документы — PDF, Word, сканы и фото. Можно сразу все."
                 button={count ? "Добавить документы" : "Загрузить документы"}

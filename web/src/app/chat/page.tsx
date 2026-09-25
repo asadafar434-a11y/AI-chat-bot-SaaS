@@ -141,90 +141,90 @@ export default function GeneralChatPage() {
     <>
       <PageHeader title="Спросить про тендер" sub="Общие вопросы по 44-ФЗ и 223-ФЗ — ответ со ссылкой на статью" />
       <PageBody fill>
-        <section
-          aria-label="Разговор"
-          className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--r-surface)] border border-[var(--line)] bg-card shadow-[var(--hairline)]"
-        >
-          <ChatFeed
-            messages={messages}
-            status={status}
-            error={error}
-            onRetry={() => regenerate({ body: requestBody(documents) })}
-            empty={
-              <>
-                <div className="grid gap-1">
-                  <h2 className="t-title">Общий вопрос по 44-ФЗ и 223-ФЗ</h2>
-                  <p className="max-w-[62ch] text-[var(--ink-2)]">
-                    Отвечу со ссылкой на статью закона. Приложите документ — отвечу и по нему.
-                  </p>
-                  <p className="t-caption max-w-[62ch] text-[var(--ink-3)]">
-                    Вопрос про конкретную закупку задайте внутри неё, в «Вопросах» — отвечу по её документам.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {SUGGESTIONS.map((s) => (
-                    <button key={s} type="button" onClick={() => setDraft(s)} className="chip">
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </>
-            }
-          />
+        {/* Место под полосу прокрутки справа — как у шапки: правый край острова под кнопками шапки */}
+        <div className="-mx-2 -mb-2 -mt-1 flex min-h-0 flex-1 flex-col overflow-hidden px-2 pb-2 pt-1 [scrollbar-gutter:stable]">
+          <section aria-label="Разговор" className="island flex min-h-0 flex-1 flex-col overflow-hidden">
+            <ChatFeed
+              messages={messages}
+              status={status}
+              error={error}
+              onRetry={() => regenerate({ body: requestBody(documents) })}
+              empty={
+                <>
+                  <div className="grid gap-1">
+                    <h2 className="t-title">Общий вопрос по 44-ФЗ и 223-ФЗ</h2>
+                    <p className="max-w-[62ch] text-[var(--ink-2)]">
+                      Отвечу со ссылкой на статью закона. Приложите документ — отвечу и по нему.
+                    </p>
+                    <p className="t-caption max-w-[62ch] text-[var(--ink-3)]">
+                      Вопрос про конкретную закупку задайте внутри неё, в «Вопросах» — отвечу по её документам.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {SUGGESTIONS.map((s) => (
+                      <button key={s} type="button" onClick={() => setDraft(s)} className="chip">
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              }
+            />
 
-          <ComposerDock>
-            {(documents.length > 0 || uploading) && (
-              <div className="t-caption flex flex-wrap items-center gap-2 text-[var(--ink-3)]">
-                <span>В разговоре:</span>
-                {documents.map((d) => (
-                  <span key={d.name} className="file-chip max-w-72 text-foreground">
-                    <FileTextIcon className="size-3.5" />
-                    <span className="truncate">{d.name}</span>
-                    <span className="shrink-0 text-[var(--ink-3)]">{fmtChars(d.text.length)}</span>
-                    <button
-                      type="button"
-                      aria-label={`Убрать ${d.name} из разговора`}
-                      onClick={() => setDocuments((ds) => ds.filter((x) => x.name !== d.name))}
-                      className="grid size-6 shrink-0 place-items-center rounded-full text-[var(--ink-3)] hover:bg-[var(--paper-3)] hover:text-foreground"
-                    >
-                      <XIcon className="size-3.5" />
-                    </button>
-                  </span>
-                ))}
-                {uploading && <span className="animate-pulse">Читаю файлы…</span>}
-              </div>
-            )}
-            {notice && <p className="t-caption text-[var(--warn)]">{notice}</p>}
-            <PromptInput
-              onSubmit={async ({ text, files }: PromptInputMessage) => ask(text, await Promise.all(files.map(toFile)))}
-              multiple
-              globalDrop
-              accept={ACCEPTED_FILES}
-              className={PROMPT_CLASS}
-            >
-              <AttachmentChips />
-              <PromptInputBody>
-                <PromptInputTextarea
-                  value={draft}
-                  onChange={(e) => setDraft(e.currentTarget.value)}
-                  placeholder={documents.length > 0 ? "Спросите про приложенные документы…" : "Задайте вопрос по закупкам…"}
-                  className={PROMPT_TEXTAREA_CLASS}
-                />
-              </PromptInputBody>
-              <PromptInputFooter>
-                <PromptInputTools>
-                  <AttachButton />
-                </PromptInputTools>
-                <PromptInputSubmit
-                  status={uploading ? "submitted" : status}
-                  onStop={stop}
-                  disabled={uploading}
-                  className="rounded-full"
-                />
-              </PromptInputFooter>
-            </PromptInput>
-          </ComposerDock>
-        </section>
+            <ComposerDock>
+              {(documents.length > 0 || uploading) && (
+                <div className="t-caption flex flex-wrap items-center gap-2 text-[var(--ink-3)]">
+                  <span>В разговоре:</span>
+                  {documents.map((d) => (
+                    <span key={d.name} className="file-chip max-w-72 text-foreground">
+                      <FileTextIcon className="size-3.5" />
+                      <span className="truncate">{d.name}</span>
+                      <span className="shrink-0 text-[var(--ink-3)]">{fmtChars(d.text.length)}</span>
+                      <button
+                        type="button"
+                        aria-label={`Убрать ${d.name} из разговора`}
+                        onClick={() => setDocuments((ds) => ds.filter((x) => x.name !== d.name))}
+                        className="grid size-6 shrink-0 place-items-center rounded-full text-[var(--ink-3)] hover:bg-[var(--paper-3)] hover:text-foreground"
+                      >
+                        <XIcon className="size-3.5" />
+                      </button>
+                    </span>
+                  ))}
+                  {uploading && <span className="animate-pulse">Читаю файлы…</span>}
+                </div>
+              )}
+              {notice && <p className="t-caption text-[var(--warn)]">{notice}</p>}
+              <PromptInput
+                onSubmit={async ({ text, files }: PromptInputMessage) => ask(text, await Promise.all(files.map(toFile)))}
+                multiple
+                globalDrop
+                accept={ACCEPTED_FILES}
+                className={PROMPT_CLASS}
+              >
+                <AttachmentChips />
+                <PromptInputBody>
+                  <PromptInputTextarea
+                    value={draft}
+                    onChange={(e) => setDraft(e.currentTarget.value)}
+                    placeholder={documents.length > 0 ? "Спросите про приложенные документы…" : "Задайте вопрос по закупкам…"}
+                    className={PROMPT_TEXTAREA_CLASS}
+                  />
+                </PromptInputBody>
+                <PromptInputFooter>
+                  <PromptInputTools>
+                    <AttachButton />
+                  </PromptInputTools>
+                  <PromptInputSubmit
+                    status={uploading ? "submitted" : status}
+                    onStop={stop}
+                    disabled={uploading}
+                    className="rounded-full"
+                  />
+                </PromptInputFooter>
+              </PromptInput>
+            </ComposerDock>
+          </section>
+        </div>
       </PageBody>
     </>
   );

@@ -55,7 +55,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <section aria-label="Вопросы по закупке" className="island flex min-h-0 flex-1 flex-col overflow-hidden">
       <ChatFeed
         messages={messages}
         status={status}
@@ -98,6 +98,6 @@ export default function ChatPage() {
           </PromptInputFooter>
         </PromptInput>
       </ComposerDock>
-    </div>
+    </section>
   );
 }

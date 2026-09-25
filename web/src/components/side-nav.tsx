@@ -66,7 +66,7 @@ function MemberCard({ profile, current }: { profile: Profile; current: boolean }
       href="/me/profile"
       aria-label={`Реквизиты: ${name}`}
       aria-current={current ? "page" : undefined}
-      className="grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-2.5 rounded-[var(--r-ctl)] p-1.5 hover:bg-[var(--hover)]"
+      className="grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-2.5 rounded-[var(--r-ctl)] px-1 py-1.5 hover:bg-[var(--hover)]"
     >
       <span aria-hidden className="grid size-7 place-items-center rounded-full bg-[var(--brand-tint)] text-xs font-bold text-primary">
         {initials(name)}
@@ -91,7 +91,8 @@ function Group({ id, title, children }: { id: string; title: string; children: R
   );
 }
 
-// Сайдбар: разделы по смыслу — работа с закупками, данные компании, помощь; внизу карточка участника.
+// Сайдбар — остров-меню: разделы по смыслу — работа с закупками, данные компании, помощь; внизу карточка участника.
+// Знак, иконки пунктов и аватар стоят на одной вертикали.
 export function SideNav({ onClose }: { onClose: () => void }) {
   const pathname = usePathname();
   const [data, setData] = useState<SideData | null>(null);
@@ -116,7 +117,7 @@ export function SideNav({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <div className="flex min-h-14 flex-none items-center gap-2 py-2.5 pl-[var(--pad)] pr-2">
+      <div className="flex min-h-14 flex-none items-center gap-2 py-2.5 pl-3 pr-2">
         <Link href="/" aria-label="Тендерный юрист — на главную" className="inline-flex min-w-0 items-center gap-2.5">
           <span className="grid size-7 flex-none place-items-center rounded-[var(--r-ctl)] bg-primary text-primary-foreground shadow-[inset_0_-2px_0_rgb(0_0_0/.12)]">
             <ScaleIcon className="size-4" />

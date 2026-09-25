@@ -38,10 +38,10 @@ type ChatFeedProps = {
   empty: ReactNode;
 };
 
-// Поле ввода прижато к низу панели, лента над ним прокручивается сама.
+// Поле ввода прижато к низу острова-разговора, лента над ним прокручивается сама.
 export function ComposerDock({ children }: { children: ReactNode }) {
   return (
-    <div className="flex-none border-t border-[var(--line)] bg-card px-[var(--gutter)] pb-[calc(8px+env(safe-area-inset-bottom,0px))] pt-3">
+    <div className="flex-none border-t border-[var(--line)] bg-card px-[var(--pad)] pb-[calc(8px+env(safe-area-inset-bottom,0px))] pt-3">
       <div className="mx-auto grid w-full max-w-[728px] gap-1.5">
         {children}
         <p className="t-caption text-center text-[var(--ink-3)]">
@@ -70,7 +70,7 @@ export function ChatFeed({ messages, status, error, onRetry, empty }: ChatFeedPr
       {/* Место под полосу прокрутки — только справа, иначе лента съезжает с края текста вкладок */}
       <ConversationContent
         scrollClassName="[scrollbar-gutter:stable]!"
-        className="mx-auto w-full max-w-[760px] gap-4 px-[var(--gutter)] pb-3 pt-4"
+        className="mx-auto w-full max-w-[760px] gap-4 px-[var(--pad)] pb-3 pt-4"
       >
         {messages.length === 0 ? (
           <ConversationEmptyState className="size-auto items-start justify-start gap-4 p-0 text-left">{empty}</ConversationEmptyState>

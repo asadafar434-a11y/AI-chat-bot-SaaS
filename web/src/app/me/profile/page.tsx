@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertTriangleIcon, CheckIcon, UploadIcon } from "lucide-react";
+import { Island } from "@/components/island";
 import { Note } from "@/components/note";
 import { PageBody, PageHeader } from "@/components/page-header";
 import {
@@ -46,7 +47,7 @@ function Suggestions({ items, onAccept, onDismiss }: {
   onDismiss: (group: FoundField[]) => void;
 }) {
   return (
-    <section className="grid gap-2.5 rounded-[var(--r-card)] bg-[var(--warn-tint)] px-3 py-3">
+    <section className="note grid gap-2.5 bg-[var(--warn-tint)] px-3 py-3">
       <p className="t-strong flex items-center gap-2 text-[var(--warn)]">
         <AlertTriangleIcon className="size-4 shrink-0" />
         В ваших документах есть другие значения — проверьте, какое верное
@@ -205,12 +206,12 @@ export default function ProfilePage() {
         }
       />
       <PageBody>
-        <div className="grid max-w-[880px] gap-3">
-          <p className="max-w-[70ch] text-[var(--ink-2)]">
+        <div className="grid max-w-[880px] gap-2">
+          <p className="max-w-[70ch] px-[var(--pad)] py-1 text-[var(--ink-2)]">
             Впишите один раз — дальше они сами попадут в анкету, декларацию, предложение о цене и подпись. В техническое предложение реквизиты не попадают никогда: его подают анонимно.
           </p>
           {sourceDocs.length === 0 && (
-            <p className="max-w-[70ch] text-[var(--ink-2)]">
+            <p className="max-w-[70ch] px-[var(--pad)] pb-1 text-[var(--ink-2)]">
               Можно не вписывать руками: загрузите анкету или карточку предприятия в{" "}
               <Link href="/me/documents" className="link">
                 «Документы компании»
@@ -239,17 +240,12 @@ export default function ProfilePage() {
 
           {profile &&
             PROFILE_GROUPS.map((group, gi) => (
-              <section key={group.title} aria-labelledby={`pg-${gi}`} className="panel">
-                <div className="panel-head">
-                  <h2 id={`pg-${gi}`} className="t-section">
-                    {group.title}
-                  </h2>
-                </div>
-                <div className="divide-y divide-[var(--line)]">
+              <Island key={group.title} id={`pg-${gi}`} title={group.title}>
+                <div className="grid px-[var(--pad)] pb-3 pt-1">
                   {group.fields.map((field) => (
                     <div
                       key={field.key}
-                      className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-center gap-x-4 gap-y-1 px-[var(--pad)] py-2 max-sm:grid-cols-1"
+                      className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-center gap-x-4 gap-y-1 py-1.5 max-sm:grid-cols-1"
                     >
                       <label htmlFor={`pf-${field.key}`} className="text-[var(--ink-2)]">
                         {field.label}
@@ -270,7 +266,7 @@ export default function ProfilePage() {
                     </div>
                   ))}
                 </div>
-              </section>
+              </Island>
             ))}
         </div>
       </PageBody>
