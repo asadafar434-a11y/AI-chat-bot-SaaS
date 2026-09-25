@@ -1,7 +1,13 @@
 import type { ChatMessage } from "@/lib/chat-types";
+import type { PartKey } from "@/lib/my-docs";
+import type { PartDoc } from "@/lib/part-doc";
 import type { FailedFile, SentDocument } from "@/lib/read-documents";
 import type { PurchaseSummary, ReqGroups, RequirementsResponse } from "@/lib/requirements";
 import { NO_ANTI_DUMPING, PLAIN_FORM, type TpItem, type TpResult } from "@/lib/tp";
+
+// Часть заявки, которую ИИ написал по образцам. basisKey — отпечаток того, из чего она составлена:
+// форма заказчика, реквизиты, цена, образцы. Изменилось что-то из этого — часть составляется заново.
+export type PurchasePart = { doc: PartDoc; basisKey: string };
 
 export type Purchase = PurchaseSummary & {
   id: string;
@@ -13,6 +19,7 @@ export type Purchase = PurchaseSummary & {
   tp?: TpResult;
   // Цена, которую участник вписал в заявку, в рублях.
   tpPrice?: number;
+  parts?: Partial<Record<PartKey, PurchasePart>>;
   chat?: ChatMessage[];
 };
 

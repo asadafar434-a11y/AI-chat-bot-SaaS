@@ -1,5 +1,5 @@
 import { claudeErrorText, NO_KEY_TEXT } from "@/lib/claude-errors";
-import { askJson, ModelStop } from "@/lib/claude-request";
+import { askJson, cleanSamples, ModelStop, sampleBlocks } from "@/lib/claude-request";
 import { MAX_CONTEXT_CHARS } from "@/lib/chat-types";
 import { quoteFound } from "@/lib/quotes";
 import type { SentDocument } from "@/lib/read-documents";
@@ -8,15 +8,15 @@ import { SAMPLES_NOTE, TP_INSTRUCTIONS } from "@/lib/tp-prompt";
 
 export const maxDuration = 300;
 
-type TpRequest = { documents?: SentDocument[]; samples?: SentDocument[] };
+type TpRequest = { documents?: SentDocument[]; samples?: unknown };
 
 const fail = (message: string, status: number) => new Response(message, { status });
 
 export async function POST(request: Request) {
-  const { documents = [], samples: rawSamples = [] }: TpRequest = await request.json();
-  const samples = Array.isArray(rawSamples) ? rawSamples.filter((s) => typeof s?.text === "string" && s.text.trim()) : [];
+  const { documents = [], samples: rawSamples }: TpRequest = await request.json();
+  const samples = cleanSamples(rawSamples);
   if (samples.reduce((sum, s) => sum + s.text.length, 0) > SAMPLES_LIMIT * 1.1) {
-    return fail("Образцов слишком много — оставьте в «Моих данных» самые удачные.", 413);
+    return fail("Образцов слишком много — удалите в «Моих документах» лишние технические предложения.", 413);
   }
   if (!process.env.ANTHROPIC_API_KEY) return fail(NO_KEY_TEXT, 503);
 
@@ -33,13 +33,7 @@ export async function POST(request: Request) {
     const draft = await askJson({
       label: "tp",
       documents,
-      // Образцы — после документов закупки, со своей меткой кеша: при «Составить заново» они не читаются заново по полной цене.
-      extra: samples.map((sample, i) => ({
-        type: "document" as const,
-        source: { type: "text" as const, media_type: "text/plain" as const, data: sample.text },
-        title: `Образец участника: ${sample.name}`,
-        ...(i === samples.length - 1 && { cache_control: { type: "ephemeral" as const } }),
-      })),
+      extra: sampleBlocks(samples),
       instructions: samples.length ? SAMPLES_NOTE + TP_INSTRUCTIONS : TP_INSTRUCTIONS,
       schema: TpDraftSchema,
       signal: request.signal,

@@ -3,6 +3,9 @@ import { extractText } from "@/lib/extract-text";
 
 type Failed = { name: string; reason: string };
 
+// Сканы распознаёт ИИ, постранично: 60-страничный скан читается пару минут.
+export const maxDuration = 300;
+
 export async function POST(request: Request) {
   const form = await request.formData();
   const files = form.getAll("files").filter((f): f is File => f instanceof File);
@@ -25,6 +28,7 @@ export async function POST(request: Request) {
         name: file.name,
         chars: result.text.length,
         text: result.text,
+        ...(result.scan && { scan: true }),
       });
     }
   }

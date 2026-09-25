@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { UploadIcon } from "lucide-react";
+import { ACCEPTED_FILES } from "@/lib/read-documents";
 
 type FileDropProps = {
   hint: string;
@@ -41,7 +42,7 @@ export function FileDrop({ hint, button, onFiles, onSample }: FileDropProps) {
         ref={input}
         type="file"
         multiple
-        accept=".pdf,.docx,.doc,.txt,.md"
+        accept={ACCEPTED_FILES}
         className="hidden"
         onChange={(e) => { pick(e.currentTarget.files); e.currentTarget.value = ""; }}
       />

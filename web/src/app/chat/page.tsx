@@ -22,7 +22,7 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { MAX_CONTEXT_CHARS, type ChatMessage } from "@/lib/chat-types";
 import { takePendingQuestion } from "@/lib/pending-question";
-import { readDocuments, type FailedFile, type SentDocument } from "@/lib/read-documents";
+import { ACCEPTED_FILES, readDocuments, type FailedFile, type SentDocument } from "@/lib/read-documents";
 
 const transport = new DefaultChatTransport<ChatMessage>({ api: "/api/chat" });
 
@@ -210,7 +210,7 @@ export default function GeneralChatPage() {
             onSubmit={async ({ text, files }: PromptInputMessage) => ask(text, await Promise.all(files.map(toFile)))}
             multiple
             globalDrop
-            accept=".pdf,.docx,.doc,.txt,.md"
+            accept={ACCEPTED_FILES}
             className="[&_[data-slot=input-group]]:rounded-[var(--r-surface)] [&_[data-slot=input-group]]:bg-card"
           >
             <AttachmentChips />

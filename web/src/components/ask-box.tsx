@@ -4,7 +4,7 @@ import { useRef, useState, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowUpIcon, FileTextIcon, PaperclipIcon, XIcon } from "lucide-react";
 import { setPendingQuestion } from "@/lib/pending-question";
-import { readDocuments, type FailedFile, type SentDocument } from "@/lib/read-documents";
+import { ACCEPTED_FILES, readDocuments, type FailedFile, type SentDocument } from "@/lib/read-documents";
 
 export const SUGGESTIONS = ["Заказчик не подписывает акт — что делать?", "Как вернуть обеспечение заявки?"];
 
@@ -102,7 +102,7 @@ export function AskBox() {
           ref={input}
           type="file"
           multiple
-          accept=".pdf,.docx,.doc,.txt,.md"
+          accept={ACCEPTED_FILES}
           className="hidden"
           onChange={(e) => {
             attach(e.currentTarget.files);

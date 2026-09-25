@@ -13,7 +13,7 @@ import { WorkingSteps } from "@/components/working-steps";
 import { dueLine } from "@/lib/deadline";
 import { plural } from "@/lib/plural";
 import { extractRequirements, fromRequirements, titleOf } from "@/lib/purchase";
-import { readDocuments } from "@/lib/read-documents";
+import { ACCEPTED_FILES, readDocuments } from "@/lib/read-documents";
 import { REQ_GROUP_KEYS } from "@/lib/requirements";
 import { fillCount } from "@/lib/tp";
 
@@ -171,7 +171,7 @@ export default function PurchasePage() {
               ref={input}
               type="file"
               multiple
-              accept=".pdf,.docx,.doc,.txt,.md"
+              accept={ACCEPTED_FILES}
               className="hidden"
               onChange={(e) => {
                 const files = e.currentTarget.files ? [...e.currentTarget.files] : [];

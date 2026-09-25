@@ -9,6 +9,7 @@ import {
   TextRun,
   WidthType,
 } from "docx";
+import type { PartBlock, PartDoc } from "@/lib/part-doc";
 import { ANKETA, fillFromProfile, type Profile } from "@/lib/profile";
 import { formatRubles, rublesInWords } from "@/lib/rub-words";
 import type { TpForm } from "@/lib/tp";
@@ -187,20 +188,52 @@ const BODIES: Record<TpPart, (data: TpDocx) => (Paragraph | Table)[]> = {
   price: priceBody,
 };
 
+const docTitle = (text: string) =>
+  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 }, children: [run(text, { bold: true, size: 28 })] });
+
+const page = (children: (Paragraph | Table)[]) =>
+  Packer.toBuffer(
+    new Document({
+      sections: [{ properties: { page: { margin: { top: 1134, bottom: 1134, left: 1701, right: 850 } } }, children }],
+    })
+  );
+
 export async function buildTpDocx(part: TpPart, data: TpDocx): Promise<Buffer> {
-  const doc = new Document({
-    sections: [
-      {
-        properties: { page: { margin: { top: 1134, bottom: 1134, left: 1701, right: 850 } } },
-        children: [
-          new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 }, children: [run(PART_TITLES[part], { bold: true, size: 28 })] }),
-          ...(data.subject
-            ? [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 240 }, children: [run(`Предмет закупки: ${data.subject}`)] })]
-            : []),
-          ...BODIES[part](data),
-        ],
-      },
-    ],
-  });
-  return Packer.toBuffer(doc);
+  return page([
+    docTitle(PART_TITLES[part]),
+    ...(data.subject
+      ? [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 240 }, children: [run(`Предмет закупки: ${data.subject}`)] })]
+      : []),
+    ...BODIES[part](data),
+  ]);
 }
+
+// Ширина столбца — по средней длине текста в нём: узкий «№» и широкое «Сведения об участнике».
+function blockTable(rows: string[][]) {
+  const columns = Math.max(...rows.map((r) => r.length));
+  const weights = Array.from({ length: columns }, (_, c) =>
+    Math.max(3, rows.reduce((sum, r) => sum + (r[c] ?? "").length, 0) / rows.length)
+  );
+  const total = weights.reduce((a, b) => a + b, 0);
+  const widths = weights.map((w) => Math.max(7, Math.round((w / total) * 100)));
+  return table(rows.map((r) => new TableRow({ children: widths.map((width, c) => cell(paragraphs(r[c] ?? ""), width)) })));
+}
+
+function partBlock(block: PartBlock): (Paragraph | Table)[] {
+  switch (block.type) {
+    case "heading":
+      return [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 240, after: 120 }, children: [run(block.text, { bold: true })] })];
+    case "paragraph":
+      return paragraphs(block.text, { indent: true });
+    case "line":
+      return block.text
+        .split(/\n+/)
+        .filter((line) => line.trim())
+        .map((line) => new Paragraph({ spacing: { before: 60, after: 60 }, children: withFields(line.trim()) }));
+    case "table":
+      return block.rows.length ? [blockTable(block.rows), new Paragraph({ spacing: { after: 120 }, children: [] })] : [];
+  }
+}
+
+// Анкета, декларация или цена, которые ИИ написал по форме заказчика и образцам участника.
+export const buildPartDocx = (doc: PartDoc): Promise<Buffer> => page([docTitle(doc.title), ...doc.blocks.flatMap(partBlock)]);

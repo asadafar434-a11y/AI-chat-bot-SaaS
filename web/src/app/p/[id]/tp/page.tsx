@@ -9,7 +9,9 @@ import { Note } from "@/components/note";
 import { PageTitle } from "@/components/page-title";
 import { usePurchase } from "@/components/purchase-provider";
 import { WorkingSteps } from "@/components/working-steps";
-import { getProfile, listSamples, samplesForRequest, type Sample } from "@/lib/me-store";
+import { getProfile, listMyDocuments, samplesOf, type MyDocument } from "@/lib/me-store";
+import { PART_SAMPLE_KIND, type PartKey } from "@/lib/my-docs";
+import type { PartDoc } from "@/lib/part-doc";
 import { plural } from "@/lib/plural";
 import { identityValues, type Profile } from "@/lib/profile";
 import { titleOf } from "@/lib/purchase";
@@ -103,22 +105,42 @@ function SamplesLine({ count }: { count: number }) {
     <p className="mt-4 text-[15px] leading-[22px] text-muted-foreground">
       {count > 0 ? (
         <>
-          {`Пишу по вашим образцам: ${count} ${plural(count, "документ", "документа", "документов")}. `}
-          <Link href="/me/samples" className="font-semibold text-primary underline underline-offset-4">
-            Образцы
+          {`Пишу по вашим техническим предложениям: ${count} ${plural(count, "документ", "документа", "документов")} из `}
+          <Link href="/me/documents" className="font-semibold text-primary underline underline-offset-4">
+            «Моих документов»
           </Link>
+          .
         </>
       ) : (
         <>
           Черновик будет в общем стиле.{" "}
-          <Link href="/me/samples" className="font-semibold text-primary underline underline-offset-4">
-            Загрузите свои образцы
+          <Link href="/me/documents" className="font-semibold text-primary underline underline-offset-4">
+            Загрузите свои документы
           </Link>
           {" "}— и ТП будет написано так, как пишете вы.
         </>
       )}
     </p>
   );
+}
+
+// Короткий отпечаток данных: по нему видно, что часть заявки составлена из тех же реквизитов, цены и образцов.
+function fingerprint(value: unknown): string {
+  const text = JSON.stringify(value);
+  let hash = 5381;
+  for (let i = 0; i < text.length; i++) hash = (hash * 33 + text.charCodeAt(i)) | 0;
+  return (hash >>> 0).toString(36);
+}
+
+function saveFile(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function PriceBlock({ tp, price, nmck, onChange }: {
@@ -181,15 +203,21 @@ export default function TpPage() {
   const [confirmRedo, setConfirmRedo] = useState(false);
   const [downloading, setDownloading] = useState<TpPart | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
-  const [samples, setSamples] = useState<Sample[]>([]);
+  const [partNote, setPartNote] = useState<string | null>(null);
+  const [myDocs, setMyDocs] = useState<MyDocument[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
+  // Пока реквизиты и документы не прочитаны, нельзя сказать, актуальны ли готовые части заявки.
+  const [meReady, setMeReady] = useState(false);
   const tp = purchase.tp;
   const toggle = (id: string) => setOpen(open === id ? null : id);
-  const usedSamples = samplesForRequest(samples);
+  const usedSamples = samplesOf(myDocs, "tp");
+  const partSamples = (part: PartKey) => samplesOf(myDocs, PART_SAMPLE_KIND[part]);
 
   useEffect(() => {
-    listSamples().then(setSamples, () => setSamples([]));
-    getProfile().then(setProfile, () => setProfile(null));
+    void Promise.allSettled([
+      listMyDocuments().then(setMyDocs, () => setMyDocs([])),
+      getProfile().then(setProfile, () => setProfile(null)),
+    ]).then(() => setMeReady(true));
   }, []);
 
   async function compose() {
@@ -219,33 +247,81 @@ export default function TpPage() {
     }
   }
 
+  async function fetchWord(part: TpPart, payload: object) {
+    const res = await fetch("/api/tp/docx", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ part, ...payload }),
+    });
+    if (!res.ok) throw new Error((await res.text()) || "Не удалось собрать файл.");
+    saveFile(await res.blob(), `${PART_TITLES[part]}.docx`);
+  }
+
+  // Техническое предложение — всегда из черновика на экране. По этому же шаблону без ИИ собираются
+  // остальные части в примере и когда ИИ не подключён.
+  const templatePayload = (current: TpResult, part: TpPart) => ({
+    subject: purchase.subject,
+    form: current.form,
+    goods: current.goods.map(({ name, characteristics, quantity }) => ({ name, characteristics, quantity })),
+    items: current.items.map(({ clause, requirement, offer }) => ({ clause, requirement, offer })),
+    price: current.form.hasPrice ? purchase.tpPrice : undefined,
+    // Реквизиты — только в анкету, декларацию и цену; техническое предложение подают анонимно.
+    profile: part === "tp" ? undefined : profile,
+  });
+
   async function download(current: TpResult, part: TpPart) {
     setDownloading(part);
     setDownloadError(null);
     try {
-      const res = await fetch("/api/tp/docx", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          part,
-          subject: purchase.subject,
-          form: current.form,
-          goods: current.goods.map(({ name, characteristics, quantity }) => ({ name, characteristics, quantity })),
-          items: current.items.map(({ clause, requirement, offer }) => ({ clause, requirement, offer })),
-          price: current.form.hasPrice ? purchase.tpPrice : undefined,
-          // Реквизиты — только в анкету, декларацию и цену; техническое предложение подают анонимно.
-          profile: part === "tp" ? undefined : profile,
-        }),
-      });
-      if (!res.ok) throw new Error((await res.text()) || "Не удалось собрать файл.");
-      const url = URL.createObjectURL(await res.blob());
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${PART_TITLES[part]}.docx`;
-      document.body.append(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      await fetchWord(part, templatePayload(current, part));
+    } catch (e) {
+      setDownloadError((e as Error).message);
+    } finally {
+      setDownloading(null);
+    }
+  }
+
+  const basisKeyOf = (current: TpResult, part: PartKey) =>
+    fingerprint({
+      form: current.form,
+      profile,
+      price: current.form.hasPrice ? (purchase.tpPrice ?? null) : null,
+      samples: partSamples(part).map((d) => d.id),
+    });
+
+  // Анкета, декларация и цена пишутся по форме заказчика и образцам того же вида. Готовая часть хранится
+  // в закупке и скачивается сразу, пока не изменились форма, реквизиты, цена или образцы.
+  async function downloadPart(current: TpResult, part: PartKey, redo = false) {
+    if (purchase.sample) return download(current, part);
+    setDownloading(part);
+    setDownloadError(null);
+    setPartNote(null);
+    try {
+      const basisKey = basisKeyOf(current, part);
+      const made = purchase.parts?.[part];
+      let doc: PartDoc | null = !redo && made?.basisKey === basisKey ? made.doc : null;
+      if (!doc) {
+        const res = await fetch("/api/tp/part", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            part,
+            documents,
+            samples: partSamples(part).map(({ name, text }) => ({ name, text })),
+            profile,
+            price: current.form.hasPrice ? purchase.tpPrice : undefined,
+          }),
+        });
+        if (res.status === 503) {
+          setPartNote("ИИ не подключён, поэтому документ собран по стандартному шаблону — без ваших образцов.");
+          await fetchWord(part, templatePayload(current, part));
+          return;
+        }
+        if (!res.ok) throw new Error((await res.text()) || "Не удалось составить документ.");
+        doc = (await res.json()) as PartDoc;
+        update({ parts: { ...purchase.parts, [part]: { doc, basisKey } } });
+      }
+      await fetchWord(part, { doc });
     } catch (e) {
       setDownloadError((e as Error).message);
     } finally {
@@ -413,6 +489,82 @@ export default function TpPage() {
           )}
         </div>
 
+        <section className="mt-8">
+          <h2 className="mb-2.5 text-[13px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
+            Остальные части заявки — отдельными файлами
+          </h2>
+          <ul className="overflow-hidden rounded-[var(--r-surface)] bg-card">
+            {partsOf(tp.form)
+              .filter((part): part is PartKey => part !== "tp")
+              .map((part) => {
+                const made = purchase.parts?.[part];
+                const fresh = meReady && made !== undefined && made.basisKey === basisKeyOf(tp, part);
+                const samples = partSamples(part);
+                const status = !meReady
+                  ? "…"
+                  : purchase.sample
+                    ? "в примере — по стандартному шаблону"
+                    : downloading === part && !fresh
+                      ? "Пишу документ — это около минуты…"
+                      : fresh
+                        ? made.doc.basis
+                        : made
+                          ? "реквизиты, цена или образцы изменились — составлю заново"
+                          : samples.length
+                            ? `составлю по вашему образцу «${samples[0].name}»${samples.length > 1 ? ` и ещё ${samples.length - 1}` : ""}`
+                            : "ваших образцов нет — составлю по форме заказчика";
+                return (
+                  <li
+                    key={part}
+                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 border-t border-border px-5 py-4 first:border-t-0"
+                  >
+                    <span className="font-semibold leading-6">{PART_TITLES[part]}</span>
+                    <button
+                      type="button"
+                      onClick={() => void downloadPart(tp, part)}
+                      disabled={downloading !== null || !meReady}
+                      className="row-span-2 min-h-11 rounded-[var(--r-ctl)] bg-muted px-4 font-semibold hover:bg-accent disabled:opacity-60"
+                    >
+                      {downloading === part ? (fresh ? "Собираю…" : "Пишу…") : "Скачать"}
+                    </button>
+                    <span className="text-[14px] leading-[20px] text-muted-foreground">
+                      {status}
+                      {fresh && !purchase.sample && downloading !== part && (
+                        <>
+                          {" · "}
+                          <button
+                            type="button"
+                            onClick={() => void downloadPart(tp, part, true)}
+                            disabled={downloading !== null}
+                            className="underline underline-offset-4 disabled:opacity-60"
+                          >
+                            составить заново
+                          </button>
+                        </>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
+          </ul>
+          <p className="mt-2.5 text-[14.5px] leading-[22px] text-muted-foreground">
+            Реквизиты берутся из{" "}
+            <Link href="/me/profile" className="font-semibold text-primary underline underline-offset-4">
+              «Реквизитов»
+            </Link>
+            , образцы — из{" "}
+            <Link href="/me/documents" className="font-semibold text-primary underline underline-offset-4">
+              «Моих документов»
+            </Link>
+            . Чего там нет — выделено в Word жёлтым.
+          </p>
+          {partNote && (
+            <Note tone="info" className="mt-2">
+              {partNote}
+            </Note>
+          )}
+        </section>
+
         <div className="sticky bottom-0 mt-2 grid gap-2 bg-gradient-to-b from-transparent to-background to-30% pb-[calc(16px+env(safe-area-inset-bottom,0px))] pt-4">
           <button
             type="button"
@@ -422,29 +574,6 @@ export default function TpPage() {
           >
             {downloading === "tp" ? "Собираю файл…" : "Скачать техническое предложение"}
           </button>
-          <p className="text-[14.5px] leading-[22px] text-muted-foreground">
-            Остальные части заявки:{" "}
-            {partsOf(tp.form)
-              .filter((part) => part !== "tp")
-              .map((part, i) => (
-                <span key={part}>
-                  {i > 0 && " · "}
-                  <button
-                    type="button"
-                    onClick={() => void download(tp, part)}
-                    disabled={downloading !== null}
-                    className="font-semibold text-primary underline underline-offset-4 disabled:opacity-60"
-                  >
-                    {downloading === part ? "собираю…" : PART_TITLES[part].toLowerCase()}
-                  </button>
-                </span>
-              ))}
-            . Реквизиты подставляются из{" "}
-            <Link href="/me/profile" className="font-semibold text-primary underline underline-offset-4">
-              «Моих данных»
-            </Link>
-            ; чего там нет — выделено в Word жёлтым.
-          </p>
           {downloadError && <p className="text-sm font-medium text-destructive">{downloadError}</p>}
         </div>
       </main>

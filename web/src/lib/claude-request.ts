@@ -18,13 +18,30 @@ export const baseRequest = {
 };
 
 // Метка кеша на последнем документе: всё до неё — общая часть всех разделов, хранится час.
-export const documentBlocks = (documents: SentDocument[]): Anthropic.Beta.BetaRequestDocumentBlock[] =>
+// Для разовых запросов кеш не нужен: запись в часовой кеш стоит вдвое дороже обычного чтения.
+export const documentBlocks = (documents: SentDocument[], cache = true): Anthropic.Beta.BetaRequestDocumentBlock[] =>
   documents.map((doc, i) => ({
     type: "document",
     source: { type: "text", media_type: "text/plain", data: doc.text },
     title: doc.name,
-    ...(i === documents.length - 1 && { cache_control: { type: "ephemeral", ttl: "1h" } }),
+    ...(cache && i === documents.length - 1 && { cache_control: { type: "ephemeral", ttl: "1h" } }),
   }));
+
+// Образцы участника идут после документов закупки, со своей меткой кеша на пять минут:
+// при «Составить заново» они не читаются второй раз по полной цене.
+export const sampleBlocks = (samples: SentDocument[]): Anthropic.Beta.BetaRequestDocumentBlock[] =>
+  samples.map((sample, i) => ({
+    type: "document",
+    source: { type: "text", media_type: "text/plain", data: sample.text },
+    title: `Образец участника: ${sample.name}`,
+    ...(i === samples.length - 1 && { cache_control: { type: "ephemeral" } }),
+  }));
+
+// Образцы присылает браузер — берём только то, что похоже на документ.
+export const cleanSamples = (raw: unknown): SentDocument[] =>
+  (Array.isArray(raw) ? raw : [])
+    .filter((s) => typeof s?.text === "string" && s.text.trim())
+    .map((s) => ({ name: String(s.name ?? "").slice(0, 300), text: s.text as string }));
 
 export const usageLine = (label: string, message: Anthropic.Beta.BetaMessage) => {
   const u = message.usage;
@@ -55,21 +72,39 @@ type AskJson<T> = {
   instructions: string;
   schema: z.ZodType<T>;
   signal?: AbortSignal;
+  // Для запросов не по закупке — например, по документам самого участника — своя вводная, без общего кеша.
+  system?: string;
+  cache?: boolean;
+  effort?: "low" | "medium" | "high";
 };
 
 // Задание + схема ответа идут после документов. Если JSON не сошёлся со схемой, модель один раз
 // получает ошибку и присылает исправленный ответ — начало запроса то же, документы снова из кеша.
-export async function askJson<T>({ label, documents, extra = [], instructions, schema, signal }: AskJson<T>): Promise<T> {
+export async function askJson<T>({
+  label,
+  documents,
+  extra = [],
+  instructions,
+  schema,
+  signal,
+  system,
+  cache = true,
+  effort,
+}: AskJson<T>): Promise<T> {
   const client = new Anthropic();
   const task = `${instructions}\n\nОтвет — только JSON по этой JSON-схеме, без пояснений и без обёртки \`\`\`:\n${JSON.stringify(z.toJSONSchema(schema))}`;
   const messages: Anthropic.Beta.BetaMessageParam[] = [
-    { role: "user", content: [...documentBlocks(documents), ...extra, { type: "text", text: task }] },
+    { role: "user", content: [...documentBlocks(documents, cache), ...extra, { type: "text", text: task }] },
   ];
+  const request = {
+    ...baseRequest,
+    ...(system && { system }),
+    ...(effort && { output_config: { effort } }),
+    max_tokens: 64000,
+  };
 
   for (let attempt = 0; attempt < 2; attempt++) {
-    const final = await client.beta.messages
-      .stream({ ...baseRequest, max_tokens: 64000, messages }, { signal })
-      .finalMessage();
+    const final = await client.beta.messages.stream({ ...request, messages }, { signal }).finalMessage();
     console.log(usageLine(attempt ? `${label} (исправление)` : label, final));
 
     if (final.stop_reason === "refusal") throw new ModelStop("Модель отказалась обрабатывать эти документы.");
@@ -80,8 +115,9 @@ export async function askJson<T>({ label, documents, extra = [], instructions, s
     const parsed = parseJson(text, schema);
     if (parsed.ok) return parsed.data;
 
+    // Ответ возвращаем как есть, вместе с размышлениями модели: исправляя, она видит, как пришла к ошибке.
     messages.push(
-      { role: "assistant", content: [{ type: "text", text }] },
+      { role: "assistant", content: final.content },
       { role: "user", content: [{ type: "text", text: `Ответ не прошёл проверку: ${parsed.error}\nПришли исправленный JSON целиком.` }] }
     );
   }

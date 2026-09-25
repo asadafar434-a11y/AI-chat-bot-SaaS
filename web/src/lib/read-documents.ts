@@ -1,7 +1,10 @@
 import type { ChatDocument } from "@/lib/chat-types";
 
-export type SentDocument = Pick<ChatDocument, "name" | "text">;
+export type SentDocument = Pick<ChatDocument, "name" | "text" | "scan">;
 export type FailedFile = { name: string; reason: string };
+
+// Что можно загрузить: сканы и фото распознаёт ИИ, старый Word и RTF читаются без него.
+export const ACCEPTED_FILES = ".pdf,.docx,.doc,.rtf,.txt,.md,.jpg,.jpeg,.png";
 
 // Текст из файлов достаёт сервер. Если не прочитался ни один файл — объясняем почему.
 export async function readDocuments(files: File[]): Promise<{ documents: SentDocument[]; failed: FailedFile[] }> {
@@ -17,5 +20,5 @@ export async function readDocuments(files: File[]): Promise<{ documents: SentDoc
         : "В файлах нет текста."
     );
   }
-  return { documents: documents.map(({ name, text }) => ({ name, text })), failed };
+  return { documents: documents.map(({ name, text, scan }) => ({ name, text, ...(scan && { scan }) })), failed };
 }

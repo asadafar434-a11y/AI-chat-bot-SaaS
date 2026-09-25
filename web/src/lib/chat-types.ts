@@ -5,6 +5,8 @@ export type ChatDocument = {
   name: string;
   chars: number;
   text: string;
+  // Текст распознан со скана или фото — в цифрах возможны ошибки.
+  scan?: boolean;
 };
 
 // files — документы, приложенные к вопросу в общем чате: их имена видны над сообщением.
