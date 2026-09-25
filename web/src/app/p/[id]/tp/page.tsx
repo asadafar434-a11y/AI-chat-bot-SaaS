@@ -15,6 +15,7 @@ import type { PartDoc } from "@/lib/part-doc";
 import { plural } from "@/lib/plural";
 import { identityValues, type Profile } from "@/lib/profile";
 import { titleOf } from "@/lib/purchase";
+import { scanWarning } from "@/lib/read-documents";
 import { formatRubles, parseRubles, rublesInWords } from "@/lib/rub-words";
 import { sampleTp } from "@/lib/sample-purchase";
 import { fillCount, needsFill, type TpResult } from "@/lib/tp";
@@ -370,6 +371,7 @@ export default function TpPage() {
   const tpText = [tp.form.consent, ...tp.goods.flatMap((g) => [g.name, g.characteristics]), ...tp.items.map((it) => it.offer)].join(" ");
   const leaks = profile ? identityValues(profile).filter((value) => tpText.includes(value)) : [];
   const unverified = [...tp.goods, ...tp.items].filter((row) => !row.verified).length;
+  const scans = scanWarning(documents);
   const setGood = (index: number, characteristics: string) =>
     update({ tp: { ...tp, goods: tp.goods.map((g, i) => (i === index ? { ...g, characteristics } : g)) } });
   const setOffer = (index: number, offer: string) =>
@@ -404,6 +406,11 @@ export default function TpPage() {
         {unverified > 0 && (
           <Note tone="warn" icon={AlertTriangleIcon} className="mt-2">
             {`В ${unverified} ${plural(unverified, "строке", "строках", "строках")} цитата не найдена в документах дословно — сверьте их вручную.`}
+          </Note>
+        )}
+        {scans && (
+          <Note tone="warn" icon={AlertTriangleIcon} className="mt-2">
+            {scans}
           </Note>
         )}
 

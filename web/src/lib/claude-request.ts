@@ -17,6 +17,9 @@ export const baseRequest = {
   system: BASE_SYSTEM,
 };
 
+// Пометка в описании документа (context): модель её учитывает, но не цитирует как текст документа.
+const SCAN_CONTEXT = "Текст распознан ИИ со скана или фото: в цифрах, датах и реквизитах возможны ошибки распознавания.";
+
 // Метка кеша на последнем документе: всё до неё — общая часть всех разделов, хранится час.
 // Для разовых запросов кеш не нужен: запись в часовой кеш стоит вдвое дороже обычного чтения.
 export const documentBlocks = (documents: SentDocument[], cache = true): Anthropic.Beta.BetaRequestDocumentBlock[] =>
@@ -24,6 +27,7 @@ export const documentBlocks = (documents: SentDocument[], cache = true): Anthrop
     type: "document",
     source: { type: "text", media_type: "text/plain", data: doc.text },
     title: doc.name,
+    ...(doc.scan && { context: SCAN_CONTEXT }),
     ...(cache && i === documents.length - 1 && { cache_control: { type: "ephemeral", ttl: "1h" } }),
   }));
 

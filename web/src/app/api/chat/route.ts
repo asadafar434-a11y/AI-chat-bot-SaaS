@@ -11,7 +11,7 @@ export const maxDuration = 300;
 
 type ChatRequest = {
   messages: ChatMessage[];
-  documents?: Pick<ChatDocument, "name" | "text">[];
+  documents?: Pick<ChatDocument, "name" | "text" | "scan">[];
   // Общий чат с главной: вопросы не об одной закупке.
   general?: boolean;
 };
@@ -24,7 +24,7 @@ const textOf = (message: ChatMessage) =>
 
 function toClaudeMessages(
   messages: ChatMessage[],
-  documents: Pick<ChatDocument, "name" | "text">[],
+  documents: Pick<ChatDocument, "name" | "text" | "scan">[],
   instructions: string
 ): Anthropic.Beta.BetaMessageParam[] {
   const out: Anthropic.Beta.BetaMessageParam[] = [];

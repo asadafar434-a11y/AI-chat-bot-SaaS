@@ -506,6 +506,13 @@
   const $ = (s, r = document) => r.querySelector(s);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const clone = (x) => JSON.parse(JSON.stringify(x));
+  // Какие файлы закупки распознаны со скана: ошибка в цифре ТЗ перейдёт в требования и ТП.
+  const scanWarning = (p) => {
+    const names = (p.scans || []).map((n) => `«${esc(n)}»`);
+    if (!names.length) return "";
+    const one = names.length === 1;
+    return `${one ? "Файл" : "Файлы"} ${names.join(", ")} ${one ? "распознан" : "распознаны"} со скана — цифры, даты и суммы сверьте с оригиналом.`;
+  };
   const plural = (n, one, few, many) => { const a = Math.abs(n) % 100, b = a % 10; return a > 10 && a < 20 ? many : b === 1 ? one : b >= 2 && b <= 4 ? few : many; };
 
   /* ---------- иконки (lucide) ---------- */
@@ -937,6 +944,8 @@
     price: "740 000 ₽",
     deadline: { date: "2026-10-14", time: "10:00", zone: "МСК" },
     files: ["Извещение.pdf", "Документация о закупке.pdf", "Техническое задание.docx", "Проект договора.pdf"],
+    // Распознаны ИИ со скана: в цифрах возможны ошибки.
+    scans: ["Документация о закупке.pdf"],
     unreadable: [{ name: "Схема зала.doc", reason: "не похоже на файл Word — пересохраните его в .docx" }],
     requirements: {
       who: [
@@ -1376,6 +1385,7 @@
         ${row("chat", "Вопросы по закупке", n ? `${n} ${plural(n, "вопрос", "вопроса", "вопросов")} · спросите ещё` : "Сроки, обеспечение, требования — отвечу со ссылкой на пункт")}
       </ul>
       <p class="docs-line">Документы: ${p.files.map(esc).join(", ")} · <label class="link" for="add-doc">добавить<input id="add-doc" type="file" multiple class="sr-only"></label></p>
+      ${scanWarning(p) ? `<p class="docs-line warn-t">${scanWarning(p)}</p>` : ""}
       ${p.unreadable.length ? `<p class="docs-line warn-t">Не прочитаны: ${p.unreadable.map((f) => `${esc(f.name)} — ${esc(f.reason)}`).join("; ")}</p>` : ""}
       <div class="mt-10">${S.ui.confirmDelete ? `<div class="confirm">
           <p>Удалить закупку вместе с документами, черновиком и вопросами? Вернуть её не получится.</p>
@@ -1411,7 +1421,8 @@
       <h1>Требования</h1>
       <p class="lead">Всё, что нужно для заявки, — из документов закупки. Нажмите на ссылку под пунктом, чтобы увидеть точную цитату.</p>
       ${p.unreadable.length ? noteHTML("warn", `Не получилось прочитать: ${p.unreadable.map((f) => `${esc(f.name)} — ${esc(f.reason)}`).join("; ")}. Требования выписаны по остальным файлам.`, "mt-5", "alert") : ""}
-      ${unverified ? noteHTML("warn", `В ${unverified} ${plural(unverified, "пункте", "пунктах", "пунктах")} цитата не найдена в документах дословно — сверьте их вручную.`, "mt-2", "alert") : ""}
+      ${scanWarning(p) ? noteHTML("warn", scanWarning(p), p.unreadable.length ? "mt-2" : "mt-5", "alert") : ""}
+      ${unverified ? noteHTML("warn", `В ${unverified} ${plural(unverified, "пункте", "пунктах", "пунктах")} цитата не найдена в документах дословно — сверьте их вручную.`, p.unreadable.length || scanWarning(p) ? "mt-2" : "mt-5", "alert") : ""}
       ${REQ_KEYS.map((key) => {
         const items = p.requirements[key];
         return `<section class="group"><h2 class="group-title">${GROUPS[key].title}</h2>
@@ -1441,6 +1452,7 @@
       : noteHTML("ok", "Все пункты заполнены.", "mt-4", "check");
     if (leaks.length) h += noteHTML("warn", `В техническом предложении есть ваши данные: ${leaks.map((v) => `«${esc(v)}»`).join(", ")}. Уберите их — ТП подают в первую часть заявки анонимно, иначе заявку отклонят.`, "mt-2", "alert");
     if (unverified) h += noteHTML("warn", `В ${unverified} ${plural(unverified, "строке", "строках", "строках")} цитата не найдена в документах дословно — сверьте их вручную.`, "mt-2", "alert");
+    if (scanWarning(p)) h += noteHTML("warn", scanWarning(p), "mt-2", "alert");
     return h;
   }
 
@@ -1585,7 +1597,7 @@
     return `<h1>Новая закупка</h1>
       ${S.busy ? busyHTML() : `
         <p class="lead">Загрузите извещение, ТЗ и проект контракта — выпишу требования и сроки, а потом помогу с техническим предложением.</p>
-        ${dropHTML("new", "Перетащите сюда документы закупки — можно сразу несколько, PDF или Word", "Загрузить документы", { act: "sample", text: "посмотреть на примере" })}`}`;
+        ${dropHTML("new", "Перетащите сюда документы закупки — можно сразу несколько: PDF, Word, сканы и фото", "Загрузить документы", { act: "sample", text: "посмотреть на примере" })}`}`;
   }
 
   /* ---------- реквизиты ---------- */

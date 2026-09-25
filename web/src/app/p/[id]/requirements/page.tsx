@@ -9,6 +9,7 @@ import { PageTitle } from "@/components/page-title";
 import { usePurchase } from "@/components/purchase-provider";
 import { plural } from "@/lib/plural";
 import { titleOf } from "@/lib/purchase";
+import { scanWarning } from "@/lib/read-documents";
 import { REQ_GROUP_KEYS, type ReqGroupKey } from "@/lib/requirements";
 
 const GROUPS: Record<ReqGroupKey, { title: string; empty: string }> = {
@@ -31,9 +32,10 @@ const GROUPS: Record<ReqGroupKey, { title: string; empty: string }> = {
 };
 
 export default function RequirementsPage() {
-  const { purchase } = usePurchase();
+  const { purchase, documents } = usePurchase();
   const [open, setOpen] = useState<string | null>(null);
   const { requirements, unreadable } = purchase;
+  const scans = scanWarning(documents);
   const unverified = REQ_GROUP_KEYS.reduce((n, key) => n + requirements[key].filter((it) => !it.verified).length, 0);
 
   return (
@@ -51,8 +53,13 @@ export default function RequirementsPage() {
             {`Не получилось прочитать: ${unreadable.map((f) => `${f.name} — ${f.reason}`).join("; ")}. Требования выписаны по остальным файлам.`}
           </Note>
         )}
+        {scans && (
+          <Note tone="warn" icon={AlertTriangleIcon} className={unreadable.length ? "mt-2" : "mt-5"}>
+            {scans}
+          </Note>
+        )}
         {unverified > 0 && (
-          <Note tone="warn" icon={AlertTriangleIcon} className="mt-2">
+          <Note tone="warn" icon={AlertTriangleIcon} className={unreadable.length || scans ? "mt-2" : "mt-5"}>
             {`В ${unverified} ${plural(unverified, "пункте", "пунктах", "пунктах")} цитата не найдена в документах дословно — сверьте их вручную.`}
           </Note>
         )}

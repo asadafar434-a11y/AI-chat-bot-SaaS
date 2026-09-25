@@ -13,7 +13,7 @@ import { WorkingSteps } from "@/components/working-steps";
 import { dueLine } from "@/lib/deadline";
 import { plural } from "@/lib/plural";
 import { extractRequirements, fromRequirements, titleOf } from "@/lib/purchase";
-import { ACCEPTED_FILES, readDocuments } from "@/lib/read-documents";
+import { ACCEPTED_FILES, readDocuments, scanWarning } from "@/lib/read-documents";
 import { REQ_GROUP_KEYS } from "@/lib/requirements";
 import { fillCount } from "@/lib/tp";
 
@@ -43,6 +43,7 @@ export default function PurchasePage() {
   const reqCount = REQ_GROUP_KEYS.reduce((n, key) => n + purchase.requirements[key].length, 0);
   const fill = purchase.tp ? fillCount(purchase.tp) : 0;
   const asked = purchase.chat?.filter((m) => m.role === "user").length ?? 0;
+  const scans = scanWarning(documents);
 
   // Новый файл может поменять всё — сроки, цену, требования, — поэтому закупка перечитывается целиком.
   // Если модель не ответила, документы не добавляются: требования не должны расходиться с файлами.
@@ -162,6 +163,7 @@ export default function PurchasePage() {
                 добавить
               </button>
             </p>
+            {scans && <p className="mt-1 text-[14.5px] leading-[22px] text-[var(--warn)]">{scans}</p>}
             {purchase.unreadable.length > 0 && (
               <p className="mt-1 text-[14.5px] leading-[22px] text-[var(--warn)]">
                 Не прочитаны: {purchase.unreadable.map((f) => `${f.name} — ${f.reason}`).join("; ")}
