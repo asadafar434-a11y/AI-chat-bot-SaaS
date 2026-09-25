@@ -3,6 +3,8 @@ import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import { MAX_CONTEXT_CHARS, type ChatDocument, type ChatMessage } from "@/lib/chat-types";
 import { claudeErrorText } from "@/lib/claude-errors";
 import { baseRequest, documentBlocks, usageLine } from "@/lib/claude-request";
+import { pickLawArticles } from "@/lib/law-pick";
+import { checkQuotes, lawExcerpts, quotesNote } from "@/lib/laws";
 import { CHAT_INSTRUCTIONS, GENERAL_CHAT_INSTRUCTIONS } from "@/lib/legal-prompt";
 
 export const maxDuration = 300;
@@ -46,6 +48,15 @@ function toClaudeMessages(
     };
   }
   return out;
+}
+
+// Для уточняющих вопросов («а если цена выше?») выбору статей нужен предыдущий шаг разговора.
+function previousExchange(messages: ChatMessage[]): string {
+  const users = messages.filter((m) => m.role === "user");
+  if (users.length < 2) return "";
+  const prev = users[users.length - 2];
+  const answer = messages.slice(messages.indexOf(prev) + 1).find((m) => m.role === "assistant");
+  return `Предыдущий вопрос: ${textOf(prev)}${answer ? `\nНачало ответа на него: ${textOf(answer).slice(0, 600)}` : ""}`;
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -98,11 +109,13 @@ export async function POST(request: Request) {
       writer.write({ type: "start" });
       const id = "answer";
       let opened = false;
+      let answer = "";
       const say = (delta: string) => {
         if (!opened) {
           writer.write({ type: "text-start", id });
           opened = true;
         }
+        answer += delta;
         writer.write({ type: "text-delta", id, delta });
       };
 
@@ -110,6 +123,15 @@ export async function POST(request: Request) {
         const question = textOf(messages[messages.length - 1]);
         for await (const piece of stubAnswer(question, documents, claudeMessages.length, general)) say(piece);
       } else {
+        // Тексты нужных статей закона идут в последний вопрос — после документов, чтобы не сбить их кеш.
+        const question = textOf(messages[messages.length - 1]);
+        const context = previousExchange(messages);
+        const excerpt = lawExcerpts(await pickLawArticles(question, context, request.signal), `${question} ${context}`);
+        const last = claudeMessages[claudeMessages.length - 1];
+        if (excerpt.text && Array.isArray(last.content)) {
+          last.content.splice(last.content.length - 1, 0, { type: "text", text: excerpt.text });
+        }
+
         const client = new Anthropic();
         const response = client.beta.messages.stream(
           { ...baseRequest, max_tokens: 64000, cache_control: { type: "ephemeral" }, messages: claudeMessages },
@@ -126,8 +148,11 @@ export async function POST(request: Request) {
         console.log(usageLine("chat", final));
         if (final.stop_reason === "refusal") {
           say("\n\n_Модель отказалась отвечать на этот запрос. Переформулируйте вопрос._");
-        } else if (final.stop_reason === "max_tokens") {
-          say("\n\n_Ответ оборвался на лимите длины. Попросите продолжить._");
+        } else {
+          if (final.stop_reason === "max_tokens") say("\n\n_Ответ оборвался на лимите длины. Попросите продолжить._");
+          // Каждая цитата в «» сверяется с текстом законов и документов разговора.
+          const note = quotesNote(checkQuotes(answer, documents.map((d) => d.text)), excerpt.laws);
+          if (note) say(note);
         }
       }
 
