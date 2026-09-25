@@ -22,8 +22,9 @@
     /* Предпросмотр файла Word: белый лист и Times-совместимый шрифт в обеих темах, как настоящий документ */
     --doc: "Tinos", "Times New Roman", Times, serif;
     --sheet: #ffffff; --sheet-ink: #111111; --sheet-mark: #ffff00;
-    --side-w: 288px;
-    --side-active: #ffffff;
+    /* Рабочее место: рамка с сайдбаром, холст за панелями, панели с тонкой рамкой */
+    --frame: #ffffff; --canvas: #f6f6fb; --card: #ffffff; --line: #e5e4ef; --hover: #f3f3f9; --select: #ecebf8;
+    --side-w: 256px; --list-w: 320px; --info-w: 300px;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -35,7 +36,7 @@
       --scrim: rgb(0 0 0 / .6);
       --lift: 0 2px 6px rgb(0 0 0 / .45), 0 18px 40px -20px rgb(0 0 0 / .7);
       --lift-lg: 0 3px 8px rgb(0 0 0 / .45), 0 48px 84px -36px rgb(0 0 0 / .9);
-      --side-active: #21213a;
+      --frame: #131324; --canvas: #0c0c18; --card: #131324; --line: #25253f; --hover: #1a1a30; --select: #22224a;
     }
   }
   :root[data-theme="dark"] {
@@ -47,11 +48,12 @@
     --scrim: rgb(0 0 0 / .6);
     --lift: 0 2px 6px rgb(0 0 0 / .45), 0 18px 40px -20px rgb(0 0 0 / .7);
     --lift-lg: 0 3px 8px rgb(0 0 0 / .45), 0 48px 84px -36px rgb(0 0 0 / .9);
-    --side-active: #21213a;
+    --frame: #131324; --canvas: #0c0c18; --card: #131324; --line: #25253f; --hover: #1a1a30; --select: #22224a;
   }
 
   *, *::before, *::after { box-sizing: border-box; }
-  body { margin: 0; background: var(--ground); color: var(--ink); font: 16px/25px var(--ui); -webkit-font-smoothing: antialiased; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 15px/23px var(--ui); -webkit-font-smoothing: antialiased; }
   [hidden] { display: none !important; }
   button, input, textarea { font: inherit; color: inherit; }
   button, label[for] { cursor: pointer; }
@@ -60,132 +62,97 @@
   .m0 { margin: 0; }
   .mt-2 { margin-top: 8px; } .mt-3 { margin-top: 12px; } .mt-4 { margin-top: 16px; } .mt-5 { margin-top: 20px; }
   .mt-6 { margin-top: 24px; } .mt-7 { margin-top: 28px; } .mt-8 { margin-top: 32px; } .mt-10 { margin-top: 40px; }
-  .small { font-size: 14.5px; line-height: 22px; }
+  .small { font-size: 14px; line-height: 21px; }
   .muted { color: var(--ink-3); }
   .ink2 { color: var(--ink-2); }
   .warn-t { color: var(--warn); font-weight: 600; }
   .ok-t { color: var(--ok); font-weight: 600; }
   .bad-t { color: var(--danger); font-weight: 600; }
 
-  /* ---------- каркас: сайдбар и основная колонка ---------- */
-  .side {
-    position: fixed; inset-block: 0; left: 0; z-index: 40; width: var(--side-w);
-    display: flex; flex-direction: column;
-    padding-block: env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px);
-    background: var(--paper-2); border-right: 1px solid var(--rule);
+  /* ---------- рамка: сайдбар и основная часть ---------- */
+  .app { display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr); height: 100%; background: var(--frame); }
+  @media (min-width: 1280px) {
+    body { padding: 12px; }
+    .app { border: 1px solid var(--line); border-radius: var(--r-surface); overflow: hidden; box-shadow: var(--lift); }
   }
-  .side-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 18px 12px 12px 18px; }
+
+  .side { display: flex; flex-direction: column; min-height: 0; background: var(--frame); border-right: 1px solid var(--line); }
+  .side-head { display: flex; align-items: center; gap: 8px; padding: 18px 14px 14px 18px; }
   .logo {
     appearance: none; border: 0; background: none; padding: 0;
-    display: inline-flex; align-items: center; gap: 10px; text-align: left;
+    display: inline-flex; align-items: center; gap: 10px; min-width: 0; text-align: left;
     font: 700 15px/1.15 var(--display); letter-spacing: -.02em; color: var(--ink);
   }
-  .logo-mark { flex: none; width: 32px; height: 32px; border-radius: 11px; display: grid; place-items: center; background: var(--brand); color: var(--on-brand); }
-  .icon-btn.side-close { display: none; }
-  .side-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 12px 20px; display: flex; flex-direction: column; gap: 22px; }
-  .side-foot { margin: 0; padding: 12px 18px 16px; border-top: 1px solid var(--rule); font-size: 12.5px; line-height: 18px; color: var(--ink-3); }
-
+  .logo-mark { flex: none; width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; background: var(--brand); color: var(--on-brand); }
+  .logo-text { display: grid; gap: 3px; }
+  .proto { font: 500 11.5px/14px var(--ui); letter-spacing: 0; color: var(--ink-3); }
+  .icon-btn.side-close { display: none; margin-left: auto; }
+  .side-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 22px; padding: 8px 12px 16px; }
   .nav { display: grid; gap: 2px; }
   .nav-item {
     appearance: none; border: 0; background: none; width: 100%;
-    display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 10px;
-    border-radius: var(--r-ctl); text-align: left; font-size: 15px; font-weight: 500; line-height: 20px; color: var(--ink-2);
+    display: flex; align-items: center; gap: 12px; min-height: 42px; padding: 9px 12px;
+    border-radius: var(--r-ctl); text-align: left; font-size: 14.5px; font-weight: 500; line-height: 20px; color: var(--ink-2);
   }
   .nav-item > svg { flex: none; color: var(--ink-3); }
-  .nav-item:hover { background: var(--paper-3); color: var(--ink); }
-  .nav-item[aria-current="page"] { background: var(--side-active); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgb(20 20 43 / .07); }
-  .nav-item[aria-current="page"] > svg { color: var(--brand); }
-  .count { margin-left: auto; font: 500 12.5px/16px var(--mono); color: var(--ink-3); font-variant-numeric: tabular-nums; }
-  .sec-label { display: flex; align-items: baseline; justify-content: space-between; margin: 0 10px 6px; font-size: 12px; font-weight: 700; line-height: 16px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
-  .sec-label .count { letter-spacing: 0; }
-  .side-new { width: 100%; min-height: 44px; font-size: 15px; }
-  .side-empty { margin: 0 10px; font-size: 14px; color: var(--ink-3); }
+  .nav-item:hover { background: var(--hover); color: var(--ink); }
+  .nav-item[aria-current="page"] { background: var(--brand); color: var(--on-brand); font-weight: 600; }
+  .nav-item[aria-current="page"] > svg, .nav-item[aria-current="page"] .count { color: color-mix(in srgb, var(--on-brand) 78%, transparent); }
+  .count { margin-left: auto; font: 500 12px/16px var(--mono); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .sec-label { margin: 0 12px 6px; font-size: 11.5px; font-weight: 700; line-height: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .side-foot { display: grid; gap: 6px; padding: 10px 12px 14px; border-top: 1px solid var(--line); }
+  .switch { position: relative; flex: none; width: 36px; height: 20px; margin-left: auto; border-radius: var(--r-pill); background: var(--edge-2); transition: background .15s ease; }
+  .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #ffffff; box-shadow: 0 1px 2px rgb(0 0 0 / .25); transition: transform .15s ease; }
+  [aria-checked="true"] > .switch { background: var(--brand); }
+  [aria-checked="true"] > .switch::after { transform: translateX(16px); background: var(--on-brand); }
+  .me {
+    appearance: none; border: 0; background: none; width: 100%;
+    display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; gap: 10px;
+    padding: 8px; border-radius: var(--r-ctl); color: var(--ink); text-align: left;
+  }
+  .me:hover { background: var(--hover); }
+  .me > svg { color: var(--ink-3); }
+  .avatar { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--brand-tint); color: var(--brand); font-size: 13px; font-weight: 700; }
+  .me-text { display: grid; min-width: 0; }
+  .me-name, .me-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .me-name { font-size: 14px; font-weight: 600; line-height: 19px; }
+  .me-sub { font-size: 12.5px; line-height: 17px; color: var(--ink-3); }
 
-  .pur-list, .sub { list-style: none; margin: 0; padding: 0; }
-  .pur-list { display: grid; gap: 2px; }
-  .pur {
-    appearance: none; border: 0; background: none; width: 100%; text-align: left;
-    display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; row-gap: 3px; align-items: start;
-    padding: 9px 10px; border-radius: var(--r-ctl); color: var(--ink);
-  }
-  .pur:hover { background: var(--paper-3); }
-  .pur[aria-current] { background: var(--side-active); box-shadow: 0 1px 2px rgb(20 20 43 / .07); }
-  .pur-title { font-size: 14.5px; font-weight: 600; line-height: 19px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-  .pur-meta { grid-column: 1; font-size: 12.5px; line-height: 17px; color: var(--ink-3); }
-  .days { grid-column: 2; grid-row: 1; padding: 2px 7px; border-radius: var(--r-pill); background: var(--paper-3); color: var(--ink-2); font: 600 11.5px/16px var(--mono); white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .days.soon { background: var(--warn-tint); color: var(--warn); }
-  .sub { display: grid; gap: 1px; padding-block: 4px 8px; padding-inline: 14px 0; }
-  .sub-item {
-    appearance: none; border: 0; background: none; width: 100%; text-align: left;
-    display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 6px 10px;
-    border-radius: var(--r-ctl); font-size: 14px; line-height: 19px; color: var(--ink-2);
-  }
-  .sub-item:hover { background: var(--paper-3); color: var(--ink); }
-  .sub-item[aria-current="page"] { background: var(--brand-tint); color: var(--brand); font-weight: 600; }
-  .sub-item[aria-current="page"] .count { color: inherit; }
-  .mark-n { margin-left: auto; min-width: 22px; padding: 1px 6px; border-radius: var(--r-pill); background: var(--warn-tint); color: var(--warn); font: 600 11.5px/16px var(--mono); text-align: center; }
-  .mark-ok { margin-left: auto; display: grid; color: var(--ok); }
-  .soon-tag { margin-left: auto; padding: 1px 8px; border-radius: var(--r-pill); background: var(--paper-3); color: var(--ink-3); font-size: 11.5px; font-weight: 600; line-height: 17px; letter-spacing: 0; text-transform: none; }
-  .row-title .soon-tag { margin-left: 0; }
-
-  .topbar {
-    display: none; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30;
-    align-items: center; gap: 6px; min-height: 56px; padding-inline: 8px 16px;
-    background: var(--ground); border-bottom: 1px solid var(--rule);
-  }
-  .icon-btn { appearance: none; border: 0; background: none; flex: none; width: 40px; height: 40px; border-radius: var(--r-pill); display: grid; place-items: center; color: var(--ink-2); }
-  .icon-btn:hover { background: var(--paper-3); color: var(--ink); }
   .scrim { position: fixed; inset: 0; z-index: 35; background: var(--scrim); }
+  .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--canvas); }
+  .head { flex: none; display: flex; align-items: center; gap: 12px 16px; padding: 18px 24px 16px; }
+  .icon-btn.menu-btn { display: none; }
+  .head-text { flex: 1; min-width: 0; }
+  .head h1 { margin: 0; font-family: var(--display); font-size: 20px; font-weight: 700; line-height: 26px; letter-spacing: -.02em; }
+  .head h1:focus { outline: none; }
+  .head-sub { margin: 2px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; line-height: 19px; color: var(--ink-3); }
+  .head-acts { flex: none; display: flex; align-items: center; gap: 8px; }
+  .view { flex: 1; min-height: 0; overflow-y: auto; padding: 0 24px 24px; }
+  .view.fill { display: flex; flex-direction: column; overflow: hidden; }
 
-  .main { margin-left: var(--side-w); }
-  .page { max-width: 784px; margin-inline: auto; padding-inline: 32px; padding-block: 24px 56px; }
-
-  @media (max-width: 1023px) {
-    .topbar { display: flex; }
-    .main { margin-left: 0; }
-    .page { padding-inline: 16px; padding-block: 8px 40px; }
-    .side {
-      width: min(320px, 88vw); transform: translateX(-102%); visibility: hidden; box-shadow: var(--lift-lg);
-      transition: transform .22s ease, visibility 0s linear .22s;
-    }
-    .app[data-drawer="open"] .side { transform: none; visibility: visible; transition: transform .22s ease, visibility 0s; }
-    .icon-btn.side-close { display: grid; }
-  }
-
-  /* ---------- общие элементы экрана ---------- */
-  .back {
-    appearance: none; border: 0; background: none; padding: 0; margin-top: 4px;
-    display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
-    color: var(--ink-3); font-size: 15px; font-weight: 500; line-height: 22px;
-  }
-  .back > svg { flex: none; }
-  .back span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .back:hover { color: var(--ink); }
-  h1 { margin: 14px 0 0; font-family: var(--display); font-weight: 700; font-size: clamp(24px, 4.4vw, 32px); line-height: 1.15; letter-spacing: -.02em; text-wrap: balance; }
-  h1:focus { outline: none; }
-  .h2 { margin: 0; font-family: var(--display); font-weight: 700; font-size: clamp(20px, 3.4vw, 25px); line-height: 1.2; letter-spacing: -.02em; text-wrap: balance; }
-  .lead { margin: 12px 0 0; max-width: 52ch; font-size: 17px; line-height: 26px; color: var(--ink-2); }
-  .group { margin-top: 28px; }
-  .group-title { margin: 0 0 10px; font-size: 13px; font-weight: 700; line-height: 18px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
-  .foot { margin: 40px 0 0; font-size: 13px; line-height: 19px; color: var(--ink-3); }
-
+  /* ---------- кнопки, ссылки, поля ---------- */
   .btn {
     appearance: none; border: 0;
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-    min-height: 52px; padding-inline: 24px; border-radius: var(--r-ctl);
-    background: var(--brand); color: var(--on-brand); font-size: 16px; font-weight: 600; line-height: 20px; text-align: center;
+    min-height: 40px; padding-inline: 16px; border-radius: var(--r-ctl);
+    background: var(--brand); color: var(--on-brand); font-size: 14px; font-weight: 600; line-height: 18px; text-align: center; white-space: nowrap;
   }
+  .btn > svg { flex: none; }
   .btn:hover { background: var(--brand-press); }
   .btn:disabled { opacity: .6; cursor: default; }
-  .btn.line { background: var(--paper); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--edge-2); }
-  .btn.line:hover { background: var(--paper-2); }
+  .btn.line { background: var(--card); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+  .btn.line:hover { background: var(--hover); }
   .btn.soft { background: var(--paper-2); color: var(--ink); }
   .btn.soft:hover { background: var(--paper-3); }
   .btn.danger { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
   .btn.danger:hover { background: color-mix(in srgb, var(--danger) 22%, transparent); }
-  .btn.sm { min-height: 44px; padding-inline: 18px; font-size: 15px; }
-  .btn.xs { min-height: 38px; padding-inline: 14px; font-size: 14.5px; }
-  .btn:has(input:focus-visible), .link:has(input:focus-visible), .circle:has(input:focus-visible), .tool-btn:has(input:focus-visible) { outline: 2px solid var(--brand); outline-offset: 3px; }
+  .btn.lg { min-height: 46px; padding-inline: 20px; font-size: 15px; }
+  .btn.xs { min-height: 34px; padding-inline: 12px; border-radius: 11px; font-size: 13px; }
+  .icon-btn { appearance: none; border: 0; background: none; flex: none; width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; color: var(--ink-2); }
+  .icon-btn:hover { background: var(--hover); color: var(--ink); }
+  .icon-btn.line { background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+  .btn:has(input:focus-visible), .link:has(input:focus-visible), .circle:has(input:focus-visible),
+  .tool-btn:has(input:focus-visible), .icon-btn:has(input:focus-visible) { outline: 2px solid var(--brand); outline-offset: 3px; }
   .link {
     appearance: none; border: 0; background: none; padding: 0; text-align: left;
     color: var(--brand); font-weight: 600; text-decoration: underline; text-underline-offset: 4px;
@@ -196,166 +163,262 @@
   .link.del:hover { color: var(--danger); }
   .src {
     appearance: none; border: 0; background: none; padding: 0; justify-self: start; text-align: left;
-    color: var(--brand); font-size: 14px; font-weight: 500; line-height: 20px;
+    color: var(--brand); font-size: 13px; font-weight: 500; line-height: 19px;
     text-decoration: underline; text-underline-offset: 4px; text-decoration-color: color-mix(in srgb, var(--brand) 40%, transparent);
   }
+  .input { width: 100%; height: 40px; padding-inline: 12px; border: 1px solid var(--line); border-radius: 12px; outline: none; background: var(--card); font-size: 14.5px; }
+  .input:focus { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); }
+  .input.num { max-width: 240px; font-family: var(--mono); font-size: 14px; font-variant-numeric: tabular-nums; }
+  textarea::placeholder, input::placeholder { color: var(--ink-3); }
 
-  .note { display: flex; align-items: flex-start; gap: 12px; padding: 13px 16px; border-radius: var(--r-card); line-height: 22px; }
+  .note { display: flex; align-items: flex-start; gap: 10px; padding: 11px 14px; border-radius: var(--r-ctl); font-size: 14px; line-height: 21px; }
   .note > svg { flex: none; margin-top: 1px; }
   .note.warn { background: var(--warn-tint); color: var(--warn); font-weight: 600; }
   .note.ok { background: var(--ok-tint); color: var(--ok); font-weight: 600; }
-  .note.info { background: var(--paper); color: var(--ink-2); font-size: 15px; }
+  .note.info { background: var(--paper-2); color: var(--ink-2); }
   .note .link { color: inherit; }
+  .notes { display: grid; gap: 8px; margin-bottom: 18px; }
 
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .chip { appearance: none; border: 0; padding: 9px 15px; border-radius: var(--r-pill); background: var(--paper-2); color: var(--ink); font-size: 15px; font-weight: 500; line-height: 20px; text-align: left; }
+  .chip { appearance: none; border: 0; padding: 8px 14px; border-radius: var(--r-pill); background: var(--paper-2); color: var(--ink); font-size: 13.5px; font-weight: 500; line-height: 19px; text-align: left; }
   .chip:hover { background: var(--paper-3); }
-  .chips.on-ground .chip { background: var(--paper); }
-  .chips.on-ground .chip:hover { background: var(--paper-2); }
-  .file-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-height: 32px; padding-inline: 10px 4px; border-radius: var(--r-pill); background: var(--paper-2); color: var(--ink); font-size: 13px; font-weight: 500; line-height: 18px; }
+  .file-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-height: 30px; padding-inline: 10px 4px; border-radius: var(--r-pill); background: var(--paper-2); color: var(--ink); font-size: 12.5px; font-weight: 500; line-height: 17px; }
   .file-chip > svg { flex: none; color: var(--ink-3); }
   .file-chip .fc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .file-chip .x { appearance: none; border: 0; background: none; flex: none; width: 24px; height: 24px; border-radius: var(--r-pill); display: grid; place-items: center; color: var(--ink-3); }
   .file-chip .x:hover { background: var(--paper-3); color: var(--ink); }
   .file-chip.plain { padding-inline: 10px; }
-
-  .circle { appearance: none; border: 0; background: none; flex: none; width: 38px; height: 38px; border-radius: var(--r-pill); display: grid; place-items: center; color: var(--ink-3); }
-  .circle:hover { background: var(--paper-2); color: var(--ink); }
+  .circle { appearance: none; border: 0; background: none; flex: none; width: 36px; height: 36px; border-radius: var(--r-pill); display: grid; place-items: center; color: var(--ink-3); }
+  .circle:hover { background: var(--hover); color: var(--ink); }
   .circle.send { background: var(--brand); color: var(--on-brand); }
   .circle.send:hover { background: var(--brand-press); }
-
-  /* ---------- главная ---------- */
-  .ask { display: grid; gap: 14px; margin-top: 8px; padding: 22px; border-radius: var(--r-surface); background: var(--paper); }
-  .ask-lead { margin: 0; max-width: 50ch; color: var(--ink-2); }
-  .askbox { display: flex; align-items: flex-end; gap: 6px; padding: 8px; border-radius: var(--r-surface); box-shadow: inset 0 0 0 1.5px var(--edge-2); }
-  .askbox:focus-within { box-shadow: inset 0 0 0 2px var(--brand); }
-  .askbox textarea { flex: 1; min-width: 0; min-height: 38px; max-height: 140px; padding-block: 7px; border: 0; outline: none; resize: none; background: transparent; font-size: 16px; line-height: 24px; }
-  textarea::placeholder, .input::placeholder { color: var(--ink-3); }
-  .sec-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; margin-top: 36px; }
-  .cards { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 10px; }
-  .card {
-    appearance: none; border: 0; width: 100%; text-align: left;
-    display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 14px; row-gap: 4px; align-items: center;
-    padding: 18px 20px; border-radius: var(--r-card); background: var(--paper); color: var(--ink);
-  }
-  .card:hover { box-shadow: var(--lift); }
-  .card-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-size: 17px; font-weight: 700; line-height: 24px; }
-  .card-sub, .tags { grid-column: 1; }
-  .card-sub { font-size: 14.5px; line-height: 21px; color: var(--ink-3); }
-  .chev { grid-column: 2; grid-row: 1 / span 3; color: var(--ink-3); }
-  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-  .tag { padding: 4px 11px; border-radius: var(--r-pill); background: var(--paper-2); color: var(--ink-2); font-size: 13.5px; font-weight: 600; line-height: 19px; }
+  .tag { padding: 3px 10px; border-radius: var(--r-pill); background: var(--paper-2); color: var(--ink-2); font-size: 12.5px; font-weight: 600; line-height: 18px; white-space: nowrap; }
   .tag.warn { background: var(--warn-tint); color: var(--warn); }
   .tag.ok { background: var(--ok-tint); color: var(--ok); }
-  .sample { font-size: 13px; font-weight: 600; color: var(--ink-3); }
+  .soon-tag { padding: 1px 8px; border-radius: var(--r-pill); background: var(--paper-3); color: var(--ink-3); font-size: 11px; font-weight: 600; line-height: 17px; letter-spacing: 0; text-transform: none; }
+  .bubble { min-width: 20px; height: 20px; padding-inline: 6px; border-radius: var(--r-pill); display: inline-grid; place-items: center; background: var(--warn-tint); color: var(--warn); font: 600 11.5px/1 var(--mono); }
+  .bubble.ok { padding-inline: 0; width: 20px; background: var(--ok-tint); color: var(--ok); }
+  .sample { font-size: 12px; font-weight: 600; color: var(--ink-3); }
 
-  /* ---------- закупка ---------- */
-  .kind { margin: 20px 0 0; font-size: 14px; line-height: 20px; color: var(--ink-3); }
-  .due { display: inline-flex; align-items: center; gap: 10px; margin: 16px 0 0; padding: 10px 16px; border-radius: var(--r-card); background: var(--paper); color: var(--ink-2); font-size: 15px; font-weight: 600; line-height: 21px; }
-  .due > svg { flex: none; }
-  .due.soon { background: var(--warn-tint); color: var(--warn); }
-  .due.past { color: var(--ink-3); }
-  .facts { display: grid; gap: 4px; margin: 16px 0 0; font-size: 15.5px; line-height: 23px; color: var(--ink-2); }
-  .facts div { margin: 0; }
-  .facts dt, .facts dd { display: inline; margin: 0; }
-  .facts dd { color: var(--ink); font-weight: 600; }
-  .menu { list-style: none; margin: 24px 0 0; padding: 0; overflow: hidden; border-radius: var(--r-surface); background: var(--paper); }
-  .menu > li + li { border-top: 1px solid var(--rule); }
-  .row {
-    appearance: none; border: 0; background: none; width: 100%; text-align: left;
-    display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; row-gap: 4px; align-items: center;
-    padding: 20px; color: var(--ink);
+  /* ---------- панели ---------- */
+  .panel { min-width: 0; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-card); }
+  .panel-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; min-height: 56px; padding: 12px 18px; border-bottom: 1px solid var(--line); }
+  .panel-title { margin: 0; font-size: 15px; font-weight: 600; line-height: 21px; }
+  .panel-sub { margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--ink-3); }
+  .panel-body { display: grid; gap: 14px; padding: 18px; }
+  .page-col { display: grid; gap: 16px; max-width: 880px; }
+  .intro { margin: 0; max-width: 70ch; font-size: 14px; line-height: 21px; color: var(--ink-2); }
+  .foot { margin: 16px 0 0; max-width: 90ch; font-size: 12.5px; line-height: 18px; color: var(--ink-3); }
+
+  /* Строки списков: значок закона, название, строка под ним, справа — срок и отметки */
+  .plist { list-style: none; margin: 0; padding: 0; }
+  .plist > li + li { border-top: 1px solid var(--line); }
+  .prow {
+    appearance: none; border: 0; background: none; width: 100%; text-align: left; color: var(--ink);
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 12px; align-items: center; padding: 12px 16px;
   }
-  .row:hover { background: var(--paper-2); }
-  .row-title { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 17px; font-weight: 700; line-height: 24px; }
-  .row-sub { grid-column: 1; font-size: 15px; line-height: 22px; color: var(--ink-3); }
-  .row .chev { grid-row: 1 / span 2; }
-  .docs-line { margin: 20px 0 0; font-size: 14.5px; line-height: 22px; color: var(--ink-3); }
-  .docs-line + .docs-line { margin-top: 4px; }
-  .confirm { display: grid; gap: 12px; padding: 16px; border-radius: var(--r-card); background: var(--paper); }
-  .confirm p { margin: 0; font-weight: 600; }
-  .btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .prow:hover { background: var(--hover); }
+  .prow[aria-current] { background: var(--select); }
+  .prow-text { display: grid; gap: 2px; min-width: 0; }
+  .prow-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .prow-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 14px; font-weight: 600; line-height: 19px; }
+  .prow-sub { font-size: 12.5px; line-height: 17px; color: var(--ink-3); }
+  .prow-side { display: grid; justify-items: end; gap: 4px; }
+  .prow > .chev { color: var(--ink-3); }
+  .days { font: 600 11.5px/16px var(--mono); color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .days.soon { color: var(--warn); }
+  .law { flex: none; width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--brand-tint); color: var(--brand); font: 700 12.5px/1 var(--mono); letter-spacing: -.03em; }
+  .law.l223 { background: var(--paper-3); color: var(--ink-2); }
+  .law.icon { font: inherit; background: var(--paper-2); color: var(--ink-2); }
+  .law.big { width: 60px; height: 60px; border-radius: var(--r-card); font-size: 17px; }
+  .meter { height: 4px; margin-top: 6px; overflow: hidden; border-radius: var(--r-pill); background: var(--paper-3); }
+  .meter i { display: block; height: 100%; border-radius: inherit; background: var(--brand); }
+  .list-empty { margin: 0; padding: 20px 18px; font-size: 14px; color: var(--ink-3); }
+
+  /* ---------- главная ---------- */
+  .dash { display: grid; gap: 16px; align-items: start; max-width: 1240px; }
+  @media (min-width: 1180px) { .dash { grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr); } }
+  .dash-side { display: grid; gap: 16px; min-width: 0; }
+  .ask-lead { margin: 0; font-size: 14px; line-height: 21px; color: var(--ink-2); }
+  .askbox { display: flex; align-items: flex-end; gap: 4px; padding: 5px; border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--card); }
+  .askbox:focus-within { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); }
+  .askbox textarea { flex: 1; min-width: 0; min-height: 36px; max-height: 140px; padding-block: 6px; border: 0; outline: none; resize: none; background: transparent; font-size: 16px; line-height: 24px; }
+  .empty { display: grid; justify-items: start; gap: 14px; padding: 22px 18px; }
+  .empty p { margin: 0; max-width: 52ch; font-size: 14.5px; line-height: 22px; color: var(--ink-2); }
+  .or { font-size: 14px; color: var(--ink-3); }
+
+  /* ---------- закупки: список, закупка, сведения ---------- */
+  .ws {
+    position: relative; flex: 1; min-height: 0;
+    display: grid; grid-template-columns: var(--list-w) minmax(0, 1fr) var(--info-w);
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--r-card); overflow: hidden;
+  }
+  .ws[data-sel="0"] { grid-template-columns: var(--list-w) minmax(0, 1fr); }
+  .ws.solo { display: flex; }
+  .pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .ws.solo > .pane { flex: 1; }
+  .pane-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .ws-list { border-right: 1px solid var(--line); }
+  .ws-info { border-left: 1px solid var(--line); background: var(--card); }
+  .icon-btn.info-toggle, .icon-btn.info-close, .icon-btn.pd-back { display: none; }
+  @media (max-width: 1559px) {
+    .ws { grid-template-columns: var(--list-w) minmax(0, 1fr); }
+    .ws-info { position: absolute; inset-block: 0; right: 0; z-index: 6; width: min(340px, 100%); box-shadow: var(--lift-lg); }
+    .ws:not([data-info="open"]) .ws-info { display: none; }
+    .icon-btn.info-toggle, .icon-btn.info-close { display: grid; }
+  }
+  @media (max-width: 1179px) {
+    .ws, .ws[data-sel="0"] { grid-template-columns: minmax(0, 1fr); }
+    .ws[data-pane="list"] .ws-main, .ws[data-pane="main"] .ws-list { display: none; }
+    .ws-list { border-right: 0; }
+    .icon-btn.pd-back { display: grid; }
+  }
+  .list-head { flex: none; display: flex; gap: 8px; padding: 12px; border-bottom: 1px solid var(--line); }
+  .search { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 36px; padding-inline: 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--card); color: var(--ink-3); cursor: text; }
+  .search:focus-within { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); }
+  .search > svg { flex: none; }
+  .search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: none; background: transparent; font-size: 14px; color: var(--ink); }
+  .ws-list .prow { padding: 12px 14px; }
+
+  .pd-head { flex: none; display: flex; align-items: center; gap: 12px; min-height: 68px; padding: 12px 14px 12px 18px; }
+  .pd-text { flex: 1; min-width: 0; }
+  .pd-title, .pd-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pd-title { margin: 0; font-size: 16px; font-weight: 600; line-height: 22px; }
+  .pd-title:focus { outline: none; }
+  .pd-sub { margin: 1px 0 0; font-size: 12.5px; line-height: 17px; color: var(--ink-3); }
+  .pd-acts { flex: none; display: flex; align-items: center; gap: 4px; }
+  .due-chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; margin-right: 6px; padding-inline: 10px; border-radius: var(--r-pill); background: var(--paper-2); color: var(--ink-2); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+  .due-chip > svg { flex: none; }
+  .due-chip.soon { background: var(--warn-tint); color: var(--warn); }
+  .due-chip.past { color: var(--ink-3); }
+  .tabs { flex: none; display: flex; gap: 4px; padding-inline: 10px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    appearance: none; border: 0; background: none; flex: none;
+    display: inline-flex; align-items: center; gap: 8px; height: 44px; padding-inline: 10px; margin-bottom: -1px;
+    border-bottom: 2px solid transparent; color: var(--ink-3); font-size: 14px; font-weight: 500; white-space: nowrap;
+  }
+  .tab:hover { color: var(--ink); }
+  .tab[aria-current="page"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--brand); }
+  .tab .count { margin-left: 0; }
+  .tab-body { max-width: 820px; padding: 20px 24px 28px; }
+  .tab-lead { margin: 0 0 18px; max-width: 64ch; font-size: 14px; line-height: 21px; color: var(--ink-2); }
+  .group + .group { margin-top: 22px; }
+  .group-title { margin: 0 0 8px; font-size: 12px; font-weight: 700; line-height: 17px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
+
+  .info-top { position: relative; display: grid; justify-items: center; gap: 6px; padding: 22px 20px 18px; border-bottom: 1px solid var(--line); text-align: center; }
+  .info-top .info-close { position: absolute; top: 10px; right: 10px; }
+  .info-title { margin: 8px 0 0; font-size: 14.5px; font-weight: 600; line-height: 21px; text-wrap: balance; }
+  .info-sub { margin: 0; font-size: 12.5px; line-height: 17px; color: var(--ink-3); }
+  .fold { border-bottom: 1px solid var(--line); }
+  .fold-head {
+    appearance: none; border: 0; background: none; width: 100%;
+    display: flex; align-items: center; gap: 8px; padding: 14px 18px 14px 20px;
+    color: var(--ink); font-size: 14.5px; font-weight: 600; line-height: 20px; text-align: left;
+  }
+  .fold-head > svg { margin-left: auto; flex: none; color: var(--ink-3); transition: transform .15s ease; }
+  .fold-head[aria-expanded="false"] > svg { transform: rotate(-90deg); }
+  .fold-head .count { margin-left: 0; }
+  .fold-body { display: grid; gap: 12px; padding: 0 20px 18px; }
+  .fact { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; font-size: 13.5px; line-height: 19px; color: var(--ink-2); }
+  .fact > svg { margin-top: 1px; color: var(--ink-3); }
+  .fact-label { display: block; font-size: 12px; line-height: 16px; color: var(--ink-3); }
+  .fact b { display: block; color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+  .files { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .file { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; align-items: center; }
+  .file-ic { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--paper-2); color: var(--ink-3); }
+  .file-ic.warn { background: var(--warn-tint); color: var(--warn); }
+  .file-text { display: grid; min-width: 0; }
+  .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; font-weight: 500; line-height: 19px; }
+  .file-meta { font-size: 12px; line-height: 16px; color: var(--ink-3); }
+  .file-meta.warn { color: var(--warn); font-weight: 600; }
+  .info-foot { padding: 16px 20px 22px; font-size: 13.5px; }
 
   /* ---------- требования ---------- */
-  .list { list-style: none; margin: 0; padding: 0; overflow: hidden; border-radius: var(--r-card); background: var(--paper); }
-  .list > li { display: grid; gap: 4px; padding: 14px 18px; }
-  .list > li + li { border-top: 1px solid var(--rule); }
-  .quote { margin: 4px 0 0; padding: 12px 16px; border-radius: var(--r-ctl); background: var(--paper-2); font-size: 14.5px; line-height: 22px; }
-  .unver { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13.5px; font-weight: 500; line-height: 19px; color: var(--warn); }
+  .list { list-style: none; margin: 0; padding: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--card); }
+  .list > li { display: grid; gap: 4px; padding: 12px 16px; font-size: 14.5px; line-height: 22px; }
+  .list > li + li { border-top: 1px solid var(--line); }
+  .quote { margin: 4px 0 0; padding: 10px 14px; border-radius: 12px; background: var(--paper-2); font-size: 13.5px; line-height: 21px; }
+  .unver { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; font-weight: 500; line-height: 18px; color: var(--warn); }
   .unver > svg { flex: none; }
-  .empty-group { margin: 0; padding: 14px 18px; border-radius: var(--r-card); background: var(--paper); font-size: 15px; line-height: 22px; color: var(--ink-3); }
+  .empty-group { margin: 0; padding: 12px 16px; border: 1px dashed var(--line); border-radius: var(--r-ctl); font-size: 14px; line-height: 21px; color: var(--ink-3); }
 
   /* ---------- техническое предложение ---------- */
-  .items { list-style: none; margin: 0; padding: 0; overflow: hidden; border-radius: var(--r-surface); background: var(--paper); }
-  .items > li { display: grid; gap: 6px; padding: 18px 20px; }
-  .items > li + li { border-top: 1px solid var(--rule); }
+  .items { list-style: none; margin: 0; padding: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--card); }
+  .items > li { display: grid; gap: 6px; padding: 16px 18px; }
+  .items > li + li { border-top: 1px solid var(--line); }
   .item-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
-  .item-head h3 { margin: 0; font-size: 16px; font-weight: 700; line-height: 22px; }
-  .qty { font-size: 14px; color: var(--ink-3); }
-  .flag { font-size: 13px; font-weight: 600; color: var(--warn); }
-  .need { margin: 0; font-size: 14.5px; line-height: 21px; color: var(--ink-3); }
+  .item-head h3, .item-head h4 { margin: 0; font-size: 14.5px; font-weight: 600; line-height: 21px; }
+  .qty { font-size: 13px; color: var(--ink-3); }
+  .flag { font-size: 12px; font-weight: 600; color: var(--warn); }
+  .need { margin: 0; font-size: 13.5px; line-height: 20px; color: var(--ink-3); }
   .edit {
     appearance: none; border: 0; background: none; margin-inline: -8px; padding: 6px 8px; border-radius: 10px;
-    text-align: left; white-space: pre-wrap; font-size: 16px; line-height: 24px; color: var(--ink); cursor: text;
+    text-align: left; white-space: pre-wrap; font-size: 15px; line-height: 23px; color: var(--ink); cursor: text;
   }
-  .edit:hover { background: var(--paper-2); }
+  .edit:hover { background: var(--hover); }
   .edit-area {
-    display: block; width: calc(100% + 16px); margin-inline: -8px; padding: 6px 8px; min-height: 48px;
+    display: block; width: calc(100% + 16px); margin-inline: -8px; padding: 6px 8px; min-height: 46px;
     border: 0; border-radius: 10px; outline: none; resize: none; field-sizing: content;
-    background: var(--paper-2); box-shadow: inset 0 0 0 2px var(--brand); font-size: 16px; line-height: 24px;
+    background: var(--paper-2); box-shadow: inset 0 0 0 2px var(--brand); font-size: 15px; line-height: 23px;
   }
   mark.fill { padding: 1px 4px; border-radius: 6px; background: var(--warn-tint); color: var(--warn); font-weight: 600; }
-  .price { display: grid; gap: 8px; margin-top: 24px; padding: 16px 18px; border-radius: var(--r-card); background: var(--paper); }
-  .price label { font-weight: 700; }
+  .price { display: grid; gap: 8px; margin-top: 18px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-ctl); }
+  .price label { font-size: 14px; font-weight: 600; }
   .price-row { display: flex; align-items: center; gap: 8px; }
   .price p { margin: 0; }
-  .input { width: 100%; height: 44px; padding-inline: 12px; border: 0; border-radius: var(--r-ctl); outline: none; background: var(--paper-2); font-size: 16px; }
-  .input:focus { box-shadow: inset 0 0 0 2px var(--brand); }
-  .input.num { max-width: 240px; font-family: var(--mono); font-size: 15px; font-variant-numeric: tabular-nums; }
-  .parts { list-style: none; margin: 0; padding: 0; overflow: hidden; border-radius: var(--r-surface); background: var(--paper); }
-  .parts > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; row-gap: 4px; align-items: center; padding: 16px 20px; }
-  .parts > li + li { border-top: 1px solid var(--rule); }
-  .part-name { font-weight: 600; line-height: 24px; }
-  .part-status { grid-column: 1; font-size: 14px; line-height: 20px; color: var(--ink-3); }
+  .parts { list-style: none; margin: 0; padding: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-ctl); }
+  .parts > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; row-gap: 2px; align-items: center; padding: 12px 16px; }
+  .parts > li + li { border-top: 1px solid var(--line); }
+  .part-name { font-size: 14.5px; font-weight: 600; line-height: 21px; }
+  .part-status { grid-column: 1; font-size: 13px; line-height: 19px; color: var(--ink-3); }
   .parts .btn { grid-column: 2; grid-row: 1 / span 2; }
   .sticky-actions {
-    position: sticky; bottom: 0; z-index: 5; display: grid; gap: 8px; margin-top: 8px;
-    padding-block: 16px calc(16px + env(safe-area-inset-bottom, 0px));
-    background: linear-gradient(to bottom, transparent, var(--ground) 30%);
+    position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 8px;
+    padding: 12px 24px calc(14px + env(safe-area-inset-bottom, 0px));
+    background: color-mix(in srgb, var(--card) 92%, transparent); border-top: 1px solid var(--line); backdrop-filter: blur(6px);
   }
-  .sticky-actions .btn { justify-self: start; }
+  .confirm { display: grid; gap: 12px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-ctl); }
+  .confirm p { margin: 0; font-size: 14px; font-weight: 600; }
+  .btn-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 
   /* ---------- загрузка и ожидание ---------- */
   .drop {
-    display: grid; justify-items: center; gap: 16px; margin-top: 28px; padding: 36px 24px;
-    border-radius: var(--r-surface); background: var(--paper); box-shadow: inset 0 0 0 2px var(--edge-2); text-align: center;
+    display: grid; justify-items: center; gap: 14px; padding: 36px 24px;
+    border: 1.5px dashed var(--edge-2); border-radius: var(--r-card); background: var(--canvas); text-align: center;
   }
-  .drop.over { background: var(--brand-tint); box-shadow: inset 0 0 0 2px var(--brand); }
-  .drop p { margin: 0; max-width: 46ch; color: var(--ink-2); }
-  .drop-ic { color: var(--brand); }
-  .or { font-size: 15px; color: var(--ink-3); }
-  .busy { display: grid; gap: 8px; margin-top: 44px; }
-  .busy-text { margin: 0; font-size: 18px; font-weight: 600; line-height: 26px; animation: pulse 1.4s ease-in-out infinite; }
-  .busy-sub { margin: 0; font-size: 15px; color: var(--ink-3); }
-  .track { height: 6px; margin-top: 8px; overflow: hidden; border-radius: var(--r-pill); background: var(--paper); }
+  .drop.over { border-color: var(--brand); background: var(--brand-tint); }
+  .drop p { margin: 0; max-width: 46ch; font-size: 14.5px; line-height: 22px; color: var(--ink-2); }
+  .drop-ic { width: 52px; height: 52px; border-radius: var(--r-ctl); display: grid; place-items: center; background: var(--brand-tint); color: var(--brand); }
+  .busy { display: grid; gap: 8px; padding-block: 28px; }
+  .busy-text { margin: 0; font-size: 17px; font-weight: 600; line-height: 25px; animation: pulse 1.4s ease-in-out infinite; }
+  .busy-sub { margin: 0; font-size: 14px; color: var(--ink-3); }
+  .track { height: 6px; margin-top: 8px; overflow: hidden; border-radius: var(--r-pill); background: var(--paper-3); }
   .track i { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--brand); transition: width .5s ease; }
 
   /* ---------- проверка заявки ---------- */
-  .findings { list-style: none; margin: 22px 0 0; padding: 0; display: grid; gap: 10px; }
-  .finding { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; padding: 16px 18px; border-radius: var(--r-card); background: var(--paper); }
+  .check-title { margin: 0 0 6px; font-size: 18px; font-weight: 700; line-height: 25px; }
+  .findings { list-style: none; margin: 18px 0 0; padding: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-ctl); }
+  .finding { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; padding: 14px 16px; font-size: 14.5px; line-height: 22px; }
+  .finding + .finding { border-top: 1px solid var(--line); }
   .finding p { margin: 0; }
   .finding .what { font-weight: 600; }
   .finding .todo { color: var(--ink-2); }
-  .ico { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 15px; font-weight: 700; }
+  .ico { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; font-weight: 700; }
   .finding.bad .ico { background: var(--danger-tint); color: var(--danger); }
   .finding.warn .ico { background: var(--warn-tint); color: var(--warn); }
-  .finding.ok { background: transparent; }
   .finding.ok .ico { background: var(--ok-tint); color: var(--ok); }
   .finding.ok .what { color: var(--ok); }
-  .under { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 22px 0 0; color: var(--ink-2); }
+  .under { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 18px 0 0; font-size: 14px; color: var(--ink-2); }
 
   /* ---------- вопросы: сообщения по правилам AI Elements ---------- */
-  .feed { display: grid; gap: 18px; margin-top: 20px; padding: 20px; border-radius: var(--r-surface); background: var(--paper); }
+  .chat { display: flex; flex-direction: column; min-height: 100%; }
+  .chat-main { flex: 1; width: 100%; max-width: 820px; margin-inline: auto; padding: 24px 24px 16px; }
+  .chat-empty { display: grid; gap: 8px; padding-block: 12px 18px; }
+  .chat-title { margin: 0; font-size: 18px; font-weight: 700; line-height: 25px; letter-spacing: -.01em; }
+  .chat-empty p { margin: 0; max-width: 62ch; font-size: 14px; line-height: 21px; color: var(--ink-2); }
+  .chat-docs { font-size: 12.5px; color: var(--ink-3); }
+  .feed { display: grid; gap: 18px; margin-bottom: 16px; }
   .msg { font-size: 14px; line-height: 20px; }
   .msg.user { justify-self: end; max-width: 80%; padding: 10px 14px; border-radius: var(--r-bubble); background: var(--paper-3); white-space: pre-wrap; overflow-wrap: anywhere; }
   .msg-files { justify-self: end; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
@@ -364,54 +427,49 @@
   .msg.bot li + li { margin-top: 4px; }
   .msg.bot > :last-child { margin-bottom: 0; }
   .msg .note-line { font-style: italic; color: var(--ink-3); }
-  .msg-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin-top: 12px; font-size: 13px; line-height: 20px; color: var(--ink-3); }
+  .msg-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin-top: 12px; font-size: 12.5px; line-height: 19px; color: var(--ink-3); }
   .refs { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
-  .refs .src { font-size: 13px; }
+  .refs .src { font-size: 12.5px; }
   .thinking { margin: 0; font-size: 14px; color: var(--ink-3); animation: pulse 1.2s ease-in-out infinite; }
   .composer {
-    position: sticky; bottom: 0; z-index: 5; display: grid; gap: 8px; margin-top: 12px;
-    padding-block: 14px calc(12px + env(safe-area-inset-bottom, 0px));
-    background: linear-gradient(to bottom, transparent, var(--ground) 22%);
+    position: sticky; bottom: 0; z-index: 5; display: grid; gap: 8px;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); background: var(--card);
   }
+  .composer > * { width: 100%; max-width: 788px; margin-inline: auto; }
   .in-talk { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-3); }
-  .in-talk .file-chip { background: var(--paper); }
-  .prompt { display: grid; border-radius: var(--r-surface); background: var(--paper); box-shadow: var(--lift); }
-  .prompt:focus-within { box-shadow: var(--lift), inset 0 0 0 2px var(--brand); }
-  .prompt textarea { min-height: 52px; max-height: 160px; padding: 14px 16px 6px; border: 0; outline: none; resize: none; background: transparent; font-size: 16px; line-height: 24px; }
-  .prompt-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px 8px; }
+  .prompt { display: grid; border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--card); }
+  .prompt:focus-within { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); }
+  .prompt textarea { min-height: 48px; max-height: 160px; padding: 12px 14px 4px; border: 0; outline: none; resize: none; background: transparent; font-size: 16px; line-height: 24px; }
+  .prompt-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 6px 6px; }
   .tool-btn { appearance: none; border: 0; background: none; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding-inline: 10px; border-radius: var(--r-pill); color: var(--ink-3); font-size: 13px; font-weight: 500; }
-  .tool-btn:hover { background: var(--paper-2); color: var(--ink); }
+  .tool-btn:hover { background: var(--hover); color: var(--ink); }
   .disclaimer { margin: 0; text-align: center; font-size: 11.5px; line-height: 16px; color: var(--ink-3); }
 
   /* ---------- мои данные ---------- */
-  .fields { display: grid; gap: 16px; padding: 18px; border-radius: var(--r-card); background: var(--paper); }
-  .field { display: grid; gap: 6px; cursor: default; }
-  .field-label { font-size: 14.5px; font-weight: 600; line-height: 20px; }
-  .field-src { font-size: 13.5px; line-height: 19px; color: var(--ink-3); }
-  .suggest { display: grid; gap: 12px; margin-top: 20px; padding: 16px; border-radius: var(--r-card); background: var(--warn-tint); }
-  .suggest-head { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--warn); font-weight: 600; }
+  .form-rows { display: grid; }
+  .field { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 4px 20px; align-items: center; padding: 12px 18px; cursor: default; }
+  .field + .field { border-top: 1px solid var(--line); }
+  .field-label { font-size: 13.5px; font-weight: 500; line-height: 19px; color: var(--ink-2); }
+  .field-src { grid-column: 2; font-size: 12px; line-height: 17px; color: var(--ink-3); }
+  .suggest { display: grid; gap: 12px; padding: 14px 16px; border-radius: var(--r-card); background: var(--warn-tint); }
+  .suggest-head { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--warn); font-size: 14px; font-weight: 600; }
   .suggest-head > svg { flex: none; }
   .suggest ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-  .suggest li { display: grid; gap: 6px; font-size: 15px; line-height: 22px; overflow-wrap: anywhere; }
-  .suggest .acts { display: flex; flex-wrap: wrap; gap: 4px 20px; font-size: 14px; }
-  .save-state {
-    position: sticky; bottom: 0; min-height: 22px; margin: 16px 0 0;
-    padding-block: 20px calc(12px + env(safe-area-inset-bottom, 0px));
-    background: linear-gradient(to bottom, transparent, var(--ground) 40%); font-size: 14.5px; line-height: 22px; color: var(--ink-3);
-  }
-  .use { margin: 4px 0 10px; font-size: 14.5px; line-height: 21px; color: var(--ink-3); }
-  .docs-list { border-radius: var(--r-surface); }
-  .docs-list > li { gap: 8px; padding: 16px 20px; }
-  .doc-main { display: flex; align-items: flex-start; gap: 12px; }
-  .doc-main > svg { flex: none; margin-top: 2px; color: var(--ink-3); }
+  .suggest li { display: grid; gap: 6px; font-size: 14px; line-height: 21px; overflow-wrap: anywhere; }
+  .suggest .acts { display: flex; flex-wrap: wrap; gap: 4px 20px; font-size: 13.5px; }
+  .save-state { font-size: 13px; line-height: 18px; color: var(--ink-3); white-space: nowrap; }
+  .docs-list { list-style: none; margin: 0; padding: 0; }
+  .docs-list > li { display: grid; gap: 8px; padding: 14px 18px; }
+  .docs-list > li + li { border-top: 1px solid var(--line); }
+  .doc-main { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; align-items: start; }
   .doc-text { display: grid; gap: 2px; min-width: 0; }
-  .doc-name { font-weight: 600; overflow-wrap: anywhere; }
-  .doc-about { font-size: 15px; line-height: 22px; color: var(--ink-2); }
-  .doc-meta { font-size: 14px; line-height: 20px; color: var(--ink-3); }
-  .doc-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; padding-left: 32px; font-size: 14px; }
-  .kinds { display: grid; gap: 12px; padding-left: 32px; }
-  .kinds > p { margin: 0; font-size: 14.5px; font-weight: 600; }
-  .kind-pill { appearance: none; border: 0; min-height: 36px; padding-inline: 14px; border-radius: var(--r-pill); background: var(--paper-2); color: var(--ink); font-size: 14.5px; font-weight: 600; }
+  .doc-name { font-size: 14.5px; font-weight: 600; line-height: 21px; overflow-wrap: anywhere; }
+  .doc-about { font-size: 13.5px; line-height: 20px; color: var(--ink-2); }
+  .doc-meta { font-size: 12.5px; line-height: 18px; color: var(--ink-3); }
+  .doc-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; padding-left: 44px; font-size: 13.5px; }
+  .kinds { display: grid; gap: 12px; padding-left: 44px; }
+  .kinds > p { margin: 0; font-size: 14px; font-weight: 600; }
+  .kind-pill { appearance: none; border: 0; min-height: 34px; padding-inline: 14px; border-radius: var(--r-pill); background: var(--paper-2); color: var(--ink); font-size: 13.5px; font-weight: 600; }
   .kind-pill:hover { background: var(--paper-3); }
   .kind-pill[aria-pressed="true"] { background: var(--brand); color: var(--on-brand); }
 
@@ -419,13 +477,13 @@
   .modal-scrim { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: var(--scrim); }
   .modal {
     position: relative; width: min(580px, 100%); max-height: 100%; overflow-y: auto; overscroll-behavior: contain;
-    display: grid; gap: 14px; padding: 22px; border-radius: var(--r-surface); background: var(--paper); box-shadow: var(--lift-lg);
+    display: grid; gap: 14px; padding: 22px; border-radius: var(--r-surface); background: var(--card); box-shadow: var(--lift-lg);
   }
   .modal.wide { width: min(820px, 100%); }
-  .modal h2 { margin: 0; padding-right: 40px; font-size: 18px; font-weight: 700; line-height: 25px; }
+  .modal h2 { margin: 0; padding-right: 40px; font-size: 17px; font-weight: 700; line-height: 24px; }
   .modal .x-close { position: absolute; top: 12px; right: 12px; }
-  .eyebrow { font-size: 12.5px; font-weight: 700; line-height: 16px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
-  .law-text { margin: 0; padding: 14px 16px; max-height: 52vh; overflow-y: auto; border-radius: var(--r-ctl); background: var(--paper-2); font-size: 14.5px; line-height: 22px; white-space: pre-wrap; }
+  .eyebrow { font-size: 12px; font-weight: 700; line-height: 16px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+  .law-text { margin: 0; padding: 14px 16px; max-height: 52vh; overflow-y: auto; border-radius: var(--r-ctl); background: var(--paper-2); font-size: 14px; line-height: 22px; white-space: pre-wrap; }
   .law-text mark { padding: 0 2px; border-radius: 4px; background: var(--warn-tint); color: inherit; }
   .modal a { color: var(--brand); font-weight: 600; text-underline-offset: 3px; }
   .sheet {
@@ -456,39 +514,51 @@
 
   @keyframes pulse { 50% { opacity: .45; } }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
-  @media (max-width: 480px) {
-    .ask { padding: 18px 16px; }
-    .card, .row, .items > li, .parts > li, .docs-list > li { padding: 16px; }
-    .sec-head .btn, .sticky-actions .btn { width: 100%; }
+
+  /* ---------- планшет и телефон: сайдбар выезжает по кнопке ---------- */
+  @media (max-width: 1023px) {
+    .app { grid-template-columns: minmax(0, 1fr); }
+    .side {
+      position: fixed; inset-block: 0; left: 0; z-index: 40; width: min(320px, 88vw);
+      padding-block: env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px);
+      transform: translateX(-102%); visibility: hidden; box-shadow: var(--lift-lg);
+      transition: transform .22s ease, visibility 0s linear .22s;
+    }
+    .app[data-drawer="open"] .side { transform: none; visibility: visible; transition: transform .22s ease, visibility 0s; }
+    .icon-btn.side-close, .icon-btn.menu-btn { display: grid; }
+    .head { gap: 8px; padding: 10px 16px 12px 8px; }
+    .head h1 { font-size: 18px; line-height: 24px; }
+    .view { padding: 0 12px 12px; }
+  }
+  @media (max-width: 640px) {
+    .head-acts .btn .lbl { display: none; }
+    .head-acts .btn { width: 40px; padding: 0; }
+    .tab-body { padding: 16px 16px 24px; }
+    .sticky-actions { padding-inline: 16px; }
+    .sticky-actions .btn { width: 100%; }
+    .chat-main { padding: 18px 16px 12px; }
+    .composer { padding-inline: 12px; }
+    .field { grid-template-columns: minmax(0, 1fr); }
+    .field-src { grid-column: 1; }
     .parts > li { grid-template-columns: minmax(0, 1fr); }
     .parts .btn { grid-column: 1; grid-row: auto; justify-self: start; margin-top: 6px; }
-    .feed { padding: 16px; }
-    .sheet { padding: 20px 18px; }
+    .prow.wide { grid-template-columns: auto minmax(0, 1fr); row-gap: 6px; }
+    .prow.wide .prow-side { grid-column: 2; justify-items: start; }
     .doc-acts, .kinds { padding-left: 0; }
+    .due-chip { display: none; }
+    .pd-head { gap: 8px; padding-left: 6px; }
+    .pd-head .law { display: none; }
+    .pd-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; }
+    .sheet { padding: 20px 18px; }
   }
 </style>
 
 <div class="app" id="app" data-drawer="closed">
-  <aside class="side" id="side" aria-label="Навигация">
-    <div class="side-head">
-      <button class="logo" type="button" data-go="home" aria-label="Тендерный юрист — на главную">
-        <span class="logo-mark" id="logo-mark"></span>Тендерный юрист
-      </button>
-      <button class="icon-btn side-close" type="button" data-act="drawer-close" aria-label="Закрыть меню" id="side-close"></button>
-    </div>
-    <div class="side-body" id="side-body"></div>
-    <p class="side-foot">Прототип: закупки, документы и ответы вымышленные. Файлы не читаются, ничего не сохраняется и никуда не отправляется.</p>
-  </aside>
+  <aside class="side" id="side" aria-label="Навигация"></aside>
   <div class="scrim" id="scrim" hidden></div>
-
   <div class="main" id="main">
-    <header class="topbar" id="topbar">
-      <button class="icon-btn" type="button" id="menu-btn" data-act="drawer" aria-label="Открыть меню" aria-controls="side" aria-expanded="false"></button>
-      <button class="logo" type="button" data-go="home" aria-label="Тендерный юрист — на главную">
-        <span class="logo-mark" id="logo-mark-2"></span>Тендерный юрист
-      </button>
-    </header>
-    <main class="page" id="view"></main>
+    <header class="head" id="head"></header>
+    <main class="view" id="view" data-scroll></main>
   </div>
 </div>
 
@@ -526,6 +596,13 @@
     plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
     chev: '<path d="m9 18 6-6-6-6"/>',
     back: '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+    down: '<path d="m6 9 6 6 6-6"/>',
+    search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+    list: '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>',
+    panel: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/>',
+    landmark: '<path d="M3 22h18"/><path d="M6 18v-7"/><path d="M10 18v-7"/><path d="M14 18v-7"/><path d="M18 18v-7"/><path d="M12 2 20 7H4z"/>',
+    ruble: '<path d="M6 11h8a4 4 0 0 0 0-8H9v18"/><path d="M6 15h8"/>',
+    moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
     file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
     clip: '<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
     up: '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
@@ -1149,8 +1226,15 @@
     drafts: {},
     ui: {},
     busy: null,
+    info: false, fold: {}, q: "", tabs: {},
   };
-  const PURCHASE_SCREENS = ["p", "req", "tp", "check", "chat"];
+  const PURCHASE_SCREENS = ["req", "tp", "check", "chat"];
+  const WORK = ["list", ...PURCHASE_SCREENS];
+  const narrow = window.matchMedia("(max-width: 1023px)"); // сайдбар выезжает по кнопке
+  const single = window.matchMedia("(max-width: 1179px)"); // закупки — по одной панели
+  const wide = window.matchMedia("(min-width: 1560px)"); // сведения о закупке видны всегда
+  const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  const isDark = () => { const t = document.documentElement.dataset.theme; return t ? t === "dark" : darkQuery.matches; };
   const cur = () => S.purchases.find((p) => p.id === S.id);
   let seq = 100;
   const uid = () => `x${++seq}`;
@@ -1179,14 +1263,12 @@
   }
 
   /* ---------- кусочки разметки ---------- */
-  const CHEV = `<span class="chev">${ic("chev", 20)}</span>`;
-  const back = (label, screen) => `<button class="back" type="button" data-go="${screen}">${ic("back", 16)}<span>${esc(label)}</span></button>`;
-  const noteHTML = (tone, text, cls = "", icon = "") => `<div class="note ${tone} ${cls}">${icon ? ic(icon, 20) : ""}<div>${text}</div></div>`;
+  const noteHTML = (tone, text, cls = "", icon = "") => `<div class="note ${tone} ${cls}">${icon ? ic(icon, 18) : ""}<div>${text}</div></div>`;
   const busyHTML = () => `<div class="busy" aria-live="polite"><p class="busy-text" id="busy-text">${esc(S.busy.lines[0])}</p><p class="busy-sub">${esc(S.busy.sub)}</p><div class="track"><i id="busy-bar"></i></div></div>`;
   const dropHTML = (id, hint, button, sample) => `<div class="drop" data-drop="${id}">
-      <span class="drop-ic">${ic("upload", 32)}</span>
+      <span class="drop-ic">${ic("upload", 26)}</span>
       <p>${hint}</p>
-      <label class="btn" for="file-${id}">${button}<input id="file-${id}" type="file" multiple class="sr-only"></label>
+      <label class="btn lg" for="file-${id}">${button}<input id="file-${id}" type="file" multiple class="sr-only"></label>
       ${sample ? `<span class="or">или <button class="link" type="button" data-act="${sample.act}">${sample.text}</button></span>` : ""}
     </div>`;
 
@@ -1210,59 +1292,24 @@
     return `<button class="src" type="button" data-act="ref" data-ref="doc:${p.id}:${r.doc}">${esc(p.sources[r.doc].label)}</button>`;
   }
 
-  /* ---------- сайдбар ---------- */
-  function sideHTML() {
-    const inP = PURCHASE_SCREENS.includes(S.screen);
-    const list = [...S.purchases].sort(byUrgency);
-    const nav = (screen, icon, label, count) => `<button class="nav-item" type="button" data-go="${screen}"${S.screen === screen ? ' aria-current="page"' : ""}>${ic(icon)}<span>${label}</span>${count !== undefined ? `<span class="count">${count}</span>` : ""}</button>`;
-    return `
-      <button class="btn side-new" type="button" data-go="new">${ic("plus")}Новая закупка</button>
-      <nav class="nav" aria-label="Разделы">
-        ${nav("home", "home", "Главная")}
-        ${nav("ask", "chat", "Спросить про тендер")}
-      </nav>
-      <section aria-labelledby="side-p">
-        <h2 class="sec-label" id="side-p">Мои закупки<span class="count">${list.length}</span></h2>
-        ${list.length ? `<ul class="pur-list">${list.map((p) => purItemHTML(p, inP && p.id === S.id)).join("")}</ul>` : '<p class="side-empty">Закупок пока нет.</p>'}
-      </section>
-      <section aria-labelledby="side-me">
-        <h2 class="sec-label" id="side-me">Мои данные</h2>
-        <div class="nav">
-          ${nav("profile", "user", "Реквизиты", `${filledCount()}/${PROFILE_KEYS.length}`)}
-          ${nav("docs", "folder", "Мои документы", S.docs.length)}
-        </div>
-      </section>`;
+  // Значок закупки — номер закона: 44-ФЗ и 223-ФЗ поставщик различает с первого взгляда.
+  const lawOf = (p) => (/^(44|223)-ФЗ/.exec(p.kind || "") || [])[1] || "";
+  const lawBadge = (p, big) => {
+    const n = lawOf(p);
+    return `<span class="law${n === "223" ? " l223" : ""}${big ? " big" : ""}" title="${n ? `${n}-ФЗ` : "Закон не указан"}" aria-hidden="true">${n || "—"}</span>`;
+  };
+  const daysText = (n) => `${n} ${plural(n, "день", "дня", "дней")}`;
+  function initials(name) {
+    const inner = (/«([^»]+)»/.exec(name) || [])[1] || name;
+    return (inner.split(/[\s-]+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("") || "?").toUpperCase();
   }
-
-  function purItemHTML(p, open) {
-    const due = dueLine(p.deadline, false);
-    const law = p.kind.split(" · ")[0];
-    const badge = due && due.days >= 0 ? `<span class="days${due.tone === "soon" ? " soon" : ""}">${due.days === 0 ? "сегодня" : `${due.days} ${plural(due.days, "день", "дня", "дней")}`}</span>` : "";
-    const meta = [law, due && due.days < 0 ? "приём закончился" : "", p.sample ? "пример" : ""].filter(Boolean).join(" · ");
-    const current = open ? (S.screen === "p" ? ' aria-current="page"' : ' aria-current="true"') : "";
-    return `<li>
-      <button class="pur" type="button" data-go="p" data-id="${p.id}"${current}>
-        <span class="pur-title">${esc(p.short)}</span>${badge}
-        <span class="pur-meta">${esc(meta)}</span>
-      </button>
-      ${open ? subNavHTML(p) : ""}
-    </li>`;
+  // Отметка у закупки: сколько полей осталось вписать в ТП или что ТП готово.
+  function tpMark(p) {
+    if (!p.tp) return "";
+    const fill = fillCount(p.tp);
+    if (fill) return `<span class="bubble" title="В ТП впишите ${fill} ${plural(fill, "пункт", "пункта", "пунктов")}">${fill}<span class="sr-only"> — впишите данные в ТП</span></span>`;
+    return `<span class="bubble ok" title="ТП готово">${ic("check", 12)}<span class="sr-only">ТП готово</span></span>`;
   }
-
-  function subNavHTML(p) {
-    const fill = p.tp ? fillCount(p.tp) : 0;
-    const n = asked(p);
-    const item = (screen, label, extra) => `<li><button class="sub-item" type="button" data-go="${screen}" data-id="${p.id}"${S.screen === screen ? ' aria-current="page"' : ""}><span>${label}</span>${extra}</button></li>`;
-    const tpMark = !p.tp ? "" : fill ? `<span class="mark-n"><span class="sr-only">впишите данные: </span>${fill}</span>` : `<span class="mark-ok">${ic("check", 16)}<span class="sr-only">готово</span></span>`;
-    return `<ul class="sub">
-      ${item("req", "Требования", `<span class="count">${reqCount(p)}</span>`)}
-      ${item("tp", "Техническое предложение", tpMark)}
-      ${item("check", "Проверка заявки", '<span class="soon-tag">скоро</span>')}
-      ${item("chat", "Вопросы", n ? `<span class="count">${n}</span>` : "")}
-    </ul>`;
-  }
-
-  /* ---------- главная ---------- */
   function dueText(p) {
     const due = dueLine(p.deadline, false);
     if (!due) return "Срок подачи не найден в документах";
@@ -1276,42 +1323,128 @@
     if (!fill) return '<span class="tag ok">ТП готово</span>';
     return `<span class="tag warn">ТП: впишите ${fill} ${plural(fill, "пункт", "пункта", "пунктов")}</span>`;
   }
+  const nextDue = () => [...S.purchases].sort(byUrgency).map((p) => ({ p, d: dueLine(p.deadline, false) })).find((x) => x.d && x.d.days >= 0);
 
+  /* ---------- сайдбар: только разделы ---------- */
+  function sideHTML() {
+    const nav = (screen, icon, label, count, current) => `<button class="nav-item" type="button" data-go="${screen}"${current ? ' aria-current="page"' : ""}>${ic(icon)}<span>${label}</span>${count !== undefined ? `<span class="count">${count}</span>` : ""}</button>`;
+    const pr = S.profile;
+    const name = pr.shortName.trim() || pr.fullName.trim() || "Участник закупок";
+    const sub = pr.email.trim() || (pr.inn.trim() ? `ИНН ${pr.inn.trim()}` : "реквизиты не заполнены");
+    return `
+      <div class="side-head">
+        <button class="logo" type="button" data-go="home" aria-label="Тендерный юрист — на главную"><span class="logo-mark">${ic("scale", 16)}</span><span class="logo-text">Тендерный юрист<span class="proto">прототип</span></span></button>
+        <button class="icon-btn side-close" type="button" data-act="drawer-close" aria-label="Закрыть меню">${ic("x", 20)}</button>
+      </div>
+      <div class="side-body">
+        <nav class="nav" aria-label="Разделы">
+          ${nav("home", "home", "Главная", undefined, S.screen === "home")}
+          ${nav("list", "list", "Закупки", S.purchases.length, WORK.includes(S.screen))}
+          ${nav("ask", "chat", "Спросить про тендер", undefined, S.screen === "ask")}
+        </nav>
+        <section aria-labelledby="side-me">
+          <h2 class="sec-label" id="side-me">Мои данные</h2>
+          <div class="nav">
+            ${nav("profile", "user", "Реквизиты", `${filledCount()}/${PROFILE_KEYS.length}`, S.screen === "profile")}
+            ${nav("docs", "folder", "Мои документы", S.docs.length, S.screen === "docs")}
+          </div>
+        </section>
+      </div>
+      <div class="side-foot">
+        <button class="nav-item" type="button" role="switch" aria-checked="${isDark()}" data-act="theme">${ic("moon")}<span>Тёмная тема</span><span class="switch" aria-hidden="true"></span></button>
+        <button class="me" type="button" data-go="profile" aria-label="Реквизиты: ${esc(name)}">
+          <span class="avatar" aria-hidden="true">${esc(initials(name))}</span>
+          <span class="me-text"><span class="me-name">${esc(name)}</span><span class="me-sub">${esc(sub)}</span></span>
+          ${ic("chev", 16)}
+        </button>
+      </div>`;
+  }
+
+  /* ---------- шапка экрана: заголовок, подзаголовок, главное действие ---------- */
+  const newBtn = () => `<button class="btn" type="button" data-go="new" aria-label="Новая закупка">${ic("plus")}<span class="lbl">Новая закупка</span></button>`;
+  function headInfo() {
+    const n = S.purchases.length;
+    const next = nextDue();
+    const when = next ? (next.d.days === 0 ? "сегодня" : `через ${daysText(next.d.days)}`) : "";
+    switch (S.screen) {
+      case "home":
+        return { title: "Главная", sub: next ? `Ближайший срок — «${next.p.short}», ${when}` : n ? "Сроков подачи впереди нет" : "Загрузите документы первой закупки", acts: newBtn() };
+      case "ask":
+        return { title: "Спросить про тендер", sub: "Ответы по 44-ФЗ и 223-ФЗ в действующей редакции — со ссылкой на статью" };
+      case "new":
+        return { title: "Новая закупка", sub: "Извещение, ТЗ и проект контракта — PDF, Word, сканы и фото" };
+      case "profile": {
+        const canFill = S.docs.some((d) => d.kinds.some((k) => REQUISITE_KINDS.includes(k)));
+        return {
+          title: "Реквизиты",
+          sub: `Заполнено ${filledCount()} из ${PROFILE_KEYS.length} · попадают в анкету, декларацию и цену`,
+          acts: `<span class="save-state" id="save-state" aria-live="polite">${esc(S.ui.saved || "")}</span>${canFill ? `<button class="btn line" type="button" data-act="fill" aria-label="Заполнить из моих документов"${S.ui.filling ? " disabled" : ""}>${ic("upload")}<span class="lbl">${S.ui.filling ? "Ищу реквизиты в документах…" : "Заполнить из документов"}</span></button>` : ""}`,
+        };
+      }
+      case "docs":
+        return {
+          title: "Мои документы",
+          sub: S.docs.length ? `${S.docs.length} ${plural(S.docs.length, "документ", "документа", "документов")} · по ним пишутся анкеты, декларации и цены` : "Загрузите то, что подавали раньше",
+          acts: `<label class="btn" for="file-mydocs-top">${ic("plus")}<span class="lbl">Добавить документы</span><input id="file-mydocs-top" type="file" multiple class="sr-only" aria-label="Добавить документы"></label>`,
+        };
+      default:
+        return { title: "Закупки", sub: n ? `${n} ${plural(n, "закупка", "закупки", "закупок")}${next ? ` · ближайший срок подачи ${when}` : ""}` : "Закупок пока нет", acts: newBtn() };
+    }
+  }
+  function headHTML() {
+    const h = headInfo();
+    return `<button class="icon-btn menu-btn" type="button" id="menu-btn" data-act="drawer" aria-label="Открыть меню" aria-controls="side" aria-expanded="${S.drawer && narrow.matches}">${ic("menu", 22)}</button>
+      <div class="head-text"><h1 id="page-title" tabindex="-1">${esc(h.title)}</h1>${h.sub ? `<p class="head-sub">${esc(h.sub)}</p>` : ""}</div>
+      ${h.acts ? `<div class="head-acts">${h.acts}</div>` : ""}`;
+  }
+
+  /* ---------- главная: сроки, вопрос, свои данные ---------- */
   function homeHTML() {
     const list = [...S.purchases].sort(byUrgency);
     const files = S.home.files;
-    return `<h1 class="sr-only">Главная</h1>
-      <section class="ask" aria-labelledby="ask-title">
-        <h2 class="h2" id="ask-title">Спросите про тендер</h2>
-        <p class="ask-lead">Отвечу по 44-ФЗ, 223-ФЗ и вашим документам — со ссылкой на статью и пункт.</p>
-        <form class="askbox" id="home-form">
-          <label class="circle" for="home-file" title="Приложить документ">${ic("clip", 19)}<span class="sr-only">Приложить документ</span><input id="home-file" type="file" multiple class="sr-only"></label>
-          <textarea id="home-q" rows="1" placeholder="Ваш вопрос…" aria-label="Вопрос" data-enter>${esc(S.home.text)}</textarea>
-          <button class="circle send" type="submit" aria-label="Спросить">${ic("up")}</button>
-        </form>
-        ${files.length ? `<div class="chips">${files.map((n, i) => `<span class="file-chip">${ic("file", 14)}<span class="fc-name">${esc(n)}</span><button class="x" type="button" data-act="home-file-x" data-i="${i}" aria-label="Убрать ${esc(n)}">${ic("x", 14)}</button></span>`).join("")}</div>` : ""}
-        <div class="chips">${GENERAL_SUGGEST.map((q) => `<button class="chip" type="button" data-act="home-q" data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div>
+    const filled = filledCount(), total = PROFILE_KEYS.length;
+    const rows = list.map((p) => `<li><button class="prow wide" type="button" data-go="p" data-id="${p.id}">
+        ${lawBadge(p)}
+        <span class="prow-text"><span class="prow-title">${esc(p.short)}${p.sample ? ' <span class="sample">пример</span>' : ""}</span><span class="prow-sub">${dueText(p)}</span></span>
+        <span class="prow-side">${tpTag(p)}</span>
+      </button></li>`).join("");
+    const dataRow = (screen, icon, title, sub, extra = "") => `<li><button class="prow" type="button" data-go="${screen}">
+        <span class="law icon" aria-hidden="true">${ic(icon, 18)}</span>
+        <span class="prow-text"><span class="prow-title">${title}</span><span class="prow-sub">${sub}</span>${extra}</span>
+        <span class="chev">${ic("chev", 18)}</span>
+      </button></li>`;
+    return `<div class="dash">
+      <section class="panel" aria-labelledby="deals-title">
+        <div class="panel-head"><h2 class="panel-title" id="deals-title">Мои закупки</h2>${list.length ? '<button class="link" type="button" data-go="list">Все закупки</button>' : ""}</div>
+        ${list.length ? `<ul class="plist">${rows}</ul>` : `<div class="empty">
+          <p>Загрузите документы закупки — выпишу требования и сроки, составлю черновик технического предложения и отвечу на вопросы по документам.</p>
+          <div class="btn-row"><button class="btn" type="button" data-go="new">${ic("plus")}Новая закупка</button><span class="or">или <button class="link" type="button" data-act="sample">посмотреть на примере</button></span></div>
+        </div>`}
       </section>
-
-      <section aria-labelledby="list-title">
-        <div class="sec-head">
-          <h2 class="h2" id="list-title">Мои закупки</h2>
-          ${list.length ? `<button class="btn sm" type="button" data-go="new">${ic("plus")}Новая закупка</button>` : ""}
-        </div>
-        ${list.length ? `<ul class="cards">${list.map((p) => `<li>
-          <button class="card" type="button" data-go="p" data-id="${p.id}">
-            <span class="card-title">${esc(p.short)}${p.sample ? '<span class="sample">пример</span>' : ""}</span>
-            ${CHEV}
-            <span class="card-sub">${dueText(p)}</span>
-            <span class="tags">${tpTag(p)}</span>
-          </button></li>`).join("")}</ul>` : `
-          <p class="lead">Загрузите документы закупки — выпишу требования и сроки, составлю черновик технического предложения и отвечу на вопросы по документам.</p>
-          <div class="btn-row mt-6" style="align-items:center;gap:12px 16px">
-            <button class="btn" type="button" data-go="new">Новая закупка</button>
-            <span class="or">или <button class="link" type="button" data-act="sample">посмотреть на примере</button></span>
-          </div>`}
-      </section>
-      <p class="foot">Закупки хранятся в этом браузере. Ответы ИИ не являются юридической консультацией — проверяйте нормы по первоисточнику.</p>`;
+      <div class="dash-side">
+        <section class="panel" aria-labelledby="ask-title">
+          <div class="panel-head"><h2 class="panel-title" id="ask-title">Спросить про тендер</h2></div>
+          <div class="panel-body">
+            <p class="ask-lead">Отвечу по 44-ФЗ, 223-ФЗ и вашим документам — со ссылкой на статью и пункт.</p>
+            <form class="askbox" id="home-form">
+              <label class="circle" for="home-file" title="Приложить документ">${ic("clip", 18)}<span class="sr-only">Приложить документ</span><input id="home-file" type="file" multiple class="sr-only"></label>
+              <textarea id="home-q" rows="1" placeholder="Ваш вопрос…" aria-label="Вопрос" data-enter>${esc(S.home.text)}</textarea>
+              <button class="circle send" type="submit" aria-label="Спросить">${ic("up")}</button>
+            </form>
+            ${files.length ? `<div class="chips">${files.map((n, i) => `<span class="file-chip">${ic("file", 14)}<span class="fc-name">${esc(n)}</span><button class="x" type="button" data-act="home-file-x" data-i="${i}" aria-label="Убрать ${esc(n)}">${ic("x", 14)}</button></span>`).join("")}</div>` : ""}
+            <div class="chips">${GENERAL_SUGGEST.map((q) => `<button class="chip" type="button" data-act="home-q" data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div>
+          </div>
+        </section>
+        <section class="panel" aria-labelledby="mine-title">
+          <div class="panel-head"><h2 class="panel-title" id="mine-title">Мои данные</h2></div>
+          <ul class="plist">
+            ${dataRow("profile", "user", "Реквизиты", `Заполнено ${filled} из ${total}`, `<span class="meter" aria-hidden="true"><i style="width:${Math.round((filled / total) * 100)}%"></i></span>`)}
+            ${dataRow("docs", "folder", "Мои документы", S.docs.length ? `${S.docs.length} ${plural(S.docs.length, "документ", "документа", "документов")} · по ним пишутся новые` : "Загрузите то, что подавали раньше")}
+          </ul>
+        </section>
+      </div>
+    </div>
+    <p class="foot">Прототип: закупки, документы и ответы вымышленные. Файлы не читаются, ничего не сохраняется и никуда не отправляется. Ответы ИИ не являются юридической консультацией — проверяйте нормы по первоисточнику.</p>`;
   }
 
   /* ---------- вопросы: общий чат и чат закупки ---------- */
@@ -1347,90 +1480,170 @@
     </form>`;
   }
 
+  // Разговор: сообщения прокручиваются, поле ввода прижато к низу панели.
+  function chatHTML(kind, p, placeholder) {
+    const holder = p || S.general;
+    const messages = p ? p.chat : S.general.messages;
+    const empty = !messages.length && !holder.thinking;
+    const used = messages.filter((m) => m.role === "user").map((m) => m.text);
+    const intro = p
+      ? `<h2 class="chat-title">Спросите про эту закупку</h2><p>Отвечу по документам закупки со ссылкой на пункт и статью закона.</p><p class="chat-docs">Документы: ${p.files.map(esc).join(", ")}</p>`
+      : '<h2 class="chat-title">Задайте вопрос по закупкам</h2><p>Отвечу по 44-ФЗ и 223-ФЗ со ссылкой на статью: тексты законов — в действующей редакции с официального портала. Приложите документ — отвечу и по нему.</p>';
+    return `<div class="chat">
+      <div class="chat-main">
+        <div class="chat-empty" id="chat-intro"${empty ? "" : " hidden"}>${intro}</div>
+        <div class="feed" id="feed"${empty ? " hidden" : ""}>${feedInner(messages, holder.thinking, p)}</div>
+        <div class="chips" id="chips">${chipsHTML(p ? CHAT_SUGGEST : GENERAL_SUGGEST, used)}</div>
+      </div>
+      ${composerHTML(kind, placeholder, kind === "ask")}
+    </div>`;
+  }
+
   function askHTML() {
     const g = S.general;
-    const empty = !g.messages.length && !g.thinking;
-    return `<h1>Спросите про тендер</h1>
-      <p class="lead">Отвечу по 44-ФЗ и 223-ФЗ со ссылкой на статью: тексты законов — в действующей редакции с официального портала. Приложите документ — отвечу и по нему.</p>
-      <div class="feed" id="feed"${empty ? " hidden" : ""}>${feedInner(g.messages, g.thinking, null)}</div>
-      <div class="chips on-ground mt-4" id="chips">${chipsHTML(GENERAL_SUGGEST, g.messages.filter((m) => m.role === "user").map((m) => m.text))}</div>
-      ${composerHTML("ask", g.docs.length ? "Спросите про приложенные документы…" : "Задайте вопрос по закупкам…", true)}`;
+    return `<div class="ws solo"><section class="pane" aria-label="Разговор"><div class="pane-body" id="pane-main" data-scroll>${chatHTML("ask", null, g.docs.length ? "Спросите про приложенные документы…" : "Задайте вопрос по закупкам…")}</div></section></div>`;
   }
 
-  function chatHTML(p) {
-    const empty = !p.chat.length && !p.thinking;
-    return `${back(p.short, "p")}
-      <h1>Вопросы по закупке</h1>
-      <p class="lead">Отвечу по документам закупки со ссылкой на пункт и статью закона.</p>
-      <p class="small muted mt-2">Документы: ${p.files.map(esc).join(", ")}</p>
-      <div class="feed" id="feed"${empty ? " hidden" : ""}>${feedInner(p.chat, p.thinking, p)}</div>
-      <div class="chips on-ground mt-4" id="chips">${chipsHTML(CHAT_SUGGEST, p.chat.filter((m) => m.role === "user").map((m) => m.text))}</div>
-      ${composerHTML("chat", "Спросите про документы закупки…", false)}`;
+  /* ---------- закупки: список, закупка, сведения ---------- */
+  function plistBodyHTML(sel) {
+    if (!S.purchases.length) return `<div class="empty">
+        <p>Закупок пока нет. Загрузите документы — выпишу требования и сроки.</p>
+        <div class="btn-row"><button class="btn" type="button" data-go="new">${ic("plus")}Новая закупка</button><span class="or">или <button class="link" type="button" data-act="sample">пример</button></span></div>
+      </div>`;
+    const q = S.q.trim().toLowerCase();
+    const list = [...S.purchases].sort(byUrgency).filter((p) => !q || [p.short, p.subject, p.customer, p.kind].join(" ").toLowerCase().includes(q));
+    if (!list.length) return '<p class="list-empty">Ничего не нашлось. Поиск идёт по названию, заказчику и закону.</p>';
+    return `<ul class="plist">${list.map((p) => {
+      const due = dueLine(p.deadline, false);
+      const days = !due ? "" : due.days < 0 ? '<span class="days">срок прошёл</span>' : `<span class="days${due.tone === "soon" ? " soon" : ""}">${due.days === 0 ? "сегодня" : daysText(due.days)}</span>`;
+      return `<li><button class="prow" type="button" data-go="p" data-id="${p.id}"${sel === p ? ' aria-current="true"' : ""}>
+        ${lawBadge(p)}
+        <span class="prow-text"><span class="prow-title">${esc(p.short)}</span><span class="prow-sub">${esc([p.sample ? "пример" : "", p.customer].filter(Boolean).join(" · "))}</span></span>
+        <span class="prow-side">${days}${tpMark(p)}</span>
+      </button></li>`;
+    }).join("")}</ul>`;
   }
 
-  /* ---------- закупка ---------- */
-  function purchaseHTML(p) {
-    const due = dueLine(p.deadline, true);
-    const reqN = reqCount(p);
-    const fill = p.tp ? fillCount(p.tp) : 0;
+  function tabsHTML(p) {
     const n = asked(p);
-    const tpSub = !p.tp ? "Ещё не составлено — составлю по ТЗ за пару минут"
-      : fill ? `<span class="warn-t">Черновик готов · впишите ${fill} ${plural(fill, "пункт", "пункта", "пунктов")}</span>`
-      : '<span class="ok-t">Черновик готов</span>';
-    const row = (screen, title, sub) => `<li><button class="row" type="button" data-go="${screen}" data-id="${p.id}"><span class="row-title">${title}</span>${CHEV}<span class="row-sub">${sub}</span></button></li>`;
-    const body = S.busy ? busyHTML() : `
-      ${S.ui.error ? noteHTML("warn", esc(S.ui.error), "mt-5", "alert") : ""}
-      <ul class="menu">
-        ${row("req", "Требования", `${reqN} ${plural(reqN, "пункт", "пункта", "пунктов")}: кто может участвовать, что подать, сроки и деньги`)}
-        ${row("tp", "Техническое предложение", tpSub)}
-        ${row("check", 'Проверка заявки<span class="soon-tag">скоро</span>', checkSub(p))}
-        ${row("chat", "Вопросы по закупке", n ? `${n} ${plural(n, "вопрос", "вопроса", "вопросов")} · спросите ещё` : "Сроки, обеспечение, требования — отвечу со ссылкой на пункт")}
-      </ul>
-      <p class="docs-line">Документы: ${p.files.map(esc).join(", ")} · <label class="link" for="add-doc">добавить<input id="add-doc" type="file" multiple class="sr-only"></label></p>
-      ${scanWarning(p) ? `<p class="docs-line warn-t">${scanWarning(p)}</p>` : ""}
-      ${p.unreadable.length ? `<p class="docs-line warn-t">Не прочитаны: ${p.unreadable.map((f) => `${esc(f.name)} — ${esc(f.reason)}`).join("; ")}</p>` : ""}
-      <div class="mt-10">${S.ui.confirmDelete ? `<div class="confirm">
-          <p>Удалить закупку вместе с документами, черновиком и вопросами? Вернуть её не получится.</p>
-          <div class="btn-row"><button class="btn xs danger" type="button" data-act="delete">Удалить</button><button class="btn xs soft" type="button" data-act="cancel-delete">Отмена</button></div>
-        </div>` : '<button class="link quiet del" type="button" data-act="ask-delete">Удалить закупку</button>'}</div>`;
-    return `${back("Мои закупки", "home")}
-      ${p.kind ? `<p class="kind">${esc(p.kind)}</p>` : ""}
-      <h1>${esc(p.subject || p.short)}</h1>
-      ${due ? `<p class="due ${due.tone}">${ic("clock")}${esc(due.left ? `${due.head} · ${due.left}` : due.head)}</p>` : ""}
-      <dl class="facts">
-        ${p.customer ? `<div><dt>Заказчик: </dt><dd>${esc(p.customer)}</dd></div>` : ""}
-        ${p.price ? `<div><dt>Начальная цена: </dt><dd>${esc(p.price)}</dd></div>` : ""}
-      </dl>
-      ${p.sample ? noteHTML("info", "Это пример на вымышленной закупке — нажимайте на всё, ничего не сломается.", "mt-5") : ""}
-      ${body}`;
+    const tab = (screen, label, extra) => `<button class="tab" type="button" data-go="${screen}" data-id="${p.id}"${S.screen === screen ? ' aria-current="page"' : ""}>${label}${extra}</button>`;
+    return `<nav class="tabs" id="tabs" aria-label="Разделы закупки">
+      ${tab("req", "Требования", `<span class="count">${reqCount(p)}</span>`)}
+      ${tab("tp", "Техническое предложение", tpMark(p))}
+      ${tab("check", "Проверка заявки", '<span class="soon-tag">скоро</span>')}
+      ${tab("chat", "Вопросы", n ? `<span class="count">${n}</span>` : "")}
+    </nav>`;
+  }
+
+  function tabHTML(p) {
+    switch (S.screen) {
+      case "tp": return tpHTML(p);
+      case "check": return checkHTML(p);
+      case "chat": return chatHTML("chat", p, "Спросите про документы закупки…");
+      default: return reqHTML(p);
+    }
+  }
+
+  function dueChip(due) {
+    if (!due) return "";
+    const text = due.days < 0 ? "приём закончился" : due.days === 0 ? "подать сегодня" : `${daysText(due.days)} до подачи`;
+    return `<span class="due-chip ${due.tone}">${ic("clock", 15)}${esc(text)}</span>`;
+  }
+
+  function detailHTML(p) {
+    return `<div class="pd-head">
+        <button class="icon-btn pd-back" type="button" data-go="list" aria-label="Все закупки">${ic("back", 18)}</button>
+        ${lawBadge(p)}
+        <div class="pd-text"><h2 class="pd-title" id="pd-title" tabindex="-1">${esc(p.short)}</h2><p class="pd-sub">${esc([p.kind, p.sample ? "пример" : ""].filter(Boolean).join(" · "))}</p></div>
+        <div class="pd-acts">
+          ${dueChip(dueLine(p.deadline, false))}
+          <label class="icon-btn" for="add-doc" title="Добавить документы">${ic("clip", 18)}<input id="add-doc" type="file" multiple class="sr-only" aria-label="Добавить документы"></label>
+          <button class="icon-btn info-toggle" id="info-toggle" type="button" data-act="info" aria-controls="ws-info" aria-expanded="${S.info}" title="Сведения о закупке">${ic("panel", 18)}<span class="sr-only">Сведения о закупке</span></button>
+        </div>
+      </div>
+      ${tabsHTML(p)}
+      <div class="pane-body" id="pane-main" data-scroll>${S.busy ? `<div class="tab-body">${busyHTML()}</div>` : tabHTML(p)}</div>`;
+  }
+
+  function infoHTML(p) {
+    const due = dueLine(p.deadline, true);
+    const fold = (key, title, body, count) => {
+      const open = !S.fold[key];
+      return `<section class="fold">
+        <h3 class="m0"><button class="fold-head" type="button" data-act="fold" data-fold="${key}" aria-expanded="${open}">${title}${count !== undefined ? `<span class="count">${count}</span>` : ""}${ic("down", 18)}</button></h3>
+        ${open ? `<div class="fold-body">${body}</div>` : ""}
+      </section>`;
+    };
+    const fact = (icon, label, value, extra = "") => (value ? `<div class="fact">${ic(icon, 18)}<div><span class="fact-label">${label}</span><b>${esc(value)}</b>${extra}</div></div>` : "");
+    const facts = [
+      due ? fact("clock", "Срок подачи", due.head.replace(/^Подать /, "").replace(/^Приём заявок /, ""), due.left ? `<span class="${due.tone === "soon" ? "warn-t" : "muted"}">${esc(due.left)}</span>` : "") : "",
+      fact("landmark", "Заказчик", p.customer),
+      fact("ruble", "Начальная цена", p.price),
+      fact("scale", "Закон и способ", p.kind),
+    ].join("");
+    const scans = p.scans || [];
+    const files = p.files.map((name) => {
+      const scan = scans.includes(name);
+      const ext = (name.split(".").pop() || "").toUpperCase();
+      return `<li class="file"><span class="file-ic${scan ? " warn" : ""}">${ic(scan ? "alert" : "file", 16)}</span><span class="file-text"><span class="file-name" title="${esc(name)}">${esc(name)}</span><span class="file-meta${scan ? " warn" : ""}">${scan ? "со скана — сверьте цифры" : `${esc(ext)} · прочитан`}</span></span></li>`;
+    }).join("") + p.unreadable.map((f) => `<li class="file"><span class="file-ic warn">${ic("alert", 16)}</span><span class="file-text"><span class="file-name" title="${esc(f.name)}">${esc(f.name)}</span><span class="file-meta warn">не прочитан: ${esc(f.reason)}</span></span></li>`).join("");
+    const del = S.ui.confirmDelete ? `<div class="confirm">
+        <p>Удалить закупку вместе с документами, черновиком и вопросами? Вернуть её не получится.</p>
+        <div class="btn-row"><button class="btn xs danger" type="button" data-act="delete">Удалить</button><button class="btn xs soft" type="button" data-act="cancel-delete">Отмена</button></div>
+      </div>` : '<button class="link quiet del" type="button" data-act="ask-delete">Удалить закупку</button>';
+    return `<div class="pane-body" id="info-body" data-scroll>
+      <div class="info-top">
+        <button class="icon-btn info-close" id="info-close" type="button" data-act="info-close" aria-label="Скрыть сведения">${ic("x", 18)}</button>
+        ${lawBadge(p, true)}
+        <p class="info-title">${esc(p.subject || p.short)}</p>
+        ${dueChip(due)}
+        ${p.sample ? '<p class="info-sub">Пример на вымышленной закупке — нажимайте на всё, ничего не сломается.</p>' : ""}
+      </div>
+      ${fold("facts", "Сведения", facts)}
+      ${fold("files", "Документы", `<ul class="files">${files}</ul><label class="link" for="add-doc-2">Добавить документы<input id="add-doc-2" type="file" multiple class="sr-only"></label>`, p.files.length + p.unreadable.length)}
+      <div class="info-foot">${del}</div>
+    </div>`;
+  }
+
+  function workspaceHTML() {
+    const p = PURCHASE_SCREENS.includes(S.screen) ? cur() : null;
+    const empty = S.purchases.length
+      ? '<div class="empty"><p>Выберите закупку в списке.</p></div>'
+      : `<div class="empty"><p>Загрузите документы закупки — выпишу требования и сроки, составлю черновик технического предложения и отвечу на вопросы по документам.</p><div class="btn-row"><button class="btn" type="button" data-go="new">${ic("plus")}Новая закупка</button><span class="or">или <button class="link" type="button" data-act="sample">посмотреть на примере</button></span></div></div>`;
+    return `<div class="ws" id="ws" data-pane="${p ? "main" : "list"}" data-sel="${p ? 1 : 0}" data-info="${S.info ? "open" : "closed"}">
+      <section class="pane ws-list" aria-label="Мои закупки">
+        <div class="list-head">
+          <label class="search" for="plist-q">${ic("search", 16)}<input id="plist-q" type="search" placeholder="Найти закупку…" value="${esc(S.q)}" autocomplete="off"></label>
+        </div>
+        <div class="pane-body" id="plist-body" data-scroll>${plistBodyHTML(p)}</div>
+      </section>
+      <section class="pane ws-main" aria-labelledby="${p ? "pd-title" : "page-title"}">${p ? detailHTML(p) : empty}</section>
+      ${p ? `<aside class="pane ws-info" id="ws-info" aria-label="Сведения о закупке">${infoHTML(p)}</aside>` : ""}
+    </div>`;
   }
 
   function checkCounts(p) {
     return { bad: p.check.findings.filter((f) => f.kind === "bad").length, warn: p.check.findings.filter((f) => f.kind === "warn").length };
   }
-  function checkSub(p) {
-    if (p.check.state !== "done") return "Сверю вашу заявку с ТЗ и скажу, за что могут отклонить";
-    const { bad, warn } = checkCounts(p);
-    if (bad) return `<span class="bad-t">${bad} ${plural(bad, "ошибка", "ошибки", "ошибок")}${warn ? `, ${warn} ${plural(warn, "замечание", "замечания", "замечаний")}` : ""}</span>`;
-    if (warn) return `<span class="warn-t">${warn} ${plural(warn, "замечание", "замечания", "замечаний")}</span>`;
-    return '<span class="ok-t">Ошибок нет</span>';
-  }
 
   /* ---------- требования ---------- */
   function reqHTML(p) {
     const unverified = REQ_KEYS.reduce((n, k) => n + p.requirements[k].filter((it) => !it.verified).length, 0);
-    return `${back(p.short, "p")}
-      <h1>Требования</h1>
-      <p class="lead">Всё, что нужно для заявки, — из документов закупки. Нажмите на ссылку под пунктом, чтобы увидеть точную цитату.</p>
-      ${p.unreadable.length ? noteHTML("warn", `Не получилось прочитать: ${p.unreadable.map((f) => `${esc(f.name)} — ${esc(f.reason)}`).join("; ")}. Требования выписаны по остальным файлам.`, "mt-5", "alert") : ""}
-      ${scanWarning(p) ? noteHTML("warn", scanWarning(p), p.unreadable.length ? "mt-2" : "mt-5", "alert") : ""}
-      ${unverified ? noteHTML("warn", `В ${unverified} ${plural(unverified, "пункте", "пунктах", "пунктах")} цитата не найдена в документах дословно — сверьте их вручную.`, p.unreadable.length || scanWarning(p) ? "mt-2" : "mt-5", "alert") : ""}
+    const notes = [
+      p.unreadable.length ? noteHTML("warn", `Не получилось прочитать: ${p.unreadable.map((f) => `${esc(f.name)} — ${esc(f.reason)}`).join("; ")}. Требования выписаны по остальным файлам.`, "", "alert") : "",
+      scanWarning(p) ? noteHTML("warn", scanWarning(p), "", "alert") : "",
+      unverified ? noteHTML("warn", `В ${unverified} ${plural(unverified, "пункте", "пунктах", "пунктах")} цитата не найдена в документах дословно — сверьте их вручную.`, "", "alert") : "",
+    ].join("");
+    return `<div class="tab-body">
+      <p class="tab-lead">Всё, что нужно для заявки, — из документов закупки. Нажмите на ссылку под пунктом, чтобы увидеть точную цитату.</p>
+      ${notes ? `<div class="notes">${notes}</div>` : ""}
       ${REQ_KEYS.map((key) => {
         const items = p.requirements[key];
-        return `<section class="group"><h2 class="group-title">${GROUPS[key].title}</h2>
+        return `<section class="group"><h3 class="group-title">${GROUPS[key].title}</h3>
           ${items.length ? `<ul class="list">${items.map((it, i) => `<li><span>${esc(it.text)}</span>${sourceHTML(`${key}-${i}`, it.source, it.quote, it.verified, "пункт")}</li>`).join("")}</ul>` : `<p class="empty-group">${GROUPS[key].empty}</p>`}
         </section>`;
-      }).join("")}`;
+      }).join("")}
+    </div>`;
   }
 
   // Ссылка на источник: нажали — под ней точная цитата; ненайденная дословно помечена янтарём.
@@ -1450,11 +1663,11 @@
     const leaks = leaksOf(tp);
     const unverified = [...tp.goods, ...tp.items].filter((r) => !r.verified).length;
     let h = fill
-      ? noteHTML("warn", `Впишите свои данные в ${fill} ${plural(fill, "пункт", "пункта", "пунктов")} — они выделены жёлтым. Нажмите на текст, чтобы исправить.`, "mt-4", "pen")
-      : noteHTML("ok", "Все пункты заполнены.", "mt-4", "check");
-    if (leaks.length) h += noteHTML("warn", `В техническом предложении есть ваши данные: ${leaks.map((v) => `«${esc(v)}»`).join(", ")}. Уберите их — ТП подают в первую часть заявки анонимно, иначе заявку отклонят.`, "mt-2", "alert");
-    if (unverified) h += noteHTML("warn", `В ${unverified} ${plural(unverified, "строке", "строках", "строках")} цитата не найдена в документах дословно — сверьте их вручную.`, "mt-2", "alert");
-    if (scanWarning(p)) h += noteHTML("warn", scanWarning(p), "mt-2", "alert");
+      ? noteHTML("warn", `Впишите свои данные в ${fill} ${plural(fill, "пункт", "пункта", "пунктов")} — они выделены жёлтым. Нажмите на текст, чтобы исправить.`, "", "pen")
+      : noteHTML("ok", "Все пункты заполнены.", "", "check");
+    if (leaks.length) h += noteHTML("warn", `В техническом предложении есть ваши данные: ${leaks.map((v) => `«${esc(v)}»`).join(", ")}. Уберите их — ТП подают в первую часть заявки анонимно, иначе заявку отклонят.`, "", "alert");
+    if (unverified) h += noteHTML("warn", `В ${unverified} ${plural(unverified, "строке", "строках", "строках")} цитата не найдена в документах дословно — сверьте их вручную.`, "", "alert");
+    if (scanWarning(p)) h += noteHTML("warn", scanWarning(p), "", "alert");
     return h;
   }
 
@@ -1506,44 +1719,43 @@
   const partsRows = (p) => partsOf(p.tp.form).filter((k) => k !== "tp").map((k) => partRow(p, k)).join("");
 
   function tpHTML(p) {
-    const head = `${back(p.short, "p")}<h1>Техническое предложение</h1>`;
-    if (S.busy) return head + busyHTML();
     if (!p.tp) {
       const tpSamples = samplesOf("tp");
-      return `${head}
-        <p class="lead">Найду в документах форму заявки и заполню её, как тендерный юрист: товары с конкретными характеристиками, предложение по пунктам ТЗ, цена. Вам останется вписать то, что знаете только вы.</p>
-        ${p.sample ? "" : `<p class="small muted mt-4">${tpSamples.length
+      return `<div class="tab-body">
+        <p class="tab-lead">Найду в документах форму заявки и заполню её, как тендерный юрист: товары с конкретными характеристиками, предложение по пунктам ТЗ, цена. Вам останется вписать то, что знаете только вы.</p>
+        ${p.sample ? "" : `<p class="small muted m0">${tpSamples.length
           ? `Пишу по вашим техническим предложениям: ${tpSamples.length} ${plural(tpSamples.length, "документ", "документа", "документов")} из <button class="link" type="button" data-go="docs">«Моих документов»</button>.`
           : 'Черновик будет в общем стиле. <button class="link" type="button" data-go="docs">Загрузите свои документы</button> — и ТП будет написано так, как пишете вы.'}</p>`}
-        <button class="btn mt-6" type="button" data-act="compose">Составить черновик</button>`;
+        <button class="btn lg mt-5" type="button" data-act="compose">Составить черновик</button>
+      </div>`;
     }
     const tp = p.tp;
-    const goods = tp.goods.length ? `<section class="mt-7">
-        <h2 class="group-title">Товары и оборудование — ${tp.goods.length}</h2>
+    const goods = tp.goods.length ? `<section class="group mt-6">
+        <h3 class="group-title">Товары и оборудование — ${tp.goods.length}</h3>
         <ol class="items">${tp.goods.map((g, i) => `<li>
-          <div class="item-head"><h3>${i + 1}. ${esc(g.name)}</h3>${g.quantity ? `<span class="qty">${esc(g.quantity)}</span>` : ""}${needsFill(g.characteristics) ? '<span class="flag" data-flag>впишите данные</span>' : ""}</div>
+          <div class="item-head"><h4 class="m0">${i + 1}. ${esc(g.name)}</h4>${g.quantity ? `<span class="qty">${esc(g.quantity)}</span>` : ""}${needsFill(g.characteristics) ? '<span class="flag" data-flag>впишите данные</span>' : ""}</div>
           ${sourceHTML(`g${i}`, g.source, g.quote, g.verified, "строку")}
           ${editHTML(`good:${i}`, g.characteristics, `Характеристики: ${g.name}`)}
         </li>`).join("")}</ol>
       </section>` : "";
-    const items = tp.items.length ? `<section class="mt-7">
-        <h2 class="group-title">Предложение по пунктам ТЗ — ${tp.items.length}</h2>
+    const items = tp.items.length ? `<section class="group mt-6">
+        <h3 class="group-title">Предложение по пунктам ТЗ — ${tp.items.length}</h3>
         <ol class="items">${tp.items.map((it, i) => `<li>
-          <div class="item-head"><h3>${i + 1}. ${esc(it.topic)}</h3>${needsFill(it.offer) ? '<span class="flag" data-flag>впишите данные</span>' : ""}</div>
+          <div class="item-head"><h4 class="m0">${i + 1}. ${esc(it.topic)}</h4>${needsFill(it.offer) ? '<span class="flag" data-flag>впишите данные</span>' : ""}</div>
           <p class="need">В ТЗ${it.clause ? `, п. ${esc(it.clause)}` : ""}: ${esc(it.requirement)}</p>
           ${sourceHTML(`i${i}`, "", it.quote, it.verified, "строку")}
           ${editHTML(`item:${i}`, it.offer, `Предложение: ${it.topic}`)}
         </li>`).join("")}</ol>
       </section>` : "";
-    return `${head}
-      <p class="small muted mt-3">${tp.form.source
+    return `<div class="tab-body">
+      <p class="tab-lead">${tp.form.source
         ? `По форме заказчика: ${esc(tp.form.title)} (${esc(tp.form.source)}). Каждая часть заявки — отдельным файлом.`
         : "Формы заявки в документах нет — составлено как техническое предложение по пунктам ТЗ."} Техническое предложение идёт в первую часть заявки, поэтому в нём нет ни названия, ни ИНН, ни подписи участника.</p>
-      <div id="tp-notes">${tpNotes(p)}</div>
+      <div class="notes" id="tp-notes">${tpNotes(p)}</div>
       ${tp.form.hasPrice ? `<section class="price">
           <label for="tp-price">Цена вашего предложения</label>
           <div class="price-row"><input class="input num" id="tp-price" inputmode="decimal" autocomplete="off" placeholder="например, 690000" value="${esc(p.tpPriceText)}"><span class="muted">₽</span></div>
-          <div class="grid-gap" id="price-info" style="display:grid;gap:8px">${priceInfo(p)}</div>
+          <div id="price-info" style="display:grid;gap:8px">${priceInfo(p)}</div>
         </section>` : ""}
       ${goods}
       ${items}
@@ -1551,25 +1763,24 @@
           <p>Составить черновик заново? Ваши правки в этом черновике пропадут.</p>
           <div class="btn-row"><button class="btn xs" type="button" data-act="redo">Составить заново</button><button class="btn xs soft" type="button" data-act="cancel-redo">Отмена</button></div>
         </div>` : '<p class="small muted m0">Добавили документы или черновик не подходит? <button class="link" type="button" data-act="ask-redo">Составить заново</button></p>'}</div>
-      <section class="mt-8">
-        <h2 class="group-title">Остальные части заявки — отдельными файлами</h2>
+      <section class="group mt-6">
+        <h3 class="group-title">Остальные части заявки — отдельными файлами</h3>
         <ul class="parts" id="parts-list">${partsRows(p)}</ul>
-        <p class="small muted mt-3">Реквизиты берутся из <button class="link" type="button" data-go="profile">«Реквизитов»</button>, образцы — из <button class="link" type="button" data-go="docs">«Моих документов»</button>. Чего там нет — выделено в Word жёлтым.</p>
+        <p class="small muted mt-3 m0">Реквизиты берутся из <button class="link" type="button" data-go="profile">«Реквизитов»</button>, образцы — из <button class="link" type="button" data-go="docs">«Моих документов»</button>. Чего там нет — выделено в Word жёлтым.</p>
       </section>
-      <div class="sticky-actions"><button class="btn" type="button" data-act="preview-tp">Скачать техническое предложение</button></div>`;
+    </div>
+    <div class="sticky-actions"><button class="btn" type="button" data-act="preview-tp">Скачать техническое предложение</button></div>`;
   }
 
   /* ---------- проверка заявки (экран из плана, в коде его ещё нет) ---------- */
   function checkHTML(p) {
-    const head = back(p.short, "p");
-    const soon = noteHTML("info", "Проверки заявки пока нет в приложении: экран показывает, как она будет работать.", "mt-4", "info");
-    if (S.busy) return `${head}<h1>Проверим заявку перед подачей</h1>${busyHTML()}`;
+    const soon = `<div class="notes">${noteHTML("info", "Проверки заявки пока нет в приложении: экран показывает, как она будет работать.", "", "info")}</div>`;
     if (p.check.state !== "done") {
-      return `${head}
-        <h1>Проверим заявку перед подачей</h1>
+      return `<div class="tab-body">
         ${soon}
-        <p class="lead">Загрузите свою заявку или техническое предложение. Я сверю их с ТЗ по каждому пункту и скажу, за что могут отклонить.</p>
-        ${dropHTML("app", "Перетащите файл заявки сюда", "Загрузить заявку", { act: "sample-check", text: "проверить пример" })}`;
+        <p class="tab-lead">Загрузите свою заявку или техническое предложение. Я сверю их с ТЗ по каждому пункту и скажу, за что могут отклонить.</p>
+        ${dropHTML("app", "Перетащите файл заявки сюда", "Загрузить заявку", { act: "sample-check", text: "проверить пример" })}
+      </div>`;
     }
     const { bad, warn } = checkCounts(p);
     const parts = [];
@@ -1578,17 +1789,18 @@
     const title = parts.length ? `Нашёл ${parts.join(" и ")}` : "Ошибок нет";
     const lead = bad ? "Исправьте ошибку до подачи — замечания тоже лучше поправить." : warn ? "Отклонять не за что, но замечания лучше поправить." : "Заявка соответствует ТЗ по всем пунктам.";
     const ok = p.check.ok;
-    return `${head}
-      <h1>${title}</h1>
+    return `<div class="tab-body">
       ${soon}
-      <p class="lead">${lead}</p>
+      <h3 class="check-title">${title}</h3>
+      <p class="tab-lead m0">${lead}</p>
       <ul class="findings">${p.check.findings.map((f) => `<li class="finding ${f.kind}">
           <span class="ico" aria-hidden="true">${f.kind === "bad" ? "✕" : "!"}</span>
           <div style="display:grid;gap:4px"><p class="what">${esc(f.what)}</p><p class="todo">${esc(f.todo)}</p>${f.src && p.sources[f.src] ? refBtn({ doc: f.src }, p) : ""}</div>
         </li>`).join("")}
         <li class="finding ok"><span class="ico" aria-hidden="true">✓</span><div><p class="what">${p.check.findings.length ? "Остальные" : "Все"} ${ok} ${plural(ok, "пункт", "пункта", "пунктов")} — в порядке.</p></div></li>
       </ul>
-      <p class="under"><span>Сомневаетесь? <button class="link" type="button" data-act="lawyer">Спросить юриста</button></span><button class="link" type="button" data-act="recheck">Проверить другой файл</button></p>`;
+      <p class="under"><span>Сомневаетесь? <button class="link" type="button" data-act="lawyer">Спросить юриста</button></span><button class="link" type="button" data-act="recheck">Проверить другой файл</button></p>
+    </div>`;
   }
 
   /* ---------- новая закупка ---------- */
@@ -1596,10 +1808,10 @@
   const ADDING_STEPS = ["Читаю новые документы…", "Перечитываю закупку целиком…", "Обновляю требования и сроки…", "Сверяю цитаты с документами…"];
 
   function newHTML() {
-    return `<h1>Новая закупка</h1>
-      ${S.busy ? busyHTML() : `
-        <p class="lead">Загрузите извещение, ТЗ и проект контракта — выпишу требования и сроки, а потом помогу с техническим предложением.</p>
-        ${dropHTML("new", "Перетащите сюда документы закупки — можно сразу несколько: PDF, Word, сканы и фото", "Загрузить документы", { act: "sample", text: "посмотреть на примере" })}`}`;
+    return `<div class="page-col"><section class="panel"><div class="panel-body">
+      ${S.busy ? busyHTML() : `<p class="intro">Загрузите извещение, ТЗ и проект контракта — выпишу требования и сроки, а потом помогу с техническим предложением.</p>
+      ${dropHTML("new", "Перетащите сюда документы закупки — можно сразу несколько: PDF, Word, сканы и фото", "Загрузить документы", { act: "sample", text: "посмотреть на примере" })}`}
+    </div></section></div>`;
   }
 
   /* ---------- реквизиты ---------- */
@@ -1616,27 +1828,26 @@
   function profileHTML() {
     const sourceDocs = S.docs.filter((d) => d.kinds.some((k) => REQUISITE_KINDS.includes(k)));
     const groups = groupSuggestions(S.suggestions);
-    return `<h1>Реквизиты</h1>
-      <p class="lead">Впишите один раз — дальше они сами попадут в анкету, декларацию, предложение о цене и подпись. В техническое предложение реквизиты не попадают никогда: его подают анонимно.</p>
-      ${sourceDocs.length
-        ? `<button class="btn line sm mt-4" type="button" data-act="fill"${S.ui.filling ? " disabled" : ""}>${S.ui.filling ? "Ищу реквизиты в документах…" : "Заполнить из моих документов"}</button>`
-        : '<p class="small muted mt-4">Можно не вписывать руками: загрузите анкету или карточку предприятия в <button class="link" type="button" data-go="docs">«Мои документы»</button> — реквизиты заполнятся сами.</p>'}
-      ${S.ui.fillNote ? noteHTML(S.ui.fillNote.tone, esc(S.ui.fillNote.text), "mt-3", S.ui.fillNote.tone === "ok" ? "check" : "") : ""}
+    return `<div class="page-col">
+      <p class="intro">Впишите один раз — дальше они сами попадут в анкету, декларацию, предложение о цене и подпись. В техническое предложение реквизиты не попадают никогда: его подают анонимно.</p>
+      ${sourceDocs.length ? "" : '<p class="intro">Можно не вписывать руками: загрузите анкету или карточку предприятия в <button class="link" type="button" data-go="docs">«Мои документы»</button> — реквизиты заполнятся сами.</p>'}
+      ${S.ui.fillNote ? noteHTML(S.ui.fillNote.tone, esc(S.ui.fillNote.text), "", S.ui.fillNote.tone === "ok" ? "check" : "") : ""}
       ${groups.length ? `<section class="suggest" aria-labelledby="sug-title">
-          <p class="suggest-head" id="sug-title">${ic("alert", 20)}В ваших документах есть другие значения — проверьте, какое верное</p>
+          <p class="suggest-head" id="sug-title">${ic("alert", 18)}В ваших документах есть другие значения — проверьте, какое верное</p>
           <ul>${groups.map((g, i) => `<li>
             <span>${g.length > 1 ? `<b>Банковские реквизиты:</b> ${esc(g.map((it) => it.value).join(", "))}` : `<b>${esc(LABELS[g[0].key])}:</b> ${esc(g[0].value)}`} <span class="muted">— из «${esc(g[0].source)}»</span></span>
             <span class="acts"><button class="link" type="button" data-act="sug-accept" data-i="${i}">${g.length > 1 ? "Подставить все" : "Подставить"}</button><button class="link quiet" type="button" data-act="sug-dismiss" data-i="${i}">Оставить как есть</button></span>
           </li>`).join("")}</ul>
         </section>` : ""}
-      ${PROFILE_GROUPS.map((g) => `<section class="group"><h2 class="group-title">${g.title}</h2>
-        <div class="fields">${g.fields.map((f) => `<div class="field">
+      ${PROFILE_GROUPS.map((g, gi) => `<section class="panel" aria-labelledby="pg-${gi}">
+        <div class="panel-head"><h2 class="panel-title" id="pg-${gi}">${g.title}</h2></div>
+        <div class="form-rows">${g.fields.map((f) => `<div class="field">
           <label class="field-label" for="pf-${f.key}">${esc(f.label)}</label>
           <input class="input" id="pf-${f.key}" data-pf="${f.key}" value="${esc(S.profile[f.key])}" placeholder="${esc(f.example || "")}" autocomplete="off">
           ${S.sources[f.key] ? `<span class="field-src" data-src-of="${f.key}">из «${esc(S.sources[f.key])}»</span>` : ""}
         </div>`).join("")}</div>
       </section>`).join("")}
-      <p class="save-state" id="save-state" aria-live="polite">${esc(S.ui.saved || "")}</p>`;
+    </div>`;
   }
 
   /* ---------- мои документы ---------- */
@@ -1664,7 +1875,7 @@
       acts = `<div class="doc-acts"><button class="link" type="button" data-act="kind-edit" data-key="${key}">Изменить вид</button><button class="link quiet del" type="button" data-act="doc-del" data-key="${key}">Удалить</button></div>`;
     }
     return `<li>
-      <div class="doc-main">${ic("file", 20)}<div class="doc-text">
+      <div class="doc-main"><span class="file-ic${d.scan ? " warn" : ""}">${ic("file", 16)}</span><div class="doc-text">
         <span class="doc-name">${esc(d.name)}</span>
         ${d.about ? `<span class="doc-about">${esc(d.about)}</span>` : ""}
         <span class="doc-meta">${esc(meta)}</span>
@@ -1676,20 +1887,21 @@
   function docsHTML() {
     const groups = DOC_KIND_KEYS.map((k) => [k, S.docs.filter((d) => d.kinds.includes(k))]).filter(([, list]) => list.length);
     const rep = S.ui.report;
-    const report = rep ? `<div class="mt-5" style="display:grid;gap:8px" aria-live="polite">
+    const report = rep ? `<div style="display:grid;gap:8px" aria-live="polite">
         ${noteHTML("ok", `Добавил ${rep.added.length} ${plural(rep.added.length, "документ", "документа", "документов")}: ${esc(countLine(rep.added))}.`, "", "check")}
         ${noteHTML("info", "Разложил по названиям файлов — прототип не читает их содержимое. Проверьте виды и поправьте, где нужно.", "", "info")}
         ${rep.requisites ? noteHTML("info", 'Реквизиты: в приложении они заполнятся из новых анкет и карточек сами. В прототипе файлы не читаются, поэтому <button class="link" type="button" data-go="profile">реквизиты</button> не изменились.', "", "info") : ""}
       </div>` : "";
-    return `<h1>Мои документы</h1>
-      <p class="lead">Загрузите всё, что подавали раньше: заявки целиком или по частям, анкеты, декларации, ценовые предложения, договоры и акты, протоколы. Приложение разложит их по видам — и новые документы будет писать так же, как ваши.</p>
+    return `<div class="page-col">
+      <p class="intro">Загрузите всё, что подавали раньше: заявки целиком или по частям, анкеты, декларации, ценовые предложения, договоры и акты, протоколы. Приложение разложит их по видам — и новые документы будет писать так же, как ваши.</p>
       ${report}
-      ${groups.map(([k, list]) => `<section class="group">
-        <h2 class="group-title m0">${DOC_KINDS[k].group} — ${list.length}</h2>
-        <p class="use">${DOC_KINDS[k].use}</p>
-        <ul class="list docs-list">${list.map((d) => docRowHTML(d, k)).join("")}</ul>
+      ${S.busy ? `<section class="panel"><div class="panel-body">${busyHTML()}</div></section>` : ""}
+      ${groups.map(([k, list], gi) => `<section class="panel" aria-labelledby="dg-${gi}">
+        <div class="panel-head"><div><h2 class="panel-title" id="dg-${gi}">${DOC_KINDS[k].group} <span class="count">${list.length}</span></h2><p class="panel-sub">${DOC_KINDS[k].use}</p></div></div>
+        <ul class="docs-list">${list.map((d) => docRowHTML(d, k)).join("")}</ul>
       </section>`).join("")}
-      ${S.busy ? busyHTML() : dropHTML("mydocs", "Перетащите сюда свои документы — PDF, Word, сканы и фото. Можно сразу все.", S.docs.length ? "Добавить документы" : "Загрузить документы")}`;
+      ${S.busy ? "" : dropHTML("mydocs", "Перетащите сюда свои документы — PDF, Word, сканы и фото. Можно сразу все.", S.docs.length ? "Добавить документы" : "Загрузить документы")}
+    </div>`;
   }
 
   /* ---------- предпросмотр файлов Word ---------- */
@@ -1807,18 +2019,13 @@
 
   /* ---------- отрисовка и навигация ---------- */
   function screenHTML() {
-    const p = cur();
     switch (S.screen) {
+      case "home": return homeHTML();
       case "ask": return askHTML();
       case "new": return newHTML();
       case "profile": return profileHTML();
       case "docs": return docsHTML();
-      case "p": return purchaseHTML(p);
-      case "req": return reqHTML(p);
-      case "tp": return tpHTML(p);
-      case "check": return checkHTML(p);
-      case "chat": return chatHTML(p);
-      default: return homeHTML();
+      default: return workspaceHTML();
     }
   }
   function autosize(el) {
@@ -1826,49 +2033,78 @@
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, max)}px`;
   }
-  const renderSide = () => { $("#side-body").innerHTML = sideHTML(); };
+  const renderSide = () => { $("#side").innerHTML = sideHTML(); };
+  const renderHead = () => { $("#head").innerHTML = headHTML(); };
   function render() {
     renderSide();
-    $("#view").innerHTML = screenHTML();
+    renderHead();
+    const view = $("#view");
+    view.classList.toggle("fill", WORK.includes(S.screen) || S.screen === "ask");
+    view.innerHTML = screenHTML();
     document.querySelectorAll("#view textarea").forEach(autosize);
   }
   // Перерисовка на месте: фокус остаётся на том же элементе.
   function focusKey(el) {
     if (!el || el === document.body) return null;
-    const scope = el.closest("#view") ? "#view " : el.closest("#side") ? "#side " : "";
+    const scope = el.closest("#view") ? "#view " : el.closest("#side") ? "#side " : el.closest("#head") ? "#head " : "";
     if (el.id) return `#${CSS.escape(el.id)}`;
     const act = el.getAttribute("data-act");
     const goTo = el.getAttribute("data-go");
     if (!act && !goTo) return null;
     let sel = scope + (act ? `[data-act="${act}"]` : `[data-go="${goTo}"]`);
-    for (const k of ["data-open", "data-q", "data-part", "data-edit", "data-key", "data-kind", "data-i", "data-id"]) {
+    for (const k of ["data-open", "data-q", "data-part", "data-edit", "data-key", "data-kind", "data-i", "data-id", "data-fold"]) {
       const v = el.getAttribute(k);
       if (v !== null) sel += `[${k}="${CSS.escape(v)}"]`;
     }
     return sel;
   }
+  // Панели прокручиваются сами по себе: при перерисовке на месте их прокрутка сохраняется.
+  const scrollState = () => [...document.querySelectorAll("[data-scroll]")].filter((el) => el.id).map((el) => [el.id, el.scrollTop]);
   function rerender() {
     const key = focusKey(document.activeElement);
+    const pos = scrollState();
     render();
+    pos.forEach(([id, top]) => { const el = document.getElementById(id); if (el) el.scrollTop = top; });
     const el = key && document.querySelector(key);
     if (el) el.focus({ preventScroll: true });
   }
+  // Счётчики в сайдбаре, списке закупок и вкладках — без перерисовки того, что сейчас правят.
+  function refreshCounts() {
+    renderSide();
+    const p = PURCHASE_SCREENS.includes(S.screen) ? cur() : null;
+    const body = $("#plist-body");
+    if (body) body.innerHTML = plistBodyHTML(p);
+    const tabs = $("#tabs");
+    if (tabs && p) tabs.outerHTML = tabsHTML(p);
+  }
+  const toTop = () => ["view", "pane-main"].forEach((id) => { const el = document.getElementById(id); if (el) el.scrollTop = 0; });
 
   let busyToken = 0;
-  function go(screen, id) {
+  function go(screen, id, focusSel) {
     busyToken++;
     S.busy = null;
-    S.screen = screen;
+    if (screen === "p") screen = S.tabs[id || S.id] || "req";
+    // На широком экране закупка открыта рядом со списком — как переписка в мессенджере.
+    if (screen === "list" && !single.matches) {
+      const target = cur() || [...S.purchases].sort(byUrgency)[0];
+      if (target) { id = target.id; screen = S.tabs[target.id] || "req"; }
+    }
+    if (id && id !== S.id) S.info = false;
     if (id) S.id = id;
-    if (PURCHASE_SCREENS.includes(screen) && !cur()) S.screen = "home";
+    S.screen = screen;
+    if (PURCHASE_SCREENS.includes(screen)) {
+      if (cur()) S.tabs[S.id] = screen;
+      else S.screen = "list";
+    } else S.info = false;
     S.ui = {};
     S.visit++;
     S.drawer = false;
     render();
     applyDrawer();
-    window.scrollTo(0, 0);
-    const h = $("#view h1");
-    if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+    toTop();
+    const keep = focusSel && document.querySelector(focusSel);
+    const target = keep && keep.offsetParent !== null ? keep : PURCHASE_SCREENS.includes(S.screen) ? $("#pd-title") : $("#page-title");
+    if (target) target.focus({ preventScroll: true });
   }
 
   // Шаги работы ИИ. Если за это время ушли на другой экран, результат не применяется.
@@ -1889,21 +2125,45 @@
   }
 
   /* ---------- боковое меню на телефоне ---------- */
-  const narrow = window.matchMedia("(max-width: 1023px)");
   function applyDrawer() {
     const open = S.drawer && narrow.matches;
     $("#app").dataset.drawer = open ? "open" : "closed";
     $("#scrim").hidden = !open;
-    $("#menu-btn").setAttribute("aria-expanded", String(open));
+    const btn = $("#menu-btn");
+    if (btn) btn.setAttribute("aria-expanded", String(open));
     $("#main").inert = open;
   }
   function setDrawer(open) {
     S.drawer = open;
     applyDrawer();
-    if (open) { const first = $("#side .side-new"); if (first) first.focus(); }
-    else if (narrow.matches) $("#menu-btn").focus();
+    if (open) { const first = $("#side .nav-item"); if (first) first.focus(); }
+    else if (narrow.matches) { const b = $("#menu-btn"); if (b) b.focus(); }
   }
   narrow.addEventListener("change", () => { S.drawer = false; applyDrawer(); });
+  single.addEventListener("change", () => { if (!single.matches && S.screen === "list") go("list"); });
+
+  /* ---------- сведения о закупке: на узком экране — поверх, по кнопке ---------- */
+  function setInfo(open) {
+    S.info = open;
+    const ws = $("#ws");
+    if (ws) ws.dataset.info = open ? "open" : "closed";
+    const toggle = $("#info-toggle");
+    if (toggle) toggle.setAttribute("aria-expanded", String(open));
+    if (wide.matches) return;
+    if (open) { const c = $("#info-close"); if (c) c.focus(); }
+    else if (toggle) toggle.focus();
+  }
+
+  /* ---------- тема: как в системе, пока не выбрали сами ---------- */
+  function setTheme(dark) {
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+    try { localStorage.setItem("tj-theme", dark ? "dark" : "light"); } catch (e) { /* хранилище недоступно — тема действует до перезагрузки */ }
+  }
+  try {
+    const saved = localStorage.getItem("tj-theme");
+    if (saved === "dark" || saved === "light") document.documentElement.dataset.theme = saved;
+  } catch (e) { /* без хранилища тема — как в системе */ }
+  darkQuery.addEventListener("change", renderSide);
 
   /* ---------- вопросы ---------- */
   function answerFor(p, question) {
@@ -1925,12 +2185,16 @@
     const messages = p ? p.chat : S.general.messages;
     const feed = $("#feed");
     if (!feed) return;
-    const near = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 200;
+    const box = $("#pane-main");
+    const near = box ? box.scrollTop + box.clientHeight >= box.scrollHeight - 160 : false;
+    const empty = !messages.length && !holder.thinking;
     feed.innerHTML = feedInner(messages, holder.thinking, p);
-    feed.hidden = !messages.length && !holder.thinking;
+    feed.hidden = empty;
+    const intro = $("#chat-intro");
+    if (intro) intro.hidden = !empty;
     const used = messages.filter((m) => m.role === "user").map((m) => m.text);
     $("#chips").innerHTML = chipsHTML(p ? CHAT_SUGGEST : GENERAL_SUGGEST, used);
-    if (toBottom || near) window.scrollTo(0, document.documentElement.scrollHeight);
+    if (box && (toBottom || near)) box.scrollTop = box.scrollHeight;
   }
   async function ask(p, question, files) {
     const holder = p || S.general;
@@ -1940,7 +2204,7 @@
     messages.push({ role: "user", text: question.trim(), files: files || [] });
     holder.thinking = true;
     refreshFeed(p, true);
-    renderSide();
+    refreshCounts();
     await wait(800);
     holder.thinking = false;
     const a = answerFor(p, question);
@@ -1995,7 +2259,7 @@
     p.parts = {};
     S.ui = {};
     render();
-    window.scrollTo(0, 0);
+    toTop();
   }
   async function writePart(p, k) {
     const visit = S.visit;
@@ -2019,7 +2283,7 @@
     if (!(await runSteps(["Читаю вашу заявку…", "Сверяю с ТЗ по каждому пункту…", "Смотрю, за что могут отклонить…"]))) return;
     p.check.state = "done";
     rerender();
-    window.scrollTo(0, 0);
+    toTop();
   }
   async function fillFromDocs() {
     const visit = S.visit;
@@ -2043,7 +2307,7 @@
     S.docs.unshift(...added);
     S.ui.report = { added, requisites };
     render();
-    window.scrollTo(0, 0);
+    toTop();
   }
 
   let saveTimer;
@@ -2064,6 +2328,8 @@
       if (st && S.screen === "profile") st.textContent = S.ui.saved;
     }, 400);
     renderSide();
+    const sub = $("#head .head-sub");
+    if (sub) sub.textContent = headInfo().sub;
   }
   function onEditInput(area) {
     const p = cur();
@@ -2075,7 +2341,7 @@
     if (needsFill(area.value)) { if (!flag) li.querySelector(".item-head").insertAdjacentHTML("beforeend", '<span class="flag" data-flag>впишите данные</span>'); }
     else if (flag) flag.remove();
     $("#tp-notes").innerHTML = tpNotes(p);
-    renderSide();
+    refreshCounts();
   }
   function onPriceInput(input) {
     const p = cur();
@@ -2090,6 +2356,10 @@
     const p = cur();
     switch (act) {
       case "drawer": setDrawer(!S.drawer); break;
+      case "theme": setTheme(!isDark()); rerender(); break;
+      case "info": setInfo(!S.info); break;
+      case "info-close": setInfo(false); break;
+      case "fold": S.fold[el.dataset.fold] = !S.fold[el.dataset.fold]; rerender(); break;
       case "drawer-close": setDrawer(false); break;
       case "close": closeModal(); break;
       case "sample": openSample(); break;
@@ -2111,7 +2381,7 @@
       case "lawyer": toast("В рабочей версии вопрос уйдёт юристу по закупкам, ответ — в течение дня. Сейчас ничего не отправляется."); break;
       case "ask-delete": S.ui.confirmDelete = true; rerender(); { const b = $('[data-act="cancel-delete"]'); if (b) b.focus(); } break;
       case "cancel-delete": S.ui.confirmDelete = false; rerender(); break;
-      case "delete": S.purchases = S.purchases.filter((x) => x !== p); go("home"); toast("Закупка удалена."); break;
+      case "delete": S.purchases = S.purchases.filter((x) => x !== p); S.id = null; go("list"); toast("Закупка удалена."); break;
       case "compose": compose(p); break;
       case "ask-redo": S.ui.confirmRedo = true; rerender(); { const b = $('[data-act="redo"]'); if (b) b.focus(); } break;
       case "cancel-redo": S.ui.confirmRedo = false; rerender(); break;
@@ -2129,7 +2399,7 @@
       case "part-redo": onPartClick(p, el.dataset.part, true); break;
       case "preview-tp": openPreview(p, "tp"); break;
       case "sample-check": runCheck(p); break;
-      case "recheck": p.check.state = "none"; rerender(); window.scrollTo(0, 0); break;
+      case "recheck": p.check.state = "none"; rerender(); toTop(); break;
       case "fill": fillFromDocs(); break;
       case "sug-accept": case "sug-dismiss": {
         const group = groupSuggestions(S.suggestions)[Number(el.dataset.i)];
@@ -2180,7 +2450,8 @@
     if (t.id === "modal") { closeModal(); return; }
     if (t.id === "scrim") { setDrawer(false); return; }
     const nav = t.closest("[data-go]");
-    if (nav) { go(nav.dataset.go, nav.dataset.id); return; }
+    // Во вкладках и в списке закупок фокус остаётся там, где нажали.
+    if (nav) { go(nav.dataset.go, nav.dataset.id, nav.closest(".tabs, .ws-list") ? focusKey(nav) : null); return; }
     const act = t.closest("[data-act]");
     if (act && !act.disabled) handleAct(act.dataset.act, act);
   });
@@ -2215,6 +2486,7 @@
     else if (t.id === "chat-q") S.drafts.chat = t.value;
     else if (t.dataset.edit) onEditInput(t);
     else if (t.id === "tp-price") onPriceInput(t);
+    else if (t.id === "plist-q") { S.q = t.value; const body = $("#plist-body"); if (body) body.innerHTML = plistBodyHTML(PURCHASE_SCREENS.includes(S.screen) ? cur() : null); }
     else if (t.dataset.pf) onProfileInput(t);
   });
 
@@ -2240,15 +2512,16 @@
     if (input.id === "home-file") { S.home.text = $("#home-q").value; S.home.files = [...new Set([...S.home.files, ...names])]; rerender(); }
     else if (input.id === "g-file") { S.general.docs = [...new Set([...S.general.docs, ...names])]; S.general.pending = [...new Set([...S.general.pending, ...names])]; rerender(); }
     else if (input.id === "file-new") createPurchase();
-    else if (input.id === "add-doc") addToPurchase(cur(), names);
+    else if (input.id === "add-doc" || input.id === "add-doc-2") addToPurchase(cur(), names);
     else if (input.id === "file-app") runCheck(cur());
-    else if (input.id === "file-mydocs") addMyDocs(files);
+    else if (input.id === "file-mydocs" || input.id === "file-mydocs-top") addMyDocs(files);
   });
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       if (closeModal()) return;
       if (S.drawer && narrow.matches) { setDrawer(false); return; }
+      if (S.info && !wide.matches && $("#ws-info")) { setInfo(false); return; }
       if (e.target.classList && e.target.classList.contains("edit-area")) e.target.blur();
       return;
     }
@@ -2289,10 +2562,6 @@
     else if (kind === "mydocs") addMyDocs(files);
   });
 
-  $("#logo-mark").innerHTML = ic("scale", 16);
-  $("#logo-mark-2").innerHTML = ic("scale", 16);
-  $("#side-close").innerHTML = ic("x", 20);
-  $("#menu-btn").innerHTML = ic("menu", 22);
   render();
   applyDrawer();
 })();
