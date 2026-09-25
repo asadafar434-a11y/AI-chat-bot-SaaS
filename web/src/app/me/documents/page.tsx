@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertTriangleIcon, CheckIcon, FileTextIcon } from "lucide-react";
-import { BackLink } from "@/components/back-link";
+import { AlertTriangleIcon, CheckIcon, FileTextIcon, PlusIcon } from "lucide-react";
 import { FileDrop } from "@/components/file-drop";
 import { Note } from "@/components/note";
-import { PageTitle } from "@/components/page-title";
+import { PageBody, PageHeader, scrollToTop } from "@/components/page-header";
 import {
   deleteMyDocument,
   fillProfileFromDocuments,
@@ -18,7 +17,7 @@ import {
 } from "@/lib/me-store";
 import { DOC_KIND_KEYS, DOC_KINDS, PART_SAMPLE_KIND, REQUISITE_KINDS, type DocKind } from "@/lib/my-docs";
 import { plural } from "@/lib/plural";
-import { readDocuments, type FailedFile } from "@/lib/read-documents";
+import { ACCEPTED_FILES, readDocuments, type FailedFile } from "@/lib/read-documents";
 
 const pages = (text: string) => Math.max(1, Math.round(text.length / 2500));
 
@@ -43,14 +42,14 @@ type Report = {
 const SAMPLE_KINDS: DocKind[] = ["tp", ...Object.values(PART_SAMPLE_KIND)];
 
 const pill = (on: boolean) =>
-  `min-h-9 rounded-[var(--r-pill)] px-3.5 text-[14.5px] font-semibold ${on ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-accent"}`;
+  `t-strong min-h-9 rounded-[var(--r-pill)] px-4 ${on ? "bg-primary text-primary-foreground" : "bg-[var(--paper-2)] hover:bg-[var(--paper-3)]"}`;
 
 function KindEditor({ doc, onSave, onCancel }: { doc: MyDocument; onSave: (kinds: DocKind[]) => void; onCancel: () => void }) {
   const [kinds, setKinds] = useState<DocKind[]>(doc.kinds);
   const toggle = (kind: DocKind) => setKinds(kinds.includes(kind) ? kinds.filter((k) => k !== kind) : [...kinds, kind]);
   return (
-    <div className="grid gap-3 pl-8">
-      <p className="text-[14.5px] font-semibold">Что в этом файле? Можно выбрать несколько.</p>
+    <div className="grid gap-3 pl-11 max-sm:pl-0">
+      <p className="t-strong">Что в этом файле? Можно выбрать несколько.</p>
       <div className="flex flex-wrap gap-2">
         {DOC_KIND_KEYS.map((kind) => (
           <button key={kind} type="button" aria-pressed={kinds.includes(kind)} onClick={() => toggle(kind)} className={pill(kinds.includes(kind))}>
@@ -62,11 +61,11 @@ function KindEditor({ doc, onSave, onCancel }: { doc: MyDocument; onSave: (kinds
         <button
           type="button"
           onClick={() => onSave(kinds.length ? DOC_KIND_KEYS.filter((k) => kinds.includes(k)) : ["other"])}
-          className="min-h-9 rounded-[var(--r-ctl)] bg-primary px-4 font-semibold text-primary-foreground hover:opacity-90"
+          className="btn btn-xs"
         >
           Готово
         </button>
-        <button type="button" onClick={onCancel} className="min-h-9 rounded-[var(--r-ctl)] bg-muted px-4 font-semibold hover:bg-accent">
+        <button type="button" onClick={onCancel} className="btn btn-line btn-xs">
           Отмена
         </button>
       </div>
@@ -91,6 +90,7 @@ export default function MyDocumentsPage() {
   // Файл может лежать в нескольких группах сразу, поэтому правка и удаление открываются для пары «группа — файл».
   const [editing, setEditing] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<string | null>(null);
+  const input = useRef<HTMLInputElement>(null);
 
   const reload = () => listMyDocuments().then(setDocs, () => setError("Браузер не дал открыть ваши документы. Обновите страницу."));
   useEffect(() => {
@@ -129,7 +129,7 @@ export default function MyDocumentsPage() {
         }
       }
       setReport(next);
-      window.scrollTo(0, 0);
+      scrollToTop();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -163,145 +163,192 @@ export default function MyDocumentsPage() {
     ([, list]) => list.length > 0
   );
 
+  const count = docs?.length ?? 0;
+
   return (
-    <div className="flex flex-1 flex-col">
-      <main className="mx-auto w-full max-w-[680px] px-4 pb-10">
-        <BackLink href="/me">Мои данные</BackLink>
-        <PageTitle className="mt-4">Мои документы</PageTitle>
-        <p className="mt-3 max-w-[52ch] text-[17px] leading-[26px] text-[var(--ink-2)]">
-          Загрузите всё, что подавали раньше: заявки целиком или по частям, анкеты, декларации, ценовые предложения, договоры и акты, протоколы. Приложение разложит их по видам — и новые документы будет писать так же, как ваши.
-        </p>
+    <>
+      <PageHeader
+        title="Мои документы"
+        sub={
+          count
+            ? `${count} ${plural(count, "документ", "документа", "документов")} · по ним пишутся анкеты, декларации и цены`
+            : "Документов пока нет"
+        }
+        actions={
+          <button
+            type="button"
+            onClick={() => input.current?.click()}
+            disabled={stage !== null}
+            aria-label="Добавить документы"
+            className="btn max-sm:w-10 max-sm:px-0"
+          >
+            <PlusIcon />
+            <span className="max-sm:hidden">Добавить документы</span>
+          </button>
+        }
+      />
+      <input
+        ref={input}
+        type="file"
+        multiple
+        accept={ACCEPTED_FILES}
+        className="hidden"
+        onChange={(e) => {
+          const files = e.currentTarget.files ? [...e.currentTarget.files] : [];
+          e.currentTarget.value = "";
+          if (files.length) void add(files);
+        }}
+      />
+      <PageBody>
+        <div className="grid max-w-[880px] gap-4">
+          <p className="max-w-[70ch] text-[var(--ink-2)]">
+            Загрузите всё, что подавали раньше: заявки целиком или по частям, анкеты, декларации, ценовые предложения, договоры и акты, протоколы. Приложение разложит их по видам — и новые документы будет писать так же, как ваши.
+          </p>
 
-        {error && (
-          <Note tone="warn" icon={AlertTriangleIcon} className="mt-5">
-            {error}
-          </Note>
-        )}
+          {error && (
+            <Note tone="warn" icon={AlertTriangleIcon}>
+              {error}
+            </Note>
+          )}
 
-        {report && (
-          <div className="mt-5 grid gap-2" aria-live="polite">
-            {report.added.length > 0 && (
-              <Note tone="ok" icon={CheckIcon}>
-                {`Добавил ${report.added.length} ${plural(report.added.length, "документ", "документа", "документов")}: ${countLine(report.added)}.`}
-              </Note>
-            )}
-            {report.sortError && (
-              <Note tone="warn" icon={AlertTriangleIcon}>
-                {`Разложить по видам с помощью ИИ не получилось (${report.sortError.replace(/\.$/, "")}), поэтому разложил по названиям файлов. Проверьте виды и поправьте, где нужно.`}
-              </Note>
-            )}
-            {report.filled !== undefined && (
-              <Note tone={report.filled ? "ok" : "info"} icon={report.filled ? CheckIcon : undefined}>
-                {report.filled
-                  ? `Реквизиты: заполнил ${report.filled} ${plural(report.filled, "поле", "поля", "полей")} из ваших документов — `
-                  : "Реквизиты: нового в документах не нашлось — "}
-                <Link href="/me/profile" className="underline underline-offset-4">
-                  проверьте
-                </Link>
-                {report.suggestions ? `. Есть расхождения между документами — они показаны в реквизитах подсказками.` : "."}
-              </Note>
-            )}
-            {report.profileError && (
-              <Note tone="warn" icon={AlertTriangleIcon}>
-                {`Реквизиты заполнить не получилось: ${report.profileError}`}
-              </Note>
-            )}
-            {report.failed.length > 0 && (
-              <Note tone="warn" icon={AlertTriangleIcon}>
-                {`Не получилось прочитать: ${report.failed.map((f) => `${f.name} — ${f.reason}`).join("; ")}.`}
-              </Note>
-            )}
-          </div>
-        )}
+          {report && (
+            <div className="grid gap-2" aria-live="polite">
+              {report.added.length > 0 && (
+                <Note tone="ok" icon={CheckIcon}>
+                  {`Добавил ${report.added.length} ${plural(report.added.length, "документ", "документа", "документов")}: ${countLine(report.added)}.`}
+                </Note>
+              )}
+              {report.sortError && (
+                <Note tone="warn" icon={AlertTriangleIcon}>
+                  {`Разложить по видам с помощью ИИ не получилось (${report.sortError.replace(/\.$/, "")}), поэтому разложил по названиям файлов. Проверьте виды и поправьте, где нужно.`}
+                </Note>
+              )}
+              {report.filled !== undefined && (
+                <Note tone={report.filled ? "ok" : "info"} icon={report.filled ? CheckIcon : undefined}>
+                  {report.filled
+                    ? `Реквизиты: заполнил ${report.filled} ${plural(report.filled, "поле", "поля", "полей")} из ваших документов — `
+                    : "Реквизиты: нового в документах не нашлось — "}
+                  <Link href="/me/profile" className="underline underline-offset-4">
+                    проверьте
+                  </Link>
+                  {report.suggestions ? `. Есть расхождения между документами — они показаны в реквизитах подсказками.` : "."}
+                </Note>
+              )}
+              {report.profileError && (
+                <Note tone="warn" icon={AlertTriangleIcon}>
+                  {`Реквизиты заполнить не получилось: ${report.profileError}`}
+                </Note>
+              )}
+              {report.failed.length > 0 && (
+                <Note tone="warn" icon={AlertTriangleIcon}>
+                  {`Не получилось прочитать: ${report.failed.map((f) => `${f.name} — ${f.reason}`).join("; ")}.`}
+                </Note>
+              )}
+            </div>
+          )}
 
-        {groups.map(([kind, list]) => (
-          <section key={kind} className="mt-7">
-            <h2 className="text-[13px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
-              {DOC_KINDS[kind].group} — {list.length}
-            </h2>
-            <p className="mb-2.5 mt-1 text-[14.5px] leading-[21px] text-muted-foreground">{DOC_KINDS[kind].use}</p>
-            <ul className="overflow-hidden rounded-[var(--r-surface)] bg-card">
-              {list.map((doc) => {
-                const key = `${kind}:${doc.id}`;
-                const others = doc.kinds.filter((k) => k !== kind);
-                const unused = used.get(kind) && !used.get(kind)!.has(doc.id);
-                const meta = [
-                  `≈ ${pages(doc.text)} ${plural(pages(doc.text), "страница", "страницы", "страниц")}`,
-                  `добавлен ${new Date(doc.addedAt).toLocaleDateString("ru-RU")}`,
-                  ...(doc.scan ? ["распознан со скана — сверьте цифры"] : []),
-                  ...(others.length ? [`в файле также: ${others.map((k) => DOC_KINDS[k].few).join(", ")}`] : []),
-                  ...(unused ? ["не используется: образцов уже достаточно"] : []),
-                ].join(" · ");
-                return (
-                  <li key={doc.id} className="grid gap-2 border-t border-border px-5 py-4 first:border-t-0">
-                    <div className="flex items-start gap-3">
-                      <FileTextIcon className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
-                      <div className="grid min-w-0 flex-1 gap-0.5">
-                        <span className="break-words font-semibold">{doc.name}</span>
-                        {doc.about && <span className="text-[15px] leading-[22px] text-[var(--ink-2)]">{doc.about}</span>}
-                        <span className="text-[14px] leading-[20px] text-muted-foreground">{meta}</span>
-                      </div>
-                    </div>
-                    {editing === key ? (
-                      <KindEditor doc={doc} onSave={(kinds) => void saveKinds(doc, kinds)} onCancel={() => setEditing(null)} />
-                    ) : confirm === key ? (
-                      <div className="flex flex-wrap items-center gap-2 pl-8">
-                        <span className="text-[14.5px]">{others.length ? "Удалить файл целиком, из всех групп?" : "Удалить документ?"}</span>
-                        <button
-                          type="button"
-                          onClick={() => void remove(doc.id)}
-                          className="min-h-9 rounded-[var(--r-ctl)] bg-[color-mix(in_oklab,var(--destructive)_14%,transparent)] px-4 font-semibold text-destructive"
+          {stage && (
+            <section className="panel px-[var(--pad)]">
+              <div className="grid gap-2 py-8" aria-live="polite">
+                <p className="t-section animate-pulse">{STAGE_TEXT[stage]}</p>
+                <p className="text-[var(--ink-3)]">Сканы и фото распознаются дольше — примерно минута на каждые 10 страниц.</p>
+              </div>
+            </section>
+          )}
+
+          {groups.map(([kind, list], gi) => (
+            <section key={kind} aria-labelledby={`dg-${gi}`} className="panel">
+              <div className="panel-head">
+                <div className="grid gap-0.5">
+                  <h2 id={`dg-${gi}`} className="t-section flex items-baseline gap-2">
+                    {DOC_KINDS[kind].group}
+                    <span className="count">{list.length}</span>
+                  </h2>
+                  <p className="t-caption text-[var(--ink-3)]">{DOC_KINDS[kind].use}</p>
+                </div>
+              </div>
+              <ul className="divide-y divide-[var(--line)]">
+                {list.map((doc) => {
+                  const key = `${kind}:${doc.id}`;
+                  const others = doc.kinds.filter((k) => k !== kind);
+                  const unused = used.get(kind) && !used.get(kind)!.has(doc.id);
+                  const meta = [
+                    `≈ ${pages(doc.text)} ${plural(pages(doc.text), "страница", "страницы", "страниц")}`,
+                    `добавлен ${new Date(doc.addedAt).toLocaleDateString("ru-RU")}`,
+                    ...(doc.scan ? ["распознан со скана — сверьте цифры"] : []),
+                    ...(others.length ? [`в файле также: ${others.map((k) => DOC_KINDS[k].few).join(", ")}`] : []),
+                    ...(unused ? ["не используется: образцов уже достаточно"] : []),
+                  ].join(" · ");
+                  return (
+                    <li key={doc.id} className="grid gap-3 px-[var(--pad)] py-4">
+                      <div className="grid grid-cols-[32px_minmax(0,1fr)] items-start gap-3">
+                        <span
+                          className={`grid size-8 place-items-center rounded-lg ${
+                            doc.scan ? "bg-[var(--warn-tint)] text-[var(--warn)]" : "bg-[var(--paper-2)] text-[var(--ink-3)]"
+                          }`}
                         >
-                          Удалить
-                        </button>
-                        <button type="button" onClick={() => setConfirm(null)} className="min-h-9 rounded-[var(--r-ctl)] bg-muted px-4 font-semibold">
-                          Отмена
-                        </button>
+                          <FileTextIcon className="size-4" />
+                        </span>
+                        <div className="grid min-w-0 gap-1">
+                          <span className="t-strong break-words">{doc.name}</span>
+                          {doc.about && <span className="text-[var(--ink-2)]">{doc.about}</span>}
+                          <span className="t-caption text-[var(--ink-3)]">{meta}</span>
+                        </div>
                       </div>
-                    ) : (
-                      <div className="flex flex-wrap gap-x-5 gap-y-1 pl-8 text-[14px] font-medium">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setConfirm(null);
-                            setEditing(key);
-                          }}
-                          className="text-primary underline underline-offset-4"
-                        >
-                          Изменить вид
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditing(null);
-                            setConfirm(key);
-                          }}
-                          className="text-muted-foreground underline underline-offset-4 hover:text-destructive"
-                        >
-                          Удалить
-                        </button>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        ))}
+                      {editing === key ? (
+                        <KindEditor doc={doc} onSave={(kinds) => void saveKinds(doc, kinds)} onCancel={() => setEditing(null)} />
+                      ) : confirm === key ? (
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pl-11 max-sm:pl-0">
+                          <span>{others.length ? "Удалить файл целиком, из всех групп?" : "Удалить документ?"}</span>
+                          <button type="button" onClick={() => void remove(doc.id)} className="btn btn-danger btn-xs">
+                            Удалить
+                          </button>
+                          <button type="button" onClick={() => setConfirm(null)} className="btn btn-line btn-xs">
+                            Отмена
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-x-5 gap-y-1 pl-11 max-sm:pl-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setConfirm(null);
+                              setEditing(key);
+                            }}
+                            className="link"
+                          >
+                            Изменить вид
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditing(null);
+                              setConfirm(key);
+                            }}
+                            className="link link-quiet link-del"
+                          >
+                            Удалить
+                          </button>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
 
-        {stage ? (
-          <div className="mt-8 grid gap-2" aria-live="polite">
-            <p className="animate-pulse text-lg font-semibold">{STAGE_TEXT[stage]}</p>
-            <p className="text-[15px] text-muted-foreground">Сканы и фото распознаются дольше — примерно минута на каждые 10 страниц.</p>
-          </div>
-        ) : (
-          <FileDrop
-            hint="Перетащите сюда свои документы — PDF, Word, сканы и фото. Можно сразу все."
-            button={docs && docs.length ? "Добавить документы" : "Загрузить документы"}
-            onFiles={(files) => void add(files)}
-          />
-        )}
-      </main>
-    </div>
+          {!stage && (
+            <section className="panel p-[var(--pad)]">
+              <FileDrop
+                hint="Перетащите сюда свои документы — PDF, Word, сканы и фото. Можно сразу все."
+                button={count ? "Добавить документы" : "Загрузить документы"}
+                onFiles={(files) => void add(files)}
+              />
+            </section>
+          )}
+        </div>
+      </PageBody>
+    </>
   );
 }

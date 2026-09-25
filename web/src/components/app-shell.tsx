@@ -1,24 +1,22 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import Link from "next/link";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { usePathname } from "next/navigation";
-import { MenuIcon, ScaleIcon, XIcon } from "lucide-react";
 import { SideNav } from "@/components/side-nav";
 
-function Logo() {
-  return (
-    <Link href="/" className="flex items-center gap-2.5" aria-label="Тендерный юрист — на главную">
-      <span className="grid size-8 shrink-0 place-items-center rounded-[11px] bg-primary text-primary-foreground">
-        <ScaleIcon className="size-4" />
-      </span>
-      <span className="font-heading text-[15px] font-bold leading-[1.15] tracking-[-0.02em]">Тендерный юрист</span>
-    </Link>
-  );
+type Shell = { menuOpen: boolean; openMenu: () => void; menuButton: RefObject<HTMLButtonElement | null> };
+
+const ShellContext = createContext<Shell | null>(null);
+
+// Кнопка меню живёт в шапке экрана: на телефоне она стоит рядом с заголовком, как в макете.
+export function useShell() {
+  const shell = useContext(ShellContext);
+  if (!shell) throw new Error("useShell работает только внутри AppShell");
+  return shell;
 }
 
-// Каркас всех экранов: сайдбар слева. На экране уже 1024 px сайдбар прячется
-// и выезжает по кнопке из верхней полосы, а остальная страница на это время неактивна.
+// Каркас всех экранов: сайдбар и основная часть. От 1280 px это одна рамка с отступом от краёв окна.
+// Уже 1024 px сайдбар прячется и выезжает по кнопке из шапки, а остальная страница на это время неактивна.
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   // Меню открыто только на том экране, где его открыли: переход по ссылке его закрывает.
@@ -59,48 +57,25 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [open]);
 
   return (
-    <>
-      <aside
-        ref={side}
-        id="side-nav"
-        aria-label="Навигация"
-        className={`fixed inset-y-0 left-0 z-40 flex w-[var(--side-w)] flex-col border-r border-border bg-sidebar pb-[env(safe-area-inset-bottom,0px)] pt-[env(safe-area-inset-top,0px)] max-lg:w-[min(320px,88vw)] max-lg:shadow-[var(--lift-lg)] max-lg:duration-200 motion-reduce:transition-none ${
-          // Открывается — видимо сразу, чтобы на меню встал фокус; закрывается — видимо, пока не уедет.
-          open ? "max-lg:transition-[translate]" : "max-lg:invisible max-lg:-translate-x-[102%] max-lg:transition-[translate,visibility]"
-        }`}
-      >
-        <div className="flex items-center justify-between gap-2 pb-3 pl-[18px] pr-3 pt-[18px]">
-          <Logo />
-          <button
-            type="button"
-            onClick={close}
-            aria-label="Закрыть меню"
-            className="grid size-10 shrink-0 place-items-center rounded-full text-[var(--ink-2)] hover:bg-accent hover:text-foreground lg:hidden"
-          >
-            <XIcon className="size-5" />
-          </button>
-        </div>
-        <SideNav />
-      </aside>
-      {open && <div className="fixed inset-0 z-30 bg-[var(--scrim)] lg:hidden" onClick={close} aria-hidden />}
+    <ShellContext value={{ menuOpen: open, openMenu: () => setOpenAt(pathname), menuButton }}>
+      <div className="grid h-full grid-cols-[var(--side-w)_minmax(0,1fr)] bg-[var(--frame)] max-lg:grid-cols-1 xl:overflow-hidden xl:rounded-[var(--r-shell)] xl:border xl:border-[var(--line)] xl:shadow-[var(--lift)]">
+        <aside
+          ref={side}
+          id="side-nav"
+          aria-label="Навигация"
+          className={`flex min-h-0 flex-col border-r border-[var(--line)] bg-[var(--frame)] max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-40 max-lg:w-[min(320px,88vw)] max-lg:border-r-0 max-lg:pb-[env(safe-area-inset-bottom,0px)] max-lg:pt-[env(safe-area-inset-top,0px)] max-lg:shadow-[var(--lift-lg)] max-lg:duration-200 motion-reduce:transition-none ${
+            // Открывается — видимо сразу, чтобы на меню встал фокус; закрывается — видимо, пока не уедет.
+            open ? "max-lg:transition-[translate]" : "max-lg:invisible max-lg:-translate-x-[102%] max-lg:transition-[translate,visibility]"
+          }`}
+        >
+          <SideNav onClose={close} />
+        </aside>
+        {open && <div className="fixed inset-0 z-30 bg-[var(--scrim)] lg:hidden" onClick={close} aria-hidden />}
 
-      <div inert={open} className="flex flex-1 flex-col lg:ml-[var(--side-w)] lg:pt-[var(--shell-top)]">
-        <header className="sticky top-0 z-20 flex h-[var(--shell-top)] items-center gap-1.5 border-b border-border bg-background pl-2 pr-4 lg:hidden">
-          <button
-            ref={menuButton}
-            type="button"
-            onClick={() => setOpenAt(pathname)}
-            aria-label="Открыть меню"
-            aria-controls="side-nav"
-            aria-expanded={open}
-            className="grid size-10 shrink-0 place-items-center rounded-full text-[var(--ink-2)] hover:bg-accent hover:text-foreground"
-          >
-            <MenuIcon className="size-[22px]" />
-          </button>
-          <Logo />
-        </header>
-        {children}
+        <div inert={open} className="flex min-h-0 min-w-0 flex-col bg-[var(--canvas)]">
+          {children}
+        </div>
       </div>
-    </>
+    </ShellContext>
   );
 }

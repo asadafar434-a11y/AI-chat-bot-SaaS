@@ -14,6 +14,8 @@ export type Purchase = PurchaseSummary & {
   createdAt: string;
   sample?: boolean;
   files: string[];
+  // Какие из файлов распознаны со скана. Хранится рядом с закупкой, чтобы главная не читала тексты документов.
+  scans?: string[];
   unreadable: FailedFile[];
   requirements: ReqGroups;
   tp?: TpResult;

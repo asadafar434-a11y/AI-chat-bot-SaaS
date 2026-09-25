@@ -1,0 +1,122 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { PlusIcon, SearchIcon } from "lucide-react";
+import { Note } from "@/components/note";
+import { daysText, LawBadge, TpMark } from "@/components/purchase-bits";
+import { dueLine } from "@/lib/deadline";
+import { titleOf, type Purchase } from "@/lib/purchase";
+import { openSamplePurchase } from "@/lib/sample-purchase";
+import { STORAGE_ERROR } from "@/lib/use-purchases";
+
+function Days({ purchase }: { purchase: Purchase }) {
+  const due = dueLine(purchase.deadline, false);
+  if (!due) return null;
+  if (due.days < 0) return <span className="t-num whitespace-nowrap text-[var(--ink-3)]">срок прошёл</span>;
+  return (
+    <span className={`t-num whitespace-nowrap ${due.tone === "soon" ? "font-semibold text-[var(--warn)]" : "text-[var(--ink-3)]"}`}>
+      {due.days === 0 ? "сегодня" : daysText(due.days)}
+    </span>
+  );
+}
+
+// Список закупок как список переписок: значок закона, название, заказчик; справа — дни до подачи и отметка ТП.
+export function PurchaseListPane({ purchases, error, openId }: { purchases: Purchase[] | null; error: boolean; openId?: string }) {
+  const router = useRouter();
+  const [query, setQuery] = useState("");
+  const [sampleError, setSampleError] = useState(false);
+
+  async function sample() {
+    setSampleError(false);
+    try {
+      router.push(`/p/${await openSamplePurchase()}`);
+    } catch {
+      setSampleError(true);
+    }
+  }
+
+  const q = query.trim().toLowerCase();
+  const shown = (purchases ?? []).filter(
+    (p) => !q || [titleOf(p), p.subject, p.customer, p.kind].join(" ").toLowerCase().includes(q)
+  );
+
+  return (
+    <>
+      <div className="flex min-h-20 flex-none items-center px-[var(--pad)] py-4 max-sm:min-h-[72px]">
+        <label className="field flex items-center gap-2 text-[var(--ink-3)]">
+          <SearchIcon className="size-4 shrink-0" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.currentTarget.value)}
+            placeholder="Найти закупку…"
+            aria-label="Найти закупку"
+            autoComplete="off"
+            className="h-full min-w-0 flex-1 bg-transparent text-foreground outline-none"
+          />
+        </label>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-[var(--line)]">
+        {(error || sampleError) && (
+          <div className="p-[var(--pad)]">
+            <Note tone="warn">{STORAGE_ERROR}</Note>
+          </div>
+        )}
+        {purchases?.length === 0 && (
+          <div className="grid justify-items-start gap-4 p-[var(--pad)]">
+            <p className="t-body text-[var(--ink-2)]">Закупок пока нет. Загрузите документы — выпишу требования и сроки.</p>
+            {/* На широком экране кнопки стоят в основной панели, в списке их не повторяем */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 split:hidden">
+              <Link href="/new" className="btn">
+                <PlusIcon />
+                Новая закупка
+              </Link>
+              <span className="t-body text-[var(--ink-3)]">
+                или{" "}
+                <button type="button" onClick={() => void sample()} className="link">
+                  пример
+                </button>
+              </span>
+            </div>
+          </div>
+        )}
+        {purchases && purchases.length > 0 && shown.length === 0 && (
+          <p className="t-body p-[var(--pad)] text-[var(--ink-3)]">Ничего не нашлось. Поиск идёт по названию, заказчику и закону.</p>
+        )}
+        {shown.length > 0 && (
+          <ul className="divide-y divide-[var(--line)]">
+            {shown.map((p) => {
+              const current = p.id === openId;
+              return (
+                <li key={p.id}>
+                  <Link
+                    href={`/p/${p.id}`}
+                    aria-current={current ? "true" : undefined}
+                    className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 px-[var(--pad)] py-3 ${
+                      current ? "bg-[var(--select)]" : "hover:bg-[var(--hover)]"
+                    }`}
+                  >
+                    <LawBadge purchase={p} selected={current} />
+                    <span className="grid min-w-0 gap-1">
+                      <span className="t-strong line-clamp-2">{titleOf(p)}</span>
+                      <span className="t-caption truncate text-[var(--ink-3)]">
+                        {[p.sample ? "пример" : "", p.customer].filter(Boolean).join(" · ") || p.kind}
+                      </span>
+                    </span>
+                    <span className="grid justify-items-end gap-1">
+                      <Days purchase={p} />
+                      <TpMark purchase={p} />
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </>
+  );
+}

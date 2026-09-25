@@ -38,6 +38,24 @@ type ChatFeedProps = {
   empty: ReactNode;
 };
 
+// Поле ввода прижато к низу панели, лента над ним прокручивается сама.
+export function ComposerDock({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex-none border-t border-[var(--line)] bg-card px-[var(--gutter)] pb-[calc(12px+env(safe-area-inset-bottom,0px))] pt-4">
+      <div className="mx-auto grid w-full max-w-[792px] gap-2">
+        {children}
+        <p className="t-caption text-center text-[var(--ink-3)]">
+          Ответы ИИ не являются юридической консультацией. Проверяйте нормы по первоисточнику.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Рамка поля ввода AI Elements — в скруглении панели, с тонкой тенью.
+export const PROMPT_CLASS =
+  "[&_[data-slot=input-group]]:rounded-[var(--r-surface)] [&_[data-slot=input-group]]:bg-card [&_[data-slot=input-group]]:shadow-[var(--hairline)]";
+
 // Лента вопросов и ответов — общая для чата закупки и общего чата с главной.
 export function ChatFeed({ messages, status, error, onRetry, empty }: ChatFeedProps) {
   const last = messages.at(-1);
@@ -46,31 +64,32 @@ export function ChatFeed({ messages, status, error, onRetry, empty }: ChatFeedPr
 
   return (
     <Conversation className="min-h-0">
-      <ConversationContent className="gap-4">
+      {/* Место под полосу прокрутки — только справа, иначе лента съезжает с края текста вкладок */}
+      <ConversationContent
+        scrollClassName="[scrollbar-gutter:stable]!"
+        className="mx-auto w-full max-w-[840px] gap-5 px-[var(--gutter)] pb-4 pt-[var(--gutter)]"
+      >
         {messages.length === 0 ? (
-          <ConversationEmptyState className="gap-6">{empty}</ConversationEmptyState>
+          <ConversationEmptyState className="size-auto items-start justify-start gap-4 p-0 text-left">{empty}</ConversationEmptyState>
         ) : (
           messages.map((m) => {
             const text = textOf(m);
             const files = m.metadata?.files ?? [];
             if (!text && files.length === 0) return null;
             return (
-              <Message from={m.role} key={m.id}>
+              <Message from={m.role} key={m.id} className={m.role === "assistant" ? "max-w-full" : undefined}>
                 {files.length > 0 && (
-                  <div className="flex flex-wrap justify-end gap-1.5">
+                  <div className="flex flex-wrap justify-end gap-2">
                     {files.map((name) => (
-                      <span
-                        key={name}
-                        className="inline-flex items-center gap-1.5 rounded-[var(--r-pill)] bg-card px-2.5 py-1 text-xs text-muted-foreground"
-                      >
+                      <span key={name} className="file-chip px-3">
                         <FileTextIcon className="size-3.5" />
-                        {name}
+                        <span className="truncate">{name}</span>
                       </span>
                     ))}
                   </div>
                 )}
                 {text && (
-                  <MessageContent className="group-[.is-user]:max-w-[80%] group-[.is-user]:rounded-[var(--r-bubble)]">
+                  <MessageContent className="group-[.is-user]:max-w-[80%] group-[.is-user]:rounded-[var(--r-bubble)] group-[.is-user]:py-2.5">
                     {m.role === "assistant" ? (
                       <MessageResponse
                         isAnimating={status === "streaming" && m.id === last?.id}
@@ -88,16 +107,12 @@ export function ChatFeed({ messages, status, error, onRetry, empty }: ChatFeedPr
             );
           })
         )}
-        {waiting && <p className="animate-pulse text-sm text-muted-foreground">Изучаю документы и закон…</p>}
+        {waiting && <p className="animate-pulse text-[var(--ink-3)]">Изучаю документы и закон…</p>}
         {status === "error" && (
-          <div className="flex flex-wrap items-center gap-2 text-sm text-destructive">
+          <div className="flex flex-wrap items-center gap-3 text-destructive">
             <span>{error?.message || "Не удалось получить ответ."}</span>
-            <button
-              type="button"
-              onClick={onRetry}
-              className="inline-flex items-center gap-1 rounded-[var(--r-pill)] bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-[var(--lift)] hover:bg-accent"
-            >
-              <RotateCcwIcon className="size-3.5" />
+            <button type="button" onClick={onRetry} className="btn btn-line btn-xs">
+              <RotateCcwIcon />
               Повторить
             </button>
           </div>

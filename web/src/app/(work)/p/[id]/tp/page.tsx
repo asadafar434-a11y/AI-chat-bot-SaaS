@@ -3,17 +3,17 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangleIcon, CheckIcon, PencilIcon } from "lucide-react";
-import { BackLink } from "@/components/back-link";
-import { Note } from "@/components/note";
-import { PageTitle } from "@/components/page-title";
+import { Note, Warnings } from "@/components/note";
+import { scrollToTop } from "@/components/page-header";
+import { SourceQuote } from "@/components/purchase-bits";
 import { usePurchase } from "@/components/purchase-provider";
+import { TabBody } from "@/components/purchase-view";
 import { WorkingSteps } from "@/components/working-steps";
 import { getProfile, listMyDocuments, samplesOf, type MyDocument } from "@/lib/me-store";
 import { PART_SAMPLE_KIND, type PartKey } from "@/lib/my-docs";
 import type { PartDoc } from "@/lib/part-doc";
 import { plural } from "@/lib/plural";
 import { identityValues, type Profile } from "@/lib/profile";
-import { titleOf } from "@/lib/purchase";
 import { scanWarning } from "@/lib/read-documents";
 import { formatRubles, parseRubles, rublesInWords } from "@/lib/rub-words";
 import { sampleTp } from "@/lib/sample-purchase";
@@ -27,9 +27,6 @@ const WORKING_STEPS = [
   "Готовлю предложение по пунктам…",
   "Сверяю цитаты с ТЗ…",
 ];
-
-const button =
-  "min-h-[52px] rounded-[var(--r-ctl)] bg-primary px-6 font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60";
 
 function FieldText({ text }: { text: string }) {
   return (
@@ -57,56 +54,27 @@ function Editable({ value, label, onChange }: { value: string; label: string; on
       onChange={(e) => onChange(e.target.value)}
       onBlur={() => setEditing(false)}
       aria-label={label}
-      className="field-sizing-content -mx-2 min-h-12 resize-none rounded-[10px] bg-muted px-2 py-1.5 text-base leading-6 outline-none ring-2 ring-primary"
+      className="t-doc field-sizing-content -mx-2 min-h-12 resize-none rounded-[var(--r-ctl)] bg-[var(--paper-2)] px-2 py-1 outline-none ring-2 ring-primary"
     />
   ) : (
     <button
       type="button"
       onClick={() => setEditing(true)}
       aria-label={`Изменить: ${label}`}
-      className="-mx-2 rounded-[10px] px-2 py-1.5 text-left text-base leading-6 whitespace-pre-wrap hover:bg-muted"
+      className="t-doc -mx-2 cursor-text whitespace-pre-wrap rounded-[var(--r-ctl)] px-2 py-1 text-left hover:bg-[var(--hover)]"
     >
       <FieldText text={value} />
     </button>
   );
 }
 
-function Source({ id, source, quote, verified, open, onToggle }: {
-  id: string;
-  source: string;
-  quote: string;
-  verified: boolean;
-  open: boolean;
-  onToggle: (id: string) => void;
-}) {
-  return (
-    <>
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => onToggle(id)}
-        className="justify-self-start text-left text-sm font-medium text-primary underline underline-offset-4"
-      >
-        {source || "цитата из ТЗ"}
-      </button>
-      {open && <blockquote className="rounded-[14px] bg-muted px-4 py-3 text-[14.5px] leading-[22px]">{quote}</blockquote>}
-      {!verified && (
-        <p className="flex items-center gap-2 text-[13.5px] font-medium text-[var(--warn)]">
-          <AlertTriangleIcon className="size-4 shrink-0" />
-          Не нашёл эту цитату в документах дословно — сверьте строку вручную.
-        </p>
-      )}
-    </>
-  );
-}
-
 function SamplesLine({ count }: { count: number }) {
   return (
-    <p className="mt-4 text-[15px] leading-[22px] text-muted-foreground">
+    <p className="t-body text-[var(--ink-3)]">
       {count > 0 ? (
         <>
           {`Пишу по вашим техническим предложениям: ${count} ${plural(count, "документ", "документа", "документов")} из `}
-          <Link href="/me/documents" className="font-semibold text-primary underline underline-offset-4">
+          <Link href="/me/documents" className="link">
             «Моих документов»
           </Link>
           .
@@ -114,7 +82,7 @@ function SamplesLine({ count }: { count: number }) {
       ) : (
         <>
           Черновик будет в общем стиле.{" "}
-          <Link href="/me/documents" className="font-semibold text-primary underline underline-offset-4">
+          <Link href="/me/documents" className="link">
             Загрузите свои документы
           </Link>
           {" "}— и ТП будет написано так, как пишете вы.
@@ -154,8 +122,8 @@ function PriceBlock({ tp, price, nmck, onChange }: {
   const percent = drop !== null ? drop.toLocaleString("ru-RU", { maximumFractionDigits: 1 }) : "";
 
   return (
-    <section className="mt-6 grid gap-2 rounded-[var(--r-card)] bg-card p-4">
-      <label htmlFor="tp-price" className="font-bold">
+    <section className="mt-6 grid gap-2 rounded-[var(--r-card)] bg-[var(--paper-2)] px-[var(--pad)] py-4">
+      <label htmlFor="tp-price" className="t-strong">
         Цена вашего предложения
       </label>
       <div className="flex items-center gap-2">
@@ -169,13 +137,14 @@ function PriceBlock({ tp, price, nmck, onChange }: {
             const value = Number(e.target.value.replace(/[\s\u00a0]/g, "").replace(",", "."));
             onChange(Number.isFinite(value) && value > 0 ? value : undefined);
           }}
-          className="h-11 w-full max-w-60 rounded-[var(--r-ctl)] bg-muted px-3 text-base outline-none focus:ring-2 focus:ring-primary"
+          autoComplete="off"
+          className="field max-w-60 font-mono tabular-nums"
         />
-        <span className="text-muted-foreground">₽</span>
+        <span className="text-[var(--ink-3)]">₽</span>
       </div>
-      {price && <p className="text-[14.5px] text-[var(--ink-2)]">Прописью: {rublesInWords(price)}</p>}
+      {price && <p className="text-[var(--ink-2)]">Прописью: {rublesInWords(price)}</p>}
       {nmck && (
-        <p className="text-[14.5px] text-muted-foreground">
+        <p className="text-[var(--ink-3)]">
           Начальная цена — {formatRubles(nmck)} ₽{drop !== null && drop > 0 ? ` · снижение ${percent}%` : ""}
         </p>
       )}
@@ -239,7 +208,7 @@ export default function TpPage() {
       }
       setOpen(null);
       update({ tp: next });
-      window.scrollTo(0, 0);
+      scrollToTop();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -329,38 +298,28 @@ export default function TpPage() {
     }
   }
 
-  const head = (
-    <>
-      <BackLink href={`/p/${purchase.id}`}>{titleOf(purchase)}</BackLink>
-      <PageTitle className="mt-4">Техническое предложение</PageTitle>
-    </>
-  );
-
   if (working || !tp) {
     return (
-      <div className="flex flex-1 flex-col">
-        <main className="mx-auto w-full max-w-[680px] px-4 pb-10">
-          {head}
-          {working ? (
-            <WorkingSteps steps={WORKING_STEPS} />
-          ) : (
-            <>
-              <p className="mt-3 max-w-[48ch] text-[17px] leading-[26px] text-[var(--ink-2)]">
-                Найду в документах форму заявки и заполню её, как тендерный юрист: товары с конкретными характеристиками, предложение по пунктам ТЗ, цена. Вам останется вписать то, что знаете только вы.
-              </p>
-              {!purchase.sample && <SamplesLine count={usedSamples.length} />}
-              {error && (
-                <Note tone="warn" icon={AlertTriangleIcon} className="mt-5">
-                  {error}
-                </Note>
-              )}
-              <button type="button" onClick={() => void compose()} className={`mt-6 ${button}`}>
-                Составить черновик
-              </button>
-            </>
-          )}
-        </main>
-      </div>
+      <TabBody>
+        {working ? (
+          <WorkingSteps steps={WORKING_STEPS} />
+        ) : (
+          <div className="grid justify-items-start gap-4">
+            <p className="t-body max-w-[64ch] text-[var(--ink-2)]">
+              Найду в документах форму заявки и заполню её, как тендерный юрист: товары с конкретными характеристиками, предложение по пунктам ТЗ, цена. Вам останется вписать то, что знаете только вы.
+            </p>
+            {!purchase.sample && <SamplesLine count={usedSamples.length} />}
+            {error && (
+              <Note tone="warn" icon={AlertTriangleIcon}>
+                {error}
+              </Note>
+            )}
+            <button type="button" onClick={() => void compose()} className="btn btn-lg mt-1">
+              Составить черновик
+            </button>
+          </div>
+        )}
+      </TabBody>
     );
   }
 
@@ -369,47 +328,42 @@ export default function TpPage() {
   const tpText = [tp.form.consent, ...tp.goods.flatMap((g) => [g.name, g.characteristics]), ...tp.items.map((it) => it.offer)].join(" ");
   const leaks = profile ? identityValues(profile).filter((value) => tpText.includes(value)) : [];
   const unverified = [...tp.goods, ...tp.items].filter((row) => !row.verified).length;
-  const scans = scanWarning(documents);
   const setGood = (index: number, characteristics: string) =>
     update({ tp: { ...tp, goods: tp.goods.map((g, i) => (i === index ? { ...g, characteristics } : g)) } });
   const setOffer = (index: number, offer: string) =>
     update({ tp: { ...tp, items: tp.items.map((it, i) => (i === index ? { ...it, offer } : it)) } });
+  const flag = <span className="t-tag text-[var(--warn)]">впишите данные</span>;
 
   return (
-    <div className="flex flex-1 flex-col">
-      <main className="mx-auto w-full max-w-[680px] px-4 pb-10">
-        {head}
-        <p className="mt-3 text-[15px] leading-[22px] text-muted-foreground">
+    <>
+      <TabBody>
+        <p className="t-body max-w-[64ch] text-[var(--ink-2)]">
           {tp.form.source
             ? `По форме заказчика: ${tp.form.title} (${tp.form.source}). Каждая часть заявки — отдельным файлом.`
             : "Формы заявки в документах нет — составлено как техническое предложение по пунктам ТЗ."}{" "}
           Техническое предложение идёт в первую часть заявки, поэтому в нём нет ни названия, ни ИНН, ни подписи участника.
         </p>
 
-        {fill ? (
-          <Note tone="warn" icon={PencilIcon} className="mt-4">
-            {`Впишите свои данные в ${fill} ${plural(fill, "пункт", "пункта", "пунктов")} — они выделены жёлтым. Нажмите на текст, чтобы исправить.`}
-          </Note>
-        ) : (
-          <Note tone="ok" icon={CheckIcon} className="mt-4">
-            Все пункты заполнены.
-          </Note>
-        )}
-        {leaks.length > 0 && (
-          <Note tone="warn" icon={AlertTriangleIcon} className="mt-2">
-            {`В техническом предложении есть ваши данные: ${leaks.map((v) => `«${v}»`).join(", ")}. Уберите их — ТП подают в первую часть заявки анонимно, иначе заявку отклонят.`}
-          </Note>
-        )}
-        {unverified > 0 && (
-          <Note tone="warn" icon={AlertTriangleIcon} className="mt-2">
-            {`В ${unverified} ${plural(unverified, "строке", "строках", "строках")} цитата не найдена в документах дословно — сверьте их вручную.`}
-          </Note>
-        )}
-        {scans && (
-          <Note tone="warn" icon={AlertTriangleIcon} className="mt-2">
-            {scans}
-          </Note>
-        )}
+        <div className="mt-6 grid gap-2">
+          {fill ? (
+            <Note tone="warn" icon={PencilIcon}>
+              {`Впишите свои данные в ${fill} ${plural(fill, "пункт", "пункта", "пунктов")} — они выделены жёлтым. Нажмите на текст, чтобы исправить.`}
+            </Note>
+          ) : (
+            <Note tone="ok" icon={CheckIcon}>
+              Все пункты заполнены.
+            </Note>
+          )}
+          <Warnings
+            items={[
+              leaks.length > 0 &&
+                `В техническом предложении есть ваши данные: ${leaks.map((v) => `«${v}»`).join(", ")}. Уберите их — ТП подают в первую часть заявки анонимно, иначе заявку отклонят.`,
+              unverified > 0 &&
+                `В ${unverified} ${plural(unverified, "строке", "строках", "строках")} цитата не найдена в документах дословно — сверьте их вручную.`,
+              scanWarning(documents),
+            ]}
+          />
+        </div>
 
         {tp.form.hasPrice && (
           <PriceBlock
@@ -421,19 +375,26 @@ export default function TpPage() {
         )}
 
         {tp.goods.length > 0 && (
-          <section className="mt-7">
-            <h2 className="mb-2.5 text-[13px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
-              Товары и оборудование — {tp.goods.length}
-            </h2>
-            <ol className="overflow-hidden rounded-[var(--r-surface)] bg-card">
+          <section className="mt-6">
+            <h3 className="t-over mb-2 text-[var(--ink-3)]">Товары и оборудование — {tp.goods.length}</h3>
+            <ol className="divide-y divide-[var(--line)] border-y border-[var(--line)]">
               {tp.goods.map((g, i) => (
-                <li key={i} className="grid gap-1.5 border-t border-border px-5 py-[18px] first:border-t-0">
-                  <div className="flex flex-wrap items-baseline gap-x-2.5">
-                    <h3 className="text-base font-bold">{i + 1}. {g.name}</h3>
-                    {g.quantity && <span className="text-[14px] text-muted-foreground">{g.quantity}</span>}
-                    {needsFill(g.characteristics) && <span className="text-[13px] font-semibold text-[var(--warn)]">впишите данные</span>}
+                <li key={i} className="grid gap-2 py-4">
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <h4 className="t-section">
+                      {i + 1}. {g.name}
+                    </h4>
+                    {g.quantity && <span className="t-caption text-[var(--ink-3)]">{g.quantity}</span>}
+                    {needsFill(g.characteristics) && flag}
                   </div>
-                  <Source id={`g${i}`} source={g.source} quote={g.quote} verified={g.verified} open={open === `g${i}`} onToggle={toggle} />
+                  <SourceQuote
+                    source={g.source || "цитата из ТЗ"}
+                    quote={g.quote}
+                    verified={g.verified}
+                    what="строку"
+                    open={open === `g${i}`}
+                    onToggle={() => toggle(`g${i}`)}
+                  />
                   <Editable value={g.characteristics} label={`Характеристики: ${g.name}`} onChange={(v) => setGood(i, v)} />
                 </li>
               ))}
@@ -442,21 +403,28 @@ export default function TpPage() {
         )}
 
         {tp.items.length > 0 && (
-          <section className="mt-7">
-            <h2 className="mb-2.5 text-[13px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
-              Предложение по пунктам ТЗ — {tp.items.length}
-            </h2>
-            <ol className="overflow-hidden rounded-[var(--r-surface)] bg-card">
+          <section className="mt-6">
+            <h3 className="t-over mb-2 text-[var(--ink-3)]">Предложение по пунктам ТЗ — {tp.items.length}</h3>
+            <ol className="divide-y divide-[var(--line)] border-y border-[var(--line)]">
               {tp.items.map((it, i) => (
-                <li key={i} className="grid gap-1.5 border-t border-border px-5 py-[18px] first:border-t-0">
-                  <div className="flex flex-wrap items-baseline gap-x-2.5">
-                    <h3 className="text-base font-bold">{i + 1}. {it.topic}</h3>
-                    {needsFill(it.offer) && <span className="text-[13px] font-semibold text-[var(--warn)]">впишите данные</span>}
+                <li key={i} className="grid gap-2 py-4">
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <h4 className="t-section">
+                      {i + 1}. {it.topic}
+                    </h4>
+                    {needsFill(it.offer) && flag}
                   </div>
-                  <p className="text-[14.5px] leading-[21px] text-muted-foreground">
+                  <p className="text-[var(--ink-3)]">
                     В ТЗ{it.clause ? `, п. ${it.clause}` : ""}: {it.requirement}
                   </p>
-                  <Source id={`i${i}`} source="" quote={it.quote} verified={it.verified} open={open === `i${i}`} onToggle={toggle} />
+                  <SourceQuote
+                    source="цитата из ТЗ"
+                    quote={it.quote}
+                    verified={it.verified}
+                    what="строку"
+                    open={open === `i${i}`}
+                    onToggle={() => toggle(`i${i}`)}
+                  />
                   <Editable value={it.offer} label={`Предложение: ${it.topic}`} onChange={(v) => setOffer(i, v)} />
                 </li>
               ))}
@@ -464,24 +432,23 @@ export default function TpPage() {
           </section>
         )}
 
-
         <div className="mt-5">
           {confirmRedo ? (
-            <div className="grid gap-3 rounded-[var(--r-card)] bg-card p-4">
-              <p className="font-semibold">Составить черновик заново? Ваши правки в этом черновике пропадут.</p>
+            <div className="grid gap-3 rounded-[var(--r-card)] bg-[var(--paper-2)] p-4">
+              <p className="t-strong">Составить черновик заново? Ваши правки в этом черновике пропадут.</p>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => void compose()} className="min-h-11 rounded-[var(--r-ctl)] bg-primary px-5 font-semibold text-primary-foreground hover:opacity-90">
+                <button type="button" onClick={() => void compose()} className="btn btn-xs">
                   Составить заново
                 </button>
-                <button type="button" onClick={() => setConfirmRedo(false)} className="min-h-11 rounded-[var(--r-ctl)] bg-muted px-5 font-semibold hover:bg-accent">
+                <button type="button" onClick={() => setConfirmRedo(false)} className="btn btn-line btn-xs">
                   Отмена
                 </button>
               </div>
             </div>
           ) : (
-            <p className="text-[15px] text-muted-foreground">
+            <p className="text-[var(--ink-3)]">
               Добавили документы или черновик не подходит?{" "}
-              <button type="button" onClick={() => setConfirmRedo(true)} className="font-semibold text-primary underline underline-offset-4">
+              <button type="button" onClick={() => setConfirmRedo(true)} className="link">
                 Составить заново
               </button>
             </p>
@@ -493,11 +460,9 @@ export default function TpPage() {
           )}
         </div>
 
-        <section className="mt-8">
-          <h2 className="mb-2.5 text-[13px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
-            Остальные части заявки — отдельными файлами
-          </h2>
-          <ul className="overflow-hidden rounded-[var(--r-surface)] bg-card">
+        <section className="mt-6">
+          <h3 className="t-over mb-2 text-[var(--ink-3)]">Остальные части заявки — отдельными файлами</h3>
+          <ul className="divide-y divide-[var(--line)] border-y border-[var(--line)]">
             {partsOf(tp.form)
               .filter((part): part is PartKey => part !== "tp")
               .map((part) => {
@@ -518,20 +483,17 @@ export default function TpPage() {
                             ? `составлю по вашему образцу «${samples[0].name}»${samples.length > 1 ? ` и ещё ${samples.length - 1}` : ""}`
                             : "ваших образцов нет — составлю по форме заказчика";
                 return (
-                  <li
-                    key={part}
-                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 border-t border-border px-5 py-4 first:border-t-0"
-                  >
-                    <span className="font-semibold leading-6">{PART_TITLES[part]}</span>
+                  <li key={part} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 py-3 max-sm:grid-cols-1">
+                    <span className="t-strong">{PART_TITLES[part]}</span>
                     <button
                       type="button"
                       onClick={() => void downloadPart(tp, part)}
                       disabled={downloading !== null || !meReady}
-                      className="row-span-2 min-h-11 rounded-[var(--r-ctl)] bg-muted px-4 font-semibold hover:bg-accent disabled:opacity-60"
+                      className="btn btn-line btn-xs row-span-2 max-sm:row-span-1 max-sm:row-start-3 max-sm:mt-2 max-sm:justify-self-start"
                     >
                       {downloading === part ? (fresh ? "Собираю…" : "Пишу…") : "Скачать"}
                     </button>
-                    <span className="text-[14px] leading-[20px] text-muted-foreground">
+                    <span className="t-caption text-[var(--ink-3)]">
                       {status}
                       {fresh && !purchase.sample && downloading !== part && (
                         <>
@@ -540,7 +502,7 @@ export default function TpPage() {
                             type="button"
                             onClick={() => void downloadPart(tp, part, true)}
                             disabled={downloading !== null}
-                            className="underline underline-offset-4 disabled:opacity-60"
+                            className="link link-quiet disabled:opacity-60"
                           >
                             составить заново
                           </button>
@@ -551,36 +513,36 @@ export default function TpPage() {
                 );
               })}
           </ul>
-          <p className="mt-2.5 text-[14.5px] leading-[22px] text-muted-foreground">
+          <p className="mt-3 text-[var(--ink-3)]">
             Реквизиты берутся из{" "}
-            <Link href="/me/profile" className="font-semibold text-primary underline underline-offset-4">
+            <Link href="/me/profile" className="link">
               «Реквизитов»
             </Link>
             , образцы — из{" "}
-            <Link href="/me/documents" className="font-semibold text-primary underline underline-offset-4">
+            <Link href="/me/documents" className="link">
               «Моих документов»
             </Link>
             . Чего там нет — выделено в Word жёлтым.
           </p>
           {partNote && (
-            <Note tone="info" className="mt-2">
+            <Note tone="info" className="mt-3">
               {partNote}
             </Note>
           )}
         </section>
+      </TabBody>
 
-        <div className="sticky bottom-0 mt-2 grid gap-2 bg-gradient-to-b from-transparent to-background to-30% pb-[calc(16px+env(safe-area-inset-bottom,0px))] pt-4">
-          <button
-            type="button"
-            onClick={() => void download(tp, "tp")}
-            disabled={downloading !== null}
-            className={`justify-self-start max-[480px]:justify-self-stretch ${button}`}
-          >
-            {downloading === "tp" ? "Собираю файл…" : "Скачать техническое предложение"}
-          </button>
-          {downloadError && <p className="text-sm font-medium text-destructive">{downloadError}</p>}
-        </div>
-      </main>
-    </div>
+      <div className="sticky bottom-0 z-[5] mt-auto grid gap-2 border-t border-[var(--line)] bg-[color-mix(in_srgb,var(--card)_92%,transparent)] px-[var(--gutter)] pb-[calc(16px+env(safe-area-inset-bottom,0px))] pt-4 backdrop-blur-[6px]">
+        <button
+          type="button"
+          onClick={() => void download(tp, "tp")}
+          disabled={downloading !== null}
+          className="btn justify-self-start max-sm:justify-self-stretch"
+        >
+          {downloading === "tp" ? "Собираю файл…" : "Скачать техническое предложение"}
+        </button>
+        {downloadError && <p className="t-strong text-destructive">{downloadError}</p>}
+      </div>
+    </>
   );
 }

@@ -2,16 +2,16 @@
 
 import { useEffect, useState } from "react";
 
-export function WorkingSteps({ steps }: { steps: string[] }) {
+export function WorkingSteps({ steps, sub = "Обычно это занимает 1–2 минуты." }: { steps: string[]; sub?: string }) {
   const [step, setStep] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setStep((s) => Math.min(s + 1, steps.length - 1)), 2500);
     return () => clearInterval(id);
   }, [steps.length]);
   return (
-    <div className="mt-12 grid gap-2" aria-live="polite">
-      <p className="animate-pulse text-lg font-semibold">{steps[step]}</p>
-      <p className="text-[15px] text-muted-foreground">Обычно это занимает 1–2 минуты.</p>
+    <div className="grid gap-2 py-8" aria-live="polite">
+      <p className="t-section animate-pulse">{steps[step]}</p>
+      <p className="text-[var(--ink-3)]">{sub}</p>
     </div>
   );
 }

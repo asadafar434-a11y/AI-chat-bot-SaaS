@@ -21,11 +21,22 @@ export const savePurchase = (purchase: Purchase) =>
     tx.objectStore(PURCHASES).put(purchase);
   });
 
-export const savePurchaseWithDocuments = (purchase: Purchase, documents: SentDocument[]) =>
-  transaction<void>([PURCHASES, DOCUMENTS], "readwrite", (tx) => {
-    tx.objectStore(PURCHASES).put(purchase);
+export const scansOf = (documents: SentDocument[]) => documents.filter((d) => d.scan).map((d) => d.name);
+
+// Возвращает закупку в том виде, в каком она сохранена: со списком файлов со скана.
+export async function savePurchaseWithDocuments(purchase: Purchase, documents: SentDocument[]): Promise<Purchase> {
+  const stored = { ...purchase, scans: scansOf(documents) };
+  await transaction<void>([PURCHASES, DOCUMENTS], "readwrite", (tx) => {
+    tx.objectStore(PURCHASES).put(stored);
     tx.objectStore(DOCUMENTS).put(documents, purchase.id);
   });
+  return stored;
+}
+
+// Закупки, сохранённые до появления списка сканов, узнают о них по самим документам.
+export async function scanNames(purchase: Purchase): Promise<string[]> {
+  return purchase.scans ?? scansOf(await getDocuments(purchase.id));
+}
 
 export const deletePurchase = (id: string) =>
   transaction<void>([PURCHASES, DOCUMENTS], "readwrite", (tx) => {

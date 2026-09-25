@@ -1,12 +1,11 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { AlertTriangleIcon } from "lucide-react";
-import { BackLink } from "@/components/back-link";
+import Link from "next/link";
+import { AlertTriangleIcon, ArrowLeftIcon } from "lucide-react";
 import { Note } from "@/components/note";
-import { PageTitle } from "@/components/page-title";
 import { upgradePurchase, type Purchase } from "@/lib/purchase";
-import { deletePurchase, getDocuments, getPurchase, savePurchase, savePurchaseWithDocuments } from "@/lib/purchase-store";
+import { deletePurchase, getDocuments, getPurchase, savePurchase, savePurchaseWithDocuments, scansOf } from "@/lib/purchase-store";
 import type { SentDocument } from "@/lib/read-documents";
 
 type PurchaseContextValue = {
@@ -46,7 +45,8 @@ export function PurchaseProvider({ id, children }: { id: string; children: React
     Promise.all([getPurchase(id), getDocuments(id)]).then(
       ([stored, documents]) => {
         if (cancelled) return;
-        const purchase = stored && upgradePurchase(stored);
+        // Список сканов у старой закупки появится с первым же сохранением.
+        const purchase = stored && { ...upgradePurchase(stored), scans: stored.scans ?? scansOf(documents) };
         latest.current = purchase ?? null;
         setLoaded(purchase ? { status: "ready", purchase, documents } : { status: "missing" });
       },
@@ -91,8 +91,7 @@ export function PurchaseProvider({ id, children }: { id: string; children: React
 
   const replaceDocuments = useCallback(async (documents: SentDocument[], patch: Partial<Purchase>) => {
     if (!latest.current) return;
-    const purchase = { ...latest.current, ...patch };
-    await savePurchaseWithDocuments(purchase, documents);
+    const purchase = await savePurchaseWithDocuments({ ...latest.current, ...patch }, documents);
     latest.current = purchase;
     dirty.current = false;
     setLoaded({ status: "ready", purchase, documents });
@@ -109,24 +108,25 @@ export function PurchaseProvider({ id, children }: { id: string; children: React
 
   if (loaded.status !== "ready") {
     return (
-      <main className="mx-auto w-full max-w-[680px] px-4 pb-10">
-        <BackLink href="/">Мои закупки</BackLink>
-        <PageTitle className="mt-4">
-          {loaded.status === "missing" ? "Закупка не найдена" : "Не удалось открыть закупку"}
-        </PageTitle>
-        <p className="mt-3 max-w-[46ch] text-[17px] leading-[26px] text-[var(--ink-2)]">
+      <div className="grid max-w-[560px] justify-items-start gap-2 p-[var(--gutter)]">
+        <Link href="/purchases" className="link link-quiet t-body mb-2 inline-flex items-center gap-1.5 no-underline split:hidden">
+          <ArrowLeftIcon aria-hidden className="size-4" />
+          Все закупки
+        </Link>
+        <h2 className="t-title">{loaded.status === "missing" ? "Закупка не найдена" : "Не удалось открыть закупку"}</h2>
+        <p className="t-body text-[var(--ink-2)]">
           {loaded.status === "missing"
             ? "Возможно, её удалили. Закупки хранятся в браузере — в другом браузере или на другом компьютере их не видно."
             : "Браузер не дал открыть хранилище закупок. Обновите страницу; если не поможет — проверьте, что сайту разрешено хранить данные."}
         </p>
-      </main>
+      </div>
     );
   }
 
   return (
     <PurchaseContext.Provider value={{ purchase: loaded.purchase, documents: loaded.documents, update, replaceDocuments, remove }}>
       {saveError && (
-        <div className="mx-auto w-full max-w-[680px] px-4 pt-3">
+        <div className="flex-none px-[var(--gutter)] pt-3">
           <Note tone="warn" icon={AlertTriangleIcon}>
             Не получилось сохранить изменения в браузере. Не закрывайте страницу и попробуйте ещё раз.
           </Note>
