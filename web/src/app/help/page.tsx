@@ -61,7 +61,7 @@ const SECTIONS: { icon: LucideIcon; title: string; href: string; text: string }[
   { icon: UserRoundIcon, title: "Реквизиты", href: "/me/profile", text: "Данные компании. Сами попадают в анкету, декларацию и цену — но никогда в ТП: его подают анонимно." },
   {
     icon: FolderIcon,
-    title: "Документы компании",
+    title: "Образцы и реквизиты",
     href: "/me/documents",
     text: "Ваши прошлые заявки, анкеты, карточка предприятия. По ним заполняются реквизиты и пишутся новые документы — так же, как пишете вы.",
   },

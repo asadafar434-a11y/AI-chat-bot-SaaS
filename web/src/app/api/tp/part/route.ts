@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   }
   const samples = cleanSamples(body.samples);
   if (samples.reduce((sum, s) => sum + s.text.length, 0) > SAMPLES_LIMIT * 1.1) {
-    return fail("Образцов слишком много — удалите в «Документах компании» лишние.", 413);
+    return fail("Образцов слишком много — удалите в «Образцах и реквизитах» лишние.", 413);
   }
   const profile: Profile | null = body.profile
     ? { ...EMPTY_PROFILE, ...Object.fromEntries(PROFILE_KEYS.map((key) => [key, String(body.profile?.[key] ?? "").slice(0, 500)])) }

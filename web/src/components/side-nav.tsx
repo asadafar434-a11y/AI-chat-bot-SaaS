@@ -17,11 +17,11 @@ import {
 } from "lucide-react";
 import { onDataChanged } from "@/lib/db";
 import { LEGAL_PAGES } from "@/lib/legal";
-import { countMyDocuments, getProfile } from "@/lib/me-store";
+import { getProfile } from "@/lib/me-store";
 import { filledCount, PROFILE_KEYS, type Profile } from "@/lib/profile";
 import { listPurchases } from "@/lib/purchase-store";
 
-type SideData = { purchases: number; profile: Profile; docs: number };
+type SideData = { purchases: number; profile: Profile };
 
 // Выбранный раздел — заливка брендом; иконка и счётчик на ней — от --on-brand, а не белые.
 const ON_BRAND_SOFT = "text-[color-mix(in_srgb,var(--on-brand)_78%,transparent)]";
@@ -39,7 +39,7 @@ function NavItem({ href, icon: Icon, current, count, first, children }: {
       href={href}
       aria-current={current ? "page" : undefined}
       data-autofocus={first || undefined}
-      className={`flex min-h-8 items-center gap-2.5 rounded-[var(--r-ctl)] px-2.5 py-1.5 ${
+      className={`flex min-h-8 min-w-0 items-center gap-2.5 rounded-[var(--r-ctl)] px-2.5 py-1.5 ${
         current
           ? "t-strong bg-primary text-primary-foreground shadow-[0_1px_2px_color-mix(in_srgb,var(--brand)_40%,transparent)]"
           : "t-label text-[var(--ink-2)] hover:bg-[var(--hover)] hover:text-foreground"
@@ -101,8 +101,8 @@ export function SideNav({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     let alive = true;
     const load = () =>
-      Promise.all([listPurchases(), getProfile(), countMyDocuments()]).then(
-        ([list, profile, docs]) => alive && setData({ purchases: list.length, profile, docs }),
+      Promise.all([listPurchases(), getProfile()]).then(
+        ([list, profile]) => alive && setData({ purchases: list.length, profile }),
         // Хранилище недоступно — об этом скажет сам экран; в меню остаются только разделы.
         () => {}
       );
@@ -152,8 +152,9 @@ export function SideNav({ onClose }: { onClose: () => void }) {
           >
             Реквизиты
           </NavItem>
-          <NavItem href="/me/documents" icon={FolderIcon} current={pathname === "/me/documents"} count={data?.docs}>
-            Документы компании
+          {/* Без счётчика: с ним длинное название не помещается в сайдбар. Сколько документов — видно на главной. */}
+          <NavItem href="/me/documents" icon={FolderIcon} current={pathname === "/me/documents"}>
+            Образцы и реквизиты
           </NavItem>
         </Group>
 

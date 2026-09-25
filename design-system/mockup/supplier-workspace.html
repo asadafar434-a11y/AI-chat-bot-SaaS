@@ -934,9 +934,7 @@
     price: { group: "Предложения о цене", few: "предложения о цене", use: "по ним пишутся предложения о цене" },
     letter: { group: "Письма-заявки и описи", few: "письма и описи", use: "из них заполняются реквизиты" },
     company: { group: "Документы компании", few: "документы компании", use: "карточка предприятия, выписка, устав, лицензии — из них заполняются реквизиты" },
-    experience: { group: "Опыт: контракты и акты", few: "контракты и акты", use: "пригодятся, когда закупка требует подтвердить опыт" },
-    protocol: { group: "Протоколы закупок", few: "протоколы", use: "пригодятся для проверки заявки: видно, за что отклоняли" },
-    other: { group: "Другое", few: "другое", use: "пока не используются" },
+    other: { group: "Другое", few: "другое", use: "договоры, акты, протоколы и остальное — пока не используются" },
   };
   const DOC_KIND_KEYS = Object.keys(DOC_KINDS);
   const REQUISITE_KINDS = ["anketa", "company", "letter", "price", "declaration"];
@@ -948,8 +946,6 @@
     [/предложени\S* о цене|ценов\S* предложени|коммерческ\S* предложени/i, "price"],
     [/заявк\S* на участие|опись/i, "letter"],
     [/карточк\S* (предприятия|организации|компании|контрагента)|выписк\S* из ЕГР|устав|лиценз|доверенност/i, "company"],
-    [/протокол/i, "protocol"],
-    [/\bакт\b|акт (сдачи|оказанных|выполненных)|исполнени\S* контракт|контракт/i, "experience"],
   ];
   const guessKinds = (name) => { const kinds = GUESS.filter(([re]) => re.test(name)).map(([, k]) => k); return kinds.length ? [...new Set(kinds)] : ["other"]; };
 
@@ -1033,8 +1029,8 @@
     { id: "d3", name: "Анкета участника 2024.pdf", kinds: ["anketa"], about: "Анкета участника, 2024", pages: 2, added: "24.09.2026", scan: true },
     { id: "d4", name: "Ценовое предложение Новый год 2025.docx", kinds: ["price"], about: "Предложение о цене: новогодний утренник, 2025", pages: 1, added: "24.09.2026" },
     { id: "d5", name: "Карточка предприятия.pdf", kinds: ["company"], about: "Карточка предприятия ООО «Праздник-Энск»", pages: 1, added: "24.09.2026" },
-    { id: "d6", name: "Контракт и акт — Учитель года 2025.pdf", kinds: ["experience"], about: "Контракт и акт: церемония «Учитель года — 2025», 612 000 ₽", pages: 14, added: "24.09.2026" },
-    { id: "d7", name: "Протокол итогов — выпускной 2024.pdf", kinds: ["protocol"], about: "Протокол: заявка отклонена — не указан срок передачи фотографий", pages: 4, added: "24.09.2026" },
+    { id: "d6", name: "Контракт и акт — Учитель года 2025.pdf", kinds: ["other"], about: "Контракт и акт: церемония «Учитель года — 2025», 612 000 ₽", pages: 14, added: "24.09.2026" },
+    { id: "d7", name: "Протокол итогов — выпускной 2024.pdf", kinds: ["other"], about: "Протокол: заявка отклонена — не указан срок передачи фотографий", pages: 4, added: "24.09.2026" },
   ];
 
   /* ---------- закупки ---------- */
@@ -1488,7 +1484,7 @@
           <h2 class="sec-label" id="side-me">Данные компании</h2>
           <div class="nav">
             ${nav("profile", "user", "Реквизиты", `${filledCount()}/${PROFILE_KEYS.length}`, S.screen === "profile")}
-            ${nav("docs", "folder", "Документы компании", S.docs.length, S.screen === "docs")}
+            ${nav("docs", "folder", "Образцы и реквизиты", undefined, S.screen === "docs")}
           </div>
         </section>
       </div>
@@ -1523,12 +1519,12 @@
         return {
           title: "Реквизиты",
           sub: `Данные компании для анкеты, декларации и цены · заполнено ${filledCount()} из ${PROFILE_KEYS.length}`,
-          acts: `<span class="save-state" id="save-state" aria-live="polite">${esc(S.ui.saved || "")}</span>${canFill ? `<button class="btn line" type="button" data-act="fill" aria-label="Заполнить из документов компании"${S.ui.filling ? " disabled" : ""}>${ic("upload")}<span class="lbl">${S.ui.filling ? "Ищу реквизиты в документах…" : "Заполнить из документов"}</span></button>` : ""}`,
+          acts: `<span class="save-state" id="save-state" aria-live="polite">${esc(S.ui.saved || "")}</span>${canFill ? `<button class="btn line" type="button" data-act="fill" aria-label="Заполнить из загруженных документов"${S.ui.filling ? " disabled" : ""}>${ic("upload")}<span class="lbl">${S.ui.filling ? "Ищу реквизиты в документах…" : "Заполнить из документов"}</span></button>` : ""}`,
         };
       }
       case "docs":
         return {
-          title: "Документы компании",
+          title: "Образцы и реквизиты",
           sub: S.docs.length ? `${S.docs.length} ${plural(S.docs.length, "документ", "документа", "документов")} · по ним заполняются реквизиты и пишутся новые документы` : "Прошлые заявки, анкеты, карточка предприятия — по ним заполняются реквизиты и пишутся новые документы",
           acts: `<label class="btn" for="file-mydocs-top">${ic("plus")}<span class="lbl">Добавить документы</span><input id="file-mydocs-top" type="file" multiple class="sr-only" aria-label="Добавить документы"></label>`,
         };
@@ -1630,7 +1626,7 @@
           <div class="panel-head"><h2 class="panel-title" id="mine-title">Данные компании</h2>${list.length ? "" : '<span class="small muted">можно заполнить заранее</span>'}</div>
           <ul class="plist">
             ${dataRow("profile", "user", "Реквизиты", `Заполнено ${filled} из ${total} · для анкеты и декларации`, `<span class="meter" aria-hidden="true"><i style="width:${Math.round((filled / total) * 100)}%"></i></span>`)}
-            ${dataRow("docs", "folder", "Документы компании", S.docs.length ? `${S.docs.length} ${plural(S.docs.length, "документ", "документа", "документов")} · по ним пишутся новые` : "Прошлые заявки — чтобы писать в вашем стиле")}
+            ${dataRow("docs", "folder", "Образцы и реквизиты", S.docs.length ? `${S.docs.length} ${plural(S.docs.length, "документ", "документа", "документов")} · по ним пишутся новые` : "Прошлые заявки — чтобы писать в вашем стиле")}
           </ul>
         </section>
       </div>
@@ -1940,7 +1936,7 @@
       return `<div class="tab-body"><section class="panel"><div class="panel-body">
         <p class="small ink2 m0">Шаг 2 — техническое предложение. Найду в документах форму заявки и заполню её, как тендерный юрист: товары с конкретными характеристиками, предложение по пунктам ТЗ, цена. Вам останется вписать то, что знаете только вы.</p>
         ${p.sample ? "" : `<p class="small muted m0">${tpSamples.length
-          ? `Пишу по вашим техническим предложениям: ${tpSamples.length} ${plural(tpSamples.length, "документ", "документа", "документов")} из <button class="link" type="button" data-go="docs">«Документов компании»</button>.`
+          ? `Пишу по вашим техническим предложениям: ${tpSamples.length} ${plural(tpSamples.length, "документ", "документа", "документов")} из <button class="link" type="button" data-go="docs">«Образцов и реквизитов»</button>.`
           : 'Черновик будет в общем стиле. <button class="link" type="button" data-go="docs">Загрузите свои документы</button> — и ТП будет написано так, как пишете вы.'}</p>`}
         <div><button class="btn lg" type="button" data-act="compose">Составить черновик</button></div>
       </div></section></div>`;
@@ -1982,7 +1978,7 @@
       <section class="panel" aria-labelledby="tp-parts">
         <div class="panel-head"><div><h3 class="panel-title" id="tp-parts">Остальные части заявки</h3><p class="panel-sub">Каждая — отдельным файлом Word</p></div></div>
         <ul class="parts" id="parts-list">${partsRows(p)}</ul>
-        <p class="parts-foot">Реквизиты берутся из <button class="link" type="button" data-go="profile">«Реквизитов»</button>, образцы — из <button class="link" type="button" data-go="docs">«Документов компании»</button>. Чего там нет — выделено в Word жёлтым.</p>
+        <p class="parts-foot">Реквизиты берутся из <button class="link" type="button" data-go="profile">«Реквизитов»</button>, образцы — из <button class="link" type="button" data-go="docs">«Образцов и реквизитов»</button>. Чего там нет — выделено в Word жёлтым.</p>
       </section>
     </div>
     <div class="sticky-actions"><div class="bar"><button class="btn" type="button" data-act="preview-tp">Скачать техническое предложение</button><button class="btn line" type="button" data-go="check" data-id="${p.id}">Дальше: проверка заявки${ic("chev", 16)}</button></div></div>`;
@@ -2037,7 +2033,7 @@
       ["list", "list", "Закупки", "Все закупки: список слева, открытая закупка справа — с шагами и вопросами по ней."],
       ["ask", "chat", "Спросить про тендер", "Общий вопрос по 44-ФЗ и 223-ФЗ. Вопрос про конкретную закупку задайте внутри неё — в «Вопросах»: отвечу по её документам."],
       ["profile", "user", "Реквизиты", "Данные компании. Сами попадают в анкету, декларацию и цену — но никогда в ТП: его подают анонимно."],
-      ["docs", "folder", "Документы компании", "Ваши прошлые заявки, анкеты, карточка предприятия. По ним заполняются реквизиты и пишутся новые документы — так же, как пишете вы."],
+      ["docs", "folder", "Образцы и реквизиты", "Ваши прошлые заявки, анкеты, карточка предприятия. По ним заполняются реквизиты и пишутся новые документы — так же, как пишете вы."],
     ];
     const num = (n) => n === "+" ? ic("plus", 14) : n === "✓" ? ic("check", 14) : n;
     return `<div class="page-col">
@@ -2090,7 +2086,7 @@
     const groups = groupSuggestions(S.suggestions);
     return `<div class="page-col">
       <p class="intro">Впишите один раз — дальше они сами попадут в анкету, декларацию, предложение о цене и подпись. В техническое предложение реквизиты не попадают никогда: его подают анонимно.</p>
-      ${sourceDocs.length ? "" : '<p class="intro">Можно не вписывать руками: загрузите анкету или карточку предприятия в <button class="link" type="button" data-go="docs">«Документы компании»</button> — реквизиты заполнятся сами.</p>'}
+      ${sourceDocs.length ? "" : '<p class="intro">Можно не вписывать руками: загрузите анкету или карточку предприятия в <button class="link" type="button" data-go="docs">«Образцы и реквизиты»</button> — реквизиты заполнятся сами.</p>'}
       ${S.ui.fillNote ? noteHTML(S.ui.fillNote.tone, esc(S.ui.fillNote.text), "", S.ui.fillNote.tone === "ok" ? "check" : "") : ""}
       ${groups.length ? `<section class="suggest" aria-labelledby="sug-title">
           <p class="suggest-head" id="sug-title">${ic("alert", 18)}В ваших документах есть другие значения — проверьте, какое верное</p>
@@ -2153,7 +2149,7 @@
         ${rep.requisites ? noteHTML("info", 'Реквизиты: в приложении они заполнятся из новых анкет и карточек сами. В прототипе файлы не читаются, поэтому <button class="link" type="button" data-go="profile">реквизиты</button> не изменились.', "", "info") : ""}
       </div>` : "";
     return `<div class="page-col">
-      <p class="intro">Загрузите всё, что подавали раньше: заявки целиком или по частям, анкеты, декларации, ценовые предложения, договоры и акты, протоколы. Приложение разложит их по видам — и новые документы будет писать так же, как ваши.</p>
+      <p class="intro">Загрузите всё, что подавали раньше: заявки целиком или по частям, анкеты, декларации, ценовые предложения, а ещё карточку предприятия. Приложение разложит их по видам — и новые документы будет писать так же, как ваши.</p>
       ${report}
       ${S.busy ? `<section class="panel"><div class="panel-body">${busyHTML()}</div></section>` : ""}
       ${groups.map(([k, list], gi) => `<section class="panel" aria-labelledby="dg-${gi}">

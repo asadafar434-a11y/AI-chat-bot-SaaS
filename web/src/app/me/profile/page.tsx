@@ -83,7 +83,7 @@ function Suggestions({ items, onAccept, onDismiss }: {
 }
 
 // Реквизиты сохраняются сами, пока их вписывают: отдельной кнопки нет, чтобы ничего не потерять.
-// Их можно не вписывать руками: они заполняются из анкет и карточки предприятия в «Документах компании».
+// Их можно не вписывать руками: они заполняются из анкет и карточки предприятия в «Образцах и реквизитах».
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [meta, setMeta] = useState<ProfileMeta>({ sources: {}, suggestions: [] });
@@ -214,7 +214,7 @@ export default function ProfilePage() {
             <p className="max-w-[70ch] px-[var(--pad)] pb-1 text-[var(--ink-2)]">
               Можно не вписывать руками: загрузите анкету или карточку предприятия в{" "}
               <Link href="/me/documents" className="link">
-                «Документы компании»
+                «Образцы и реквизиты»
               </Link>{" "}
               — реквизиты заполнятся сами.
             </p>

@@ -307,7 +307,7 @@ export default function HomePage() {
                 <DataRow
                   href="/me/documents"
                   icon={FolderIcon}
-                  title="Документы компании"
+                  title="Образцы и реквизиты"
                   sub={
                     !me
                       ? "…"

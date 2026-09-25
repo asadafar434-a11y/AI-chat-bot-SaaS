@@ -76,7 +76,7 @@ function SamplesLine({ count }: { count: number }) {
         <>
           {`Пишу по вашим техническим предложениям: ${count} ${plural(count, "документ", "документа", "документов")} из `}
           <Link href="/me/documents" className="link">
-            «Документов компании»
+            «Образцов и реквизитов»
           </Link>
           .
         </>
@@ -518,7 +518,7 @@ export default function TpPage() {
             </Link>
             , образцы — из{" "}
             <Link href="/me/documents" className="link">
-              «Документов компании»
+              «Образцов и реквизитов»
             </Link>
             . Чего там нет — выделено в Word жёлтым.
           </p>
