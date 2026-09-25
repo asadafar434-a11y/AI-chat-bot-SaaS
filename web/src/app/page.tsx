@@ -7,6 +7,7 @@ import { AlertTriangleIcon, ChevronRightIcon } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { AskBox } from "@/components/ask-box";
 import { Note } from "@/components/note";
+import { checkSummary } from "@/lib/check";
 import { byUrgency, dueLine } from "@/lib/deadline";
 import { plural } from "@/lib/plural";
 import { titleOf, upgradePurchase, type Purchase } from "@/lib/purchase";
@@ -33,6 +34,7 @@ function DueText({ purchase }: { purchase: Purchase }) {
 }
 
 const TAG_TONES = {
+  bad: "bg-[color-mix(in_oklab,var(--destructive)_14%,transparent)] text-destructive",
   warn: "bg-[var(--warn-tint)] text-[var(--warn)]",
   ok: "bg-[var(--ok-tint)] text-[var(--ok)]",
   calm: "bg-muted text-[var(--ink-2)]",
@@ -56,6 +58,12 @@ function TpTag({ purchase }: { purchase: Purchase }) {
       ТП: впишите {fill} {plural(fill, "пункт", "пункта", "пунктов")}
     </Tag>
   );
+}
+
+function CheckTag({ purchase }: { purchase: Purchase }) {
+  if (!purchase.check) return <Tag tone="calm">Заявка не проверена</Tag>;
+  const { text, tone } = checkSummary(purchase.check);
+  return <Tag tone={tone}>{tone === "ok" ? text : `Заявка: ${text}`}</Tag>;
 }
 
 // Главная — сводка: вопрос про тендеры и закупки с тем, что по каждой осталось сделать.
@@ -146,6 +154,7 @@ export default function HomePage() {
                     </span>
                     <span className="mt-1.5 flex flex-wrap gap-1.5">
                       <TpTag purchase={p} />
+                      <CheckTag purchase={p} />
                     </span>
                   </Link>
                 </li>

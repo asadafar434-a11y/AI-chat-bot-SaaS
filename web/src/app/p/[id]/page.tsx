@@ -10,6 +10,7 @@ import { Note } from "@/components/note";
 import { PageTitle } from "@/components/page-title";
 import { usePurchase } from "@/components/purchase-provider";
 import { WorkingSteps } from "@/components/working-steps";
+import { checkSummary } from "@/lib/check";
 import { dueLine } from "@/lib/deadline";
 import { plural } from "@/lib/plural";
 import { extractRequirements, fromRequirements, titleOf } from "@/lib/purchase";
@@ -21,6 +22,12 @@ const DUE_TONES = {
   soon: "bg-[var(--warn-tint)] text-[var(--warn)]",
   calm: "bg-card text-[var(--ink-2)]",
   past: "bg-card text-muted-foreground",
+};
+
+const CHECK_TONES = {
+  bad: "text-destructive",
+  warn: "text-[var(--warn)]",
+  ok: "text-[var(--ok)]",
 };
 
 const ADDING_STEPS = [
@@ -90,6 +97,13 @@ export default function PurchasePage() {
     <span className="font-semibold text-[var(--ok)]">Черновик готов</span>
   );
 
+  const checked = purchase.check && checkSummary(purchase.check);
+  const checkSub = checked ? (
+    <span className={`font-semibold ${CHECK_TONES[checked.tone]}`}>{checked.text}</span>
+  ) : (
+    "Не проверена — загрузите заявку перед подачей"
+  );
+
   return (
     <div className="flex min-h-dvh flex-col">
       <AppHeader />
@@ -141,6 +155,7 @@ export default function PurchasePage() {
                 sub={`${reqCount} ${plural(reqCount, "пункт", "пункта", "пунктов")}: кто может участвовать, что подать, сроки и деньги`}
               />
               <MenuRow href={`${base}/tp`} title="Техническое предложение" sub={tpSub} />
+              <MenuRow href={`${base}/check`} title="Проверка заявки" sub={checkSub} />
               <MenuRow
                 href={`${base}/chat`}
                 title="Вопросы по закупке"
