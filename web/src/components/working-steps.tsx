@@ -9,7 +9,7 @@ export function WorkingSteps({ steps, sub = "Обычно это занимае�
     return () => clearInterval(id);
   }, [steps.length]);
   return (
-    <div className="grid gap-2 py-8" aria-live="polite">
+    <div className="grid gap-1 py-6" aria-live="polite">
       <p className="t-section animate-pulse">{steps[step]}</p>
       <p className="text-[var(--ink-3)]">{sub}</p>
     </div>

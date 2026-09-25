@@ -56,7 +56,7 @@ export const saveProfile = (profile: Profile, meta?: ProfileMeta) =>
     if (meta) tx.objectStore(STORES.settings).put(meta, META_KEY);
   });
 
-// До «Моих документов» здесь лежали только образцы ТП — без видов.
+// До «Документов компании» здесь лежали только образцы ТП — без видов.
 const upgrade = (doc: Omit<MyDocument, "kinds" | "about"> & Partial<MyDocument>): MyDocument => ({
   ...doc,
   kinds: doc.kinds?.length ? doc.kinds : ["tp"],

@@ -41,8 +41,8 @@ type ChatFeedProps = {
 // Поле ввода прижато к низу панели, лента над ним прокручивается сама.
 export function ComposerDock({ children }: { children: ReactNode }) {
   return (
-    <div className="flex-none border-t border-[var(--line)] bg-card px-[var(--gutter)] pb-[calc(12px+env(safe-area-inset-bottom,0px))] pt-4">
-      <div className="mx-auto grid w-full max-w-[792px] gap-2">
+    <div className="flex-none border-t border-[var(--line)] bg-card px-[var(--gutter)] pb-[calc(8px+env(safe-area-inset-bottom,0px))] pt-3">
+      <div className="mx-auto grid w-full max-w-[728px] gap-1.5">
         {children}
         <p className="t-caption text-center text-[var(--ink-3)]">
           Ответы ИИ не являются юридической консультацией. Проверяйте нормы по первоисточнику.
@@ -54,7 +54,10 @@ export function ComposerDock({ children }: { children: ReactNode }) {
 
 // Рамка поля ввода AI Elements — в скруглении панели, с тонкой тенью.
 export const PROMPT_CLASS =
-  "[&_[data-slot=input-group]]:rounded-[var(--r-surface)] [&_[data-slot=input-group]]:bg-card [&_[data-slot=input-group]]:shadow-[var(--hairline)]";
+  "[&_[data-slot=input-group]]:rounded-[var(--r-card)] [&_[data-slot=input-group]]:bg-card [&_[data-slot=input-group]]:shadow-[var(--hairline)]";
+
+// Поле вопроса: 14 px и в две строки высотой; на телефоне 16 px, иначе браузер увеличивает страницу.
+export const PROMPT_TEXTAREA_CLASS = "min-h-10 text-sm pointer-coarse:text-base";
 
 // Лента вопросов и ответов — общая для чата закупки и общего чата с главной.
 export function ChatFeed({ messages, status, error, onRetry, empty }: ChatFeedProps) {
@@ -67,7 +70,7 @@ export function ChatFeed({ messages, status, error, onRetry, empty }: ChatFeedPr
       {/* Место под полосу прокрутки — только справа, иначе лента съезжает с края текста вкладок */}
       <ConversationContent
         scrollClassName="[scrollbar-gutter:stable]!"
-        className="mx-auto w-full max-w-[840px] gap-5 px-[var(--gutter)] pb-4 pt-[var(--gutter)]"
+        className="mx-auto w-full max-w-[760px] gap-4 px-[var(--gutter)] pb-3 pt-4"
       >
         {messages.length === 0 ? (
           <ConversationEmptyState className="size-auto items-start justify-start gap-4 p-0 text-left">{empty}</ConversationEmptyState>

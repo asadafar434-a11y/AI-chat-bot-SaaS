@@ -58,7 +58,7 @@ export function AskBox() {
           Спросить про тендер
         </h2>
       </div>
-      <div className="grid gap-4 p-[var(--pad)]">
+      <div className="grid gap-3 p-[var(--pad)]">
         <p className="text-[var(--ink-2)]">Отвечу по 44-ФЗ, 223-ФЗ и вашим документам — со ссылкой на статью и пункт.</p>
 
         <form
@@ -66,16 +66,16 @@ export function AskBox() {
             e.preventDefault();
             void ask(text);
           }}
-          className="flex items-end gap-1 rounded-[var(--r-surface)] border border-[var(--edge-2)] bg-card p-1 shadow-[var(--hairline)] focus-within:border-primary focus-within:shadow-[var(--focus-ring)]"
+          className="flex items-end gap-1 rounded-[var(--r-card)] border border-[var(--edge-2)] bg-card p-1 shadow-[var(--hairline)] focus-within:border-primary focus-within:shadow-[var(--focus-ring)]"
         >
           <button
             type="button"
             onClick={() => input.current?.click()}
             aria-label="Приложить документ"
             title="Приложить документ"
-            className="grid size-9 shrink-0 place-items-center rounded-full text-[var(--ink-3)] hover:bg-[var(--hover)] hover:text-foreground"
+            className="grid size-8 shrink-0 place-items-center rounded-full text-[var(--ink-3)] hover:bg-[var(--hover)] hover:text-foreground"
           >
-            <PaperclipIcon className="size-[18px]" />
+            <PaperclipIcon className="size-4" />
           </button>
           <textarea
             value={text}
@@ -84,15 +84,15 @@ export function AskBox() {
             rows={1}
             placeholder="Ваш вопрос…"
             aria-label="Вопрос"
-            className="t-doc field-sizing-content max-h-[140px] min-h-9 min-w-0 flex-1 resize-none bg-transparent py-1.5 outline-none"
+            className="t-doc field-sizing-content max-h-[140px] min-h-8 min-w-0 flex-1 resize-none bg-transparent py-1.5 outline-none pointer-coarse:text-base"
           />
           <button
             type="submit"
             disabled={reading || (!text.trim() && files.length === 0)}
             aria-label="Спросить"
-            className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground hover:bg-[var(--brand-press)] disabled:opacity-40"
+            className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground hover:bg-[var(--brand-press)] disabled:opacity-40"
           >
-            <ArrowUpIcon className="size-[18px]" />
+            <ArrowUpIcon className="size-4" />
           </button>
           <input
             ref={input}

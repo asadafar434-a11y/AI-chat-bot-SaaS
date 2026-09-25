@@ -81,11 +81,11 @@
   --warn-tint: #fbeeda;
   --danger: #cf2f24;
 
-  --r-shell: 20px;
-  --r-surface: 16px;
-  --r-card: 12px;
-  --r-bubble: 18px;
-  --r-ctl: 10px;
+  --r-shell: 16px;
+  --r-surface: 12px;
+  --r-card: 10px;
+  --r-bubble: 16px;
+  --r-ctl: 8px;
   --r-pill: 999px;
 
   /* Рабочее место: рамка с сайдбаром, холст за панелями, панели с тонкой рамкой */
@@ -105,12 +105,12 @@
   --ui: var(--font-montserrat), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: var(--font-jetbrains), ui-monospace, "SFMono-Regular", Consolas, monospace;
 
-  /* Сайдбар 256, список закупок 320, сведения 300. Поля: 24 — у экрана, 20 — внутри панелей */
-  --side-w: 256px;
-  --list-w: 320px;
-  --info-w: 300px;
-  --gutter: 24px;
-  --pad: 20px;
+  /* Плотная раскладка: сайдбар 224, список закупок 288, сведения 272; поля 16 */
+  --side-w: 224px;
+  --list-w: 288px;
+  --info-w: 272px;
+  --gutter: 16px;
+  --pad: 16px;
 
   --background: var(--canvas);
   --foreground: var(--ink);
@@ -135,7 +135,7 @@
   --chart-3: var(--warn);
   --chart-4: var(--ink-3);
   --chart-5: var(--edge-2);
-  --radius: 0.625rem;
+  --radius: 0.5rem;
   --sidebar: var(--frame);
   --sidebar-foreground: var(--ink);
   --sidebar-primary: var(--brand);
@@ -185,44 +185,45 @@
 
 @media (width < 64rem) {
   :root {
-    --gutter: 16px;
-    --pad: 16px;
+    --gutter: 12px;
+    --pad: 12px;
   }
 }
 
-/* Шкала шрифтов: пять кеглей 12 · 14 · 16 · 20 · 28, интерлиньяж кратен 4 (как в Material 3 и Carbon).
+/* Шкала шрифтов — плотная: пять кеглей 12 · 13 · 14 · 16 · 20, интерлиньяж кратен 4.
+   Интерфейс (меню, списки, кнопки) — 13, текст документов и сообщений — 14, заголовок экрана — 20.
    Иерархию ведут кегль, насыщенность и цвет вместе. Других размеров не заводить. */
 @utility t-page {
-  font: 700 28px/36px var(--display);
+  font: 700 20px/28px var(--display);
   letter-spacing: -0.02em;
 }
 @utility t-title {
-  font: 600 20px/28px var(--display);
+  font: 600 16px/24px var(--display);
   letter-spacing: -0.01em;
 }
 @utility t-section {
-  font: 600 16px/24px var(--ui);
+  font: 600 14px/20px var(--ui);
   letter-spacing: -0.01em;
 }
 @utility t-doc {
-  font: 500 16px/24px var(--ui);
-  letter-spacing: -0.01em;
-}
-@utility t-body {
   font: 500 14px/20px var(--ui);
   letter-spacing: -0.01em;
 }
 @utility t-read {
-  font: 500 14px/24px var(--ui);
-  letter-spacing: -0.01em;
-}
-@utility t-strong {
-  font: 600 14px/20px var(--ui);
-  letter-spacing: -0.01em;
-}
-@utility t-label {
   font: 500 14px/20px var(--ui);
   letter-spacing: -0.01em;
+}
+@utility t-body {
+  font: 500 13px/20px var(--ui);
+  letter-spacing: -0.005em;
+}
+@utility t-strong {
+  font: 600 13px/20px var(--ui);
+  letter-spacing: -0.005em;
+}
+@utility t-label {
+  font: 500 13px/20px var(--ui);
+  letter-spacing: -0.005em;
 }
 @utility t-caption {
   font: 500 12px/16px var(--ui);
@@ -234,7 +235,7 @@
 }
 @utility t-over {
   font: 600 12px/16px var(--ui);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 @utility t-num {
@@ -256,8 +257,8 @@
   body {
     background: var(--ground);
     color: var(--ink);
-    font: 500 14px/20px var(--ui);
-    letter-spacing: -0.01em;
+    font: 500 13px/20px var(--ui);
+    letter-spacing: -0.005em;
   }
   :focus-visible {
     outline: 2px solid var(--brand);
@@ -282,14 +283,14 @@
     flex: none;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    min-height: 40px;
-    padding-inline: 16px;
+    gap: 6px;
+    min-height: 32px;
+    padding-inline: 12px;
     border-radius: var(--r-ctl);
     background: var(--brand);
     color: var(--on-brand);
-    font: 600 14px/20px var(--ui);
-    letter-spacing: -0.01em;
+    font: 600 13px/20px var(--ui);
+    letter-spacing: -0.005em;
     text-align: center;
     white-space: nowrap;
     box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 35%, transparent), inset 0 1px 0 rgb(255 255 255 / .12);
@@ -315,14 +316,16 @@
     box-shadow: none;
   }
   .btn-lg {
-    min-height: 48px;
-    padding-inline: 24px;
-    font: 600 16px/24px var(--ui);
+    min-height: 40px;
+    padding-inline: 16px;
+    font: 600 14px/20px var(--ui);
   }
   .btn-xs {
-    min-height: 32px;
-    padding-inline: 12px;
-    border-radius: 8px;
+    min-height: 28px;
+    padding-inline: 10px;
+    border-radius: 6px;
+    font: 600 12px/16px var(--ui);
+    letter-spacing: 0;
   }
   @media (hover: hover) {
     .btn:hover:not(:disabled) {
@@ -346,8 +349,8 @@
     display: grid;
     flex: none;
     place-items: center;
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border-radius: var(--r-ctl);
     color: var(--ink-2);
   }
@@ -382,15 +385,22 @@
 
   .field {
     width: 100%;
-    height: 40px;
-    padding-inline: 12px;
+    height: 32px;
+    padding-inline: 10px;
     border: 1px solid var(--edge-2);
     border-radius: var(--r-ctl);
     outline: none;
     background: var(--card);
-    font: 500 16px/24px var(--ui);
-    letter-spacing: -0.01em;
+    font: 500 14px/20px var(--ui);
+    letter-spacing: -0.005em;
     box-shadow: var(--hairline);
+  }
+  /* На телефоне поле 16 px, иначе браузер увеличивает страницу при вводе */
+  @media (pointer: coarse) {
+    .field,
+    .field input {
+      font-size: 16px;
+    }
   }
   .field:focus,
   .field:focus-within {
@@ -412,8 +422,8 @@
     align-items: center;
     justify-content: space-between;
     gap: 4px 12px;
-    min-height: 64px;
-    padding: 16px var(--pad);
+    min-height: 48px;
+    padding: 12px var(--pad);
     border-bottom: 1px solid var(--line);
   }
 
@@ -425,71 +435,13 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Статус: пилюля с точкой */
-  .tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: var(--r-pill);
-    background: var(--paper-2);
-    color: var(--ink-2);
-    font: 600 12px/16px var(--ui);
-    letter-spacing: 0;
-    white-space: nowrap;
-  }
-  .tag::before {
-    content: "";
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: currentColor;
-    opacity: .7;
-  }
-  .tag-warn {
-    background: var(--warn-tint);
-    color: var(--warn);
-  }
-  .tag-ok {
-    background: var(--ok-tint);
-    color: var(--ok);
-  }
-  .tag-bad {
-    background: color-mix(in srgb, var(--danger) 12%, var(--card));
-    color: var(--danger);
-  }
-
-  /* Отметка у закупки: сколько пунктов ТП вписать или что ТП готово */
-  .bubble {
-    display: inline-grid;
-    place-items: center;
-    min-width: 20px;
-    height: 20px;
-    padding-inline: 6px;
-    border-radius: var(--r-pill);
-    background: var(--warn-tint);
-    color: var(--warn);
-    font: 600 12px/1 var(--mono);
-    letter-spacing: 0;
-  }
-  .bubble-ok {
-    width: 20px;
-    padding-inline: 0;
-    background: var(--ok-tint);
-    color: var(--ok);
-  }
-  .bubble-bad {
-    background: color-mix(in srgb, var(--danger) 12%, var(--card));
-    color: var(--danger);
-  }
-
   /* Значок закупки — номер закона: 44-ФЗ и 223-ФЗ различаются с первого взгляда */
   .law {
     display: grid;
     flex: none;
     place-items: center;
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
     border-radius: var(--r-ctl);
     background: var(--brand-tint);
     color: var(--brand);
@@ -505,10 +457,10 @@
     color: var(--ink-2);
   }
   .law-big {
-    width: 64px;
-    height: 64px;
+    width: 48px;
+    height: 48px;
     border-radius: var(--r-surface);
-    font: 700 20px/28px var(--mono);
+    font: 700 16px/24px var(--mono);
   }
 
   /* Ссылка на источник: чип с иконкой, нажали — под ним цитата */
@@ -540,13 +492,13 @@
 
   /* Подсказка-вопрос */
   .chip {
-    padding: 7px 14px;
+    padding: 5px 12px;
     border: 1px solid var(--edge-2);
     border-radius: var(--r-pill);
     background: var(--card);
     color: var(--ink);
-    font: 500 14px/20px var(--ui);
-    letter-spacing: -0.01em;
+    font: 500 13px/20px var(--ui);
+    letter-spacing: -0.005em;
     text-align: left;
     box-shadow: var(--hairline);
   }
@@ -563,8 +515,8 @@
     align-items: center;
     gap: 8px;
     max-width: 100%;
-    min-height: 32px;
-    padding-inline: 12px 4px;
+    min-height: 28px;
+    padding-inline: 10px 4px;
     border-radius: var(--r-pill);
     background: var(--paper-2);
     color: var(--ink);

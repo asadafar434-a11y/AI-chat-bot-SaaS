@@ -5,16 +5,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PlusIcon, SearchIcon } from "lucide-react";
 import { Note } from "@/components/note";
-import { daysText, LawBadge, TpMark } from "@/components/purchase-bits";
+import { daysText, LawBadge } from "@/components/purchase-bits";
 import { dueLine } from "@/lib/deadline";
 import { titleOf, type Purchase } from "@/lib/purchase";
 import { openSamplePurchase } from "@/lib/sample-purchase";
+import { stageOf, TONE_TEXT } from "@/lib/steps";
 import { STORAGE_ERROR } from "@/lib/use-purchases";
 
 function Days({ purchase }: { purchase: Purchase }) {
   const due = dueLine(purchase.deadline, false);
-  if (!due) return null;
-  if (due.days < 0) return <span className="t-num whitespace-nowrap text-[var(--ink-3)]">срок прошёл</span>;
+  if (!due || due.days < 0) return null;
   return (
     <span className={`t-num whitespace-nowrap ${due.tone === "soon" ? "font-semibold text-[var(--warn)]" : "text-[var(--ink-3)]"}`}>
       {due.days === 0 ? "сегодня" : daysText(due.days)}
@@ -22,7 +22,8 @@ function Days({ purchase }: { purchase: Purchase }) {
   );
 }
 
-// Список закупок как список переписок: значок закона, название, заказчик; справа — дни до подачи и отметка ТП.
+// Список закупок как список переписок: значок закона, название, заказчик и шаг, на котором закупка;
+// справа — сколько дней до подачи.
 export function PurchaseListPane({ purchases, error, openId }: { purchases: Purchase[] | null; error: boolean; openId?: string }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -44,9 +45,9 @@ export function PurchaseListPane({ purchases, error, openId }: { purchases: Purc
 
   return (
     <>
-      <div className="flex min-h-20 flex-none items-center px-[var(--pad)] py-4 max-sm:min-h-[72px]">
+      <div className="flex min-h-14 flex-none items-center px-3 py-2">
         <label className="field flex items-center gap-2 text-[var(--ink-3)]">
-          <SearchIcon className="size-4 shrink-0" />
+          <SearchIcon className="size-3.5 shrink-0" />
           <input
             type="search"
             value={query}
@@ -66,8 +67,8 @@ export function PurchaseListPane({ purchases, error, openId }: { purchases: Purc
           </div>
         )}
         {purchases?.length === 0 && (
-          <div className="grid justify-items-start gap-4 p-[var(--pad)]">
-            <p className="t-body text-[var(--ink-2)]">Закупок пока нет. Загрузите документы — выпишу требования и сроки.</p>
+          <div className="grid justify-items-start gap-3 p-[var(--pad)]">
+            <p className="text-[var(--ink-2)]">Закупок пока нет. Загрузите документы — выпишу требования и сроки.</p>
             {/* На широком экране кнопки стоят в основной панели, в списке их не повторяем */}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2 split:hidden">
               <Link href="/new" className="btn">
@@ -84,32 +85,33 @@ export function PurchaseListPane({ purchases, error, openId }: { purchases: Purc
           </div>
         )}
         {purchases && purchases.length > 0 && shown.length === 0 && (
-          <p className="t-body p-[var(--pad)] text-[var(--ink-3)]">Ничего не нашлось. Поиск идёт по названию, заказчику и закону.</p>
+          <p className="p-[var(--pad)] text-[var(--ink-3)]">Ничего не нашлось. Поиск идёт по названию, заказчику и закону.</p>
         )}
         {shown.length > 0 && (
           <ul className="divide-y divide-[var(--line)]">
             {shown.map((p) => {
               const current = p.id === openId;
+              const stage = stageOf(p);
               return (
                 <li key={p.id}>
                   <Link
                     href={`/p/${p.id}`}
                     aria-current={current ? "true" : undefined}
-                    className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 px-[var(--pad)] py-3 ${
+                    className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2.5 gap-y-0.5 px-3 py-2.5 ${
                       current ? "bg-[var(--select)]" : "hover:bg-[var(--hover)]"
                     }`}
                   >
-                    <LawBadge purchase={p} selected={current} />
-                    <span className="grid min-w-0 gap-1">
+                    <span className="row-span-2 grid">
+                      <LawBadge purchase={p} selected={current} />
+                    </span>
+                    <span className="grid min-w-0">
                       <span className="t-strong line-clamp-2">{titleOf(p)}</span>
                       <span className="t-caption truncate text-[var(--ink-3)]">
                         {[p.sample ? "пример" : "", p.customer].filter(Boolean).join(" · ") || p.kind}
                       </span>
                     </span>
-                    <span className="grid justify-items-end gap-1">
-                      <Days purchase={p} />
-                      <TpMark purchase={p} />
-                    </span>
+                    <Days purchase={p} />
+                    <span className={`t-tag col-span-2 truncate ${TONE_TEXT[stage.tone]}`}>{stage.text}</span>
                   </Link>
                 </li>
               );

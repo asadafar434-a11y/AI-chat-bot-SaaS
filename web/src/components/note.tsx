@@ -11,8 +11,8 @@ type NoteProps = { tone: keyof typeof TONES; icon?: LucideIcon; className?: stri
 
 export function Note({ tone, icon: Icon, className = "", children }: NoteProps) {
   return (
-    <div className={`flex items-start gap-3 rounded-[var(--r-card)] px-4 py-3 ${TONES[tone]} ${className}`}>
-      {Icon && <Icon className="mt-px size-[18px] shrink-0" />}
+    <div className={`flex items-start gap-2.5 rounded-[var(--r-card)] px-3 py-2.5 ${TONES[tone]} ${className}`}>
+      {Icon && <Icon className="mt-0.5 size-4 shrink-0" />}
       <div className="min-w-0">{children}</div>
     </div>
   );
@@ -29,9 +29,9 @@ export function Warnings({ items, className = "" }: { items: (string | null | fa
       ) : (
         <>
           <p>Проверьте перед подачей</p>
-          <ul className="t-body mt-1 list-disc pl-[18px]">
+          <ul className="t-body mt-0.5 list-disc pl-4">
             {list.map((text) => (
-              <li key={text} className="mt-1 first:mt-0">
+              <li key={text} className="mt-0.5 first:mt-0">
                 {text}
               </li>
             ))}

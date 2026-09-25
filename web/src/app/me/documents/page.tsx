@@ -48,7 +48,7 @@ function KindEditor({ doc, onSave, onCancel }: { doc: MyDocument; onSave: (kinds
   const [kinds, setKinds] = useState<DocKind[]>(doc.kinds);
   const toggle = (kind: DocKind) => setKinds(kinds.includes(kind) ? kinds.filter((k) => k !== kind) : [...kinds, kind]);
   return (
-    <div className="grid gap-3 pl-11 max-sm:pl-0">
+    <div className="grid gap-2.5 pl-[38px] max-sm:pl-0">
       <p className="t-strong">Что в этом файле? Можно выбрать несколько.</p>
       <div className="flex flex-wrap gap-2">
         {DOC_KIND_KEYS.map((kind) => (
@@ -80,7 +80,7 @@ function countLine(docs: MyDocument[]) {
     .join(", ");
 }
 
-// «Мои документы» — всё, что участник подавал раньше, и документы его компании. Приложение раскладывает
+// «Документы компании» — всё, что участник подавал раньше, и документы его компании. Приложение раскладывает
 // их по видам: по ТП пишутся новые ТП, по анкетам — анкеты, из анкет и карточки заполняются реквизиты.
 export default function MyDocumentsPage() {
   const [docs, setDocs] = useState<MyDocument[] | null>(null);
@@ -168,11 +168,11 @@ export default function MyDocumentsPage() {
   return (
     <>
       <PageHeader
-        title="Мои документы"
+        title="Документы компании"
         sub={
           count
-            ? `${count} ${plural(count, "документ", "документа", "документов")} · по ним пишутся анкеты, декларации и цены`
-            : "Документов пока нет"
+            ? `${count} ${plural(count, "документ", "документа", "документов")} · по ним заполняются реквизиты и пишутся новые документы`
+            : "Прошлые заявки, анкеты, карточка предприятия — по ним заполняются реквизиты и пишутся новые документы"
         }
         actions={
           <button
@@ -200,7 +200,7 @@ export default function MyDocumentsPage() {
         }}
       />
       <PageBody>
-        <div className="grid max-w-[880px] gap-4">
+        <div className="grid max-w-[880px] gap-3">
           <p className="max-w-[70ch] text-[var(--ink-2)]">
             Загрузите всё, что подавали раньше: заявки целиком или по частям, анкеты, декларации, ценовые предложения, договоры и акты, протоколы. Приложение разложит их по видам — и новые документы будет писать так же, как ваши.
           </p>
@@ -249,7 +249,7 @@ export default function MyDocumentsPage() {
 
           {stage && (
             <section className="panel px-[var(--pad)]">
-              <div className="grid gap-2 py-8" aria-live="polite">
+              <div className="grid gap-1 py-6" aria-live="polite">
                 <p className="t-section animate-pulse">{STAGE_TEXT[stage]}</p>
                 <p className="text-[var(--ink-3)]">Сканы и фото распознаются дольше — примерно минута на каждые 10 страниц.</p>
               </div>
@@ -280,10 +280,10 @@ export default function MyDocumentsPage() {
                     ...(unused ? ["не используется: образцов уже достаточно"] : []),
                   ].join(" · ");
                   return (
-                    <li key={doc.id} className="grid gap-3 px-[var(--pad)] py-4">
-                      <div className="grid grid-cols-[32px_minmax(0,1fr)] items-start gap-3">
+                    <li key={doc.id} className="grid gap-2 px-[var(--pad)] py-3">
+                      <div className="grid grid-cols-[28px_minmax(0,1fr)] items-start gap-2.5">
                         <span
-                          className={`grid size-8 place-items-center rounded-lg ${
+                          className={`grid size-7 place-items-center rounded-md ${
                             doc.scan ? "bg-[var(--warn-tint)] text-[var(--warn)]" : "bg-[var(--paper-2)] text-[var(--ink-3)]"
                           }`}
                         >
@@ -298,7 +298,7 @@ export default function MyDocumentsPage() {
                       {editing === key ? (
                         <KindEditor doc={doc} onSave={(kinds) => void saveKinds(doc, kinds)} onCancel={() => setEditing(null)} />
                       ) : confirm === key ? (
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pl-11 max-sm:pl-0">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pl-[38px] max-sm:pl-0">
                           <span>{others.length ? "Удалить файл целиком, из всех групп?" : "Удалить документ?"}</span>
                           <button type="button" onClick={() => void remove(doc.id)} className="btn btn-danger btn-xs">
                             Удалить
@@ -308,7 +308,7 @@ export default function MyDocumentsPage() {
                           </button>
                         </div>
                       ) : (
-                        <div className="flex flex-wrap gap-x-5 gap-y-1 pl-11 max-sm:pl-0">
+                        <div className="flex flex-wrap gap-x-5 gap-y-1 pl-[38px] max-sm:pl-0">
                           <button
                             type="button"
                             onClick={() => {

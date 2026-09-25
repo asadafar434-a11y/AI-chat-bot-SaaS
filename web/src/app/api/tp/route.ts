@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   const { documents = [], samples: rawSamples }: TpRequest = await request.json();
   const samples = cleanSamples(rawSamples);
   if (samples.reduce((sum, s) => sum + s.text.length, 0) > SAMPLES_LIMIT * 1.1) {
-    return fail("Образцов слишком много — удалите в «Моих документах» лишние технические предложения.", 413);
+    return fail("Образцов слишком много — удалите в «Документах компании» лишние технические предложения.", 413);
   }
   if (!process.env.ANTHROPIC_API_KEY) return fail(NO_KEY_TEXT, 503);
 

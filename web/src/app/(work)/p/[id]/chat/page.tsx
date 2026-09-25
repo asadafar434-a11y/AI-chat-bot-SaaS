@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { ChatFeed, ComposerDock, fmtChars, PROMPT_CLASS } from "@/components/chat-feed";
+import { ChatFeed, ComposerDock, fmtChars, PROMPT_CLASS, PROMPT_TEXTAREA_CLASS } from "@/components/chat-feed";
 import {
   PromptInput,
   PromptInputBody,
@@ -63,9 +63,11 @@ export default function ChatPage() {
         onRetry={() => regenerate({ body })}
         empty={
           <>
-            <div className="grid gap-2">
-              <h3 className="t-title">Спросите про эту закупку</h3>
-              <p className="max-w-[62ch] text-[var(--ink-2)]">Отвечу по документам закупки со ссылкой на пункт и статью закона.</p>
+            <div className="grid gap-1">
+              <h3 className="t-title">Вопросы по закупке</h3>
+              <p className="max-w-[62ch] text-[var(--ink-2)]">
+                Спросите о чём угодно в этой закупке — отвечу по её документам со ссылкой на пункт и статью закона.
+              </p>
               <p className="t-caption text-[var(--ink-3)]">Документы: {purchase.files.join(", ")}</p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -87,7 +89,7 @@ export default function ChatPage() {
               value={draft}
               onChange={(e) => setDraft(e.currentTarget.value)}
               placeholder="Спросите про документы закупки…"
-              className="text-base"
+              className={PROMPT_TEXTAREA_CLASS}
             />
           </PromptInputBody>
           <PromptInputFooter>

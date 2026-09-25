@@ -35,7 +35,7 @@ export default function WorkLayout({ children }: { children: ReactNode }) {
         title="Закупки"
         sub={sub}
         actions={
-          <Link href="/new" aria-label="Новая закупка" className="btn max-sm:w-10 max-sm:px-0">
+          <Link href="/new" aria-label="Новая закупка" className="btn max-sm:w-8 max-sm:px-0">
             <PlusIcon />
             <span className="max-sm:hidden">Новая закупка</span>
           </Link>

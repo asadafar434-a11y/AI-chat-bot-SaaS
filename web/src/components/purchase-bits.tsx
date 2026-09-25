@@ -1,9 +1,7 @@
-import { AlertTriangleIcon, CheckIcon, ClockIcon, FileTextIcon } from "lucide-react";
-import { checkCounts, checkSummary } from "@/lib/check";
+import { AlertTriangleIcon, ClockIcon, FileTextIcon } from "lucide-react";
 import type { Due } from "@/lib/deadline";
 import { plural } from "@/lib/plural";
 import type { Purchase } from "@/lib/purchase";
-import { fillCount } from "@/lib/tp";
 
 export const daysText = (n: number) => `${n} ${plural(n, "день", "дня", "дней")}`;
 
@@ -24,62 +22,6 @@ export function LawBadge({ purchase, big = false, selected = false }: { purchase
       {law || "—"}
     </span>
   );
-}
-
-// Отметка у закупки: сколько пунктов осталось вписать в ТП или что ТП готово.
-export function TpMark({ purchase }: { purchase: Purchase }) {
-  if (!purchase.tp) return null;
-  const fill = fillCount(purchase.tp);
-  if (fill) {
-    return (
-      <span className="bubble" title={`В ТП впишите ${fill} ${plural(fill, "пункт", "пункта", "пунктов")}`}>
-        {fill}
-        <span className="sr-only"> — впишите данные в ТП</span>
-      </span>
-    );
-  }
-  return (
-    <span className="bubble bubble-ok" title="ТП готово">
-      <CheckIcon className="size-3" />
-      <span className="sr-only">ТП готово</span>
-    </span>
-  );
-}
-
-// Состояние ТП пилюлей — в списках, где есть место для слов.
-export function TpTag({ purchase }: { purchase: Purchase }) {
-  if (!purchase.tp) return <span className="tag">ТП не составлено</span>;
-  const fill = fillCount(purchase.tp);
-  if (!fill) return <span className="tag tag-ok">ТП готово</span>;
-  return <span className="tag tag-warn">ТП: впишите {fill} {plural(fill, "пункт", "пункта", "пунктов")}</span>;
-}
-
-// Итог проверки заявки у вкладки: число ошибок красным, замечаний — янтарём, галочка — если чисто.
-export function CheckMark({ purchase }: { purchase: Purchase }) {
-  if (!purchase.check) return null;
-  const { bad, warn } = checkCounts(purchase.check);
-  const { text } = checkSummary(purchase.check);
-  if (!bad && !warn) {
-    return (
-      <span className="bubble bubble-ok" title="Ошибок нет">
-        <CheckIcon className="size-3" />
-        <span className="sr-only">ошибок нет</span>
-      </span>
-    );
-  }
-  return (
-    <span className={`bubble ${bad ? "bubble-bad" : ""}`} title={`Заявка: ${text}`}>
-      {bad || warn}
-      <span className="sr-only"> — заявка: {text}</span>
-    </span>
-  );
-}
-
-// Итог проверки пилюлей — в списке закупок на главной.
-export function CheckTag({ purchase }: { purchase: Purchase }) {
-  if (!purchase.check) return <span className="tag">Заявка не проверена</span>;
-  const { text, tone } = checkSummary(purchase.check);
-  return <span className={`tag tag-${tone}`}>{tone === "ok" ? text : `Заявка: ${text}`}</span>;
 }
 
 const DUE_TONES = {

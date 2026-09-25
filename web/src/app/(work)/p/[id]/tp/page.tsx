@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangleIcon, CheckIcon, PencilIcon } from "lucide-react";
+import { AlertTriangleIcon, ArrowRightIcon, CheckIcon, PencilIcon } from "lucide-react";
 import { Note, Warnings } from "@/components/note";
 import { scrollToTop } from "@/components/page-header";
 import { SourceQuote } from "@/components/purchase-bits";
@@ -75,7 +75,7 @@ function SamplesLine({ count }: { count: number }) {
         <>
           {`Пишу по вашим техническим предложениям: ${count} ${plural(count, "документ", "документа", "документов")} из `}
           <Link href="/me/documents" className="link">
-            «Моих документов»
+            «Документов компании»
           </Link>
           .
         </>
@@ -122,7 +122,7 @@ function PriceBlock({ tp, price, nmck, onChange }: {
   const percent = drop !== null ? drop.toLocaleString("ru-RU", { maximumFractionDigits: 1 }) : "";
 
   return (
-    <section className="mt-6 grid gap-2 rounded-[var(--r-card)] bg-[var(--paper-2)] px-[var(--pad)] py-4">
+    <section className="mt-4 grid gap-1.5 rounded-[var(--r-card)] bg-[var(--paper-2)] px-3 py-3">
       <label htmlFor="tp-price" className="t-strong">
         Цена вашего предложения
       </label>
@@ -304,9 +304,9 @@ export default function TpPage() {
         {working ? (
           <WorkingSteps steps={WORKING_STEPS} />
         ) : (
-          <div className="grid justify-items-start gap-4">
-            <p className="t-body max-w-[64ch] text-[var(--ink-2)]">
-              Найду в документах форму заявки и заполню её, как тендерный юрист: товары с конкретными характеристиками, предложение по пунктам ТЗ, цена. Вам останется вписать то, что знаете только вы.
+          <div className="grid justify-items-start gap-3">
+            <p className="max-w-[70ch] text-[var(--ink-2)]">
+              Шаг 2 — техническое предложение. Найду в документах форму заявки и заполню её, как тендерный юрист: товары с конкретными характеристиками, предложение по пунктам ТЗ, цена. Вам останется вписать то, что знаете только вы.
             </p>
             {!purchase.sample && <SamplesLine count={usedSamples.length} />}
             {error && (
@@ -314,7 +314,7 @@ export default function TpPage() {
                 {error}
               </Note>
             )}
-            <button type="button" onClick={() => void compose()} className="btn btn-lg mt-1">
+            <button type="button" onClick={() => void compose()} className="btn btn-lg">
               Составить черновик
             </button>
           </div>
@@ -337,14 +337,14 @@ export default function TpPage() {
   return (
     <>
       <TabBody>
-        <p className="t-body max-w-[64ch] text-[var(--ink-2)]">
+        <p className="max-w-[70ch] text-[var(--ink-2)]">
           {tp.form.source
             ? `По форме заказчика: ${tp.form.title} (${tp.form.source}). Каждая часть заявки — отдельным файлом.`
             : "Формы заявки в документах нет — составлено как техническое предложение по пунктам ТЗ."}{" "}
           Техническое предложение идёт в первую часть заявки, поэтому в нём нет ни названия, ни ИНН, ни подписи участника.
         </p>
 
-        <div className="mt-6 grid gap-2">
+        <div className="mt-4 grid gap-2">
           {fill ? (
             <Note tone="warn" icon={PencilIcon}>
               {`Впишите свои данные в ${fill} ${plural(fill, "пункт", "пункта", "пунктов")} — они выделены жёлтым. Нажмите на текст, чтобы исправить.`}
@@ -375,11 +375,11 @@ export default function TpPage() {
         )}
 
         {tp.goods.length > 0 && (
-          <section className="mt-6">
-            <h3 className="t-over mb-2 text-[var(--ink-3)]">Товары и оборудование — {tp.goods.length}</h3>
+          <section className="mt-5">
+            <h3 className="t-over mb-1.5 text-[var(--ink-3)]">Товары и оборудование — {tp.goods.length}</h3>
             <ol className="divide-y divide-[var(--line)] border-y border-[var(--line)]">
               {tp.goods.map((g, i) => (
-                <li key={i} className="grid gap-2 py-4">
+                <li key={i} className="grid gap-1.5 py-3">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                     <h4 className="t-section">
                       {i + 1}. {g.name}
@@ -403,11 +403,11 @@ export default function TpPage() {
         )}
 
         {tp.items.length > 0 && (
-          <section className="mt-6">
-            <h3 className="t-over mb-2 text-[var(--ink-3)]">Предложение по пунктам ТЗ — {tp.items.length}</h3>
+          <section className="mt-5">
+            <h3 className="t-over mb-1.5 text-[var(--ink-3)]">Предложение по пунктам ТЗ — {tp.items.length}</h3>
             <ol className="divide-y divide-[var(--line)] border-y border-[var(--line)]">
               {tp.items.map((it, i) => (
-                <li key={i} className="grid gap-2 py-4">
+                <li key={i} className="grid gap-1.5 py-3">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                     <h4 className="t-section">
                       {i + 1}. {it.topic}
@@ -432,9 +432,9 @@ export default function TpPage() {
           </section>
         )}
 
-        <div className="mt-5">
+        <div className="mt-4">
           {confirmRedo ? (
-            <div className="grid gap-3 rounded-[var(--r-card)] bg-[var(--paper-2)] p-4">
+            <div className="grid gap-2.5 rounded-[var(--r-card)] bg-[var(--paper-2)] p-3">
               <p className="t-strong">Составить черновик заново? Ваши правки в этом черновике пропадут.</p>
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={() => void compose()} className="btn btn-xs">
@@ -460,8 +460,8 @@ export default function TpPage() {
           )}
         </div>
 
-        <section className="mt-6">
-          <h3 className="t-over mb-2 text-[var(--ink-3)]">Остальные части заявки — отдельными файлами</h3>
+        <section className="mt-5">
+          <h3 className="t-over mb-1.5 text-[var(--ink-3)]">Остальные части заявки — отдельными файлами</h3>
           <ul className="divide-y divide-[var(--line)] border-y border-[var(--line)]">
             {partsOf(tp.form)
               .filter((part): part is PartKey => part !== "tp")
@@ -483,7 +483,7 @@ export default function TpPage() {
                             ? `составлю по вашему образцу «${samples[0].name}»${samples.length > 1 ? ` и ещё ${samples.length - 1}` : ""}`
                             : "ваших образцов нет — составлю по форме заказчика";
                 return (
-                  <li key={part} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 py-3 max-sm:grid-cols-1">
+                  <li key={part} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-0.5 py-2.5 max-sm:grid-cols-1">
                     <span className="t-strong">{PART_TITLES[part]}</span>
                     <button
                       type="button"
@@ -513,14 +513,14 @@ export default function TpPage() {
                 );
               })}
           </ul>
-          <p className="mt-3 text-[var(--ink-3)]">
+          <p className="mt-2 text-[var(--ink-3)]">
             Реквизиты берутся из{" "}
             <Link href="/me/profile" className="link">
               «Реквизитов»
             </Link>
             , образцы — из{" "}
             <Link href="/me/documents" className="link">
-              «Моих документов»
+              «Документов компании»
             </Link>
             . Чего там нет — выделено в Word жёлтым.
           </p>
@@ -532,15 +532,21 @@ export default function TpPage() {
         </section>
       </TabBody>
 
-      <div className="sticky bottom-0 z-[5] mt-auto grid gap-2 border-t border-[var(--line)] bg-[color-mix(in_srgb,var(--card)_92%,transparent)] px-[var(--gutter)] pb-[calc(16px+env(safe-area-inset-bottom,0px))] pt-4 backdrop-blur-[6px]">
-        <button
-          type="button"
-          onClick={() => void download(tp, "tp")}
-          disabled={downloading !== null}
-          className="btn justify-self-start max-sm:justify-self-stretch"
-        >
-          {downloading === "tp" ? "Собираю файл…" : "Скачать техническое предложение"}
-        </button>
+      <div className="sticky bottom-0 z-[5] mt-auto grid gap-2 border-t border-[var(--line)] bg-[color-mix(in_srgb,var(--card)_92%,transparent)] px-[var(--gutter)] pb-[calc(12px+env(safe-area-inset-bottom,0px))] pt-3 backdrop-blur-[6px]">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void download(tp, "tp")}
+            disabled={downloading !== null}
+            className="btn max-sm:flex-1"
+          >
+            {downloading === "tp" ? "Собираю файл…" : "Скачать техническое предложение"}
+          </button>
+          <Link href={`/p/${purchase.id}/check`} className="btn btn-line max-sm:flex-1">
+            Дальше: проверка заявки
+            <ArrowRightIcon />
+          </Link>
+        </div>
         {downloadError && <p className="t-strong text-destructive">{downloadError}</p>}
       </div>
     </>

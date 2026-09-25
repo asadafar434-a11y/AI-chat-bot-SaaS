@@ -46,9 +46,9 @@ function Suggestions({ items, onAccept, onDismiss }: {
   onDismiss: (group: FoundField[]) => void;
 }) {
   return (
-    <section className="grid gap-3 rounded-[var(--r-card)] bg-[var(--warn-tint)] px-[var(--pad)] py-4">
+    <section className="grid gap-2.5 rounded-[var(--r-card)] bg-[var(--warn-tint)] px-3 py-3">
       <p className="t-strong flex items-center gap-2 text-[var(--warn)]">
-        <AlertTriangleIcon className="size-[18px] shrink-0" />
+        <AlertTriangleIcon className="size-4 shrink-0" />
         В ваших документах есть другие значения — проверьте, какое верное
       </p>
       <ul className="grid gap-3">
@@ -82,7 +82,7 @@ function Suggestions({ items, onAccept, onDismiss }: {
 }
 
 // Реквизиты сохраняются сами, пока их вписывают: отдельной кнопки нет, чтобы ничего не потерять.
-// Их можно не вписывать руками: они заполняются из анкет и карточки предприятия в «Моих документах».
+// Их можно не вписывать руками: они заполняются из анкет и карточки предприятия в «Документах компании».
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [meta, setMeta] = useState<ProfileMeta>({ sources: {}, suggestions: [] });
@@ -180,7 +180,7 @@ export default function ProfilePage() {
     <>
       <PageHeader
         title="Реквизиты"
-        sub={`Заполнено ${profile ? filledCount(profile) : 0} из ${PROFILE_KEYS.length} · попадают в анкету, декларацию и цену`}
+        sub={`Данные компании для анкеты, декларации и цены · заполнено ${profile ? filledCount(profile) : 0} из ${PROFILE_KEYS.length}`}
         actions={
           <>
             <span
@@ -205,7 +205,7 @@ export default function ProfilePage() {
         }
       />
       <PageBody>
-        <div className="grid max-w-[880px] gap-4">
+        <div className="grid max-w-[880px] gap-3">
           <p className="max-w-[70ch] text-[var(--ink-2)]">
             Впишите один раз — дальше они сами попадут в анкету, декларацию, предложение о цене и подпись. В техническое предложение реквизиты не попадают никогда: его подают анонимно.
           </p>
@@ -213,7 +213,7 @@ export default function ProfilePage() {
             <p className="max-w-[70ch] text-[var(--ink-2)]">
               Можно не вписывать руками: загрузите анкету или карточку предприятия в{" "}
               <Link href="/me/documents" className="link">
-                «Мои документы»
+                «Документы компании»
               </Link>{" "}
               — реквизиты заполнятся сами.
             </p>
@@ -249,7 +249,7 @@ export default function ProfilePage() {
                   {group.fields.map((field) => (
                     <div
                       key={field.key}
-                      className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-center gap-x-6 gap-y-1 px-[var(--pad)] py-3 max-sm:grid-cols-1"
+                      className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-center gap-x-4 gap-y-1 px-[var(--pad)] py-2 max-sm:grid-cols-1"
                     >
                       <label htmlFor={`pf-${field.key}`} className="text-[var(--ink-2)]">
                         {field.label}

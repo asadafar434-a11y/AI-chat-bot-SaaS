@@ -58,15 +58,15 @@ export default function NewPurchasePage() {
 
   return (
     <>
-      <PageHeader title="Новая закупка" sub="Извещение, ТЗ и проект контракта — PDF, Word, сканы и фото" />
+      <PageHeader title="Новая закупка" sub="Начало пути: загрузите документы — дальше шаги подскажут, что делать" />
       <PageBody>
         <section className="panel max-w-[880px] p-[var(--pad)]">
           {working ? (
             <WorkingSteps steps={WORKING_STEPS} />
           ) : (
-            <div className="grid gap-4">
+            <div className="grid gap-3">
               <p className="max-w-[70ch] text-[var(--ink-2)]">
-                Загрузите извещение, ТЗ и проект контракта — выпишу требования и сроки, а потом помогу с техническим предложением.
+                Загрузите извещение, ТЗ и проект контракта — выпишу требования и сроки. Потом закупка откроется на шаге 1 «Требования», а дальше будут техническое предложение и проверка заявки.
               </p>
               {error && (
                 <Note tone="warn" icon={AlertTriangleIcon}>

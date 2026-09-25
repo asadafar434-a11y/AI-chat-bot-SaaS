@@ -5,7 +5,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { FileTextIcon, PaperclipIcon, XIcon } from "lucide-react";
 import { SUGGESTIONS } from "@/components/ask-box";
-import { ChatFeed, ComposerDock, fmtChars, PROMPT_CLASS } from "@/components/chat-feed";
+import { ChatFeed, ComposerDock, fmtChars, PROMPT_CLASS, PROMPT_TEXTAREA_CLASS } from "@/components/chat-feed";
 import { PageBody, PageHeader } from "@/components/page-header";
 import {
   PromptInput,
@@ -139,7 +139,7 @@ export default function GeneralChatPage() {
 
   return (
     <>
-      <PageHeader title="Спросить про тендер" sub="Ответы по 44-ФЗ и 223-ФЗ в действующей редакции — со ссылкой на статью" />
+      <PageHeader title="Спросить про тендер" sub="Общие вопросы по 44-ФЗ и 223-ФЗ — ответ со ссылкой на статью" />
       <PageBody fill>
         <section
           aria-label="Разговор"
@@ -152,10 +152,13 @@ export default function GeneralChatPage() {
             onRetry={() => regenerate({ body: requestBody(documents) })}
             empty={
               <>
-                <div className="grid gap-2">
-                  <h2 className="t-title">Задайте вопрос по закупкам</h2>
+                <div className="grid gap-1">
+                  <h2 className="t-title">Общий вопрос по 44-ФЗ и 223-ФЗ</h2>
                   <p className="max-w-[62ch] text-[var(--ink-2)]">
-                    Отвечу по 44-ФЗ и 223-ФЗ со ссылкой на статью. Приложите документ — отвечу и по нему.
+                    Отвечу со ссылкой на статью закона. Приложите документ — отвечу и по нему.
+                  </p>
+                  <p className="t-caption max-w-[62ch] text-[var(--ink-3)]">
+                    Вопрос про конкретную закупку задайте внутри неё, в «Вопросах» — отвечу по её документам.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -205,7 +208,7 @@ export default function GeneralChatPage() {
                   value={draft}
                   onChange={(e) => setDraft(e.currentTarget.value)}
                   placeholder={documents.length > 0 ? "Спросите про приложенные документы…" : "Задайте вопрос по закупкам…"}
-                  className="text-base"
+                  className={PROMPT_TEXTAREA_CLASS}
                 />
               </PromptInputBody>
               <PromptInputFooter>

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Warnings } from "@/components/note";
 import { SourceQuote } from "@/components/purchase-bits";
 import { usePurchase } from "@/components/purchase-provider";
-import { TabBody } from "@/components/purchase-view";
+import { NextStep, TabBody } from "@/components/purchase-view";
 import { plural } from "@/lib/plural";
 import { scanWarning } from "@/lib/read-documents";
 import { REQ_GROUP_KEYS, type ReqGroupKey } from "@/lib/requirements";
@@ -37,12 +37,12 @@ export default function RequirementsPage() {
 
   return (
     <TabBody>
-      <p className="t-body mb-6 max-w-[64ch] text-[var(--ink-2)]">
-        Всё, что нужно для заявки, — из документов закупки. Нажмите на ссылку под пунктом, чтобы увидеть точную цитату.
+      <p className="mb-4 max-w-[70ch] text-[var(--ink-2)]">
+        Шаг 1 — разобраться, подходит ли вам закупка и что подать. Всё выписано из документов закупки; нажмите на ссылку под пунктом, чтобы увидеть точную цитату.
       </p>
 
       <Warnings
-        className="mb-6"
+        className="mb-4"
         items={[
           unreadable.length > 0 &&
             `Не получилось прочитать: ${unreadable.map((f) => `${f.name} — ${f.reason}`).join("; ")}. Требования выписаны по остальным файлам.`,
@@ -55,17 +55,17 @@ export default function RequirementsPage() {
       {REQ_GROUP_KEYS.map((key) => {
         const items = requirements[key];
         return (
-          <section key={key} className="mt-6 first-of-type:mt-0">
-            <h3 className="t-over mb-2 text-[var(--ink-3)]">{GROUPS[key].title}</h3>
+          <section key={key} className="mt-5 first-of-type:mt-0">
+            <h3 className="t-over mb-1.5 text-[var(--ink-3)]">{GROUPS[key].title}</h3>
             {items.length === 0 ? (
-              <p className="t-body border-y border-[var(--line)] py-3 text-[var(--ink-3)]">{GROUPS[key].empty}</p>
+              <p className="border-y border-[var(--line)] py-2.5 text-[var(--ink-3)]">{GROUPS[key].empty}</p>
             ) : (
               <ul className="divide-y divide-[var(--line)] border-y border-[var(--line)]">
                 {items.map((it, i) => {
                   const id = `${key}-${i}`;
                   return (
-                    <li key={id} className="grid gap-1.5 py-3">
-                      <span>{it.text}</span>
+                    <li key={id} className="grid gap-1 py-2.5">
+                      <span className="t-read">{it.text}</span>
                       <SourceQuote
                         source={it.source || "цитата"}
                         quote={it.quote}
@@ -82,6 +82,8 @@ export default function RequirementsPage() {
           </section>
         );
       })}
+
+      <NextStep from="req" />
     </TabBody>
   );
 }

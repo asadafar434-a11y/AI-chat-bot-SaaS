@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ChevronRightIcon,
+  CircleHelpIcon,
   FolderIcon,
   HouseIcon,
   ListIcon,
@@ -37,13 +38,13 @@ function NavItem({ href, icon: Icon, current, count, first, children }: {
       href={href}
       aria-current={current ? "page" : undefined}
       data-autofocus={first || undefined}
-      className={`flex min-h-10 items-center gap-3 rounded-[var(--r-ctl)] px-3 py-2.5 ${
+      className={`flex min-h-8 items-center gap-2.5 rounded-[var(--r-ctl)] px-2.5 py-1.5 ${
         current
           ? "t-strong bg-primary text-primary-foreground shadow-[0_1px_2px_color-mix(in_srgb,var(--brand)_40%,transparent)]"
           : "t-label text-[var(--ink-2)] hover:bg-[var(--hover)] hover:text-foreground"
       }`}
     >
-      <Icon className={`size-[18px] shrink-0 ${current ? ON_BRAND_SOFT : "text-[var(--ink-3)]"}`} />
+      <Icon className={`size-4 shrink-0 ${current ? ON_BRAND_SOFT : "text-[var(--ink-3)]"}`} />
       <span className="min-w-0 truncate">{children}</span>
       {count !== undefined && <span className={`count ml-auto ${current ? ON_BRAND_SOFT : ""}`}>{count}</span>}
     </Link>
@@ -65,9 +66,9 @@ function MemberCard({ profile, current }: { profile: Profile; current: boolean }
       href="/me/profile"
       aria-label={`Реквизиты: ${name}`}
       aria-current={current ? "page" : undefined}
-      className="grid grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 rounded-[var(--r-ctl)] p-2 hover:bg-[var(--hover)]"
+      className="grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-2.5 rounded-[var(--r-ctl)] p-1.5 hover:bg-[var(--hover)]"
     >
-      <span aria-hidden className="grid size-9 place-items-center rounded-full bg-[var(--brand-tint)] text-xs font-bold text-primary">
+      <span aria-hidden className="grid size-7 place-items-center rounded-full bg-[var(--brand-tint)] text-xs font-bold text-primary">
         {initials(name)}
       </span>
       <span className="grid min-w-0">
@@ -79,7 +80,18 @@ function MemberCard({ profile, current }: { profile: Profile; current: boolean }
   );
 }
 
-// Сайдбар: только разделы и карточка участника внизу. Закупки открываются в своём разделе.
+function Group({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+  return (
+    <section aria-labelledby={id}>
+      <h2 id={id} className="t-over mx-2.5 mb-1 text-[var(--ink-3)]">
+        {title}
+      </h2>
+      <div className="grid gap-px">{children}</div>
+    </section>
+  );
+}
+
+// Сайдбар: разделы по смыслу — работа с закупками, данные компании, помощь; внизу карточка участника.
 export function SideNav({ onClose }: { onClose: () => void }) {
   const pathname = usePathname();
   const [data, setData] = useState<SideData | null>(null);
@@ -100,24 +112,24 @@ export function SideNav({ onClose }: { onClose: () => void }) {
     };
   }, []);
 
-  const inPurchases = pathname === "/purchases" || pathname.startsWith("/p/");
+  const inPurchases = pathname === "/purchases" || pathname.startsWith("/p/") || pathname === "/new";
 
   return (
     <>
-      <div className="flex min-h-20 flex-none items-center gap-2 py-4 pl-[var(--pad)] pr-3">
-        <Link href="/" aria-label="Тендерный юрист — на главную" className="inline-flex min-w-0 items-center gap-3">
-          <span className="grid size-9 flex-none place-items-center rounded-[var(--r-ctl)] bg-primary text-primary-foreground shadow-[inset_0_-2px_0_rgb(0_0_0/.12)]">
+      <div className="flex min-h-14 flex-none items-center gap-2 py-2.5 pl-[var(--pad)] pr-2">
+        <Link href="/" aria-label="Тендерный юрист — на главную" className="inline-flex min-w-0 items-center gap-2.5">
+          <span className="grid size-7 flex-none place-items-center rounded-[var(--r-ctl)] bg-primary text-primary-foreground shadow-[inset_0_-2px_0_rgb(0_0_0/.12)]">
             <ScaleIcon className="size-4" />
           </span>
-          <span className="font-heading text-base leading-5 font-bold tracking-[-0.01em]">Тендерный юрист</span>
+          <span className="font-heading text-sm leading-5 font-bold tracking-[-0.01em]">Тендерный юрист</span>
         </Link>
         <button type="button" onClick={onClose} aria-label="Закрыть меню" className="icon-btn ml-auto lg:hidden">
-          <XIcon className="size-5" />
+          <XIcon className="size-4" />
         </button>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain px-3 pb-4 pt-2">
-        <nav aria-label="Разделы" className="grid gap-0.5">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-2 pb-3 pt-1">
+        <nav aria-label="Разделы" className="grid gap-px">
           <NavItem href="/" icon={HouseIcon} current={pathname === "/"} first>
             Главная
           </NavItem>
@@ -129,27 +141,28 @@ export function SideNav({ onClose }: { onClose: () => void }) {
           </NavItem>
         </nav>
 
-        <section aria-labelledby="side-me">
-          <h2 id="side-me" className="t-over mx-3 mb-1 text-[var(--ink-3)]">
-            Мои данные
-          </h2>
-          <div className="grid gap-0.5">
-            <NavItem
-              href="/me/profile"
-              icon={UserRoundIcon}
-              current={pathname === "/me/profile"}
-              count={data ? `${filledCount(data.profile)}/${PROFILE_KEYS.length}` : undefined}
-            >
-              Реквизиты
-            </NavItem>
-            <NavItem href="/me/documents" icon={FolderIcon} current={pathname === "/me/documents"} count={data?.docs}>
-              Мои документы
-            </NavItem>
-          </div>
-        </section>
+        <Group id="side-me" title="Данные компании">
+          <NavItem
+            href="/me/profile"
+            icon={UserRoundIcon}
+            current={pathname === "/me/profile"}
+            count={data ? `${filledCount(data.profile)}/${PROFILE_KEYS.length}` : undefined}
+          >
+            Реквизиты
+          </NavItem>
+          <NavItem href="/me/documents" icon={FolderIcon} current={pathname === "/me/documents"} count={data?.docs}>
+            Документы компании
+          </NavItem>
+        </Group>
+
+        <div className="mt-auto grid gap-px">
+          <NavItem href="/help" icon={CircleHelpIcon} current={pathname === "/help"}>
+            Как это работает
+          </NavItem>
+        </div>
       </div>
 
-      <div className="min-h-[77px] flex-none border-t border-[var(--line)] p-3">
+      <div className="min-h-[57px] flex-none border-t border-[var(--line)] p-2">
         {data && <MemberCard profile={data.profile} current={pathname === "/me/profile"} />}
       </div>
     </>

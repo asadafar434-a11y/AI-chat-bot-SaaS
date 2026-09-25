@@ -7,7 +7,7 @@ import { FileDrop } from "@/components/file-drop";
 import { Note, Warnings } from "@/components/note";
 import { scrollToTop } from "@/components/page-header";
 import { usePurchase } from "@/components/purchase-provider";
-import { TabBody } from "@/components/purchase-view";
+import { NextStep, TabBody } from "@/components/purchase-view";
 import { WorkingSteps } from "@/components/working-steps";
 import { checkCounts, docsKeyOf, type CheckFinding, type CheckResponse, type CheckResult } from "@/lib/check";
 import { sampleCheck } from "@/lib/check-sample";
@@ -29,26 +29,26 @@ const Warning = ({ children }: { children: string }) => (
   </p>
 );
 
-const ICON = "grid size-7 place-items-center rounded-full";
+const ICON = "grid size-6 place-items-center rounded-full";
 
 function Finding({ finding: f, open, onToggle }: { finding: CheckFinding; open: boolean; onToggle: () => void }) {
   const bad = f.kind === "bad";
   return (
-    <li className="grid grid-cols-[28px_minmax(0,1fr)] gap-3 py-4">
+    <li className="grid grid-cols-[24px_minmax(0,1fr)] gap-2.5 py-3">
       <span
         aria-hidden
         className={`${ICON} ${
           bad ? "bg-[color-mix(in_srgb,var(--danger)_12%,var(--card))] text-destructive" : "t-strong bg-[var(--warn-tint)] text-[var(--warn)]"
         }`}
       >
-        {bad ? <XIcon className="size-4" /> : "!"}
+        {bad ? <XIcon className="size-3.5" /> : "!"}
       </span>
-      <div className="grid min-w-0 gap-1.5">
-        <p className="t-strong">
+      <div className="grid min-w-0 gap-1">
+        <p className="t-section">
           <span className="sr-only">{bad ? "Ошибка: " : "Замечание: "}</span>
           {f.what}
         </p>
-        <p className="text-[var(--ink-2)]">{f.todo}</p>
+        <p className="t-read text-[var(--ink-2)]">{f.todo}</p>
         {(f.quote || f.inApplication) && (
           <button type="button" aria-expanded={open} onClick={onToggle} className="src">
             <FileTextIcon className="size-3" />
@@ -56,14 +56,14 @@ function Finding({ finding: f, open, onToggle }: { finding: CheckFinding; open: 
           </button>
         )}
         {open && (
-          <div className="t-read mt-1 grid gap-2">
+          <div className="t-read mt-0.5 grid gap-1.5">
             {f.quote && (
-              <blockquote className="rounded-[var(--r-card)] bg-[var(--paper-2)] px-4 py-3">
+              <blockquote className="rounded-[var(--r-card)] bg-[var(--paper-2)] px-3 py-2">
                 <span className="text-[var(--ink-3)]">В документах закупки: </span>«{f.quote}»
               </blockquote>
             )}
             {f.inApplication && (
-              <blockquote className="rounded-[var(--r-card)] bg-[var(--paper-2)] px-4 py-3">
+              <blockquote className="rounded-[var(--r-card)] bg-[var(--paper-2)] px-3 py-2">
                 <span className="text-[var(--ink-3)]">В заявке: </span>«{f.inApplication}»
               </blockquote>
             )}
@@ -168,8 +168,8 @@ export default function CheckPage() {
     return (
       <TabBody>
         <div className="grid gap-4">
-          <p className="max-w-[64ch] text-[var(--ink-2)]">
-            Загрузите заявку или техническое предложение, которые собираетесь подавать. Сверю их с извещением и ТЗ по каждому пункту и скажу, за что могут отклонить.
+          <p className="max-w-[70ch] text-[var(--ink-2)]">
+            Шаг 3 — перед подачей. Загрузите заявку или техническое предложение, которые собираетесь подавать: сверю их с извещением и ТЗ по каждому пункту и скажу, за что могут отклонить.
           </p>
           {error && (
             <Note tone="warn" icon={AlertTriangleIcon}>
@@ -192,12 +192,12 @@ export default function CheckPage() {
   return (
     <TabBody>
       <h3 className="t-title">{title}</h3>
-      <p className="mt-2 max-w-[64ch] text-[var(--ink-2)]">{lead}</p>
-      <p className="t-caption mt-2 text-[var(--ink-3)]">
+      <p className="mt-1 max-w-[70ch] text-[var(--ink-2)]">{lead}</p>
+      <p className="t-caption mt-1 text-[var(--ink-3)]">
         Проверено: {check.files.join(", ")} · {when(check.checkedAt)}
       </p>
 
-      <div className="mt-6 grid gap-2 empty:hidden">
+      <div className="mt-4 grid gap-2 empty:hidden">
         {purchase.sample && <Note tone="info">Это пример: проверена вымышленная заявка к вымышленной закупке.</Note>}
         <Warnings
           items={[
@@ -208,14 +208,14 @@ export default function CheckPage() {
         />
       </div>
 
-      <ul className="mt-6 divide-y divide-[var(--line)] border-y border-[var(--line)]">
+      <ul className="mt-4 divide-y divide-[var(--line)] border-y border-[var(--line)]">
         {check.findings.map((f, i) => (
           <Finding key={i} finding={f} open={open === i} onToggle={() => setOpen(open === i ? null : i)} />
         ))}
         {check.okCount > 0 && (
-          <li className="grid grid-cols-[28px_minmax(0,1fr)] items-center gap-3 py-4">
+          <li className="grid grid-cols-[24px_minmax(0,1fr)] items-center gap-2.5 py-3">
             <span aria-hidden className={`${ICON} bg-[var(--ok-tint)] text-[var(--ok)]`}>
-              <CheckIcon className="size-4" />
+              <CheckIcon className="size-3.5" />
             </span>
             <p className="t-strong text-[var(--ok)]">
               {check.findings.length ? "Остальные" : "Все"} {check.okCount} {plural(check.okCount, "пункт", "пункта", "пунктов")} — в порядке.
@@ -224,9 +224,15 @@ export default function CheckPage() {
         )}
       </ul>
 
-      <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3">
-        <button type="button" onClick={() => (purchase.sample ? void run([]) : input.current?.click())} className="btn">
-          Проверить другой файл
+      <NextStep from="check" />
+
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <button
+          type="button"
+          onClick={() => (purchase.sample ? void run([]) : input.current?.click())}
+          className={`btn ${check.findings.length ? "" : "btn-line"}`}
+        >
+          {check.findings.length ? "Проверить исправленный файл" : "Проверить другой файл"}
         </button>
         <Link href={`/p/${purchase.id}/chat`} className="link">
           Сомневаетесь — спросите по закупке

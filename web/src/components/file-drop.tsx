@@ -25,12 +25,12 @@ export function FileDrop({ hint, button, onFiles, onSample }: FileDropProps) {
       onDragOver={(e) => { e.preventDefault(); setOver(true); }}
       onDragLeave={() => setOver(false)}
       onDrop={(e) => { e.preventDefault(); setOver(false); pick(e.dataTransfer.files); }}
-      className={`grid justify-items-center gap-4 rounded-[var(--r-surface)] border-[1.5px] border-dashed px-6 py-10 text-center ${
+      className={`grid justify-items-center gap-3 rounded-[var(--r-surface)] border-[1.5px] border-dashed px-5 py-6 text-center ${
         over ? "border-primary bg-[var(--brand-tint)]" : "border-[var(--edge-2)] bg-[var(--canvas)]"
       }`}
     >
-      <span className="grid size-14 place-items-center rounded-[var(--r-ctl)] bg-[var(--brand-tint)] text-primary">
-        <UploadIcon className="size-[26px]" />
+      <span className="grid size-10 place-items-center rounded-[var(--r-ctl)] bg-[var(--brand-tint)] text-primary">
+        <UploadIcon className="size-5" />
       </span>
       <p className="max-w-[46ch] text-[var(--ink-2)]">{hint}</p>
       <button type="button" onClick={() => input.current?.click()} className="btn btn-lg">
