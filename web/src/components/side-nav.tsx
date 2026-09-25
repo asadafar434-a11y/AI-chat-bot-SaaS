@@ -16,6 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { onDataChanged } from "@/lib/db";
+import { LEGAL_PAGES } from "@/lib/legal";
 import { countMyDocuments, getProfile } from "@/lib/me-store";
 import { filledCount, PROFILE_KEYS, type Profile } from "@/lib/profile";
 import { listPurchases } from "@/lib/purchase-store";
@@ -160,6 +161,13 @@ export function SideNav({ onClose }: { onClose: () => void }) {
           <NavItem href="/help" icon={CircleHelpIcon} current={pathname === "/help"}>
             Как это работает
           </NavItem>
+          <p className="t-caption flex flex-wrap gap-x-3 gap-y-1 px-2 pt-2">
+            {LEGAL_PAGES.map((page) => (
+              <Link key={page.href} href={page.href} className="link link-quiet">
+                {page.short}
+              </Link>
+            ))}
+          </p>
         </div>
       </div>
 

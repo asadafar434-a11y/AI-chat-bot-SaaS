@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { AlertTriangleIcon, ScaleIcon } from "lucide-react";
 import { Note } from "@/components/note";
 
@@ -12,9 +13,18 @@ function nextPath() {
   return url.origin === window.location.origin && url.pathname !== "/login" ? url.pathname + url.search + url.hash : "/";
 }
 
-// Вход по закрытой ссылке: одно поле пароля и одна кнопка.
+// Документы открываются в новой вкладке: введённый пароль не пропадёт.
+const doc = (href: string, text: string) => (
+  <Link href={href} target="_blank" className="link">
+    {text}
+  </Link>
+);
+
+// Вход по закрытой ссылке: поле пароля, согласие на обработку персональных данных и кнопка.
+// Согласие — отдельной галочкой, не отмеченной заранее: с 1 сентября 2025 года его нельзя прятать в условия.
 export function LoginForm() {
   const [password, setPassword] = useState("");
+  const [agreed, setAgreed] = useState(false);
   const [state, setState] = useState<"idle" | "busy" | "wrong" | "failed">("idle");
 
   async function submit(e: FormEvent) {
@@ -75,9 +85,23 @@ export function LoginForm() {
             Не получилось войти — проверьте интернет и попробуйте ещё раз.
           </Note>
         )}
-        <button type="submit" disabled={state === "busy" || !password} className="btn btn-lg">
+        <label className="flex items-start gap-2.5">
+          <input
+            type="checkbox"
+            checked={agreed}
+            onChange={(e) => setAgreed(e.currentTarget.checked)}
+            required
+            className="mt-0.5 size-4 flex-none accent-[var(--brand)]"
+          />
+          <span className="text-[var(--ink-2)]">Даю {doc("/consent", "согласие на обработку персональных данных")}</span>
+        </label>
+        <button type="submit" disabled={state === "busy" || !password || !agreed} className="btn btn-lg">
           {state === "busy" ? "Вхожу…" : "Войти"}
         </button>
+        <p className="t-caption text-[var(--ink-3)]">
+          Нажимая «Войти», вы принимаете {doc("/terms", "условия использования")}. Как сервис обращается с данными — в{" "}
+          {doc("/privacy", "политике")}. Владелец сервиса — на странице {doc("/contacts", "«Контакты»")}.
+        </p>
       </form>
     </main>
   );

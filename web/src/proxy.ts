@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ACCESS_COOKIE, accessPassword, accessToken, sameToken } from "@/lib/access";
+import { isLegalPath } from "@/lib/legal";
 
 // Закрытая ссылка: без метки входа страницы ведут на /login, а запросы к ИИ получают отказ —
 // посторонний не сможет тратить ключ API. Пароль не задан — пускаем всех.
@@ -8,7 +9,8 @@ export async function proxy(request: NextRequest) {
   if (!password) return NextResponse.next();
 
   const { pathname, search } = request.nextUrl;
-  if (pathname === "/login" || pathname === "/api/login") return NextResponse.next();
+  // Политика, согласие, условия и контакты открыты всем: их нужно прочитать до входа.
+  if (pathname === "/login" || pathname === "/api/login" || isLegalPath(pathname)) return NextResponse.next();
 
   const token = request.cookies.get(ACCESS_COOKIE)?.value;
   if (token && sameToken(token, await accessToken(password))) return NextResponse.next();

@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { usePathname } from "next/navigation";
 import { SideNav } from "@/components/side-nav";
+import { isLegalPath } from "@/lib/legal";
 
 type Shell = { menuOpen: boolean; openMenu: () => void; menuButton: RefObject<HTMLButtonElement | null> };
 
@@ -56,8 +57,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
-  // Страница входа по закрытой ссылке — без сайдбара: до входа разделы приложения не показываем.
-  if (pathname === "/login") return children;
+  // Страница входа и правовые документы — без сайдбара: их открывают и те, кто ещё не вошёл.
+  if (pathname === "/login" || isLegalPath(pathname)) return children;
 
   return (
     <ShellContext value={{ menuOpen: open, openMenu: () => setOpenAt(pathname), menuButton }}>

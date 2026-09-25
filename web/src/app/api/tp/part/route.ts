@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       label: `part ${part}`,
       documents,
       extra: sampleBlocks(samples),
-      instructions: partInstructions(part, { title: PART_TITLES[part], profile, samples: samples.length, price: amount }),
+      instructions: (mask) => partInstructions(part, { title: PART_TITLES[part], profile, samples: samples.length, price: amount }, mask),
       schema: PartDocSchema,
       signal: request.signal,
     });

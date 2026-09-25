@@ -3,6 +3,7 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import * as z from "zod/v4";
 import { baseRequest, usageLine } from "@/lib/claude-request";
 import { LAW_NAMES, lawContents, searchLaws, type LawPick } from "@/lib/laws";
+import { PdMasker } from "@/lib/pd-mask";
 
 const PickSchema = z.object({
   articles: z.array(
@@ -28,6 +29,8 @@ export async function pickLawArticles(question: string, context: string, signal?
   const hits = searchLaws(`${context} ${question}`);
   const hints = hits.map((h) => `${h.law} ст. ${h.num}${h.part ? ` ч. ${h.part}` : ""} — ${h.title}`).join("\n");
   const fallback = hits.slice(0, 2).map((h): LawPick => ({ law: h.law as LawPick["law"], article: h.num }));
+  // Вопрос уходит в ИИ без персональных данных: для выбора статей они не нужны.
+  const masker = new PdMasker();
   try {
     const response = await new Anthropic().beta.messages.parse(
       {
@@ -38,7 +41,7 @@ export async function pickLawArticles(question: string, context: string, signal?
         messages: [
           {
             role: "user",
-            content: `${context ? `${context}\n\n` : ""}Вопрос: ${question}\n\nПоиск по словам нашёл:\n${hints || "ничего"}`,
+            content: `${context ? `${masker.mask(context)}\n\n` : ""}Вопрос: ${masker.mask(question)}\n\nПоиск по словам нашёл:\n${hints || "ничего"}`,
           },
         ],
       },

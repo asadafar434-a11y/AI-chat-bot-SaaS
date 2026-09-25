@@ -2,10 +2,11 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import { MAX_CONTEXT_CHARS, type ChatDocument, type ChatMessage } from "@/lib/chat-types";
 import { claudeErrorText } from "@/lib/claude-errors";
-import { baseRequest, documentBlocks, usageLine } from "@/lib/claude-request";
+import { baseRequest, documentBlocks, maskDocuments, usageLine } from "@/lib/claude-request";
 import { pickLawArticles } from "@/lib/law-pick";
 import { checkQuotes, lawExcerpts, quotesNote } from "@/lib/laws";
 import { CHAT_INSTRUCTIONS, GENERAL_CHAT_INSTRUCTIONS } from "@/lib/legal-prompt";
+import { PdMasker } from "@/lib/pd-mask";
 
 export const maxDuration = 300;
 
@@ -22,14 +23,17 @@ const textOf = (message: ChatMessage) =>
     .join("")
     .trim();
 
+// Персональные данные — метками: сначала в документах, как в требованиях и ТП, потом в разговоре.
 function toClaudeMessages(
   messages: ChatMessage[],
   documents: Pick<ChatDocument, "name" | "text" | "scan">[],
-  instructions: string
+  instructions: string,
+  masker: PdMasker
 ): Anthropic.Beta.BetaMessageParam[] {
+  const docs = maskDocuments(masker, documents);
   const out: Anthropic.Beta.BetaMessageParam[] = [];
   for (const message of messages) {
-    const text = textOf(message);
+    const text = masker.mask(textOf(message));
     if (!text) continue;
     if (message.role === "user") {
       const date = message.metadata?.date ? `Дата вопроса: ${message.metadata.date}.\n\n` : "";
@@ -44,7 +48,7 @@ function toClaudeMessages(
   if (first?.role === "user" && Array.isArray(first.content)) {
     out[0] = {
       role: "user",
-      content: [...documentBlocks(documents), { type: "text", text: instructions }, ...first.content],
+      content: [...documentBlocks(docs), { type: "text", text: instructions }, ...first.content],
     };
   }
   return out;
@@ -99,7 +103,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const claudeMessages = toClaudeMessages(messages, documents, general ? GENERAL_CHAT_INSTRUCTIONS : CHAT_INSTRUCTIONS);
+  const masker = new PdMasker();
+  const claudeMessages = toClaudeMessages(messages, documents, general ? GENERAL_CHAT_INSTRUCTIONS : CHAT_INSTRUCTIONS, masker);
   if (claudeMessages.at(-1)?.role !== "user") {
     return new Response("Нет вопроса для ответа.", { status: 400 });
   }
@@ -138,11 +143,16 @@ export async function POST(request: Request) {
           { signal: request.signal }
         );
 
+        // В ответе метки меняются обратно на настоящие значения — по ходу ответа.
+        const unmask = masker.stream();
         for await (const event of response) {
           if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-            say(event.delta.text);
+            const text = unmask.push(event.delta.text);
+            if (text) say(text);
           }
         }
+        const tail = unmask.flush();
+        if (tail) say(tail);
 
         const final = await response.finalMessage();
         console.log(usageLine("chat", final));

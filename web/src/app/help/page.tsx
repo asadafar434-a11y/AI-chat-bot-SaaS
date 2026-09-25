@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { CheckIcon, FolderIcon, HouseIcon, ListIcon, MessageSquareIcon, PlusIcon, UserRoundIcon, type LucideIcon } from "lucide-react";
 import { Island } from "@/components/island";
 import { Note } from "@/components/note";
+import { LEGAL_PAGES } from "@/lib/legal";
 import { PageBody, PageHeader } from "@/components/page-header";
 import { openSamplePurchase } from "@/lib/sample-purchase";
 import { STORAGE_ERROR } from "@/lib/use-purchases";
@@ -162,9 +163,24 @@ export default function HelpPage() {
             </ul>
           </Island>
 
-          <p className="t-caption px-[var(--pad)] pt-1 text-[var(--ink-3)]">
-            Закупки и документы хранятся только в этом браузере. Ответы ИИ не являются юридической консультацией — проверяйте нормы по первоисточнику.
-          </p>
+          <Island id="help-data" title="Где ваши данные">
+            <ul className="grid list-disc gap-1.5 pb-4 pl-[calc(var(--pad)+20px)] pr-[var(--pad)] pt-1 marker:text-[var(--ink-3)]">
+              <li>Закупки, документы и реквизиты хранятся только в этом браузере, на этом устройстве. Сервер их не сохраняет.</li>
+              <li>
+                Для требований, ТП, проверки и ответов текст уходит в ИИ — Claude компании Anthropic, США. ФИО, телефоны, почта,
+                паспорт и другие персональные данные перед этим заменяются метками, в ответе — возвращаются. Сканы и фото уходят на
+                распознавание картинкой, как есть.
+              </li>
+              <li>Ответы ИИ не являются юридической консультацией — проверяйте нормы по первоисточнику.</li>
+            </ul>
+            <p className="t-caption mx-[var(--pad)] flex flex-wrap gap-x-4 gap-y-1 border-t border-[var(--line)] py-3">
+              {LEGAL_PAGES.map((page) => (
+                <Link key={page.href} href={page.href} className="link link-quiet">
+                  {page.title}
+                </Link>
+              ))}
+            </p>
+          </Island>
         </div>
       </PageBody>
     </>
