@@ -7,7 +7,8 @@ import { AlertTriangleIcon, ChevronRightIcon, FolderIcon, PlusIcon, UserRoundIco
 import { AskBox } from "@/components/ask-box";
 import { Note } from "@/components/note";
 import { PageBody, PageHeader } from "@/components/page-header";
-import { daysText, LawBadge, TpTag } from "@/components/purchase-bits";
+import { CheckTag, daysText, LawBadge, TpTag } from "@/components/purchase-bits";
+import { checkCounts } from "@/lib/check";
 import { onDataChanged } from "@/lib/db";
 import { dueLine } from "@/lib/deadline";
 import { countMyDocuments, getProfile } from "@/lib/me-store";
@@ -34,6 +35,11 @@ function tasksOf(purchases: Purchase[], scans: Record<string, string[]>, missing
     else if (fill) {
       const text = `Вписать свои данные в ТП — ${fill} ${plural(fill, "пункт", "пункта", "пунктов")}`;
       tasks.push({ key: `${p.id}:tp`, href: `/p/${p.id}/tp`, text, sub, tone });
+    }
+    const bad = p.check ? checkCounts(p.check).bad : 0;
+    if (bad) {
+      const text = bad === 1 ? "Исправить ошибку в заявке" : `Исправить ошибки в заявке — ${bad}`;
+      tasks.push({ key: `${p.id}:check`, href: `/p/${p.id}/check`, text, sub, tone: "warn" });
     }
     const scanned = scans[p.id] ?? [];
     if (scanned.length) {
@@ -253,8 +259,9 @@ export default function HomePage() {
                             <DueText purchase={p} />
                           </span>
                         </span>
-                        <span className="max-sm:col-start-2">
+                        <span className="grid justify-items-end gap-1.5 max-sm:col-start-2 max-sm:flex max-sm:flex-wrap">
                           <TpTag purchase={p} />
+                          <CheckTag purchase={p} />
                         </span>
                       </Link>
                     </li>

@@ -18,7 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Note } from "@/components/note";
-import { DueChip, LawBadge, TpMark } from "@/components/purchase-bits";
+import { CheckMark, DueChip, LawBadge, TpMark } from "@/components/purchase-bits";
 import { usePurchase } from "@/components/purchase-provider";
 import { WorkingSteps } from "@/components/working-steps";
 import { dueLine } from "@/lib/deadline";
@@ -38,7 +38,7 @@ export function TabBody({ children }: { children: ReactNode }) {
   return <div className="w-full max-w-[840px] px-[var(--gutter)] pb-8 pt-[var(--gutter)]">{children}</div>;
 }
 
-function Tab({ href, current, label, extra }: { href: string; current: boolean; label: string; extra?: ReactNode }) {
+function Tab({ href, current, label, extra }: { href: string; current: boolean; label: ReactNode; extra?: ReactNode }) {
   return (
     <Link
       href={href}
@@ -333,9 +333,31 @@ export function PurchaseView({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        <nav aria-label="Разделы закупки" className="flex flex-none gap-1 overflow-x-auto border-y border-[var(--line)] px-[calc(var(--gutter)-12px)] [scrollbar-width:none]">
+        {/* Подписи вкладок по ширине панели: где места мало — «ТП» и «Проверка», диктор читает полное название */}
+        <nav aria-label="Разделы закупки" className="@container flex flex-none gap-1 overflow-x-auto border-y border-[var(--line)] px-[calc(var(--gutter)-12px)] [scrollbar-width:none]">
           <Tab href={base} current={pathname === base} label="Требования" extra={tabCount(reqCount, pathname === base)} />
-          <Tab href={`${base}/tp`} current={pathname === `${base}/tp`} label="Техническое предложение" extra={<TpMark purchase={purchase} />} />
+          <Tab
+            href={`${base}/tp`}
+            current={pathname === `${base}/tp`}
+            label={
+              <>
+                <span className="sr-only @min-[760px]:not-sr-only">Техническое предложение</span>
+                <span aria-hidden className="@min-[760px]:hidden">ТП</span>
+              </>
+            }
+            extra={<TpMark purchase={purchase} />}
+          />
+          <Tab
+            href={`${base}/check`}
+            current={pathname === `${base}/check`}
+            label={
+              <>
+                <span className="sr-only @min-[580px]:not-sr-only">Проверка заявки</span>
+                <span aria-hidden className="@min-[580px]:hidden">Проверка</span>
+              </>
+            }
+            extra={<CheckMark purchase={purchase} />}
+          />
           <Tab
             href={`${base}/chat`}
             current={pathname === `${base}/chat`}

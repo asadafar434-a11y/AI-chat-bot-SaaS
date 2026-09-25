@@ -1,3 +1,5 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Рабочее место поставщика</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -78,7 +80,7 @@
   /* Сжатие -0.01em — для текста от 14 px; мелкие подписи без него, иначе слипаются слова */
   .tag, .due-chip, .count, .bubble, .days, .src, .prow-sub, .pd-sub, .file-meta, .fact-label, .panel-sub, .me-sub, .proto,
   .flag, .qty, .unver, .part-status, .doc-meta, .field-src, .msg-meta, .disclaimer, .chat-docs, .foot, .file-chip, .tool-btn,
-  .soon-tag, .sample, .info-sub, .in-talk, .save-state, .law { letter-spacing: 0; }
+  .sample, .info-sub, .in-talk, .save-state, .law { letter-spacing: 0; }
   [hidden] { display: none !important; }
   button, input, textarea { font: inherit; color: inherit; }
   button, label[for] { cursor: pointer; }
@@ -228,9 +230,10 @@
   .tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .7; }
   .tag.warn { background: var(--warn-tint); color: var(--warn); }
   .tag.ok { background: var(--ok-tint); color: var(--ok); }
-  .soon-tag { padding: 2px 8px; border-radius: 6px; background: var(--paper-3); color: var(--ink-3); font: 600 12px/16px var(--ui); letter-spacing: 0; text-transform: none; }
+  .tag.bad { background: var(--danger-tint); color: var(--danger); }
   .bubble { min-width: 20px; height: 20px; padding-inline: 6px; border-radius: var(--r-pill); display: inline-grid; place-items: center; background: var(--warn-tint); color: var(--warn); font: 600 12px/1 var(--mono); }
   .bubble.ok { padding-inline: 0; width: 20px; background: var(--ok-tint); color: var(--ok); }
+  .bubble.bad { background: var(--danger-tint); color: var(--danger); }
   .sample { font: 600 12px/16px var(--ui); color: var(--ink-3); }
 
   /* ---------- панели ---------- */
@@ -328,7 +331,17 @@
   .due-chip > svg { flex: none; }
   .due-chip.soon { background: var(--warn-tint); color: var(--warn); }
   .due-chip.past { color: var(--ink-3); }
-  .tabs { flex: none; display: flex; gap: 4px; padding-inline: calc(var(--gutter) - 12px); border-block: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+  .tabs { flex: none; display: flex; gap: 4px; padding-inline: calc(var(--gutter) - 12px); border-block: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; container-type: inline-size; }
+  /* Подписи вкладок по ширине панели: где места мало — «ТП» и «Проверка», диктор читает полное название */
+  .tab .short { display: none; }
+  @container (width < 760px) {
+    .tab .full-tp { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .tab .short-tp { display: inline; }
+  }
+  @container (width < 580px) {
+    .tab .full-check { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .tab .short-check { display: inline; }
+  }
   .tabs::-webkit-scrollbar { display: none; }
   .tab {
     appearance: none; border: 0; background: none; flex: none;
@@ -1352,6 +1365,13 @@
     if (!due.left) return `<span${soon}>${esc(due.head)}</span>`;
     return `${esc(due.head)} · <span${soon}>${esc(due.left)}</span>`;
   }
+  function checkTag(p) {
+    if (p.check.state !== "done") return '<span class="tag">Заявка не проверена</span>';
+    const { bad, warn } = checkCounts(p);
+    if (bad) return `<span class="tag bad">Заявка: ${bad} ${plural(bad, "ошибка", "ошибки", "ошибок")}${warn ? `, ${warn} ${plural(warn, "замечание", "замечания", "замечаний")}` : ""}</span>`;
+    if (warn) return `<span class="tag warn">Заявка: ${warn} ${plural(warn, "замечание", "замечания", "замечаний")}</span>`;
+    return '<span class="tag ok">Ошибок нет</span>';
+  }
   function tpTag(p) {
     if (!p.tp) return '<span class="tag">ТП не составлено</span>';
     const fill = fillCount(p.tp);
@@ -1444,6 +1464,8 @@
       const fill = p.tp ? fillCount(p.tp) : 0;
       if (!p.tp) out.push({ p, go: "tp", text: "Составить техническое предложение", when, tone: due.tone === "soon" ? "warn" : "brand" });
       else if (fill) out.push({ p, go: "tp", text: `Вписать свои данные в ТП — ${fill} ${plural(fill, "пункт", "пункта", "пунктов")}`, when, tone: due.tone === "soon" ? "warn" : "brand" });
+      const bad = p.check.state === "done" ? checkCounts(p).bad : 0;
+      if (bad) out.push({ p, go: "check", text: bad === 1 ? "Исправить ошибку в заявке" : `Исправить ошибки в заявке — ${bad}`, when, tone: "warn" });
       if ((p.scans || []).length) out.push({ p, go: "req", text: `Сверить цифры в ${p.scans.length === 1 ? "файле со скана" : "файлах со скана"}`, when, tone: "warn" });
       p.unreadable.forEach((f) => out.push({ p, go: "req", text: `Пересохранить «${f.name}» — файл не прочитан`, when, tone: "warn" }));
     }
@@ -1468,7 +1490,7 @@
     const rows = list.map((p) => `<li><button class="prow wide" type="button" data-go="p" data-id="${p.id}">
         ${lawBadge(p)}
         <span class="prow-text"><span class="prow-title">${esc(p.short)}${p.sample ? ' <span class="sample">пример</span>' : ""}</span><span class="prow-sub">${dueText(p)}</span></span>
-        <span class="prow-side">${tpTag(p)}</span>
+        <span class="prow-side">${tpTag(p)}${checkTag(p)}</span>
       </button></li>`).join("");
     const dataRow = (screen, icon, title, sub, extra = "") => `<li><button class="prow" type="button" data-go="${screen}">
         <span class="law icon" aria-hidden="true">${ic(icon, 18)}</span>
@@ -1598,8 +1620,8 @@
     const tab = (screen, label, extra) => `<button class="tab" type="button" data-go="${screen}" data-id="${p.id}"${S.screen === screen ? ' aria-current="page"' : ""}>${label}${extra}</button>`;
     return `<nav class="tabs" id="tabs" aria-label="Разделы закупки">
       ${tab("req", "Требования", `<span class="count">${reqCount(p)}</span>`)}
-      ${tab("tp", "Техническое предложение", tpMark(p))}
-      ${tab("check", "Проверка заявки", '<span class="soon-tag">скоро</span>')}
+      ${tab("tp", '<span class="full-tp">Техническое предложение</span><span class="short short-tp" aria-hidden="true">ТП</span>', tpMark(p))}
+      ${tab("check", '<span class="full-check">Проверка заявки</span><span class="short short-check" aria-hidden="true">Проверка</span>', checkMark(p))}
       ${tab("chat", "Вопросы", n ? `<span class="count">${n}</span>` : "")}
     </nav>`;
   }
@@ -1691,6 +1713,14 @@
     </div>`;
   }
 
+  // Итог проверки у вкладки: число ошибок красным, замечаний — янтарём, галочка — если чисто.
+  function checkMark(p) {
+    if (p.check.state !== "done") return "";
+    const { bad, warn } = checkCounts(p);
+    if (bad) return `<span class="bubble bad" title="В заявке ${bad} ${plural(bad, "ошибка", "ошибки", "ошибок")}">${bad}<span class="sr-only"> — ошибки в заявке</span></span>`;
+    if (warn) return `<span class="bubble" title="К заявке ${warn} ${plural(warn, "замечание", "замечания", "замечаний")}">${warn}<span class="sr-only"> — замечания к заявке</span></span>`;
+    return `<span class="bubble ok" title="Ошибок нет">${ic("check", 12)}<span class="sr-only">Ошибок нет</span></span>`;
+  }
   function checkCounts(p) {
     return { bad: p.check.findings.filter((f) => f.kind === "bad").length, warn: p.check.findings.filter((f) => f.kind === "warn").length };
   }
@@ -1842,12 +1872,10 @@
     <div class="sticky-actions"><button class="btn" type="button" data-act="preview-tp">Скачать техническое предложение</button></div>`;
   }
 
-  /* ---------- проверка заявки (экран из плана, в коде его ещё нет) ---------- */
+  /* ---------- проверка заявки ---------- */
   function checkHTML(p) {
-    const soon = `<div class="notes">${noteHTML("info", "Проверки заявки пока нет в приложении: экран показывает, как она будет работать.", "", "info")}</div>`;
     if (p.check.state !== "done") {
       return `<div class="tab-body">
-        ${soon}
         <p class="tab-lead">Загрузите свою заявку или техническое предложение. Я сверю их с ТЗ по каждому пункту и скажу, за что могут отклонить.</p>
         ${dropHTML("app", "Перетащите файл заявки сюда", "Загрузить заявку", { act: "sample-check", text: "проверить пример" })}
       </div>`;
@@ -1860,7 +1888,6 @@
     const lead = bad ? "Исправьте ошибку до подачи — замечания тоже лучше поправить." : warn ? "Отклонять не за что, но замечания лучше поправить." : "Заявка соответствует ТЗ по всем пунктам.";
     const ok = p.check.ok;
     return `<div class="tab-body">
-      ${soon}
       <h3 class="check-title">${title}</h3>
       <p class="tab-lead m0">${lead}</p>
       <ul class="findings">${p.check.findings.map((f) => `<li class="finding ${f.kind}">

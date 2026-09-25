@@ -454,6 +454,10 @@
     background: var(--ok-tint);
     color: var(--ok);
   }
+  .tag-bad {
+    background: color-mix(in srgb, var(--danger) 12%, var(--card));
+    color: var(--danger);
+  }
 
   /* Отметка у закупки: сколько пунктов ТП вписать или что ТП готово */
   .bubble {
@@ -473,6 +477,10 @@
     padding-inline: 0;
     background: var(--ok-tint);
     color: var(--ok);
+  }
+  .bubble-bad {
+    background: color-mix(in srgb, var(--danger) 12%, var(--card));
+    color: var(--danger);
   }
 
   /* Значок закупки — номер закона: 44-ФЗ и 223-ФЗ различаются с первого взгляда */

@@ -1,4 +1,5 @@
 import type { ChatMessage } from "@/lib/chat-types";
+import type { CheckResult } from "@/lib/check";
 import type { PartKey } from "@/lib/my-docs";
 import type { PartDoc } from "@/lib/part-doc";
 import type { FailedFile, SentDocument } from "@/lib/read-documents";
@@ -22,6 +23,8 @@ export type Purchase = PurchaseSummary & {
   // Цена, которую участник вписал в заявку, в рублях.
   tpPrice?: number;
   parts?: Partial<Record<PartKey, PurchasePart>>;
+  // Последняя проверка заявки перед подачей.
+  check?: CheckResult;
   chat?: ChatMessage[];
 };
 
