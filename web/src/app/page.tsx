@@ -90,7 +90,7 @@ export default function HomePage() {
           <div className="mt-9 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
             <h2
               id="purchases-title"
-              className="font-heading text-[clamp(21px,4.4vw,26px)] font-bold leading-[1.2] tracking-[-0.04em]"
+              className="font-heading text-[clamp(21px,4.4vw,26px)] font-bold leading-[1.2] tracking-[-0.02em]"
             >
               Мои закупки
             </h2>

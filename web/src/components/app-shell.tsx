@@ -12,7 +12,7 @@ function Logo() {
       <span className="grid size-8 shrink-0 place-items-center rounded-[11px] bg-primary text-primary-foreground">
         <ScaleIcon className="size-4" />
       </span>
-      <span className="font-heading text-[15px] font-bold leading-[1.15] tracking-[-0.03em]">Тендерный юрист</span>
+      <span className="font-heading text-[15px] font-bold leading-[1.15] tracking-[-0.02em]">Тендерный юрист</span>
     </Link>
   );
 }

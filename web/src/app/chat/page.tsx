@@ -155,7 +155,7 @@ export default function GeneralChatPage() {
           empty={
             <>
               <div className="space-y-2">
-                <h1 className="font-heading text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">
+                <h1 className="font-heading text-2xl font-semibold tracking-[-0.02em] sm:text-3xl">
                   Спросите про тендер
                 </h1>
                 <p className="mx-auto max-w-md text-sm text-muted-foreground">

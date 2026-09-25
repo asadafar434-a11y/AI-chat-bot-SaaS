@@ -53,8 +53,9 @@
   --lift-lg: 0 3px 8px rgb(20 20 43 / .05), 0 48px 84px -36px rgb(20 20 43 / .38);
 
   /* ---- гарнитуры (все с родной кириллицей) ---- */
-  --display: "Unbounded", ui-sans-serif, system-ui, sans-serif;  /* заголовки, крупные цифры */
-  --ui:      "Onest", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Montserrat — и в заголовках, и в интерфейсе; роли разделены, чтобы их можно было развести. */
+  --display: "Montserrat", ui-sans-serif, system-ui, sans-serif;  /* заголовки, крупные цифры */
+  --ui:      "Montserrat", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono:    "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
 }
 
@@ -105,6 +106,8 @@
    3. Скругления разные по ролям. Один радиус на всё схлопывает
       иерархию — контейнер и кнопка должны отличаться.
 
-   4. Unbounded только на заголовках и крупных цифрах. В интерфейсе
-      Onest: Unbounded в мелком кегле нечитаем.
+   4. Шрифт — только с родной кириллицей: у Poppins её нет, и русский
+      текст рисовал бы запасной Arial. Montserrat широкий — заголовкам
+      хватает сжатия -0.02em, сильнее буквы слипаются. Стрелок «← →» в нём
+      нет — рисовать их иконками.
    ============================================================ */

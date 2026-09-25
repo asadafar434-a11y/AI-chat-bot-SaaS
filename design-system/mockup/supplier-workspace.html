@@ -1,7 +1,7 @@
 <title>Рабочее место поставщика</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600&family=Onest:wght@400;500;600;700&family=Tinos:wght@400;700&family=Unbounded:wght@600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600&family=Montserrat:wght@400;500;600;700&family=Tinos:wght@400;700&display=swap">
 <style>
   /* Токены — design-system/brand.css («Индиго + мягкая») */
   :root {
@@ -16,8 +16,8 @@
     --r-surface: 24px; --r-card: 18px; --r-bubble: 22px; --r-ctl: 14px; --r-pill: 999px;
     --lift: 0 2px 6px rgb(20 20 43 / .05), 0 18px 40px -20px rgb(20 20 43 / .25);
     --lift-lg: 0 3px 8px rgb(20 20 43 / .05), 0 48px 84px -36px rgb(20 20 43 / .38);
-    --display: "Unbounded", ui-sans-serif, system-ui, sans-serif;
-    --ui: "Onest", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --display: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+    --ui: "Montserrat", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
     /* Предпросмотр файла Word: белый лист и Times-совместимый шрифт в обеих темах, как настоящий документ */
     --doc: "Tinos", "Times New Roman", Times, serif;
@@ -78,7 +78,7 @@
   .logo {
     appearance: none; border: 0; background: none; padding: 0;
     display: inline-flex; align-items: center; gap: 10px; text-align: left;
-    font: 700 15px/1.15 var(--display); letter-spacing: -.03em; color: var(--ink);
+    font: 700 15px/1.15 var(--display); letter-spacing: -.02em; color: var(--ink);
   }
   .logo-mark { flex: none; width: 32px; height: 32px; border-radius: 11px; display: grid; place-items: center; background: var(--brand); color: var(--on-brand); }
   .icon-btn.side-close { display: none; }
@@ -158,11 +158,12 @@
     display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
     color: var(--ink-3); font-size: 15px; font-weight: 500; line-height: 22px;
   }
+  .back > svg { flex: none; }
   .back span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .back:hover { color: var(--ink); }
-  h1 { margin: 14px 0 0; font-family: var(--display); font-weight: 700; font-size: clamp(24px, 4.4vw, 32px); line-height: 1.15; letter-spacing: -.04em; text-wrap: balance; }
+  h1 { margin: 14px 0 0; font-family: var(--display); font-weight: 700; font-size: clamp(24px, 4.4vw, 32px); line-height: 1.15; letter-spacing: -.02em; text-wrap: balance; }
   h1:focus { outline: none; }
-  .h2 { margin: 0; font-family: var(--display); font-weight: 700; font-size: clamp(20px, 3.4vw, 25px); line-height: 1.2; letter-spacing: -.04em; text-wrap: balance; }
+  .h2 { margin: 0; font-family: var(--display); font-weight: 700; font-size: clamp(20px, 3.4vw, 25px); line-height: 1.2; letter-spacing: -.02em; text-wrap: balance; }
   .lead { margin: 12px 0 0; max-width: 52ch; font-size: 17px; line-height: 26px; color: var(--ink-2); }
   .group { margin-top: 28px; }
   .group-title { margin: 0 0 10px; font-size: 13px; font-weight: 700; line-height: 18px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
@@ -524,6 +525,7 @@
     chat: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
     plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
     chev: '<path d="m9 18 6-6-6-6"/>',
+    back: '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
     file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
     clip: '<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
     up: '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
@@ -1178,7 +1180,7 @@
 
   /* ---------- кусочки разметки ---------- */
   const CHEV = `<span class="chev">${ic("chev", 20)}</span>`;
-  const back = (label, screen) => `<button class="back" type="button" data-go="${screen}"><span aria-hidden="true">←</span><span>${esc(label)}</span></button>`;
+  const back = (label, screen) => `<button class="back" type="button" data-go="${screen}">${ic("back", 16)}<span>${esc(label)}</span></button>`;
   const noteHTML = (tone, text, cls = "", icon = "") => `<div class="note ${tone} ${cls}">${icon ? ic(icon, 20) : ""}<div>${text}</div></div>`;
   const busyHTML = () => `<div class="busy" aria-live="polite"><p class="busy-text" id="busy-text">${esc(S.busy.lines[0])}</p><p class="busy-sub">${esc(S.busy.sub)}</p><div class="track"><i id="busy-bar"></i></div></div>`;
   const dropHTML = (id, hint, button, sample) => `<div class="drop" data-drop="${id}">

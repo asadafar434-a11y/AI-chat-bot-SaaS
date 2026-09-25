@@ -1,18 +1,14 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono, Onest, Unbounded } from "next/font/google";
+import { JetBrains_Mono, Montserrat } from "next/font/google";
 import { AppShell } from "@/components/app-shell";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
-const onest = Onest({
-  variable: "--font-onest",
+// Один шрифт на заголовки и интерфейс. Знак ₽ лежит в наборе latin-ext: он скачивается вместе
+// с остальными и подгружается, когда встречается, а заранее грузятся только латиница и кириллица.
+const montserrat = Montserrat({
+  variable: "--font-montserrat",
   subsets: ["latin", "cyrillic"],
-});
-
-const unbounded = Unbounded({
-  variable: "--font-unbounded",
-  subsets: ["latin", "cyrillic"],
-  weight: ["600", "700"],
 });
 
 const jetbrains = JetBrains_Mono({
@@ -29,7 +25,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="ru"
-      className={`${onest.variable} ${unbounded.variable} ${jetbrains.variable} h-full antialiased`}
+      className={`${montserrat.variable} ${jetbrains.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <TooltipProvider>

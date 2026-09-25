@@ -58,7 +58,7 @@ export function AskBox() {
     >
       <h2
         id="ask-title"
-        className="font-heading text-[clamp(21px,4.4vw,26px)] font-bold leading-[1.2] tracking-[-0.04em] text-balance"
+        className="font-heading text-[clamp(21px,4.4vw,26px)] font-bold leading-[1.2] tracking-[-0.02em] text-balance"
       >
         Спросите про тендер
       </h2>
