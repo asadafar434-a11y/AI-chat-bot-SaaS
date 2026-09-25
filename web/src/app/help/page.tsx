@@ -45,7 +45,12 @@ const PATH: { n: ReactNode; title: string; where: string; text: string }[] = [
 
 const SECTIONS: { icon: LucideIcon; title: string; href: string; text: string }[] = [
   { icon: HouseIcon, title: "Главная", href: "/", text: "Что сделать сейчас по всем закупкам и ближайший срок подачи." },
-  { icon: ListIcon, title: "Закупки", href: "/purchases", text: "Все закупки: список слева, открытая закупка справа — с шагами и вопросами по ней." },
+  {
+    icon: ListIcon,
+    title: "Закупки",
+    href: "/purchases",
+    text: "Все закупки: список слева, открытая закупка справа — с шагами, поиском по словам в её документах и вопросами по ней.",
+  },
   {
     icon: MessageSquareIcon,
     title: "Спросить про тендер",

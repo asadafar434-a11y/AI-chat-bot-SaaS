@@ -18,6 +18,7 @@ import {
   PaperclipIcon,
   RussianRubleIcon,
   ScaleIcon,
+  SearchIcon,
   XIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -364,6 +365,7 @@ export function PurchaseView({ children }: { children: ReactNode }) {
   const asked = purchase.chat?.filter((m) => m.role === "user").length ?? 0;
   const due = dueLine(purchase.deadline, true);
   const onChat = pathname === `${base}/chat`;
+  const onSearch = pathname === `${base}/search`;
 
   return (
     <div className="relative flex min-h-0 flex-1 gap-2">
@@ -428,7 +430,7 @@ export function PurchaseView({ children }: { children: ReactNode }) {
               </div>
             </div>
 
-            {/* Шаги подготовки заявки по порядку; «Вопросы» — не шаг, стоят отдельно справа */}
+            {/* Шаги подготовки заявки по порядку; «Поиск» и «Вопросы» — не шаги, а инструменты, стоят отдельно справа */}
             <nav
               aria-label="Подготовка заявки"
               className="@container flex items-stretch overflow-x-auto border-t border-[var(--line)] px-2 py-1.5 [scrollbar-width:none]"
@@ -441,15 +443,27 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                   </li>
                 ))}
               </ol>
-              <Link
-                href={`${base}/chat`}
-                aria-current={onChat ? "page" : undefined}
-                className={`item ml-auto flex-none ${onChat ? "t-strong" : "t-label text-[var(--ink-2)]"}`}
-              >
-                <MessageSquareIcon className="size-4 text-[var(--ink-3)]" />
-                <span className="@max-[660px]:sr-only">Вопросы</span>
-                {asked > 0 && <span className="count rounded-md bg-[var(--paper-2)] px-1.5">{asked}</span>}
-              </Link>
+              <div className="ml-auto flex flex-none items-stretch gap-0.5">
+                <Link
+                  href={`${base}/search`}
+                  aria-current={onSearch ? "page" : undefined}
+                  className={`item flex-none ${onSearch ? "t-strong" : "t-label text-[var(--ink-2)]"}`}
+                >
+                  <SearchIcon className="size-4 text-[var(--ink-3)]" />
+                  <span className="@max-[660px]:sr-only">
+                    Поиск<span className="sr-only"> по документам</span>
+                  </span>
+                </Link>
+                <Link
+                  href={`${base}/chat`}
+                  aria-current={onChat ? "page" : undefined}
+                  className={`item flex-none ${onChat ? "t-strong" : "t-label text-[var(--ink-2)]"}`}
+                >
+                  <MessageSquareIcon className="size-4 text-[var(--ink-3)]" />
+                  <span className="@max-[660px]:sr-only">Вопросы</span>
+                  {asked > 0 && <span className="count rounded-md bg-[var(--paper-2)] px-1.5">{asked}</span>}
+                </Link>
+              </div>
             </nav>
           </div>
         </div>
