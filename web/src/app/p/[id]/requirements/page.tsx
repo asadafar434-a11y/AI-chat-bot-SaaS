@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { AlertTriangleIcon } from "lucide-react";
-import { AppHeader } from "@/components/app-header";
 import { BackLink } from "@/components/back-link";
 import { Note } from "@/components/note";
 import { PageTitle } from "@/components/page-title";
@@ -39,8 +38,7 @@ export default function RequirementsPage() {
   const unverified = REQ_GROUP_KEYS.reduce((n, key) => n + requirements[key].filter((it) => !it.verified).length, 0);
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <AppHeader />
+    <div className="flex flex-1 flex-col">
       <main className="mx-auto w-full max-w-[680px] px-4 pb-10">
         <BackLink href={`/p/${purchase.id}`}>{titleOf(purchase)}</BackLink>
         <PageTitle className="mt-4">Требования</PageTitle>

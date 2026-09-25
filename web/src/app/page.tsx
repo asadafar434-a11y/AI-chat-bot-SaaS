@@ -4,7 +4,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangleIcon, ChevronRightIcon } from "lucide-react";
-import { AppHeader } from "@/components/app-header";
 import { AskBox } from "@/components/ask-box";
 import { Note } from "@/components/note";
 import { byUrgency, dueLine } from "@/lib/deadline";
@@ -82,8 +81,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <AppHeader />
+    <div className="flex flex-1 flex-col">
       <main className="mx-auto w-full max-w-[680px] px-4 pb-10">
         <h1 className="sr-only">Главная</h1>
         <AskBox />

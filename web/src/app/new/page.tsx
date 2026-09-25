@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangleIcon } from "lucide-react";
-import { AppHeader } from "@/components/app-header";
 import { BackLink } from "@/components/back-link";
 import { FileDrop } from "@/components/file-drop";
 import { Note } from "@/components/note";
@@ -59,8 +58,7 @@ export default function NewPurchasePage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <AppHeader />
+    <div className="flex flex-1 flex-col">
       <main className="mx-auto w-full max-w-[680px] px-4 pb-10">
         <BackLink href="/">Мои закупки</BackLink>
         <PageTitle className="mt-4">Новая закупка</PageTitle>

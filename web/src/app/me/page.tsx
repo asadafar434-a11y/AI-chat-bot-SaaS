@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AppHeader } from "@/components/app-header";
 import { BackLink } from "@/components/back-link";
 import { MenuRow } from "@/components/menu-row";
 import { PageTitle } from "@/components/page-title";
@@ -36,8 +35,7 @@ export default function MePage() {
         : `${docs.length} ${plural(docs.length, "документ", "документа", "документов")}: ${kinds.join(", ")} · по ним пишутся новые`;
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <AppHeader />
+    <div className="flex flex-1 flex-col">
       <main className="mx-auto w-full max-w-[680px] px-4 pb-10">
         <BackLink href="/">Мои закупки</BackLink>
         <PageTitle className="mt-4">Мои данные</PageTitle>

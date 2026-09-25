@@ -2,7 +2,6 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { AlertTriangleIcon } from "lucide-react";
-import { AppHeader } from "@/components/app-header";
 import { BackLink } from "@/components/back-link";
 import { Note } from "@/components/note";
 import { PageTitle } from "@/components/page-title";
@@ -106,24 +105,21 @@ export function PurchaseProvider({ id, children }: { id: string; children: React
     await deletePurchase(id);
   }, [id]);
 
-  if (loaded.status === "loading") return <AppHeader />;
+  if (loaded.status === "loading") return null;
 
   if (loaded.status !== "ready") {
     return (
-      <>
-        <AppHeader />
-        <main className="mx-auto w-full max-w-[680px] px-4 pb-10">
-          <BackLink href="/">Мои закупки</BackLink>
-          <PageTitle className="mt-4">
-            {loaded.status === "missing" ? "Закупка не найдена" : "Не удалось открыть закупку"}
-          </PageTitle>
-          <p className="mt-3 max-w-[46ch] text-[17px] leading-[26px] text-[var(--ink-2)]">
-            {loaded.status === "missing"
-              ? "Возможно, её удалили. Закупки хранятся в браузере — в другом браузере или на другом компьютере их не видно."
-              : "Браузер не дал открыть хранилище закупок. Обновите страницу; если не поможет — проверьте, что сайту разрешено хранить данные."}
-          </p>
-        </main>
-      </>
+      <main className="mx-auto w-full max-w-[680px] px-4 pb-10">
+        <BackLink href="/">Мои закупки</BackLink>
+        <PageTitle className="mt-4">
+          {loaded.status === "missing" ? "Закупка не найдена" : "Не удалось открыть закупку"}
+        </PageTitle>
+        <p className="mt-3 max-w-[46ch] text-[17px] leading-[26px] text-[var(--ink-2)]">
+          {loaded.status === "missing"
+            ? "Возможно, её удалили. Закупки хранятся в браузере — в другом браузере или на другом компьютере их не видно."
+            : "Браузер не дал открыть хранилище закупок. Обновите страницу; если не поможет — проверьте, что сайту разрешено хранить данные."}
+        </p>
+      </main>
     );
   }
 

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangleIcon, CheckIcon, PencilIcon } from "lucide-react";
-import { AppHeader } from "@/components/app-header";
 import { BackLink } from "@/components/back-link";
 import { Note } from "@/components/note";
 import { PageTitle } from "@/components/page-title";
@@ -339,8 +338,7 @@ export default function TpPage() {
 
   if (working || !tp) {
     return (
-      <div className="flex min-h-dvh flex-col">
-        <AppHeader />
+      <div className="flex flex-1 flex-col">
         <main className="mx-auto w-full max-w-[680px] px-4 pb-10">
           {head}
           {working ? (
@@ -378,8 +376,7 @@ export default function TpPage() {
     update({ tp: { ...tp, items: tp.items.map((it, i) => (i === index ? { ...it, offer } : it)) } });
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <AppHeader />
+    <div className="flex flex-1 flex-col">
       <main className="mx-auto w-full max-w-[680px] px-4 pb-10">
         {head}
         <p className="mt-3 text-[15px] leading-[22px] text-muted-foreground">

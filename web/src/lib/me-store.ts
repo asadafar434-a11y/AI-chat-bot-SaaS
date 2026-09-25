@@ -68,6 +68,10 @@ export const listMyDocuments = async () =>
     .map(upgrade)
     .sort((a, b) => b.addedAt.localeCompare(a.addedAt));
 
+// Сайдбару нужно только число: тексты документов, иногда многостраничные сканы, он не читает.
+export const countMyDocuments = () =>
+  transaction<number>([STORES.samples], "readonly", (tx) => tx.objectStore(STORES.samples).count());
+
 export const saveMyDocuments = (docs: MyDocument[]) =>
   transaction<void>([STORES.samples], "readwrite", (tx) => {
     for (const doc of docs) tx.objectStore(STORES.samples).put(doc);

@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { AlertTriangleIcon, ClockIcon } from "lucide-react";
-import { AppHeader } from "@/components/app-header";
 import { BackLink } from "@/components/back-link";
 import { MenuRow } from "@/components/menu-row";
 import { Note } from "@/components/note";
@@ -92,8 +91,7 @@ export default function PurchasePage() {
   );
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <AppHeader />
+    <div className="flex flex-1 flex-col">
       <main className="mx-auto w-full max-w-[680px] px-4 pb-10">
         <BackLink href="/">Мои закупки</BackLink>
         {purchase.kind && <p className="mt-5 text-sm text-muted-foreground">{purchase.kind}</p>}

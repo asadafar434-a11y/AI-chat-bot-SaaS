@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangleIcon, CheckIcon, FileTextIcon } from "lucide-react";
-import { AppHeader } from "@/components/app-header";
 import { BackLink } from "@/components/back-link";
 import { FileDrop } from "@/components/file-drop";
 import { Note } from "@/components/note";
@@ -165,8 +164,7 @@ export default function MyDocumentsPage() {
   );
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <AppHeader />
+    <div className="flex flex-1 flex-col">
       <main className="mx-auto w-full max-w-[680px] px-4 pb-10">
         <BackLink href="/me">Мои данные</BackLink>
         <PageTitle className="mt-4">Мои документы</PageTitle>

@@ -81,6 +81,14 @@
   --r-pill: 999px;
 
   --lift: 0 2px 6px rgb(20 20 43 / .05), 0 18px 40px -20px rgb(20 20 43 / .25);
+  --lift-lg: 0 3px 8px rgb(20 20 43 / .05), 0 48px 84px -36px rgb(20 20 43 / .38);
+  --scrim: rgb(20 20 43 / .42);
+
+  /* Каркас: сайдбар слева; на телефоне он выезжает по кнопке из верхней полосы.
+     --shell-top — что стоит над экраном: полоса на телефоне, отступ на компьютере. */
+  --side-w: 288px;
+  --side-active: #ffffff;
+  --shell-top: 56px;
 
   --background: var(--ground);
   --foreground: var(--ink);
@@ -140,7 +148,16 @@
   --danger: #ff7a70;
 
   --lift: 0 2px 6px rgb(0 0 0 / .45), 0 18px 40px -20px rgb(0 0 0 / .7);
+  --lift-lg: 0 3px 8px rgb(0 0 0 / .45), 0 48px 84px -36px rgb(0 0 0 / .9);
+  --scrim: rgb(0 0 0 / .6);
+  --side-active: #21213a;
 }
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --shell-top: 24px;
+  }
 }
 
 @layer base {

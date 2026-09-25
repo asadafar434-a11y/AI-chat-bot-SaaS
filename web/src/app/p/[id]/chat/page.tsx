@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { AppHeader } from "@/components/app-header";
 import { BackLink } from "@/components/back-link";
 import { ChatFeed, fmtChars } from "@/components/chat-feed";
 import {
@@ -58,8 +57,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-dvh flex-col">
-      <AppHeader />
+    <div className="flex h-[calc(100dvh-var(--shell-top))] flex-col">
       <div className="mx-auto w-full max-w-3xl px-4">
         <BackLink href={`/p/${purchase.id}`}>{titleOf(purchase)}</BackLink>
       </div>
