@@ -56,6 +56,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // Страница входа по закрытой ссылке — без сайдбара: до входа разделы приложения не показываем.
+  if (pathname === "/login") return children;
+
   return (
     <ShellContext value={{ menuOpen: open, openMenu: () => setOpenAt(pathname), menuButton }}>
       <div className="grid h-full grid-cols-[var(--side-w)_minmax(0,1fr)] max-lg:grid-cols-1 lg:pl-2">
