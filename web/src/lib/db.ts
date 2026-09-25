@@ -49,6 +49,14 @@ function open(name: DbName): Promise<IDBDatabase> {
   return promise;
 }
 
+// Сайдбар показывает закупки и «Мои данные» и перечитывает их после каждой записи.
+const CHANGED = "tender-data-changed";
+
+export function onDataChanged(listener: () => void) {
+  window.addEventListener(CHANGED, listener);
+  return () => window.removeEventListener(CHANGED, listener);
+}
+
 // Все хранилища одной транзакции должны лежать в одной базе.
 export async function transaction<T>(
   stores: StoreName[],
@@ -59,7 +67,10 @@ export async function transaction<T>(
   return new Promise<T>((resolve, reject) => {
     const tx = db.transaction(stores, mode);
     const request = run(tx);
-    tx.oncomplete = () => resolve(request ? request.result : (undefined as T));
+    tx.oncomplete = () => {
+      resolve(request ? request.result : (undefined as T));
+      if (mode === "readwrite") window.dispatchEvent(new Event(CHANGED));
+    };
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error);
   });

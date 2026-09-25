@@ -28,7 +28,7 @@ const NO_KEY_SCAN = "это скан — распознавать сканы п�
 
 // Страница, на которой почти нет букв, — скан или картинка: её текст распознаёт ИИ.
 // Так читаются и целиком отсканированные файлы, и обычные PDF с вклеенными сканами, например подписанной последней страницей.
-async function pdfText(data: Uint8Array, name: string): Promise<ExtractResult> {
+async function pdfText(data: Uint8Array): Promise<ExtractResult> {
   const parser = new PDFParse({ data });
   try {
     const result = await parser.getText();
@@ -44,7 +44,7 @@ async function pdfText(data: Uint8Array, name: string): Promise<ExtractResult> {
         : { ok: true, text: result.text };
     }
 
-    const recognized = await transcribe(await renderPages(parser, scanned), name);
+    const recognized = await transcribe(await renderPages(parser, scanned));
     const byPage = new Map(scanned.map((num, i) => [num, recognized[i]]));
     const text = result.pages.map((page) => `${byPage.get(page.num) ?? page.text}\n\n-- ${page.num} of ${result.total} --\n\n`).join("");
     if (letters(text) < 20) return { ok: false, reason: "на скане не нашлось текста" };
@@ -71,7 +71,7 @@ export async function extractText(file: File): Promise<ExtractResult> {
     }
 
     if (kind === "pdf") {
-      return await pdfText(new Uint8Array(await file.arrayBuffer()), file.name);
+      return await pdfText(new Uint8Array(await file.arrayBuffer()));
     }
 
     if (kind === "docx") {
@@ -88,13 +88,14 @@ export async function extractText(file: File): Promise<ExtractResult> {
       if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: NO_KEY_SCAN };
       if (file.size > MAX_IMAGE_BYTES) return { ok: false, reason: "фото больше 5 МБ — уменьшите его или отсканируйте документ в PDF" };
       const mediaType = file.type === "image/png" || /\.png$/i.test(file.name) ? "image/png" : "image/jpeg";
-      const [text] = await transcribe([{ data: Buffer.from(await file.arrayBuffer()), mediaType }], file.name);
+      const [text] = await transcribe([{ data: Buffer.from(await file.arrayBuffer()), mediaType }]);
       return letters(text) < 20 ? { ok: false, reason: "на картинке не нашлось текста" } : { ok: true, text, scan: true };
     }
 
     return { ok: false, reason: "формат пока не поддерживается" };
   } catch (error) {
-    console.error(file.name, error);
+    // Имя файла в журнал не пишем: в нём бывают ФИО, а сервер документы не хранит — и журналы тоже.
+    console.error(`extract ${kind}`, error);
     if (error instanceof DocTextError) return { ok: false, reason: `${error.message} — пересохраните файл в .docx` };
     if (error instanceof Anthropic.APIError) return { ok: false, reason: `не удалось распознать скан. ${claudeErrorText(error)}` };
     return { ok: false, reason: "не удалось прочитать файл — возможно, он повреждён или защищён паролем" };

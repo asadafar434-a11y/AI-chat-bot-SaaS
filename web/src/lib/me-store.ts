@@ -1,6 +1,7 @@
 import { STORES, transaction } from "@/lib/db";
 import {
   clipForSort,
+  DOC_KINDS,
   guessKinds,
   REQUISITE_KINDS,
   SORT_BATCH,
@@ -56,17 +57,22 @@ export const saveProfile = (profile: Profile, meta?: ProfileMeta) =>
     if (meta) tx.objectStore(STORES.settings).put(meta, META_KEY);
   });
 
-// До «Моих документов» здесь лежали только образцы ТП — без видов.
-const upgrade = (doc: Omit<MyDocument, "kinds" | "about"> & Partial<MyDocument>): MyDocument => ({
-  ...doc,
-  kinds: doc.kinds?.length ? doc.kinds : ["tp"],
-  about: doc.about ?? "",
-});
+// Сначала здесь лежали только образцы ТП — без видов. Виды, которые потом убрали («опыт», «протоколы»),
+// превращаются в «Другое»: файл не пропадает из раздела.
+function upgrade(doc: Omit<MyDocument, "kinds" | "about"> & Partial<MyDocument>): MyDocument {
+  if (!doc.kinds?.length) return { ...doc, kinds: ["tp"], about: doc.about ?? "" };
+  const kinds = [...new Set(doc.kinds.map((kind) => (kind in DOC_KINDS ? kind : "other")))];
+  return { ...doc, kinds, about: doc.about ?? "" };
+}
 
 export const listMyDocuments = async () =>
   (await transaction<MyDocument[]>([STORES.samples], "readonly", (tx) => tx.objectStore(STORES.samples).getAll()))
     .map(upgrade)
     .sort((a, b) => b.addedAt.localeCompare(a.addedAt));
+
+// Главной нужно только число: тексты документов, иногда многостраничные сканы, она не читает.
+export const countMyDocuments = () =>
+  transaction<number>([STORES.samples], "readonly", (tx) => tx.objectStore(STORES.samples).count());
 
 export const saveMyDocuments = (docs: MyDocument[]) =>
   transaction<void>([STORES.samples], "readwrite", (tx) => {

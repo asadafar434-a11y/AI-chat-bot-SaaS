@@ -44,7 +44,8 @@ export const profileLines = (profile: Profile | null) =>
 
 type PartTask = { title: string; profile: Profile | null; samples: number; price: string | null };
 
-export function partInstructions(part: PartKey, { title, profile, samples, price }: PartTask): string {
+// mask — маскировка персональных данных в реквизитах: руководитель, контакты, ИНН и адрес ИП.
+export function partInstructions(part: PartKey, { title, profile, samples, price }: PartTask, mask = (text: string) => text): string {
   const priceRules =
     part === "price"
       ? `
@@ -69,5 +70,5 @@ ${samples ? `Перед заданием — образцы участника �
 - Подпись и дату оформи так, как в форме или образце. Подписывает руководитель из реквизитов; расшифровка подписи — из поля «Расшифровка подписи».
 ${priceRules}
 Реквизиты участника:
-${profileLines(profile) || "(не заполнены)"}`;
+${mask(profileLines(profile)) || "(не заполнены)"}`;
 }

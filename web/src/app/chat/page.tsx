@@ -4,10 +4,9 @@ import { useEffect, useEffectEvent, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { FileTextIcon, PaperclipIcon, XIcon } from "lucide-react";
-import { AppHeader } from "@/components/app-header";
 import { SUGGESTIONS } from "@/components/ask-box";
-import { BackLink } from "@/components/back-link";
-import { ChatFeed, fmtChars } from "@/components/chat-feed";
+import { ChatFeed, ComposerDock, fmtChars, PROMPT_CLASS, PROMPT_TEXTAREA_CLASS } from "@/components/chat-feed";
+import { PageBody, PageHeader } from "@/components/page-header";
 import {
   PromptInput,
   PromptInputBody,
@@ -42,17 +41,14 @@ function AttachmentChips() {
   return (
     <PromptInputHeader>
       {files.map((f) => (
-        <span
-          key={f.id}
-          className="inline-flex h-8 max-w-60 items-center gap-1.5 rounded-[var(--r-pill)] bg-muted pl-2.5 pr-1 text-xs font-medium"
-        >
-          <FileTextIcon className="size-3.5 shrink-0 text-muted-foreground" />
+        <span key={f.id} className="file-chip max-w-60">
+          <FileTextIcon className="size-3.5" />
           <span className="truncate">{f.filename}</span>
           <button
             type="button"
             aria-label={`Убрать ${f.filename}`}
             onClick={() => remove(f.id)}
-            className="grid size-6 place-items-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="grid size-6 shrink-0 place-items-center rounded-full text-[var(--ink-3)] hover:bg-[var(--paper-3)] hover:text-foreground"
           >
             <XIcon className="size-3.5" />
           </button>
@@ -142,103 +138,94 @@ export default function GeneralChatPage() {
   }
 
   return (
-    <div className="flex h-dvh flex-col">
-      <AppHeader />
-      <div className="mx-auto w-full max-w-3xl px-4">
-        <BackLink href="/">Главная</BackLink>
-      </div>
+    <>
+      <PageHeader title="Спросить про тендер" sub="Общие вопросы по 44-ФЗ и 223-ФЗ — ответ со ссылкой на статью" />
+      <PageBody fill>
+        {/* Место под полосу прокрутки справа — как у шапки: правый край острова под кнопками шапки */}
+        <div className="-mx-2 -mb-2 -mt-1 flex min-h-0 flex-1 flex-col overflow-hidden px-2 pb-2 pt-1 [scrollbar-gutter:stable]">
+          <section aria-label="Разговор" className="island flex min-h-0 flex-1 flex-col overflow-hidden">
+            <ChatFeed
+              messages={messages}
+              status={status}
+              error={error}
+              onRetry={() => regenerate({ body: requestBody(documents) })}
+              empty={
+                <>
+                  <div className="grid gap-1">
+                    <h2 className="t-title">Общий вопрос по 44-ФЗ и 223-ФЗ</h2>
+                    <p className="max-w-[62ch] text-[var(--ink-2)]">
+                      Отвечу со ссылкой на статью закона. Приложите документ — отвечу и по нему.
+                    </p>
+                    <p className="t-caption max-w-[62ch] text-[var(--ink-3)]">
+                      Вопрос про конкретную закупку задайте внутри неё, в «Вопросах» — отвечу по её документам.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {SUGGESTIONS.map((s) => (
+                      <button key={s} type="button" onClick={() => setDraft(s)} className="chip">
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              }
+            />
 
-      <main className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col">
-        <ChatFeed
-          messages={messages}
-          status={status}
-          error={error}
-          onRetry={() => regenerate({ body: requestBody(documents) })}
-          empty={
-            <>
-              <div className="space-y-2">
-                <h1 className="font-heading text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">
-                  Спросите про тендер
-                </h1>
-                <p className="mx-auto max-w-md text-sm text-muted-foreground">
-                  Отвечу по 44-ФЗ и 223-ФЗ со ссылкой на статью. Приложите документ — отвечу и по нему.
-                </p>
-              </div>
-              <div className="flex flex-wrap justify-center gap-2">
-                {SUGGESTIONS.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setDraft(s)}
-                    className="rounded-[var(--r-pill)] bg-card px-3.5 py-2.5 text-[12.5px] font-medium shadow-[var(--lift)] hover:bg-accent"
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </>
-          }
-        />
-
-        <div className="p-4 pt-2">
-          {(documents.length > 0 || uploading) && (
-            <div className="mb-2 flex flex-wrap items-center gap-1.5">
-              <span className="text-xs text-muted-foreground">В разговоре:</span>
-              {documents.map((d) => (
-                <span
-                  key={d.name}
-                  className="inline-flex h-7 max-w-72 items-center gap-1.5 rounded-[var(--r-pill)] bg-card pl-2.5 pr-1 text-xs font-medium shadow-[var(--lift)]"
-                >
-                  <FileTextIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                  <span className="truncate">{d.name}</span>
-                  <span className="shrink-0 font-normal text-muted-foreground">{fmtChars(d.text.length)}</span>
-                  <button
-                    type="button"
-                    aria-label={`Убрать ${d.name} из разговора`}
-                    onClick={() => setDocuments((ds) => ds.filter((x) => x.name !== d.name))}
-                    className="grid size-5 place-items-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
-                  >
-                    <XIcon className="size-3" />
-                  </button>
-                </span>
-              ))}
-              {uploading && <span className="animate-pulse text-xs text-muted-foreground">Читаю файлы…</span>}
-            </div>
-          )}
-          {notice && <p className="mb-2 text-xs text-[var(--warn)]">{notice}</p>}
-          <PromptInput
-            onSubmit={async ({ text, files }: PromptInputMessage) => ask(text, await Promise.all(files.map(toFile)))}
-            multiple
-            globalDrop
-            accept={ACCEPTED_FILES}
-            className="[&_[data-slot=input-group]]:rounded-[var(--r-surface)] [&_[data-slot=input-group]]:bg-card"
-          >
-            <AttachmentChips />
-            <PromptInputBody>
-              <PromptInputTextarea
-                value={draft}
-                onChange={(e) => setDraft(e.currentTarget.value)}
-                placeholder={documents.length > 0 ? "Спросите про приложенные документы…" : "Задайте вопрос по закупкам…"}
-                className="text-base"
-              />
-            </PromptInputBody>
-            <PromptInputFooter>
-              <PromptInputTools>
-                <AttachButton />
-              </PromptInputTools>
-              <PromptInputSubmit
-                status={uploading ? "submitted" : status}
-                onStop={stop}
-                disabled={uploading}
-                className="rounded-full"
-              />
-            </PromptInputFooter>
-          </PromptInput>
-          <p className="pt-2.5 text-center text-[11px] text-muted-foreground">
-            Ответы ИИ не являются юридической консультацией. Проверяйте нормы по первоисточнику.
-          </p>
+            <ComposerDock>
+              {(documents.length > 0 || uploading) && (
+                <div className="t-caption flex flex-wrap items-center gap-2 text-[var(--ink-3)]">
+                  <span>В разговоре:</span>
+                  {documents.map((d) => (
+                    <span key={d.name} className="file-chip max-w-72 text-foreground">
+                      <FileTextIcon className="size-3.5" />
+                      <span className="truncate">{d.name}</span>
+                      <span className="shrink-0 text-[var(--ink-3)]">{fmtChars(d.text.length)}</span>
+                      <button
+                        type="button"
+                        aria-label={`Убрать ${d.name} из разговора`}
+                        onClick={() => setDocuments((ds) => ds.filter((x) => x.name !== d.name))}
+                        className="grid size-6 shrink-0 place-items-center rounded-full text-[var(--ink-3)] hover:bg-[var(--paper-3)] hover:text-foreground"
+                      >
+                        <XIcon className="size-3.5" />
+                      </button>
+                    </span>
+                  ))}
+                  {uploading && <span className="animate-pulse">Читаю файлы…</span>}
+                </div>
+              )}
+              {notice && <p className="t-caption text-[var(--warn)]">{notice}</p>}
+              <PromptInput
+                onSubmit={async ({ text, files }: PromptInputMessage) => ask(text, await Promise.all(files.map(toFile)))}
+                multiple
+                globalDrop
+                accept={ACCEPTED_FILES}
+                className={PROMPT_CLASS}
+              >
+                <AttachmentChips />
+                <PromptInputBody>
+                  <PromptInputTextarea
+                    value={draft}
+                    onChange={(e) => setDraft(e.currentTarget.value)}
+                    placeholder={documents.length > 0 ? "Спросите про приложенные документы…" : "Задайте вопрос по закупкам…"}
+                    className={PROMPT_TEXTAREA_CLASS}
+                  />
+                </PromptInputBody>
+                <PromptInputFooter>
+                  <PromptInputTools>
+                    <AttachButton />
+                  </PromptInputTools>
+                  <PromptInputSubmit
+                    status={uploading ? "submitted" : status}
+                    onStop={stop}
+                    disabled={uploading}
+                    className="rounded-full"
+                  />
+                </PromptInputFooter>
+              </PromptInput>
+            </ComposerDock>
+          </section>
         </div>
-      </main>
-    </div>
+      </PageBody>
+    </>
   );
 }

@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Тендерный юрист — приложение
 
-## Getting Started
+Помощник поставщика по 44-ФЗ и 223-ФЗ. Загружаете документы закупки — приложение выписывает требования
+с цитатами, составляет черновик технического предложения, проверяет заявку перед подачей, ищет по словам
+в документах и отвечает на вопросы по ним.
 
-First, run the development server:
+Закупки и документы хранятся в браузере (IndexedDB). Сервер только передаёт документы ИИ и ничего не сохраняет.
+Персональные данные перед отправкой в ИИ заменяются метками — см. [«Персональные данные»](#персональные-данные).
+
+## Запуск на своём компьютере
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd web
+npm install
+npm run dev   # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Ключ API — в файле `web/.env.local` (в git он не попадает):
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+ANTHROPIC_API_KEY=...
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Переменные окружения
 
-## Learn More
+| Переменная | Зачем |
+|---|---|
+| `ANTHROPIC_API_KEY` | Ключ Claude API: требования, ТП, проверка заявки, вопросы, распознавание сканов. Без него работают пример закупки и поиск по словам, а запросы к ИИ получают отказ. |
+| `ACCESS_PASSWORD` | Пароль закрытой ссылки. Задан — приложение пускает только после входа на `/login`, вход помнится 180 дней, запросы к ИИ без входа получают отказ. Не задан — приложение открыто. |
+| `OPERATOR_NAME`, `OPERATOR_INN`, `OPERATOR_OGRN`, `OPERATOR_ADDRESS`, `OPERATOR_EMAIL` | Владелец сервиса и оператор персональных данных: наименование ИП или организации, ИНН, ОГРН или ОГРНИП, адрес, почта. Подставляются в «Политику», «Согласие», «Условия» и «Контакты». Пока не заданы, на этих страницах жёлтые поля и пометка «Черновик». |
+| `PD_MASK` | `off` — отправлять текст в ИИ без замены персональных данных метками. Только для проверки качества ответов; по умолчанию замена включена. |
 
-To learn more about Next.js, take a look at the following resources:
+## Закрытая ссылка
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Выложите приложение на хостинг для Next.js; корневая папка проекта — `web`.
+   Способы — в документации Next.js: [Deploying](https://nextjs.org/docs/app/getting-started/deploying).
+2. В настройках проекта на хостинге задайте `ANTHROPIC_API_KEY` и `ACCESS_PASSWORD`. В код и в git их не кладите.
+3. Откройте ссылку — появится вход по паролю. Пароль передайте лично.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Сменили пароль — все прежние входы перестают действовать. Запросы к ИИ идут до 5 минут (`maxDuration = 300`
+в маршрутах `src/app/api`): тариф хостинга должен разрешать такие долгие функции.
 
-## Deploy on Vercel
+## Персональные данные
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Claude работает у Anthropic в США, поэтому всё, что уходит к нему, — трансграничная передача (152-ФЗ).
+Перед отправкой сервер заменяет персональные данные метками: `⟦ФИО-1⟧`, `⟦ТЕЛЕФОН-2⟧`. В ответе метки
+меняются обратно, пользователь видит обычный текст. Код — [`src/lib/pd-mask.ts`](src/lib/pd-mask.ts), тесты — `npm test`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Заменяются: ФИО с отчеством или инициалами, телефоны, почта, паспорт и код подразделения, СНИЛС, ИНН и ОГРНИП
+  физлиц, счета физлиц и ИП, даты рождения, адрес после слов «адрес регистрации», «место жительства».
+- Остаются: реквизиты организаций, имя без отчества и инициалов, адрес без пометки. Сканы и фото уходят
+  на распознавание картинкой, как есть.
+- Одно значение — одна метка во всех документах запроса, у одного человека — один номер в любом падеже.
+  Документы маскируются первыми и всегда одинаково, поэтому кеш документов не сбивается.
+
+Замена уменьшает передачу, но не отменяет её: уведомления в Роскомнадзор об обработке и о трансграничной
+передаче всё равно нужны.
+
+Страницы `/privacy`, `/consent`, `/terms`, `/contacts` открыты без пароля: политику закон требует держать
+в открытом доступе. На входе — отдельная галочка согласия. Тексты — черновик по тому, как приложение
+устроено сейчас: проверьте их с юристом до открытия сервиса и меняйте вместе с кодом — дата редакции
+в [`src/lib/legal.ts`](src/lib/legal.ts).
+
+## Проверка
+
+```bash
+npm test && npx eslint src && npx next typegen && npx tsc --noEmit && npx next build
+```
+
+То же запускает автопроверка на GitHub — [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — на каждый PR и изменение `main`.

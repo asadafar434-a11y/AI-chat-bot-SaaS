@@ -2,11 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertTriangleIcon, CheckIcon } from "lucide-react";
-import { AppHeader } from "@/components/app-header";
-import { BackLink } from "@/components/back-link";
+import { AlertTriangleIcon, CheckIcon, UploadIcon } from "lucide-react";
+import { Island } from "@/components/island";
 import { Note } from "@/components/note";
-import { PageTitle } from "@/components/page-title";
+import { PageBody, PageHeader } from "@/components/page-header";
 import {
   fillProfileFromDocuments,
   getProfile,
@@ -18,7 +17,7 @@ import {
 } from "@/lib/me-store";
 import { REQUISITE_KINDS, type FoundField } from "@/lib/my-docs";
 import { plural } from "@/lib/plural";
-import { PROFILE_GROUPS, type Profile, type ProfileKey } from "@/lib/profile";
+import { filledCount, PROFILE_GROUPS, PROFILE_KEYS, type Profile, type ProfileKey } from "@/lib/profile";
 
 type SaveState = "idle" | "saving" | "saved" | "failed";
 type FillNote = { tone: "ok" | "info" | "warn"; text: string };
@@ -48,31 +47,31 @@ function Suggestions({ items, onAccept, onDismiss }: {
   onDismiss: (group: FoundField[]) => void;
 }) {
   return (
-    <section className="mt-5 grid gap-3 rounded-[var(--r-card)] bg-[var(--warn-tint)] p-4">
-      <p className="flex items-center gap-2 font-semibold text-[var(--warn)]">
-        <AlertTriangleIcon className="size-5 shrink-0" />
+    <section className="note grid gap-2.5 bg-[var(--warn-tint)] px-3 py-3">
+      <p className="t-strong flex items-center gap-2 text-[var(--warn)]">
+        <AlertTriangleIcon className="size-4 shrink-0" />
         В ваших документах есть другие значения — проверьте, какое верное
       </p>
       <ul className="grid gap-3">
         {groupSuggestions(items).map((group, i) => (
-          <li key={i} className="grid gap-1.5">
-            <span className="text-[15px] leading-[22px]">
+          <li key={i} className="grid gap-2 break-words">
+            <span>
               {group.length > 1 ? (
                 <>
-                  <span className="font-semibold">Банковские реквизиты:</span> {group.map((item) => item.value).join(", ")}
+                  <b className="font-semibold">Банковские реквизиты:</b> {group.map((item) => item.value).join(", ")}
                 </>
               ) : (
                 <>
-                  <span className="font-semibold">{LABELS[group[0].key]}:</span> {group[0].value}
+                  <b className="font-semibold">{LABELS[group[0].key]}:</b> {group[0].value}
                 </>
               )}{" "}
-              <span className="text-muted-foreground">— из «{group[0].source}»</span>
+              <span className="text-[var(--ink-3)]">— из «{group[0].source}»</span>
             </span>
-            <span className="flex flex-wrap gap-x-5 text-[14px] font-medium">
-              <button type="button" onClick={() => onAccept(group)} className="text-primary underline underline-offset-4">
+            <span className="flex flex-wrap gap-x-5 gap-y-1">
+              <button type="button" onClick={() => onAccept(group)} className="link">
                 {group.length > 1 ? "Подставить все" : "Подставить"}
               </button>
-              <button type="button" onClick={() => onDismiss(group)} className="text-muted-foreground underline underline-offset-4">
+              <button type="button" onClick={() => onDismiss(group)} className="link link-quiet">
                 Оставить как есть
               </button>
             </span>
@@ -84,7 +83,7 @@ function Suggestions({ items, onAccept, onDismiss }: {
 }
 
 // Реквизиты сохраняются сами, пока их вписывают: отдельной кнопки нет, чтобы ничего не потерять.
-// Их можно не вписывать руками: они заполняются из анкет и карточки предприятия в «Моих документах».
+// Их можно не вписывать руками: они заполняются из анкет и карточки предприятия в «Образцах и реквизитах».
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [meta, setMeta] = useState<ProfileMeta>({ sources: {}, suggestions: [] });
@@ -175,78 +174,102 @@ export default function ProfilePage() {
     }
   }
 
+  const saveText =
+    save === "saving" ? "Сохраняю…" : save === "saved" ? "Сохранено" : save === "failed" ? "Не сохранилось — попробуйте ещё раз" : "";
+
   return (
-    <div className="flex min-h-dvh flex-col">
-      <AppHeader />
-      <main className="mx-auto w-full max-w-[680px] px-4 pb-10">
-        <BackLink href="/me">Мои данные</BackLink>
-        <PageTitle className="mt-4">Реквизиты</PageTitle>
-        <p className="mt-3 max-w-[48ch] text-[17px] leading-[26px] text-[var(--ink-2)]">
-          Впишите один раз — дальше они сами попадут в анкету, декларацию, предложение о цене и подпись. В техническое предложение реквизиты не попадают никогда: его подают анонимно.
-        </p>
-
-        {sourceDocs.length > 0 ? (
-          <button
-            type="button"
-            onClick={() => void fillFromDocuments()}
-            disabled={filling || !profile}
-            className="mt-4 min-h-11 rounded-[var(--r-ctl)] bg-muted px-5 font-semibold hover:bg-accent disabled:opacity-60"
-          >
-            {filling ? "Ищу реквизиты в документах…" : "Заполнить из моих документов"}
-          </button>
-        ) : (
-          <p className="mt-4 text-[15px] leading-[22px] text-muted-foreground">
-            Можно не вписывать руками: загрузите анкету или карточку предприятия в{" "}
-            <Link href="/me/documents" className="font-semibold text-primary underline underline-offset-4">
-              «Мои документы»
-            </Link>{" "}
-            — реквизиты заполнятся сами.
+    <>
+      <PageHeader
+        title="Реквизиты"
+        sub={`Данные компании для анкеты, декларации и цены · заполнено ${profile ? filledCount(profile) : 0} из ${PROFILE_KEYS.length}`}
+        actions={
+          <>
+            <span
+              aria-live="polite"
+              className={`t-caption whitespace-nowrap max-sm:hidden ${save === "failed" ? "t-tag text-[var(--warn)]" : "text-[var(--ink-3)]"}`}
+            >
+              {saveText}
+            </span>
+            {sourceDocs.length > 0 && (
+              <button
+                type="button"
+                onClick={() => void fillFromDocuments()}
+                disabled={filling || !profile}
+                aria-label="Заполнить из моих документов"
+                className="btn btn-line max-sm:w-10 max-sm:px-0"
+              >
+                <UploadIcon />
+                <span className="max-sm:hidden">{filling ? "Ищу реквизиты в документах…" : "Заполнить из документов"}</span>
+              </button>
+            )}
+          </>
+        }
+      />
+      <PageBody>
+        <div className="grid max-w-[880px] gap-2">
+          <p className="max-w-[70ch] px-[var(--pad)] py-1 text-[var(--ink-2)]">
+            Впишите один раз — дальше они сами попадут в анкету, декларацию, предложение о цене и подпись. В техническое предложение реквизиты не попадают никогда: его подают анонимно.
           </p>
-        )}
+          {sourceDocs.length === 0 && (
+            <p className="max-w-[70ch] px-[var(--pad)] pb-1 text-[var(--ink-2)]">
+              Можно не вписывать руками: загрузите анкету или карточку предприятия в{" "}
+              <Link href="/me/documents" className="link">
+                «Образцы и реквизиты»
+              </Link>{" "}
+              — реквизиты заполнятся сами.
+            </p>
+          )}
 
-        {fillNote && (
-          <Note tone={fillNote.tone} icon={fillNote.tone === "ok" ? CheckIcon : fillNote.tone === "warn" ? AlertTriangleIcon : undefined} className="mt-3">
-            {fillNote.text}
-          </Note>
-        )}
+          {fillNote && (
+            <Note tone={fillNote.tone} icon={fillNote.tone === "ok" ? CheckIcon : fillNote.tone === "warn" ? AlertTriangleIcon : undefined}>
+              {fillNote.text}
+            </Note>
+          )}
+          {save === "failed" && (
+            <Note tone="warn" icon={AlertTriangleIcon} className="sm:hidden">
+              Не получилось сохранить — попробуйте ещё раз.
+            </Note>
+          )}
+          {loadError && (
+            <Note tone="warn" icon={AlertTriangleIcon}>
+              Браузер не дал открыть сохранённые реквизиты. Обновите страницу.
+            </Note>
+          )}
 
-        {loadError && (
-          <Note tone="warn" icon={AlertTriangleIcon} className="mt-5">
-            Браузер не дал открыть сохранённые реквизиты. Обновите страницу.
-          </Note>
-        )}
+          {meta.suggestions.length > 0 && <Suggestions items={meta.suggestions} onAccept={accept} onDismiss={dismiss} />}
 
-        {meta.suggestions.length > 0 && <Suggestions items={meta.suggestions} onAccept={accept} onDismiss={dismiss} />}
-
-        {profile &&
-          PROFILE_GROUPS.map((group) => (
-            <section key={group.title} className="mt-7">
-              <h2 className="mb-2.5 text-[13px] font-bold uppercase tracking-[0.06em] text-muted-foreground">{group.title}</h2>
-              <div className="grid gap-4 rounded-[var(--r-card)] bg-card p-[18px]">
-                {group.fields.map((field) => (
-                  <label key={field.key} className="grid gap-1.5">
-                    <span className="text-[14.5px] font-semibold">{field.label}</span>
-                    <input
-                      value={profile[field.key]}
-                      onChange={(e) => change(field.key, e.target.value)}
-                      placeholder={field.example}
-                      className="h-11 rounded-[var(--r-ctl)] bg-muted px-3 text-base outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary"
-                    />
-                    {meta.sources[field.key] && (
-                      <span className="text-[13.5px] text-muted-foreground">из «{meta.sources[field.key]}»</span>
-                    )}
-                  </label>
-                ))}
-              </div>
-            </section>
-          ))}
-
-        <p className="sticky bottom-0 mt-4 bg-gradient-to-b from-transparent to-background to-40% pb-[calc(12px+env(safe-area-inset-bottom,0px))] pt-5 text-[14.5px] text-muted-foreground" aria-live="polite">
-          {save === "saving" && "Сохраняю…"}
-          {save === "saved" && "Сохранено в этом браузере."}
-          {save === "failed" && <span className="font-semibold text-[var(--warn)]">Не получилось сохранить — попробуйте ещё раз.</span>}
-        </p>
-      </main>
-    </div>
+          {profile &&
+            PROFILE_GROUPS.map((group, gi) => (
+              <Island key={group.title} id={`pg-${gi}`} title={group.title}>
+                <div className="grid px-[var(--pad)] pb-3 pt-1">
+                  {group.fields.map((field) => (
+                    <div
+                      key={field.key}
+                      className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-center gap-x-4 gap-y-1 py-1.5 max-sm:grid-cols-1"
+                    >
+                      <label htmlFor={`pf-${field.key}`} className="text-[var(--ink-2)]">
+                        {field.label}
+                      </label>
+                      <input
+                        id={`pf-${field.key}`}
+                        value={profile[field.key]}
+                        onChange={(e) => change(field.key, e.target.value)}
+                        placeholder={field.example}
+                        autoComplete="off"
+                        className="field"
+                      />
+                      {meta.sources[field.key] && (
+                        <span className="t-caption col-start-2 text-[var(--ink-3)] max-sm:col-start-1">
+                          из «{meta.sources[field.key]}»
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </Island>
+            ))}
+        </div>
+      </PageBody>
+    </>
   );
 }

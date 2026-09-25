@@ -6,12 +6,20 @@
 
 @custom-variant dark (@media (prefers-color-scheme: dark));
 
+@theme {
+  /* Рабочее место «Закупки»: от 1180 список и закупка рядом, от 1560 — ещё и сведения */
+  --breakpoint-split: 73.75rem;
+  --breakpoint-wide: 97.5rem;
+  /* Подписи 12 px — без сжатия: на мелком кегле буквы иначе слипаются */
+  --text-xs--letter-spacing: 0em;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-onest);
+  --font-sans: var(--font-montserrat);
   --font-mono: var(--font-jetbrains);
-  --font-heading: var(--font-unbounded);
+  --font-heading: var(--font-montserrat);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -52,39 +60,60 @@
 
 /* Фирменные токены — источник: design-system/brand.css */
 :root {
-  --ground: #eeeef6;
-  --ground-2: #e4e4f0;
-  --ink: #14142b;
-  --ink-2: #474763;
-  --ink-3: #77778f;
-  --rule: #dcdcea;
+  --ink: #101227;
+  --ink-2: #454a5f;
+  --ink-3: #626880;
+  --rule: #e6e8ee;
   --paper: #ffffff;
-  --paper-2: #f6f6fb;
-  --paper-3: #ecebf6;
-  --edge: #e3e2f0;
-  --edge-2: #d0cfe4;
-  --brand: #312e81;
-  --brand-press: #26246a;
-  --brand-tint: #e2e1f3;
+  --paper-2: #f5f6f9;
+  --paper-3: #eceef3;
+  --edge: #e4e6ec;
+  --edge-2: #d3d6df;
+  --brand: #4f46e5;
+  --brand-press: #4338ca;
+  --brand-tint: #eef0ff;
   --on-brand: #ffffff;
-  --ok: #0d9f6e;
-  --ok-tint: #d8f5e9;
-  --warn: #b4690e;
+  --ok: #087a54;
+  --ok-tint: #dcf5ea;
+  --warn: #9a590b;
   --warn-tint: #fbeeda;
   --danger: #cf2f24;
 
-  --r-shell: 30px;
-  --r-surface: 24px;
-  --r-card: 18px;
-  --r-bubble: 22px;
-  --r-ctl: 14px;
+  --r-island: 16px;
+  --r-surface: 12px;
+  --r-card: 10px;
+  --r-bubble: 16px;
+  --r-ctl: 8px;
   --r-pill: 999px;
 
-  --lift: 0 2px 6px rgb(20 20 43 / .05), 0 18px 40px -20px rgb(20 20 43 / .25);
+  /* Острова на холсте: каждый блок экрана — белая карточка с кольцом 1 px и мягкой тенью,
+     как карточка меню AI Elements в Figma (OpenInContent). Между островами — 8 px холста. */
+  --canvas: #eff1f5;
+  --line: #e6e8ee;
+  --hover: #f3f4f7;
+  --select: #eef0ff;
+  --hairline: 0 1px 2px rgb(16 18 39 / .05);
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--brand) 22%, transparent);
+  --island-ring: rgb(16 18 39 / .1);
+  --island-shadow: 0 0 0 1px var(--island-ring), 0 1px 2px rgb(16 18 39 / .04), 0 4px 10px -4px rgb(16 18 39 / .08);
+  /* Всплывающие острова — меню, сведения поверх закупки, плавающая панель: тень lg из Figma */
+  --float: 0 0 0 1px var(--island-ring), 0 4px 6px -4px rgb(16 18 39 / .1), 0 10px 15px -3px rgb(16 18 39 / .1);
+  --scrim: rgb(16 18 39 / .42);
 
-  --background: var(--ground);
+  /* Гарнитуры: Montserrat — заголовки и интерфейс, JetBrains Mono — цифры */
+  --display: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --ui: var(--font-montserrat), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: var(--font-jetbrains), ui-monospace, "SFMono-Regular", Consolas, monospace;
+
+  /* Плотная раскладка: сайдбар 224, список закупок 288, сведения 272; поля внутри острова 16 */
+  --side-w: 224px;
+  --list-w: 288px;
+  --info-w: 272px;
+  --pad: 16px;
+
+  --background: var(--canvas);
   --foreground: var(--ink);
-  --card: var(--paper);
+  --card: #ffffff;
   --card-foreground: var(--ink);
   --popover: var(--paper);
   --popover-foreground: var(--ink);
@@ -94,63 +123,441 @@
   --secondary-foreground: var(--ink);
   --muted: var(--paper-2);
   --muted-foreground: var(--ink-3);
-  --accent: var(--paper-3);
+  --accent: var(--hover);
   --accent-foreground: var(--ink);
   --destructive: var(--danger);
-  --border: var(--rule);
-  --input: var(--edge);
+  --border: var(--line);
+  --input: var(--edge-2);
   --ring: var(--brand);
   --chart-1: var(--brand);
   --chart-2: var(--ok);
   --chart-3: var(--warn);
   --chart-4: var(--ink-3);
   --chart-5: var(--edge-2);
-  --radius: 0.875rem;
-  --sidebar: var(--paper-2);
+  --radius: 0.5rem;
+  --sidebar: var(--card);
   --sidebar-foreground: var(--ink);
   --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: var(--on-brand);
-  --sidebar-accent: var(--paper-3);
+  --sidebar-accent: var(--hover);
   --sidebar-accent-foreground: var(--ink);
-  --sidebar-border: var(--rule);
+  --sidebar-border: var(--line);
   --sidebar-ring: var(--brand);
 }
 
 @media (prefers-color-scheme: dark) {
-:root {
-  --ground: #0b0b16;
-  --ground-2: #111124;
-  --ink: #ebebf7;
-  --ink-2: #a6a6c2;
-  --ink-3: #787895;
-  --rule: #22223c;
-  --paper: #131324;
-  --paper-2: #19192e;
-  --paper-3: #21213a;
-  --edge: #262645;
-  --edge-2: #333359;
-  --brand: #a5b4fc;
-  --brand-press: #bcc6ff;
-  --brand-tint: #22224a;
-  --on-brand: #0b0a26;
-  --ok: #3ddc9a;
-  --ok-tint: #103326;
-  --warn: #e2a34a;
-  --warn-tint: #352812;
-  --danger: #ff7a70;
+  :root {
+    color-scheme: dark;
+    --ink: #eceef6;
+    --ink-2: #b1b4c8;
+    --ink-3: #9296ad;
+    --rule: #242636;
+    --paper: #13141e;
+    --paper-2: #191a26;
+    --paper-3: #20222f;
+    --edge: #262838;
+    --edge-2: #333648;
+    --brand: #a5b4fc;
+    --brand-press: #c7d0fe;
+    --brand-tint: #1f2147;
+    --on-brand: #0b0c1f;
+    --ok: #3ddc9a;
+    --ok-tint: #0f2e22;
+    --warn: #e2a34a;
+    --warn-tint: #2f2413;
+    --danger: #ff7a70;
 
-  --lift: 0 2px 6px rgb(0 0 0 / .45), 0 18px 40px -20px rgb(0 0 0 / .7);
+    --canvas: #0b0c13;
+    --line: #242636;
+    --hover: #1a1b28;
+    --select: #1e2040;
+    --hairline: 0 1px 2px rgb(0 0 0 / .3);
+    --island-ring: rgb(255 255 255 / .08);
+    --island-shadow: 0 0 0 1px var(--island-ring), 0 1px 2px rgb(0 0 0 / .3), 0 4px 10px -4px rgb(0 0 0 / .4);
+    --float: 0 0 0 1px var(--island-ring), 0 4px 6px -4px rgb(0 0 0 / .5), 0 10px 15px -3px rgb(0 0 0 / .5);
+    --scrim: rgb(0 0 0 / .6);
+    --card: #13141e;
+  }
 }
+
+@media (width < 64rem) {
+  :root {
+    --pad: 12px;
+  }
+}
+
+/* Шкала шрифтов — плотная: пять кеглей 12 · 13 · 14 · 16 · 20, интерлиньяж кратен 4.
+   Интерфейс (меню, списки, кнопки) — 13, текст документов и сообщений — 14, заголовок экрана — 20.
+   Иерархию ведут кегль, насыщенность и цвет вместе. Других размеров не заводить. */
+@utility t-page {
+  font: 700 20px/28px var(--display);
+  letter-spacing: -0.02em;
+}
+@utility t-title {
+  font: 600 16px/24px var(--display);
+  letter-spacing: -0.01em;
+}
+@utility t-section {
+  font: 600 14px/20px var(--ui);
+  letter-spacing: -0.01em;
+}
+@utility t-doc {
+  font: 500 14px/20px var(--ui);
+  letter-spacing: -0.01em;
+}
+@utility t-read {
+  font: 500 14px/20px var(--ui);
+  letter-spacing: -0.01em;
+}
+@utility t-body {
+  font: 500 13px/20px var(--ui);
+  letter-spacing: -0.005em;
+}
+@utility t-strong {
+  font: 600 13px/20px var(--ui);
+  letter-spacing: -0.005em;
+}
+@utility t-label {
+  font: 500 13px/20px var(--ui);
+  letter-spacing: -0.005em;
+}
+@utility t-caption {
+  font: 500 12px/16px var(--ui);
+  letter-spacing: 0;
+}
+@utility t-tag {
+  font: 600 12px/16px var(--ui);
+  letter-spacing: 0;
+}
+@utility t-over {
+  font: 600 12px/16px var(--ui);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+@utility t-num {
+  font: 500 12px/16px var(--mono);
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    scrollbar-width: thin;
+    scrollbar-color: var(--edge-2) transparent;
+  }
+  html,
+  body {
+    height: 100%;
   }
   body {
-    @apply bg-background text-foreground;
+    background: var(--canvas);
+    color: var(--ink);
+    font: 500 13px/20px var(--ui);
+    letter-spacing: -0.005em;
   }
-  html {
-    @apply font-sans;
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+  button:not(:disabled),
+  label[for] {
+    cursor: pointer;
+  }
+  textarea::placeholder,
+  input::placeholder {
+    color: var(--ink-3);
+  }
+}
+
+/* Детали интерфейса из макета design-system/mockup/supplier-workspace.html.
+   Утилиты Tailwind стоят слоем выше и уточняют их на месте. */
+@layer components {
+  /* Кнопки: главная — заливка брендом, вторая — контур, опасная — красный тон */
+  .btn {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 32px;
+    padding-inline: 12px;
+    border-radius: var(--r-ctl);
+    background: var(--brand);
+    color: var(--on-brand);
+    font: 600 13px/20px var(--ui);
+    letter-spacing: -0.005em;
+    text-align: center;
+    white-space: nowrap;
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 35%, transparent), inset 0 1px 0 rgb(255 255 255 / .12);
+    transition: background-color .12s ease;
+  }
+  .btn > svg {
+    flex: none;
+    width: 16px;
+    height: 16px;
+  }
+  .btn:disabled {
+    opacity: .6;
+    cursor: default;
+  }
+  .btn-line {
+    background: var(--card);
+    color: var(--ink);
+    box-shadow: inset 0 0 0 1px var(--edge-2), var(--hairline);
+  }
+  .btn-danger {
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+    color: var(--danger);
+    box-shadow: none;
+  }
+  .btn-lg {
+    min-height: 40px;
+    padding-inline: 16px;
+    font: 600 14px/20px var(--ui);
+  }
+  .btn-xs {
+    min-height: 28px;
+    padding-inline: 10px;
+    border-radius: 6px;
+    font: 600 12px/16px var(--ui);
+    letter-spacing: 0;
+  }
+  @media (hover: hover) {
+    .btn:hover:not(:disabled) {
+      background: var(--brand-press);
+    }
+    .btn-line:hover:not(:disabled) {
+      background: var(--hover);
+    }
+    .btn-danger:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--danger) 22%, transparent);
+    }
+  }
+  .btn:has(input:focus-visible),
+  .icon-btn:has(input:focus-visible),
+  .link:has(input:focus-visible) {
+    outline: 2px solid var(--brand);
+    outline-offset: 3px;
+  }
+
+  .icon-btn {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--r-ctl);
+    color: var(--ink-2);
+  }
+  @media (hover: hover) {
+    .icon-btn:hover {
+      background: var(--hover);
+      color: var(--ink);
+    }
+  }
+
+  .link {
+    color: var(--brand);
+    font-weight: 600;
+    text-align: left;
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, var(--brand) 40%, transparent);
+    text-underline-offset: 4px;
+  }
+  .link-quiet {
+    color: var(--ink-3);
+    font-weight: 500;
+    text-decoration-color: color-mix(in srgb, var(--ink-3) 45%, transparent);
+  }
+  @media (hover: hover) {
+    .link-quiet:hover {
+      color: var(--ink);
+    }
+    .link-del:hover {
+      color: var(--danger);
+    }
+  }
+
+  .field {
+    width: 100%;
+    height: 32px;
+    padding-inline: 10px;
+    border: 1px solid var(--edge-2);
+    border-radius: var(--r-ctl);
+    outline: none;
+    background: var(--card);
+    font: 500 14px/20px var(--ui);
+    letter-spacing: -0.005em;
+    box-shadow: var(--hairline);
+  }
+  /* На телефоне поле 16 px, иначе браузер увеличивает страницу при вводе */
+  @media (pointer: coarse) {
+    .field,
+    .field input {
+      font-size: 16px;
+    }
+  }
+  .field:focus,
+  .field:focus-within {
+    border-color: var(--brand);
+    box-shadow: var(--focus-ring);
+  }
+
+  /* Остров: белая карточка на холсте. Каждый смысловой блок — отдельный остров, чтобы экран
+     читался блоками: навигация, список, шапка закупки, группа требований, «Дальше». */
+  .island {
+    min-width: 0;
+    border-radius: var(--r-island);
+    background: var(--card);
+    box-shadow: var(--island-shadow);
+  }
+  /* Заголовок острова — без черты: название, счётчик и справа одно действие */
+  .island-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px 12px;
+    min-height: 40px;
+    padding: 10px var(--pad) 2px;
+  }
+
+  /* Пункт меню и строка списка в острове — как пункт карточки в Figma: скругление 8, подсветка
+     при наведении, выбранный — индиго-тинт. Разделителей между пунктами нет. */
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    padding: 6px 8px;
+    border-radius: var(--r-ctl);
+    text-align: left;
+  }
+  @media (hover: hover) {
+    .item:hover {
+      background: var(--hover);
+    }
+  }
+  .item[aria-current="true"],
+  .item[aria-current="page"] {
+    background: var(--select);
+  }
+
+  /* Плашка-заметка: на холсте — отдельный блок со скруглением острова, внутри острова — плашка */
+  .note {
+    border-radius: var(--r-island);
+  }
+  .island .note {
+    border-radius: var(--r-card);
+  }
+  .note-info {
+    background: var(--card);
+    box-shadow: var(--island-shadow);
+  }
+  .island .note-info {
+    background: var(--paper-2);
+    box-shadow: none;
+  }
+
+  /* Счётчик рядом с названием: моноширинные цифры одной ширины */
+  .count {
+    font: 500 12px/16px var(--mono);
+    letter-spacing: 0;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Значок закупки — номер закона: 44-ФЗ и 223-ФЗ различаются с первого взгляда */
+  .law {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--r-ctl);
+    background: var(--brand-tint);
+    color: var(--brand);
+    font: 700 12px/16px var(--mono);
+    letter-spacing: -0.03em;
+  }
+  .law-223 {
+    background: var(--paper-3);
+    color: var(--ink-2);
+  }
+  .law-icon {
+    background: var(--paper-2);
+    color: var(--ink-2);
+  }
+  .law-big {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--r-surface);
+    font: 700 16px/24px var(--mono);
+  }
+
+  /* Ссылка на источник: чип с иконкой, нажали — под ним цитата */
+  .src {
+    display: inline-flex;
+    justify-self: start;
+    align-items: center;
+    gap: 4px;
+    margin-left: -6px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    color: var(--brand);
+    font: 600 12px/16px var(--ui);
+    letter-spacing: 0;
+    text-align: left;
+  }
+  .src > svg {
+    flex: none;
+    opacity: .8;
+  }
+  .src[aria-expanded="true"] {
+    background: var(--brand-tint);
+  }
+  @media (hover: hover) {
+    .src:hover {
+      background: var(--brand-tint);
+    }
+  }
+
+  /* Подсказка-вопрос */
+  .chip {
+    padding: 5px 12px;
+    border: 1px solid var(--edge-2);
+    border-radius: var(--r-pill);
+    background: var(--card);
+    color: var(--ink);
+    font: 500 13px/20px var(--ui);
+    letter-spacing: -0.005em;
+    text-align: left;
+    box-shadow: var(--hairline);
+  }
+  @media (hover: hover) {
+    .chip:hover {
+      border-color: var(--brand);
+      color: var(--brand);
+    }
+  }
+
+  /* Файл в поле ввода или в разговоре */
+  .file-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+    min-height: 28px;
+    padding-inline: 10px 4px;
+    border-radius: var(--r-pill);
+    background: var(--paper-2);
+    color: var(--ink);
+    font: 500 12px/16px var(--ui);
+    letter-spacing: 0;
+  }
+  .file-chip > svg {
+    flex: none;
+    color: var(--ink-3);
   }
 }

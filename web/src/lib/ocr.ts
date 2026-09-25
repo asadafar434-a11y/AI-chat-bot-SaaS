@@ -50,14 +50,15 @@ async function transcribePage(client: Anthropic, image: PageImage, label: string
 }
 
 // Страницы — по порядку, не больше PARALLEL запросов одновременно.
-export async function transcribe(images: PageImage[], name: string): Promise<string[]> {
+// В журнал — только номера страниц: в имени файла бывают ФИО.
+export async function transcribe(images: PageImage[]): Promise<string[]> {
   const client = new Anthropic();
   const texts: string[] = new Array(images.length).fill("");
   let next = 0;
   const worker = async () => {
     while (next < images.length) {
       const i = next++;
-      texts[i] = await transcribePage(client, images[i], `${name}, стр. ${i + 1}`);
+      texts[i] = await transcribePage(client, images[i], `стр. ${i + 1} из ${images.length}`);
     }
   };
   await Promise.all(Array.from({ length: Math.min(PARALLEL, images.length) }, worker));

@@ -3,13 +3,14 @@
 import type { ReactNode } from "react";
 import { useParams } from "next/navigation";
 import { PurchaseProvider } from "@/components/purchase-provider";
+import { PurchaseView } from "@/components/purchase-view";
 
-// Закупка загружается один раз на все её экраны: требования, ТП и вопросы.
+// Закупка загружается один раз на все её вкладки: требования, ТП и вопросы.
 export default function PurchaseLayout({ children }: { children: ReactNode }) {
   const { id } = useParams<{ id: string }>();
   return (
     <PurchaseProvider key={id} id={id}>
-      {children}
+      <PurchaseView>{children}</PurchaseView>
     </PurchaseProvider>
   );
 }

@@ -6,6 +6,14 @@ export type FailedFile = { name: string; reason: string };
 // Что можно загрузить: сканы и фото распознаёт ИИ, старый Word и RTF читаются без него.
 export const ACCEPTED_FILES = ".pdf,.docx,.doc,.rtf,.txt,.md,.jpg,.jpeg,.png";
 
+// Какие файлы закупки распознаны со скана или фото: ошибка в цифре ТЗ перейдёт в требования и ТП.
+export function scanWarning(documents: SentDocument[]): string | null {
+  const names = documents.filter((d) => d.scan).map((d) => `«${d.name}»`);
+  if (names.length === 0) return null;
+  const one = names.length === 1;
+  return `${one ? "Файл" : "Файлы"} ${names.join(", ")} ${one ? "распознан" : "распознаны"} со скана — цифры, даты и суммы сверьте с оригиналом.`;
+}
+
 // Текст из файлов достаёт сервер. Если не прочитался ни один файл — объясняем почему.
 export async function readDocuments(files: File[]): Promise<{ documents: SentDocument[]; failed: FailedFile[] }> {
   const form = new FormData();

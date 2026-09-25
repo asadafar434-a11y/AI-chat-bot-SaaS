@@ -3,11 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangleIcon } from "lucide-react";
-import { AppHeader } from "@/components/app-header";
-import { BackLink } from "@/components/back-link";
 import { FileDrop } from "@/components/file-drop";
 import { Note } from "@/components/note";
-import { PageTitle } from "@/components/page-title";
+import { PageBody, PageHeader } from "@/components/page-header";
 import { WorkingSteps } from "@/components/working-steps";
 import { extractRequirements, fromRequirements, type Purchase } from "@/lib/purchase";
 import { savePurchaseWithDocuments } from "@/lib/purchase-store";
@@ -59,32 +57,32 @@ export default function NewPurchasePage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <AppHeader />
-      <main className="mx-auto w-full max-w-[680px] px-4 pb-10">
-        <BackLink href="/">Мои закупки</BackLink>
-        <PageTitle className="mt-4">Новая закупка</PageTitle>
-        {working ? (
-          <WorkingSteps steps={WORKING_STEPS} />
-        ) : (
-          <>
-            <p className="mt-3 max-w-[46ch] text-[17px] leading-[26px] text-[var(--ink-2)]">
-              Загрузите извещение, ТЗ и проект контракта — выпишу требования и сроки, а потом помогу с техническим предложением.
-            </p>
-            {error && (
-              <Note tone="warn" icon={AlertTriangleIcon} className="mt-5">
-                {error}
-              </Note>
-            )}
-            <FileDrop
-              hint="Перетащите сюда документы закупки — можно сразу несколько, PDF или Word"
-              button="Загрузить документы"
-              onFiles={(files) => void create(files)}
-              onSample={() => void sample()}
-            />
-          </>
-        )}
-      </main>
-    </div>
+    <>
+      <PageHeader title="Новая закупка" sub="Начало пути: загрузите документы — дальше шаги подскажут, что делать" />
+      <PageBody>
+        <section className="island max-w-[880px] p-[var(--pad)]">
+          {working ? (
+            <WorkingSteps steps={WORKING_STEPS} />
+          ) : (
+            <div className="grid gap-3">
+              <p className="max-w-[70ch] text-[var(--ink-2)]">
+                Загрузите извещение, ТЗ и проект контракта — выпишу требования и сроки. Потом закупка откроется на шаге 1 «Требования», а дальше будут техническое предложение и проверка заявки.
+              </p>
+              {error && (
+                <Note tone="warn" icon={AlertTriangleIcon}>
+                  {error}
+                </Note>
+              )}
+              <FileDrop
+                hint="Перетащите сюда документы закупки — можно сразу несколько: PDF, Word, сканы и фото"
+                button="Загрузить документы"
+                onFiles={(files) => void create(files)}
+                onSample={() => void sample()}
+              />
+            </div>
+          )}
+        </section>
+      </PageBody>
+    </>
   );
 }
