@@ -1,0 +1,44 @@
+# Автопроверка приложения web/: линтер, типы и сборка — на каждый PR и на каждое изменение main.
+# Ключ API для проверки не нужен: ИИ вызывается только при работе приложения, не при сборке.
+name: Проверка приложения
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Линтер, типы и сборка
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Установка зависимостей
+        run: npm ci
+
+      - name: Линтер
+        run: npx eslint src
+
+      - name: Типы
+        run: npx next typegen && npx tsc --noEmit
+
+      - name: Сборка
+        run: npx next build
