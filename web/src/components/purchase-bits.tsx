@@ -1,4 +1,4 @@
-import { AlertTriangleIcon, ClockIcon, FileTextIcon } from "lucide-react";
+import { ClockIcon, DocumentIcon, WarningIcon } from "@/components/icons";
 import type { Due } from "@/lib/deadline";
 import { plural } from "@/lib/plural";
 import type { Purchase } from "@/lib/purchase";
@@ -53,13 +53,13 @@ export function SourceQuote({ source, quote, verified, what, open, onToggle }: {
   return (
     <>
       <button type="button" aria-expanded={open} onClick={onToggle} className="src">
-        <FileTextIcon className="size-3" />
+        <DocumentIcon className="size-3" />
         {source}
       </button>
       {open && <blockquote className="t-read mt-1 rounded-[var(--r-card)] bg-[var(--paper-2)] px-4 py-3">{quote}</blockquote>}
       {!verified && (
         <p className="t-caption flex items-center gap-2 text-[var(--warn)]">
-          <AlertTriangleIcon className="size-4 shrink-0" />
+          <WarningIcon className="size-4 shrink-0" />
           Не нашёл эту цитату в документах дословно — сверьте {what} вручную.
         </p>
       )}

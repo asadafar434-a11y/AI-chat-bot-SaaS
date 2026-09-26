@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { AlertTriangleIcon, ArrowLeftIcon } from "lucide-react";
+import { ArrowLeftIcon, WarningIcon } from "@/components/icons";
 import { Note } from "@/components/note";
 import { upgradePurchase, type Purchase } from "@/lib/purchase";
 import { deletePurchase, getDocuments, getPurchase, savePurchase, savePurchaseWithDocuments, scansOf } from "@/lib/purchase-store";
@@ -127,7 +127,7 @@ export function PurchaseProvider({ id, children }: { id: string; children: React
     <PurchaseContext.Provider value={{ purchase: loaded.purchase, documents: loaded.documents, update, replaceDocuments, remove }}>
       {saveError && (
         <div className="flex-none pb-2">
-          <Note tone="warn" icon={AlertTriangleIcon}>
+          <Note tone="warn" icon={WarningIcon}>
             Не получилось сохранить изменения в браузере. Не закрывайте страницу и попробуйте ещё раз.
           </Note>
         </div>

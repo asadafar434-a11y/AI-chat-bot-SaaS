@@ -4,17 +4,17 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  ChevronRightIcon,
-  CircleHelpIcon,
+  CaretRightIcon,
+  ChatIcon,
+  ClipboardIcon,
+  CrossIcon,
   FolderIcon,
-  HouseIcon,
-  ListIcon,
-  MessageSquareIcon,
-  ScaleIcon,
-  UserRoundIcon,
-  XIcon,
-  type LucideIcon,
-} from "lucide-react";
+  HelpCircleIcon,
+  HomeIcon,
+  ScalesIcon,
+  UserIcon,
+  type IconComponent,
+} from "@/components/icons";
 import { onDataChanged } from "@/lib/db";
 import { LEGAL_PAGES } from "@/lib/legal";
 import { getProfile } from "@/lib/me-store";
@@ -28,7 +28,7 @@ const ON_BRAND_SOFT = "text-[color-mix(in_srgb,var(--on-brand)_78%,transparent)]
 
 function NavItem({ href, icon: Icon, current, count, first, children }: {
   href: string;
-  icon: LucideIcon;
+  icon: IconComponent;
   current: boolean;
   count?: ReactNode;
   first?: boolean;
@@ -76,7 +76,7 @@ function MemberCard({ profile, current }: { profile: Profile; current: boolean }
         <span className="t-strong truncate">{name}</span>
         <span className="t-caption truncate text-[var(--ink-3)]">{sub}</span>
       </span>
-      <ChevronRightIcon className="size-4 text-[var(--ink-3)]" />
+      <CaretRightIcon className="size-4 text-[var(--ink-3)]" />
     </Link>
   );
 }
@@ -121,24 +121,24 @@ export function SideNav({ onClose }: { onClose: () => void }) {
       <div className="flex min-h-14 flex-none items-center gap-2 py-2.5 pl-3 pr-2">
         <Link href="/" aria-label="Тендерный юрист — на главную" className="inline-flex min-w-0 items-center gap-2.5">
           <span className="grid size-7 flex-none place-items-center rounded-[var(--r-ctl)] bg-primary text-primary-foreground shadow-[inset_0_-2px_0_rgb(0_0_0/.12)]">
-            <ScaleIcon className="size-4" />
+            <ScalesIcon className="size-4" />
           </span>
           <span className="font-heading text-sm leading-5 font-bold tracking-[-0.01em]">Тендерный юрист</span>
         </Link>
         <button type="button" onClick={onClose} aria-label="Закрыть меню" className="icon-btn ml-auto lg:hidden">
-          <XIcon className="size-4" />
+          <CrossIcon className="size-4" />
         </button>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-2 pb-3 pt-1">
         <nav aria-label="Разделы" className="grid gap-px">
-          <NavItem href="/" icon={HouseIcon} current={pathname === "/"} first>
+          <NavItem href="/" icon={HomeIcon} current={pathname === "/"} first>
             Главная
           </NavItem>
-          <NavItem href="/purchases" icon={ListIcon} current={inPurchases} count={data?.purchases}>
+          <NavItem href="/purchases" icon={ClipboardIcon} current={inPurchases} count={data?.purchases}>
             Закупки
           </NavItem>
-          <NavItem href="/chat" icon={MessageSquareIcon} current={pathname === "/chat"}>
+          <NavItem href="/chat" icon={ChatIcon} current={pathname === "/chat"}>
             Спросить про тендер
           </NavItem>
         </nav>
@@ -146,7 +146,7 @@ export function SideNav({ onClose }: { onClose: () => void }) {
         <Group id="side-me" title="Данные компании">
           <NavItem
             href="/me/profile"
-            icon={UserRoundIcon}
+            icon={UserIcon}
             current={pathname === "/me/profile"}
             count={data ? `${filledCount(data.profile)}/${PROFILE_KEYS.length}` : undefined}
           >
@@ -159,7 +159,7 @@ export function SideNav({ onClose }: { onClose: () => void }) {
         </Group>
 
         <div className="mt-auto grid gap-px">
-          <NavItem href="/help" icon={CircleHelpIcon} current={pathname === "/help"}>
+          <NavItem href="/help" icon={HelpCircleIcon} current={pathname === "/help"}>
             Как это работает
           </NavItem>
           <p className="t-caption flex flex-wrap gap-x-3 gap-y-1 px-2 pt-2">

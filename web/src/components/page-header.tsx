@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { MenuIcon } from "lucide-react";
+import { MenuIcon } from "@/components/icons";
 import { useShell } from "@/components/app-shell";
 
 // Шапка экрана на холсте: заголовок, рядом главная цифра экрана, справа — одно главное действие.

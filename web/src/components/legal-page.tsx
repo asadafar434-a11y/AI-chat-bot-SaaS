@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { AlertTriangleIcon, ScaleIcon } from "lucide-react";
+import { ScalesIcon, WarningIcon } from "@/components/icons";
 import { Note } from "@/components/note";
 import { LEGAL_EDITION, LEGAL_PAGES, type Operator, type OperatorValue } from "@/lib/legal";
 
@@ -42,7 +42,7 @@ export function LegalPage({ title, operator, children }: { title: string; operat
       <div className="mx-auto grid max-w-[760px] gap-2 p-2 pb-6 sm:pt-6">
         <Link href="/" className="inline-flex w-fit items-center gap-2.5 px-2 py-2">
           <span className="grid size-7 flex-none place-items-center rounded-[var(--r-ctl)] bg-primary text-primary-foreground shadow-[inset_0_-2px_0_rgb(0_0_0/.12)]">
-            <ScaleIcon className="size-4" />
+            <ScalesIcon className="size-4" />
           </span>
           <span className="font-heading text-sm leading-5 font-bold tracking-[-0.01em]">Тендерный юрист</span>
         </Link>
@@ -53,7 +53,7 @@ export function LegalPage({ title, operator, children }: { title: string; operat
             <p className="t-caption text-[var(--ink-3)]">Редакция от {LEGAL_EDITION}</p>
           </header>
           {operator.missing.length > 0 && (
-            <Note tone="warn" icon={AlertTriangleIcon}>
+            <Note tone="warn" icon={WarningIcon}>
               Черновик: не заданы реквизиты владельца сервиса — {operator.missing.join(", ")}. Задайте их в настройках хостинга и
               проверьте текст с юристом до того, как открыть сервис другим людям.
             </Note>

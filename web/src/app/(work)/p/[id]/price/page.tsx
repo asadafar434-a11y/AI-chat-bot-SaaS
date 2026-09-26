@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { CheckIcon, WarningIcon } from "@/components/icons";
 import { Island } from "@/components/island";
-import { Note, Warnings } from "@/components/note";
+import { Note } from "@/components/note";
+import { PriceScale } from "@/components/price-scale";
 import { usePurchase } from "@/components/purchase-provider";
 import { StepIntro, TabBody } from "@/components/purchase-view";
+import { calcFor, dropText, pctText, rub, rubShort } from "@/lib/price-calc";
 import {
   GOOD_FAITH_LIMIT,
-  defaultsFor,
   priceFloor,
   raisedPct,
   readRequirements,
@@ -18,13 +20,7 @@ import {
   type SecurityMethod,
 } from "@/lib/price-floor";
 import { plural } from "@/lib/plural";
-import { formatRubles, parseRubles } from "@/lib/rub-words";
-import { SAMPLE_PRICE_CALC } from "@/lib/sample-purchase";
-
-const rub = (value: number) => `${formatRubles(value).replace("-", "−")} ₽`;
-// Снижение — с округлением вниз: 24,99 % не должно выглядеть как 25 %, с которых начинается антидемпинг.
-const dropText = (drop: number) => (Math.floor(drop * 1000 + 1e-6) / 10).toLocaleString("ru-RU", { maximumFractionDigits: 1 });
-const pctText = (value: number) => value.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+import { parseRubles } from "@/lib/rub-words";
 
 function parseNumber(text: string): number | null {
   const cleaned = text.replace(/\s/g, "").replace(",", ".");
@@ -37,6 +33,7 @@ const showNumber = (value: number | null | undefined) =>
   value === null || value === undefined ? "" : value.toLocaleString("ru-RU", { maximumFractionDigits: 2 }).replace(/[\u00a0\u202f]/g, " ");
 
 // Поле для числа: набранный текст остаётся как есть, наружу уходит число или null, если поле пустое.
+// Число, поменявшееся снаружи (ползунком), — переписывает поле.
 function NumberField({ id, label, unit, hint, value, onChange }: {
   id: string;
   label: string;
@@ -46,6 +43,11 @@ function NumberField({ id, label, unit, hint, value, onChange }: {
   onChange: (value: number | null) => void;
 }) {
   const [text, setText] = useState(() => showNumber(value));
+  const [seen, setSeen] = useState(value);
+  if (value !== seen) {
+    setSeen(value);
+    if (parseNumber(text) !== value) setText(showNumber(value));
+  }
   return (
     <div className="grid content-start gap-1">
       <label htmlFor={id} className="t-strong">
@@ -128,6 +130,22 @@ function MethodPicker({ method, onChange }: { method: SecurityMethod; onChange: 
         ))}
       </div>
     </fieldset>
+  );
+}
+
+// Что останется по вашей цене, а пока её нет — по начальной.
+function Profit({ b, byNmck }: { b: Breakdown; byNmck: boolean }) {
+  const loss = b.profit < 0;
+  return (
+    <div aria-live="polite" className="grid content-start gap-0.5">
+      <span className="t-strong">{byNmck ? "По начальной цене" : "По вашей цене"}</span>
+      <span className="flex items-center gap-1.5">
+        {loss ? <WarningIcon className="size-4 text-[var(--danger)]" /> : <CheckIcon className="size-4 text-[var(--ok)]" strokeWidth={2.5} />}
+        <span className="text-[var(--ink-2)]">{loss ? "убыток" : "прибыль"}</span>
+        <span className="[font:600_16px/24px_var(--mono)] tabular-nums">{rubShort(Math.abs(b.profit))}</span>
+      </span>
+      {Math.abs(b.profit) >= 0.5 && <span className="t-caption text-[var(--ink-3)]">{pctText(Math.round((Math.abs(b.profit) / b.price) * 1000) / 10)} % цены</span>}
+    </div>
   );
 }
 
@@ -228,12 +246,14 @@ export default function PricePage() {
   const { purchase, update } = usePurchase();
   const nmckFound = parseRubles(purchase.price);
   const found = readRequirements(purchase);
-  const calc: PriceCalc = { ...defaultsFor(purchase, nmckFound), ...(purchase.sample ? SAMPLE_PRICE_CALC : {}), ...purchase.priceCalc };
+  const calc = calcFor(purchase);
   const set = (patch: Partial<PriceCalc>) => update({ priceCalc: { ...purchase.priceCalc, ...patch } });
 
-  const { floor, at } = priceFloor(calc);
+  const { floor, at, raisedBelow } = priceFloor(calc);
   const atFloor = floor.ok ? at(floor.price) : null;
   const mine = calc.price ? at(calc.price) : null;
+  const shown = mine ?? (calc.nmck ? at(calc.nmck) : null);
+  const above = calc.nmck !== null && calc.price !== null && calc.price > calc.nmck;
   const guarantee = calc.method === "guarantee";
   const secured = (calc.securityPct ?? 0) > 0 && !(calc.smeOnly && calc.exempt);
   const ratePct = guarantee ? calc.guaranteeRatePct : calc.moneyRatePct;
@@ -277,6 +297,43 @@ export default function PricePage() {
           До какой цены можно снижаться на торгах, чтобы контракт не ушёл в убыток. Учитываю расходы, налог, стоимость обеспечения
           исполнения и антидемпинговые меры 44-ФЗ. Считается прямо в браузере — цифры никуда не отправляются.
         </StepIntro>
+
+        <Island id="price-scale" level={3} title="Где убыток, где прибыль" sub="Двигайте ползунок или впишите цену — покажу, что останется">
+          <div className="grid gap-4 px-[var(--pad)] pb-4 pt-1">
+            <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+              <NumberField
+                id="price-offer"
+                label="Ваша цена"
+                unit="₽"
+                value={calc.price}
+                onChange={(price) => set({ price })}
+                hint={
+                  above ? (
+                    <span className="text-[var(--warn)]">Выше начальной — такую заявку отклонят</span>
+                  ) : calc.price !== null && calc.nmck ? (
+                    `На ${dropText(1 - calc.price / calc.nmck)} % ниже начальной`
+                  ) : (
+                    "Сколько хотите предложить на торгах"
+                  )
+                }
+              />
+              {shown && <Profit b={shown} byNmck={!mine} />}
+            </div>
+            {calc.nmck ? (
+              <PriceScale
+                nmck={calc.nmck}
+                floor={floor}
+                raisedBelow={raisedBelow}
+                raisedPct={raisedPct(calc.securityPct ?? 0)}
+                at={at}
+                price={calc.price}
+                onPrice={(price) => set({ price })}
+              />
+            ) : (
+              <p className="text-[var(--ink-3)]">Впишите начальную цену — нарисую шкалу.</p>
+            )}
+          </div>
+        </Island>
 
         <Island id="price-costs" level={3} title="Цена и расходы" sub={purchase.sample ? "В примере — вымышленные расходы" : undefined}>
           <div className="@container px-[var(--pad)] pb-4 pt-1">
@@ -421,30 +478,14 @@ export default function PricePage() {
           </div>
         </Island>
 
-        <Island id="price-check" level={3} title="Проверить свою цену">
-          <div className="grid gap-3 px-[var(--pad)] pb-4 pt-1">
-            <NumberField
-              id="price-offer"
-              label="Ваша цена"
-              unit="₽"
-              value={calc.price}
-              onChange={(price) => set({ price })}
-              hint="Сколько хотите предложить — покажу, что останется"
-            />
-            {mine && (
-              <Warnings
-                items={[
-                  calc.nmck !== null && mine.price > calc.nmck && "Цена выше начальной — такую заявку отклонят.",
-                  mine.profit < 0 && `По этой цене контракт в убытке на ${rub(-mine.profit)}.`,
-                ]}
-              />
-            )}
-            {cols.length > 0 && <PriceTable cols={cols} rows={rows} />}
-            {cols.length > 0 && (
+        {cols.length > 0 && (
+          <Island id="price-table" level={3} title="Из чего складывается цена" sub="Нижняя цена и ваша — рядом, чтобы видеть разницу">
+            <div className="grid gap-3 px-[var(--pad)] pb-4 pt-1">
+              <PriceTable cols={cols} rows={rows} />
               <p className="t-caption text-[var(--ink-3)]">Прибыль — до налога с прибыли, если вы его платите.</p>
-            )}
-          </div>
-        </Island>
+            </div>
+          </Island>
+        )}
       </TabBody>
 
       <Result calc={calc} floor={floor} atFloor={atFloor} unpriced={secured && !rated} />

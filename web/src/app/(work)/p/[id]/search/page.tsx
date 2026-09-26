@@ -1,7 +1,7 @@
 "use client";
 
 import { useDeferredValue, useMemo, useState } from "react";
-import { SearchIcon } from "lucide-react";
+import { SearchIcon } from "@/components/icons";
 import { Island } from "@/components/island";
 import { usePurchase } from "@/components/purchase-provider";
 import { TabBody } from "@/components/purchase-view";

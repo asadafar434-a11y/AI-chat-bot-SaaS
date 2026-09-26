@@ -80,9 +80,10 @@ test("повышенное обеспечение уводит в убыток �
 });
 
 test("граница 25 % — в копейках, и для начальной цены с копейками", () => {
-  const { at } = priceFloor(calc({ nmck: 685_000.01, securityPct: 5, antiDumping: true }));
+  const { at, raisedBelow } = priceFloor(calc({ nmck: 685_000.01, securityPct: 5, antiDumping: true }));
   assert.equal(at(513_750)!.raised, true);
   assert.equal(at(513_750.01)!.raised, false);
+  assert.equal(raisedBelow, 513_750);
 });
 
 test("добросовестность заменяет повышенное обеспечение только до 15 млн (ч. 1–3 ст. 37)", () => {
@@ -91,6 +92,7 @@ test("добросовестность заменяет повышенное о�
   assert.equal(floor.kind, "plain");
   assert.equal(floor.price, 750_000);
   assert.equal(floor.at(floor.price).raised, false);
+  assert.equal(priceFloor(small).raisedBelow, null);
 
   const big = calc({ ...small, nmck: 20_000_000, costs: 12_000_000 });
   const bigFloor = floorOf(big);
@@ -112,6 +114,7 @@ test("без обеспечения антидемпинговые меры на
   const floor = floorOf(calc({ costs: 300_000, antiDumping: true }));
   assert.equal(floor.kind, "plain");
   assert.equal(floor.price, 300_000);
+  assert.equal(priceFloor(calc({ costs: 300_000, antiDumping: true })).raisedBelow, null);
 });
 
 test("убыток даже по начальной цене, нет цены без убытка, не хватает данных", () => {

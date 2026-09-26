@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AlertTriangleIcon, type LucideIcon } from "lucide-react";
+import { WarningIcon, type IconComponent } from "@/components/icons";
 
 const TONES = {
   warn: "t-strong bg-[var(--warn-tint)] text-[var(--warn)]",
@@ -8,7 +8,7 @@ const TONES = {
   info: "t-body note-info text-[var(--ink-2)]",
 };
 
-type NoteProps = { tone: keyof typeof TONES; icon?: LucideIcon; className?: string; children: ReactNode };
+type NoteProps = { tone: keyof typeof TONES; icon?: IconComponent; className?: string; children: ReactNode };
 
 // Скругление задаёт класс note: на холсте плашка — отдельный блок, как остров, внутри острова — мельче.
 export function Note({ tone, icon: Icon, className = "", children }: NoteProps) {
@@ -25,7 +25,7 @@ export function Warnings({ items, className = "" }: { items: (string | null | fa
   const list = items.filter((item): item is string => Boolean(item));
   if (list.length === 0) return null;
   return (
-    <Note tone="warn" icon={AlertTriangleIcon} className={className}>
+    <Note tone="warn" icon={WarningIcon} className={className}>
       {list.length === 1 ? (
         list[0]
       ) : (

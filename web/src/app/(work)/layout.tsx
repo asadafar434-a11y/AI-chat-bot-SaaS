@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon } from "@/components/icons";
 import { PageBody, PageHeader } from "@/components/page-header";
 import { daysText } from "@/components/purchase-bits";
 import { PurchaseListPane } from "@/components/purchase-list";

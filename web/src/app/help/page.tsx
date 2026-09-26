@@ -3,7 +3,16 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CheckIcon, FolderIcon, HouseIcon, ListIcon, MessageSquareIcon, PlusIcon, UserRoundIcon, type LucideIcon } from "lucide-react";
+import {
+  ChatIcon,
+  CheckIcon,
+  ClipboardIcon,
+  FolderIcon,
+  HomeIcon,
+  PlusIcon,
+  UserIcon,
+  type IconComponent,
+} from "@/components/icons";
 import { Island } from "@/components/island";
 import { Note } from "@/components/note";
 import { LEGAL_PAGES } from "@/lib/legal";
@@ -44,21 +53,21 @@ const PATH: { n: ReactNode; title: string; where: string; text: string }[] = [
   },
 ];
 
-const SECTIONS: { icon: LucideIcon; title: string; href: string; text: string }[] = [
-  { icon: HouseIcon, title: "Главная", href: "/", text: "Что сделать сейчас по всем закупкам и ближайший срок подачи." },
+const SECTIONS: { icon: IconComponent; title: string; href: string; text: string }[] = [
+  { icon: HomeIcon, title: "Главная", href: "/", text: "Что сделать сейчас по всем закупкам и ближайший срок подачи." },
   {
-    icon: ListIcon,
+    icon: ClipboardIcon,
     title: "Закупки",
     href: "/purchases",
     text: "Все закупки: список слева, открытая закупка справа — с шагами, поиском по словам в её документах, расчётом, до какой цены снижаться, и вопросами по ней.",
   },
   {
-    icon: MessageSquareIcon,
+    icon: ChatIcon,
     title: "Спросить про тендер",
     href: "/chat",
     text: "Общий вопрос по 44-ФЗ и 223-ФЗ. Вопрос про конкретную закупку задайте внутри неё — в «Вопросах»: отвечу по её документам.",
   },
-  { icon: UserRoundIcon, title: "Реквизиты", href: "/me/profile", text: "Данные компании. Сами попадают в анкету, декларацию и цену — но никогда в ТП: его подают анонимно." },
+  { icon: UserIcon, title: "Реквизиты", href: "/me/profile", text: "Данные компании. Сами попадают в анкету, декларацию и цену — но никогда в ТП: его подают анонимно." },
   {
     icon: FolderIcon,
     title: "Образцы и реквизиты",

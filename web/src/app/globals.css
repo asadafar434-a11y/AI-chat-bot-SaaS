@@ -560,4 +560,21 @@
     flex: none;
     color: var(--ink-3);
   }
+
+  /* Ползунок поверх шкалы цены: сам прозрачный, отметку цены рисует шкала. Бегунок в 1 px —
+     чтобы цена под курсором совпадала со шкалой от края до края. */
+  .price-range {
+    appearance: none;
+    background: transparent;
+  }
+  .price-range::-webkit-slider-thumb {
+    appearance: none;
+    width: 1px;
+    height: 32px;
+  }
+  .price-range::-moz-range-thumb {
+    width: 1px;
+    height: 32px;
+    border: 0;
+  }
 }

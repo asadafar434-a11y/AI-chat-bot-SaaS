@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertTriangleIcon, CheckIcon, UploadIcon } from "lucide-react";
+import { CheckIcon, UploadIcon, WarningIcon } from "@/components/icons";
 import { Island } from "@/components/island";
 import { Note } from "@/components/note";
 import { PageBody, PageHeader } from "@/components/page-header";
@@ -49,7 +49,7 @@ function Suggestions({ items, onAccept, onDismiss }: {
   return (
     <section className="note grid gap-2.5 bg-[var(--warn-tint)] px-3 py-3">
       <p className="t-strong flex items-center gap-2 text-[var(--warn)]">
-        <AlertTriangleIcon className="size-4 shrink-0" />
+        <WarningIcon className="size-4 shrink-0" />
         В ваших документах есть другие значения — проверьте, какое верное
       </p>
       <ul className="grid gap-3">
@@ -221,17 +221,17 @@ export default function ProfilePage() {
           )}
 
           {fillNote && (
-            <Note tone={fillNote.tone} icon={fillNote.tone === "ok" ? CheckIcon : fillNote.tone === "warn" ? AlertTriangleIcon : undefined}>
+            <Note tone={fillNote.tone} icon={fillNote.tone === "ok" ? CheckIcon : fillNote.tone === "warn" ? WarningIcon : undefined}>
               {fillNote.text}
             </Note>
           )}
           {save === "failed" && (
-            <Note tone="warn" icon={AlertTriangleIcon} className="sm:hidden">
+            <Note tone="warn" icon={WarningIcon} className="sm:hidden">
               Не получилось сохранить — попробуйте ещё раз.
             </Note>
           )}
           {loadError && (
-            <Note tone="warn" icon={AlertTriangleIcon}>
+            <Note tone="warn" icon={WarningIcon}>
               Браузер не дал открыть сохранённые реквизиты. Обновите страницу.
             </Note>
           )}

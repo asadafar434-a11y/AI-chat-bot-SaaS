@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { ChatStatus } from "ai";
-import { FileTextIcon, RotateCcwIcon } from "lucide-react";
+import { DocumentIcon, RefreshIcon } from "@/components/icons";
 import {
   Conversation,
   ConversationContent,
@@ -85,7 +85,7 @@ export function ChatFeed({ messages, status, error, onRetry, empty }: ChatFeedPr
                   <div className="flex flex-wrap justify-end gap-2">
                     {files.map((name) => (
                       <span key={name} className="file-chip px-3">
-                        <FileTextIcon className="size-3.5" />
+                        <DocumentIcon className="size-3.5" />
                         <span className="truncate">{name}</span>
                       </span>
                     ))}
@@ -115,7 +115,7 @@ export function ChatFeed({ messages, status, error, onRetry, empty }: ChatFeedPr
           <div className="flex flex-wrap items-center gap-3 text-destructive">
             <span>{error?.message || "Не удалось получить ответ."}</span>
             <button type="button" onClick={onRetry} className="btn btn-line btn-xs">
-              <RotateCcwIcon />
+              <RefreshIcon />
               Повторить
             </button>
           </div>
