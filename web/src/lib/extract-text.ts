@@ -25,18 +25,19 @@ const letters = (text: string) => text.replace(/-- \d+ of \d+ --/g, "").replace(
 // Картинку больше 5 МБ модель не примет.
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const NO_KEY_SCAN = "это скан — распознавать сканы приложение может, когда подключён ИИ";
+const OCR_OFF = "это скан, а распознавание сканов выключено — включите его под кнопкой загрузки или загрузите файл с текстом";
 
 // Страница, на которой почти нет букв, — скан или картинка: её текст распознаёт ИИ.
 // Так читаются и целиком отсканированные файлы, и обычные PDF с вклеенными сканами, например подписанной последней страницей.
-async function pdfText(data: Uint8Array): Promise<ExtractResult> {
+async function pdfText(data: Uint8Array, ocr: boolean): Promise<ExtractResult> {
   const parser = new PDFParse({ data });
   try {
     const result = await parser.getText();
     const scanned = result.pages.filter((page) => letters(page.text) < 20).map((page) => page.num);
     const allScanned = scanned.length === result.pages.length;
     if (scanned.length === 0) return { ok: true, text: result.text };
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return allScanned ? { ok: false, reason: NO_KEY_SCAN } : { ok: true, text: result.text };
+    if (!process.env.ANTHROPIC_API_KEY || !ocr) {
+      return allScanned ? { ok: false, reason: ocr ? NO_KEY_SCAN : OCR_OFF } : { ok: true, text: result.text };
     }
     if (scanned.length > MAX_SCAN_PAGES) {
       return allScanned
@@ -62,7 +63,8 @@ async function wordText(buffer: Buffer): Promise<ExtractResult> {
   return { ok: false, reason: "не похоже на файл Word — пересохраните его в .docx" };
 }
 
-export async function extractText(file: File): Promise<ExtractResult> {
+// ocr: false — сканы и фото не распознаются: картинки не уходят в ИИ (выключено в браузере).
+export async function extractText(file: File, { ocr = true }: { ocr?: boolean } = {}): Promise<ExtractResult> {
   const kind = kindOf(file);
 
   try {
@@ -71,7 +73,7 @@ export async function extractText(file: File): Promise<ExtractResult> {
     }
 
     if (kind === "pdf") {
-      return await pdfText(new Uint8Array(await file.arrayBuffer()));
+      return await pdfText(new Uint8Array(await file.arrayBuffer()), ocr);
     }
 
     if (kind === "docx") {
@@ -85,6 +87,7 @@ export async function extractText(file: File): Promise<ExtractResult> {
     }
 
     if (kind === "image") {
+      if (!ocr) return { ok: false, reason: OCR_OFF };
       if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: NO_KEY_SCAN };
       if (file.size > MAX_IMAGE_BYTES) return { ok: false, reason: "фото больше 5 МБ — уменьшите его или отсканируйте документ в PDF" };
       const mediaType = file.type === "image/png" || /\.png$/i.test(file.name) ? "image/png" : "image/jpeg";

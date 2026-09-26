@@ -1,4 +1,5 @@
 import type { ChatDocument } from "@/lib/chat-types";
+import { readScanOcr } from "./scan-setting.ts";
 
 export type SentDocument = Pick<ChatDocument, "name" | "text" | "scan">;
 export type FailedFile = { name: string; reason: string };
@@ -34,11 +35,12 @@ export function scanWarning(documents: SentDocument[]): string | null {
 type Send = (url: string, init: RequestInit) => Promise<Response>;
 type OneResult = { documents: SentDocument[]; failed: FailedFile[] };
 
-async function readOne(file: File, send: Send): Promise<OneResult> {
+async function readOne(file: File, send: Send, ocr: boolean): Promise<OneResult> {
   const problem = fileProblem(file);
   if (problem) return { documents: [], failed: [{ name: file.name, reason: problem }] };
   const form = new FormData();
   form.append("files", file);
+  if (!ocr) form.append("ocr", "off");
   let res: Response;
   try {
     res = await send("/api/documents", { method: "POST", body: form });
@@ -55,7 +57,7 @@ async function readOne(file: File, send: Send): Promise<OneResult> {
 
 // Текст из файлов достаёт сервер. Файлы уходят по одному: так запрос не упирается в предел размера,
 // а сбой одного файла не роняет остальные. Если не прочитался ни один файл — объясняем почему.
-export async function readDocuments(files: File[], send: Send = fetch): Promise<OneResult> {
+export async function readDocuments(files: File[], send: Send = fetch, ocr = readScanOcr()): Promise<OneResult> {
   if (files.length > MAX_FILES) {
     throw new Error(`За один раз можно загрузить не больше ${MAX_FILES} файлов — остальные добавьте следующим заходом.`);
   }
@@ -64,7 +66,7 @@ export async function readDocuments(files: File[], send: Send = fetch): Promise<
   const worker = async () => {
     while (next < files.length) {
       const i = next++;
-      results[i] = await readOne(files[i], send);
+      results[i] = await readOne(files[i], send, ocr);
     }
   };
   await Promise.all(Array.from({ length: Math.min(PARALLEL, files.length) }, worker));

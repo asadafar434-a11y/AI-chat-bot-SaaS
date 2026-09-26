@@ -22,6 +22,8 @@ export async function POST(request: Request) {
       : fail("Запрос пришёл повреждённым — выберите файлы ещё раз.", 400);
   }
   const files = form.getAll("files").filter((f): f is File => f instanceof File);
+  // Распознавание сканов выключено в браузере — картинки в ИИ не уходят.
+  const ocr = form.get("ocr") !== "off";
   if (files.length === 0) return fail("Нет файлов", 400);
   if (files.length > MAX_FILES) return fail(`За один раз — не больше ${MAX_FILES} файлов.`, 413);
 
@@ -34,7 +36,7 @@ export async function POST(request: Request) {
       failed.push({ name: file.name, reason: problem });
       continue;
     }
-    const result = await extractText(file);
+    const result = await extractText(file, { ocr });
     if (!result.ok) {
       failed.push({ name: file.name, reason: result.reason });
     } else if (!result.text.trim()) {

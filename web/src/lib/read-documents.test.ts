@@ -64,3 +64,14 @@ test("пределы файла", () => {
   assert.match(fileProblem({ size: MAX_FILE_BYTES + 1 }) ?? "", /больше 40 МБ/);
   assert.equal(fileProblem({ size: 0 }), "файл пустой");
 });
+
+test("распознавание сканов выключено — сервер получает ocr=off", async () => {
+  const flags: (string | null)[] = [];
+  const send = async (_url: string, init: RequestInit) => {
+    flags.push((init.body as FormData).get("ocr") as string | null);
+    return ok("скан.jpg");
+  };
+  await readDocuments([file("скан.jpg")], send, false);
+  await readDocuments([file("скан.jpg")], send, true);
+  assert.deepEqual(flags, ["off", null]);
+});
