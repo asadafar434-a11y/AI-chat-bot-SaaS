@@ -2,6 +2,7 @@ import type { ChatMessage } from "@/lib/chat-types";
 import type { CheckResult } from "@/lib/check";
 import type { PartKey } from "@/lib/my-docs";
 import type { PartDoc } from "@/lib/part-doc";
+import type { PriceCalc } from "@/lib/price-floor";
 import type { FailedFile, SentDocument } from "@/lib/read-documents";
 import type { PurchaseSummary, ReqGroups, RequirementsResponse } from "@/lib/requirements";
 import { NO_ANTI_DUMPING, PLAIN_FORM, type TpItem, type TpResult } from "@/lib/tp";
@@ -22,6 +23,8 @@ export type Purchase = PurchaseSummary & {
   tp?: TpResult;
   // Цена, которую участник вписал в заявку, в рублях.
   tpPrice?: number;
+  // Что участник вписал в «До какой цены снижаться». Только изменённые поля: остальное берётся из закупки.
+  priceCalc?: Partial<PriceCalc>;
   parts?: Partial<Record<PartKey, PurchasePart>>;
   // Последняя проверка заявки перед подачей.
   check?: CheckResult;

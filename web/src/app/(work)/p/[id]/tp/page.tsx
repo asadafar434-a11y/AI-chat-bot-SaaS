@@ -112,10 +112,11 @@ function saveFile(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function PriceBlock({ tp, price, nmck, onChange }: {
+function PriceBlock({ tp, price, nmck, calcHref, onChange }: {
   tp: TpResult;
   price: number | undefined;
   nmck: number | null;
+  calcHref: string;
   onChange: (price: number | undefined) => void;
 }) {
   const [text, setText] = useState(price ? String(price) : "");
@@ -149,6 +150,9 @@ function PriceBlock({ tp, price, nmck, onChange }: {
           Начальная цена — {formatRubles(nmck)} ₽{drop !== null && drop > 0 ? ` · снижение ${percent}%` : ""}
         </p>
       )}
+      <Link href={calcHref} className="link justify-self-start">
+        До какой цены снижаться
+      </Link>
       {drop !== null && drop < 0 && (
         <Note tone="warn" icon={AlertTriangleIcon}>
           Цена выше начальной — такую заявку отклонят.
@@ -371,6 +375,7 @@ export default function TpPage() {
             tp={tp}
             price={purchase.tpPrice}
             nmck={parseRubles(purchase.price)}
+            calcHref={`/p/${purchase.id}/price`}
             onChange={(tpPrice) => update({ tpPrice })}
           />
         )}
