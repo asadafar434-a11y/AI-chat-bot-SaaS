@@ -350,9 +350,9 @@
   .due-chip > svg { flex: none; }
   .due-chip.soon { background: var(--warn-tint); color: var(--warn); }
   .due-chip.past { color: var(--ink-3); }
-  .tabs { flex: none; display: flex; align-items: stretch; gap: 0; padding: 6px 8px; border-top: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; container-type: inline-size; }
+  .tabs { flex: none; display: flex; align-items: stretch; gap: 0; padding: 6px 8px; border-top: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
   /* Шаги подготовки заявки: номер или галочка, название, что на шаге сейчас — словами */
-  .steps { display: flex; align-items: stretch; margin: 0; padding: 0; list-style: none; }
+  .steps { flex: none; display: flex; align-items: stretch; margin: 0; padding: 0; list-style: none; }
   .steps > li { display: flex; align-items: stretch; }
   .tab.step { gap: 8px; min-height: 44px; padding: 4px 8px; }
   .step-sep { display: grid; place-items: center; margin-inline: 2px; color: var(--ink-3); opacity: .6; }
@@ -370,7 +370,9 @@
   .stage.ok { color: var(--ok); }
   .stage.warn { color: var(--warn); }
   .stage.bad { color: var(--danger); }
-  .tab.aside { margin-left: auto; gap: 8px; }
+  /* «Цена» и «Вопросы» — не шаги, а инструменты: стоят справа отдельно */
+  .tab-tools { flex: none; display: flex; align-items: stretch; gap: 2px; margin-left: auto; }
+  .tab.aside { gap: 8px; }
   .tab.aside > svg { color: var(--ink-3); }
   .next { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px var(--pad); }
   .next-text { display: grid; gap: 2px; min-width: 0; }
@@ -400,21 +402,17 @@
   .marks { display: grid; gap: 8px; margin: 0; padding: 4px var(--pad) 16px; list-style: none; }
   .marks li { display: grid; grid-template-columns: 16px minmax(0, 1fr); align-items: center; gap: 12px; }
   .mark-dot { width: 10px; height: 10px; justify-self: center; border-radius: 50%; }
-  /* Подписи вкладок по ширине панели: где места мало — «ТП» и «Проверка», диктор читает полное название */
+  /* Подписи в строке шагов сокращаются, только когда не помещаются (fitTabs): сначала «ТП», потом «Проверка»,
+     потом у «Цены» и «Вопросов» остаются значки, в последнюю очередь пропадают стрелки между шагами. Диктор читает
+     полное название. Не помещается и так — строка прокручивается. */
   .tab .short { display: none; }
-  @container (width < 840px) {
-    .tab .full-tp { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-    .tab .short-tp { display: inline; }
+  .tabs[data-short-tp] .full-tp, .tabs[data-short-check] .full-check, .tabs[data-icons] .aside-lbl {
+    position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
   }
-  @container (width < 660px) {
-    .tab.aside .aside-lbl { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  }
-  @container (width < 760px) {
-    .tab .full-check { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-    .tab .short-check { display: inline; }
-  }
+  .tabs[data-short-tp] .short-tp, .tabs[data-short-check] .short-check { display: inline; }
+  .tabs[data-tight] .step-sep { display: none; }
   .tabs::-webkit-scrollbar { display: none; }
-  /* Шаг и «Вопросы» — пункты-пилюли, как пункты меню в острове: открытый — индиго-тинт */
+  /* Шаг, «Цена» и «Вопросы» — пункты-пилюли, как пункты меню в острове: открытый — индиго-тинт */
   .tab {
     appearance: none; border: 0; background: none; flex: none;
     display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 6px 8px;
@@ -505,6 +503,50 @@
   .confirm { display: grid; gap: 10px; padding: 12px; }
   .confirm p { margin: 0; font: var(--t-strong); }
   .btn-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+
+  /* ---------- до какой цены снижаться ---------- */
+  .calc-body { container-type: inline-size; display: grid; gap: 16px; padding: 4px var(--pad) var(--pad); }
+  .calc-grid, .calc-more { display: grid; gap: 16px; }
+  @container (width >= 520px) { .calc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .num-field { display: grid; align-content: start; gap: 4px; }
+  .num-field > label { font: var(--t-strong); }
+  .input.calc { max-width: 176px; font: 500 14px/20px var(--mono); font-variant-numeric: tabular-nums; }
+  /* На телефоне поле 16 px, иначе браузер увеличивает страницу при вводе */
+  @media (pointer: coarse) { .input.calc { font-size: 16px; } }
+  .hint { margin: 0; font: var(--t-caption); color: var(--ink-3); }
+  .check-row { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 2px 10px; }
+  .check-row input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--brand); }
+  .check-row label { font: var(--t-body); color: var(--ink); }
+  .check-row .hint { grid-column: 2; }
+  .pills-set { min-width: 0; margin: 0; padding: 0; border: 0; }
+  .pills-set legend { margin-bottom: 6px; padding: 0; font: var(--t-strong); }
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pill { display: inline-flex; align-items: center; min-height: 32px; padding-inline: 14px; border-radius: var(--r-pill); background: var(--paper-2); color: var(--ink); font: var(--t-strong); }
+  .pill:hover { background: var(--paper-3); }
+  .pill:has(input:checked) { background: var(--brand); color: var(--on-brand); }
+  .pill:has(input:focus-visible) { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .calc-out { display: grid; gap: 12px; }
+  .calc-out:empty { display: none; }
+  /* Таблица «нижняя цена и ваша»: на узком экране прокручивается сама, страница — нет */
+  .calc-table-wrap { overflow-x: auto; }
+  .calc-table { width: 100%; max-width: 576px; border-collapse: collapse; font: var(--t-body); }
+  .calc-table thead th { padding: 0 0 4px 12px; text-align: right; font: var(--t-caption); color: var(--ink-3); }
+  .calc-table tbody tr + tr { border-top: 1px solid var(--line); }
+  .calc-table tbody th { padding: 8px 12px 8px 0; text-align: left; vertical-align: top; font-weight: 500; color: var(--ink-2); }
+  .calc-table td { padding: 8px 0 8px 12px; text-align: right; vertical-align: top; }
+  .cell-num { display: block; white-space: nowrap; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .cell-sub { display: block; font: var(--t-caption); color: var(--ink-3); }
+  .calc-table tr.strong th { font-weight: 600; color: var(--ink); }
+  .calc-table tr.strong .cell-num { font-weight: 600; }
+  /* Ответ — плавающим островом внизу, как «Скачать ТП» */
+  .result-bar { display: grid; gap: 2px; padding: 12px var(--pad); border-radius: var(--r-island); background: var(--card); box-shadow: var(--float); }
+  .result-bar p { margin: 0; }
+  .res-label { font: var(--t-caption); color: var(--ink-3); }
+  .res-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; }
+  .res-num { font: 600 16px/24px var(--mono); font-variant-numeric: tabular-nums; }
+  .res-text { font: var(--t-body); color: var(--ink-2); }
+  .res-warn { font: var(--t-strong); color: var(--warn); }
+  .hint, .cell-sub, .res-label, .calc-table thead th { letter-spacing: 0; }
 
   /* ---------- загрузка и ожидание ---------- */
   .drop {
@@ -739,6 +781,7 @@
     user: '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>',
     folder: '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
     info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+    calc: '<rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/>',
   };
   const ic = (name, size = 18) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PATHS[name]}</svg>`;
 
@@ -862,6 +905,94 @@
     if (!m) return null;
     const value = Number(m[1].replace(/[\s ]/g, "")) + (m[2] ? Number(m[2].padEnd(2, "0")) / 100 : 0);
     return Number.isFinite(value) && value > 0 ? value : null;
+  }
+
+  /* ---------- до какой цены снижаться — как в web/src/lib/price-floor.ts ---------- */
+  // Самая низкая цена без убытка: расходы, налог с выручки, стоимость обеспечения исполнения и антидемпинг
+  // по 44-ФЗ в редакции от 04.08.2026: ч. 6, 6.2 и 8.1 ст. 96, ч. 1–3 ст. 37.
+  const GOOD_FAITH_LIMIT = 15e6;
+  // Повышенное обеспечение по ч. 1 ст. 37, в процентах: в полтора раза больше обычного, но не меньше 10.
+  const raisedPct = (pct) => Math.max(pct * 1.5, 10);
+  const positive = (v) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0);
+  const fraction = (v) => Math.min(positive(v), 100) / 100;
+  const kopecks = (v) => Math.round(v * 100);
+  const ceilKopecks = (v) => Math.ceil(v * 100 - 1e-6) / 100;
+  function calcReady(c) {
+    if (!(c.nmck > 0) || !(c.costs > 0)) return null;
+    const share = c.smeOnly && c.exempt ? 0 : fraction(c.securityPct);
+    return {
+      nmck: c.nmck, costs: c.costs, extra: positive(c.extra), tax: fraction(c.taxPct), share,
+      raisedShare: share > 0 ? raisedPct(share * 100) / 100 : 0,
+      fromPrice: c.smeOnly,
+      // Сколько стоит рубль обеспечения за весь срок: ставка годовых × дни / 365.
+      rate: (fraction(c.method === "guarantee" ? c.guaranteeRatePct : c.moneyRatePct) * positive(c.days)) / 365,
+      antiDumping: c.antiDumping && share > 0 && !(c.goodFaith && c.nmck <= GOOD_FAITH_LIMIT),
+    };
+  }
+  // Снижение на 25 % и больше: цена не выше трёх четвертей начальной. Сравнение в копейках, чтобы граница была точной.
+  const raisedAt = (r, price) => r.antiDumping && 4 * kopecks(price) <= 3 * kopecks(r.nmck);
+  function breakdownAt(r, price) {
+    const raised = raisedAt(r, price);
+    const share = raised ? r.raisedShare : r.share;
+    const security = share * (r.fromPrice ? price : r.nmck);
+    const securityCost = security * r.rate;
+    const tax = price * r.tax;
+    return { price, drop: 1 - price / r.nmck, costs: r.costs, extra: r.extra, tax, security, securityPct: share * 100, raised, securityCost, profit: price - r.costs - r.extra - tax - securityCost };
+  }
+  // Цена без прибыли и убытка при такой доле обеспечения. null — налог и обеспечение съедают всю цену.
+  function breakEven(r, share) {
+    const left = r.fromPrice ? 1 - r.tax - share * r.rate : 1 - r.tax;
+    if (left <= 0) return null;
+    return r.fromPrice ? (r.costs + r.extra) / left : (r.costs + r.extra + share * r.nmck * r.rate) / left;
+  }
+  // plain — обычный расчёт; antiDumping — уже с повышенным обеспечением; threshold — повышенное обеспечение
+  // уводит в убыток, поэтому нижняя цена — на копейку выше трёх четвертей начальной.
+  function priceFloor(c) {
+    const r = calcReady(c);
+    if (!r) return { floor: { ok: false, reason: "input" }, at: () => null };
+    const at = (price) => (price > 0 ? breakdownAt(r, price) : null);
+    const done = (price, kind) => ({ floor: { ok: true, price, kind, aboveNmck: price > r.nmck }, at });
+    const plain = breakEven(r, r.share);
+    if (plain === null) return { floor: { ok: false, reason: "impossible" }, at };
+    if (!raisedAt(r, ceilKopecks(plain))) return done(ceilKopecks(plain), "plain");
+    const raised = breakEven(r, r.raisedShare);
+    if (raised !== null && raisedAt(r, ceilKopecks(raised))) return done(ceilKopecks(raised), "antiDumping");
+    return done((Math.floor((3 * kopecks(r.nmck)) / 4) + 1) / 100, "threshold");
+  }
+  // «Обеспечение исполнения контракта — 5% от цены контракта». Между словами и процентом не должно быть
+  // ни обеспечения заявки или гарантийных обязательств, ни нового предложения, ни «не требуется».
+  const SECURITY_RE = /обеспеч\S*\s+исполнени\S*((?:(?!заявк|гарантийн|не\s+(?:требует|установлен|предусмотрен))[^%\n]){0,150}?)(\d+(?:[.,]\d+)?)\s*%([^.\n]{0,80})/i;
+  const NEW_SENTENCE = /\.\s+[А-ЯЁA-Z]/;
+  const SME_ONLY = /(только|исключительно|осуществляется у|ограничени\S* участия)[^.\n]{0,80}(малого|СМП|СОНКО|СОНО)/i;
+  // Из требований: процент обеспечения исполнения со строкой, где он написан, и закупка ли только у малого бизнеса.
+  function readRequirements(p) {
+    const items = REQ_KEYS.flatMap((k) => p.requirements[k]);
+    let securityPct = null, securityLine = null, fromPrice = false;
+    for (const it of items) {
+      for (const text of [it.text, it.quote]) {
+        const m = securityPct === null ? SECURITY_RE.exec(text) : null;
+        if (!m || NEW_SENTENCE.test(m[1])) continue;
+        securityPct = Number(m[2].replace(",", "."));
+        securityLine = it.text;
+        fromPrice = /от\s+цены\s+контракта/i.test(m[1] + m[3]);
+      }
+    }
+    return { securityPct, securityLine, smeOnly: fromPrice || items.some((it) => SME_ONLY.test(it.text) || SME_ONLY.test(it.quote)) };
+  }
+  // Антидемпинговые меры ст. 37 — только на конкурсе и аукционе по 44-ФЗ. По 223-ФЗ они — в положении о закупке заказчика.
+  const antiDumpingApplies = (kind) => !/223/.test(kind) && !/котиров|единствен/i.test(kind);
+  // Расходы вымышленного участника: в примере расчёт виден сразу.
+  const SAMPLE_CALC = { costs: 420000, extra: 2000, taxPct: 6, guaranteeRatePct: 3, days: 90 };
+  // Что вписал участник, поверх того, что понятно из закупки.
+  function calcOf(p) {
+    const found = readRequirements(p);
+    return {
+      nmck: parseRub(p.price), costs: null, extra: null, taxPct: null,
+      securityPct: found.securityPct, smeOnly: found.smeOnly, exempt: false, method: "guarantee",
+      guaranteeRatePct: null, moneyRatePct: null, days: null,
+      antiDumping: antiDumpingApplies(p.kind), goodFaith: false, price: p.tpPrice || null,
+      ...(p.sample ? SAMPLE_CALC : {}), ...(p.priceCalc || {}),
+    };
   }
 
   /* ---------- справочники из кода приложения ---------- */
@@ -1349,7 +1480,7 @@
     busy: null,
     info: false, fold: {}, q: "", tabs: {},
   };
-  const PURCHASE_SCREENS = ["req", "tp", "check", "chat"];
+  const PURCHASE_SCREENS = ["req", "tp", "check", "chat", "price"];
   const WORK = ["list", ...PURCHASE_SCREENS];
   const narrow = window.matchMedia("(max-width: 1023px)"); // сайдбар выезжает по кнопке
   const single = window.matchMedia("(max-width: 1179px)"); // закупки — по одной панели
@@ -1720,7 +1851,10 @@
       </button></li>`;
     return `<nav class="tabs" id="tabs" aria-label="Подготовка заявки">
       <ol class="steps">${stepsOf(p).map(step).join("")}</ol>
-      <button class="tab aside" type="button" data-go="chat" data-id="${p.id}"${S.screen === "chat" ? ' aria-current="page"' : ""}>${ic("chat", 16)}<span class="aside-lbl">Вопросы</span>${n ? `<span class="count">${n}</span>` : ""}</button>
+      <div class="tab-tools">
+        <button class="tab aside" type="button" data-go="price" data-id="${p.id}"${S.screen === "price" ? ' aria-current="page"' : ""} title="До какой цены снижаться">${ic("calc", 16)}<span class="aside-lbl">Цена<span class="sr-only"> — до какой цены снижаться</span></span></button>
+        <button class="tab aside" type="button" data-go="chat" data-id="${p.id}"${S.screen === "chat" ? ' aria-current="page"' : ""}>${ic("chat", 16)}<span class="aside-lbl">Вопросы</span>${n ? `<span class="count">${n}</span>` : ""}</button>
+      </div>
     </nav>`;
   }
 
@@ -1744,6 +1878,7 @@
       case "tp": return tpHTML(p);
       case "check": return checkHTML(p);
       case "chat": return chatHTML("chat", p, "Спросите про документы закупки…");
+      case "price": return priceHTML(p);
       default: return reqHTML(p);
     }
   }
@@ -1968,6 +2103,7 @@
           <label for="tp-price">Цена вашего предложения</label>
           <div class="price-row"><input class="input num" id="tp-price" inputmode="decimal" autocomplete="off" placeholder="например, 690000" value="${esc(p.tpPriceText)}"><span class="muted">₽</span></div>
           <div id="price-info" style="display:grid;gap:8px">${priceInfo(p)}</div>
+          <p><button class="link" type="button" data-go="price" data-id="${p.id}">До какой цены снижаться</button></p>
         </section>` : ""}
       ${goods}
       ${items}
@@ -2019,6 +2155,185 @@
     </div>`;
   }
 
+  /* ---------- до какой цены снижаться ---------- */
+  const showNum = (v) => (v === null || v === undefined ? "" : v.toLocaleString("ru-RU", { maximumFractionDigits: 2 }).replace(/[  ]/g, " "));
+  function parseNum(text) {
+    const s = String(text).replace(/\s/g, "").replace(",", ".");
+    if (!s) return null;
+    const v = Number(s);
+    return Number.isFinite(v) && v >= 0 ? v : null;
+  }
+  const rub = (v) => `${fmtRub(v).replace("-", "−")} ₽`;
+  // Снижение — с округлением вниз: 24,99 % не должно выглядеть как 25 %, с которых начинается антидемпинг.
+  const dropText = (d) => (Math.floor(d * 1000 + 1e-6) / 10).toLocaleString("ru-RU", { maximumFractionDigits: 1 });
+  const pctText = (v) => v.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+  const secured = (c) => (c.securityPct || 0) > 0 && !(c.smeOnly && c.exempt);
+  const rateOf = (c) => (c.method === "guarantee" ? c.guaranteeRatePct : c.moneyRatePct);
+  const rated = (c) => (rateOf(c) || 0) > 0 && (c.days || 0) > 0;
+  const adHint = (p, c) => `Снизите цену на 25 % и больше — обеспечение нужно в полтора раза больше обычного, но не меньше 10 % ${c.smeOnly ? "цены контракта" : "начальной цены"} (ч. 1 ст. 37).${/223/.test(p.kind) ? " Закупка по 223-ФЗ: такие меры — в положении о закупке заказчика; включите, если правила там те же." : ""}`;
+  const adNone = (c) => (c.smeOnly && c.exempt
+    ? "Вы освобождены от обеспечения, в том числе от повышенного (ч. 8.1 ст. 96), — на цену эти меры не влияют."
+    : "Обеспечения исполнения нет — повышать нечего, на цену эти меры не влияют.");
+
+  function numField(key, id, label, unit, value, hint) {
+    return `<div class="num-field">
+      <label for="${id}">${label}</label>
+      <div class="price-row"><input class="input calc" id="${id}" data-calc="${key}" inputmode="decimal" autocomplete="off" value="${esc(showNum(value))}"${hint ? ` aria-describedby="${id}-hint"` : ""}><span class="muted">${unit}</span></div>
+      ${hint ? `<p class="hint" id="${id}-hint">${hint}</p>` : ""}
+    </div>`;
+  }
+  function checkRow(key, id, label, checked, hint, shown = true) {
+    return `<div class="check-row" id="${id}-row"${shown ? "" : " hidden"}>
+      <input type="checkbox" id="${id}" data-calc="${key}"${checked ? " checked" : ""}${hint ? ` aria-describedby="${id}-hint"` : ""}>
+      <label for="${id}">${label}</label>
+      ${hint ? `<p class="hint" id="${id}-hint">${hint}</p>` : ""}
+    </div>`;
+  }
+
+  // Ответ экрана — плавающим островом внизу, как «Скачать ТП»: виден, пока правите расходы и обеспечение.
+  function calcResultHTML(c) {
+    const { floor, at } = priceFloor(c);
+    const atFloor = floor.ok ? at(floor.price) : null;
+    const raised = pctText(raisedPct(c.securityPct || 0));
+    const usual = pctText(c.securityPct || 0);
+    const why = {
+      plain: "Ниже — контракт в убытке.",
+      antiDumping: `Ниже — убыток. При таком снижении обеспечение — ${raised} % вместо ${usual} % (ст. 37).`,
+      threshold: `Снизите на 25 % и больше — обеспечение вырастет до ${raised} % (ст. 37), и контракт уйдёт в убыток.`,
+    };
+    if (!floor.ok && floor.reason === "input") return `<p class="res-text">Впишите ${c.nmck ? "себестоимость" : "начальную цену и себестоимость"} — посчитаю, до какой цены можно снижаться.</p>`;
+    if (!floor.ok) return '<p class="res-warn">Налог и стоимость обеспечения съедают всю цену — проверьте проценты.</p>';
+    if (floor.aboveNmck || !atFloor) return `<p class="res-warn">Даже по начальной цене контракт в убытке</p><p class="res-text">Без убытка — только от ${rub(floor.price)}, а начальная цена — ${rub(c.nmck || 0)}.</p>`;
+    const unpriced = secured(c) && !rated(c) ? " Стоимость обеспечения не учтена — впишите ставку и срок." : "";
+    return `<p class="res-label">Можно снижаться до</p>
+      <p class="res-line"><span class="res-num">${rub(floor.price)}</span><span class="res-text">— на ${dropText(atFloor.drop)} % ниже начальной</span></p>
+      <p class="res-label">${why[floor.kind]}${unpriced}</p>`;
+  }
+
+  // Из чего складывается цена: нижняя и, если вписана, ваша — рядом, чтобы видеть разницу.
+  function calcTableHTML(c) {
+    const { floor, at } = priceFloor(c);
+    const atFloor = floor.ok ? at(floor.price) : null;
+    const mine = c.price ? at(c.price) : null;
+    const warns = mine ? warnsHTML([
+      c.nmck !== null && mine.price > c.nmck ? "Цена выше начальной — такую заявку отклонят." : "",
+      mine.profit < 0 ? `По этой цене контракт в убытке на ${rub(-mine.profit)}.` : "",
+    ].filter(Boolean)) : "";
+    const cols = [...(atFloor ? [["Нижняя", atFloor]] : []), ...(mine ? [["Ваша", mine]] : [])];
+    if (!cols.length) return warns;
+    const rows = [
+      { label: "Цена", cell: (b) => rub(b.price), strong: true },
+      { label: "Снижение", cell: (b) => (b.drop >= 0 ? `${dropText(b.drop)} %` : "выше начальной") },
+      { label: "Себестоимость", cell: (b) => rub(b.costs) },
+      ...((c.extra || 0) > 0 ? [{ label: "Расходы на участие", cell: (b) => rub(b.extra) }] : []),
+      ...((c.taxPct || 0) > 0 ? [{ label: `Налог ${pctText(c.taxPct)} %`, cell: (b) => rub(b.tax) }] : []),
+      ...(secured(c) ? [{
+        label: "Обеспечение",
+        note: rated(c) ? `${c.method === "guarantee" ? "гарантия" : "свои деньги"}, ${pctText(rateOf(c))} % годовых, ${pctText(c.days)} ${plural(c.days, "день", "дня", "дней")}` : "впишите ставку и срок",
+        cell: (b) => (rated(c) ? rub(b.securityCost) : "не учтено"),
+        sub: (b) => `на ${rub(b.security)} (${pctText(b.securityPct)} %)`,
+      }] : []),
+      {
+        label: "Прибыль", strong: true,
+        cell: (b) => `<span class="${b.profit < 0 ? "bad-t" : ""}">${rub(b.profit)}</span>`,
+        sub: (b) => (Math.abs(b.profit) >= 0.5 ? `${pctText(Math.round((b.profit / b.price) * 1000) / 10)} % цены` : ""),
+      },
+    ];
+    return `${warns}<div class="calc-table-wrap"><table class="calc-table">
+      <thead><tr><td></td>${cols.map(([title]) => `<th scope="col">${title}</th>`).join("")}</tr></thead>
+      <tbody>${rows.map((row) => `<tr${row.strong ? ' class="strong"' : ""}><th scope="row">${row.label}${row.note ? `<span class="cell-sub">${esc(row.note)}</span>` : ""}</th>${cols.map(([, b]) => {
+        const sub = row.sub ? row.sub(b) : "";
+        return `<td><span class="cell-num">${row.cell(b)}</span>${sub ? `<span class="cell-sub">${sub}</span>` : ""}</td>`;
+      }).join("")}</tr>`).join("")}</tbody>
+    </table></div>
+    <p class="hint">Прибыль — до налога с прибыли, если вы его платите.</p>`;
+  }
+
+  // Инструмент «Цена»: самая низкая цена без убытка. Считает браузер, без ИИ.
+  function priceHTML(p) {
+    const c = calcOf(p);
+    const found = readRequirements(p);
+    const guarantee = c.method === "guarantee";
+    const small = c.nmck !== null && c.nmck <= GOOD_FAITH_LIMIT;
+    const big = c.nmck !== null && c.nmck > GOOD_FAITH_LIMIT;
+    const sec = secured(c);
+    const rule = p.tp && p.tp.antiDumping && p.tp.antiDumping.rule;
+    const methods = [["guarantee", "Независимая гарантия"], ["money", "Свои деньги"]];
+    return `<div class="tab-body">
+      <p class="tab-lead">До какой цены можно снижаться на торгах, чтобы контракт не ушёл в убыток. Учитываю расходы, налог, стоимость обеспечения исполнения и антидемпинговые меры 44-ФЗ. Считается прямо в браузере — цифры никуда не отправляются.</p>
+      <section class="panel" aria-labelledby="calc-costs-title">
+        <div class="panel-head"><div><h3 class="panel-title" id="calc-costs-title">Цена и расходы</h3>${p.sample ? '<p class="panel-sub">В примере — вымышленные расходы</p>' : ""}</div></div>
+        <div class="calc-body"><div class="calc-grid">
+          ${numField("nmck", "calc-nmck", "Начальная цена", "₽", c.nmck, parseRub(p.price) ? "Из сведений о закупке" : "В документах не нашлась — впишите из извещения")}
+          ${numField("costs", "calc-costs", "Себестоимость исполнения", "₽", c.costs, "Всё, что потратите на исполнение: товар, работа, аренда, доставка")}
+          ${numField("extra", "calc-extra", "Расходы на участие", "₽", c.extra, "Обеспечение заявки, плата площадке, дорога — всё, что заплатите за участие")}
+          ${numField("taxPct", "calc-tax", "Налог с выручки", "%", c.taxPct, "Например, 6 на УСН «доходы». Налог с прибыли не вписывайте: на нижней цене прибыли нет")}
+        </div></div>
+      </section>
+      <section class="panel" aria-labelledby="calc-sec-title">
+        <div class="panel-head"><div><h3 class="panel-title" id="calc-sec-title">Обеспечение исполнения</h3><p class="panel-sub">Гарантия банка или замороженные деньги тоже стоят денег — учту это в цене</p></div></div>
+        <div class="calc-body">
+          ${numField("securityPct", "calc-sec-pct", "Размер", "%", c.securityPct, found.securityLine ? `В требованиях: ${esc(found.securityLine)}` : "В требованиях не нашёл — посмотрите в извещении. Если обеспечения нет, оставьте пустым")}
+          ${checkRow("smeOnly", "calc-sme", "Закупка только у малого бизнеса и социально ориентированных НКО", c.smeOnly, "Тогда обеспечение считается от цены контракта, а не от начальной (ч. 6.2 ст. 96 44-ФЗ)")}
+          ${checkRow("exempt", "calc-exempt", "Освобождены от обеспечения: за три года — три контракта без неустоек на сумму не меньше начальной цены", c.exempt, "Сведения из реестра контрактов подаёте до заключения контракта (ч. 8.1 ст. 96 44-ФЗ)", c.smeOnly)}
+          <div class="calc-more" id="calc-cost-block"${sec ? "" : " hidden"}>
+            <fieldset class="pills-set"><legend>Чем обеспечите</legend><div class="pills">
+              ${methods.map(([key, label]) => `<label class="pill"><input class="sr-only" type="radio" name="calc-method" id="calc-method-${key}" data-calc="method" value="${key}"${c.method === key ? " checked" : ""}>${label}</label>`).join("")}
+            </div></fieldset>
+            <div class="calc-grid">
+              ${numField(guarantee ? "guaranteeRatePct" : "moneyRatePct", "calc-rate", guarantee ? "Комиссия банка" : "Сколько стоят ваши деньги", "% годовых", rateOf(c), guarantee ? "Процент в год от суммы гарантии — по тарифу банка" : "Ставка кредита, если берёте в долг, или вклада, если деньги свои")}
+              ${numField("days", "calc-days", guarantee ? "Срок гарантии" : "Сколько дней деньги у заказчика", "дней", c.days, guarantee ? "Срок исполнения контракта и ещё не меньше месяца (ч. 3 ст. 96 44-ФЗ)" : "Срок исполнения и до 30 дней на возврат, в закупке у малого бизнеса — до 15 (ч. 27 ст. 34 44-ФЗ)")}
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="panel" aria-labelledby="calc-ad-title">
+        <div class="panel-head"><div><h3 class="panel-title" id="calc-ad-title">Антидемпинговые меры</h3><p class="panel-sub">Статья 37 44-ФЗ — на конкурсе и аукционе</p></div></div>
+        <div class="calc-body">
+          ${checkRow("antiDumping", "calc-ad-on", "Учитывать антидемпинговые меры", c.antiDumping, esc(adHint(p, c)))}
+          ${checkRow("goodFaith", "calc-good", "Подтвержу добросовестность: за три года — три контракта без неустоек, один из них — не меньше 20 % начальной цены", c.goodFaith, "Тогда хватит обычного обеспечения. Сведения из реестра контрактов подаёте вместе с подписанным проектом контракта (ч. 2, 3 и 5 ст. 37)", c.antiDumping && small && sec)}
+          <p class="hint" id="calc-ad-big"${c.antiDumping && big && sec ? "" : " hidden"}>Начальная цена больше 15 млн ₽ — заменить повышенное обеспечение подтверждением добросовестности нельзя (ч. 1 ст. 37).</p>
+          <p class="hint" id="calc-ad-none"${c.antiDumping && !sec ? "" : " hidden"}>${esc(adNone(c))}</p>
+          ${rule ? noteHTML("info", `В документах закупки: ${esc(rule)}`) : ""}
+        </div>
+      </section>
+      <section class="panel" aria-labelledby="calc-check-title">
+        <div class="panel-head"><h3 class="panel-title" id="calc-check-title">Проверить свою цену</h3></div>
+        <div class="calc-body">
+          ${numField("price", "calc-price", "Ваша цена", "₽", c.price, "Сколько хотите предложить — покажу, что останется")}
+          <div class="calc-out" id="calc-out">${calcTableHTML(c)}</div>
+        </div>
+      </section>
+    </div>
+    <div class="sticky-actions"><div class="result-bar" id="calc-result" aria-live="polite">${calcResultHTML(c)}</div></div>`;
+  }
+
+  // Правка поля: пересчитываются таблица и ответ, условные строки показываются и прячутся — само поле не перерисовывается.
+  function refreshPrice(p) {
+    const c = calcOf(p);
+    const sec = secured(c);
+    const show = (id, on) => { const el = document.getElementById(id); if (el) el.hidden = !on; };
+    show("calc-exempt-row", c.smeOnly);
+    show("calc-cost-block", sec);
+    show("calc-good-row", c.antiDumping && c.nmck !== null && c.nmck <= GOOD_FAITH_LIMIT && sec);
+    show("calc-ad-big", c.antiDumping && c.nmck !== null && c.nmck > GOOD_FAITH_LIMIT && sec);
+    show("calc-ad-none", c.antiDumping && !sec);
+    const none = $("#calc-ad-none");
+    if (none) none.textContent = adNone(c);
+    const hint = $("#calc-ad-on-hint");
+    if (hint) hint.textContent = adHint(p, c);
+    $("#calc-out").innerHTML = calcTableHTML(c);
+    $("#calc-result").innerHTML = calcResultHTML(c);
+  }
+  function onCalcInput(input) {
+    const p = cur();
+    const value = input.type === "checkbox" ? input.checked : input.type === "radio" ? input.value : parseNum(input.value);
+    p.priceCalc = { ...(p.priceCalc || {}), [input.dataset.calc]: value };
+    // Способ обеспечения меняет подписи и ставку в поле — экран перерисовывается, фокус остаётся на переключателе.
+    if (input.type === "radio") rerender();
+    else refreshPrice(p);
+  }
+
   /* ---------- как это работает: путь по закупке, разделы, цвета ---------- */
   function helpHTML() {
     const path = [
@@ -2030,7 +2345,7 @@
     ];
     const sections = [
       ["home", "home", "Главная", "Что сделать сейчас по всем закупкам и ближайший срок подачи."],
-      ["list", "list", "Закупки", "Все закупки: список слева, открытая закупка справа — с шагами и вопросами по ней."],
+      ["list", "list", "Закупки", "Все закупки: список слева, открытая закупка справа — с шагами, расчётом, до какой цены снижаться, и вопросами по ней."],
       ["ask", "chat", "Спросить про тендер", "Общий вопрос по 44-ФЗ и 223-ФЗ. Вопрос про конкретную закупку задайте внутри неё — в «Вопросах»: отвечу по её документам."],
       ["profile", "user", "Реквизиты", "Данные компании. Сами попадают в анкету, декларацию и цену — но никогда в ТП: его подают анонимно."],
       ["docs", "folder", "Образцы и реквизиты", "Ваши прошлые заявки, анкеты, карточка предприятия. По ним заполняются реквизиты и пишутся новые документы — так же, как пишете вы."],
@@ -2290,6 +2605,18 @@
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, max)}px`;
   }
+  // Строка шагов: подписи сокращаются по ступеням, пока она не поместится, — как в приложении (purchase-view.tsx).
+  const FIT_LEVELS = [[], ["short-tp"], ["short-tp", "short-check"], ["short-tp", "short-check", "icons"], ["short-tp", "short-check", "icons", "tight"]];
+  function fitTabs() {
+    const nav = $("#tabs");
+    if (!nav || !nav.offsetParent) return;
+    for (const level of FIT_LEVELS) {
+      for (const name of FIT_LEVELS[FIT_LEVELS.length - 1]) nav.toggleAttribute(`data-${name}`, level.includes(name));
+      if (nav.scrollWidth <= nav.clientWidth) return;
+    }
+  }
+  window.addEventListener("resize", fitTabs);
+  if (document.fonts) document.fonts.ready.then(fitTabs);
   const renderSide = () => { $("#side").innerHTML = sideHTML(); };
   const renderHead = () => { $("#head").innerHTML = headHTML(); };
   function render() {
@@ -2299,6 +2626,7 @@
     view.classList.toggle("fill", WORK.includes(S.screen) || S.screen === "ask");
     view.innerHTML = screenHTML();
     document.querySelectorAll("#view textarea").forEach(autosize);
+    fitTabs();
   }
   // Перерисовка на месте: фокус остаётся на том же элементе.
   function focusKey(el) {
@@ -2332,7 +2660,7 @@
     const body = $("#plist-body");
     if (body) body.innerHTML = plistBodyHTML(p);
     const tabs = $("#tabs");
-    if (tabs && p) tabs.outerHTML = tabsHTML(p);
+    if (tabs && p) { tabs.outerHTML = tabsHTML(p); fitTabs(); }
   }
   const toTop = () => ["view", "pane-main", "chat-scroll"].forEach((id) => { const el = document.getElementById(id); if (el) el.scrollTop = 0; });
 
@@ -2745,6 +3073,13 @@
     else if (t.id === "tp-price") onPriceInput(t);
     else if (t.id === "plist-q") { S.q = t.value; const body = $("#plist-body"); if (body) body.innerHTML = plistBodyHTML(PURCHASE_SCREENS.includes(S.screen) ? cur() : null); }
     else if (t.dataset.pf) onProfileInput(t);
+    else if (t.dataset.calc && t.type !== "checkbox" && t.type !== "radio") onCalcInput(t);
+  });
+
+  // Поле расчёта отпустили — число показывается с пробелами между разрядами.
+  document.addEventListener("focusout", (e) => {
+    const t = e.target;
+    if (t.classList && t.classList.contains("calc")) t.value = showNum(parseNum(t.value));
   });
 
   // Правка закончилась — поле снова становится текстом. Заменяем только его, чтобы не сорвать нажатие рядом.
@@ -2761,6 +3096,7 @@
 
   document.addEventListener("change", (e) => {
     const input = e.target;
+    if (input.dataset && input.dataset.calc && (input.type === "checkbox" || input.type === "radio")) { onCalcInput(input); return; }
     if (input.type !== "file") return;
     const files = [...input.files];
     input.value = "";

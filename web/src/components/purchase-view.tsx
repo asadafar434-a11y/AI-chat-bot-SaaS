@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -56,11 +56,11 @@ const DOT = {
 };
 
 // Шаг подготовки заявки: номер или галочка, название и что на нём сейчас — словами.
-// Где панель узкая, название короче («ТП», «Проверка»); диктор всегда читает полное.
+// Где не помещается, название короче («ТП», «Проверка»); диктор всегда читает полное.
 function StepLink({ step, current }: { step: Step; current: boolean }) {
   const dot = step.state === "fix" && step.tone === "bad" ? "bg-[color-mix(in_srgb,var(--danger)_12%,var(--card))] text-destructive" : DOT[step.state];
-  const full = step.key === "tp" ? "sr-only @min-[920px]:not-sr-only" : "sr-only @min-[824px]:not-sr-only";
-  const short = step.key === "tp" ? "@min-[920px]:hidden" : "@min-[824px]:hidden";
+  const full = step.key === "tp" ? "group-data-[short-tp]/steps:sr-only" : "group-data-[short-check]/steps:sr-only";
+  const short = step.key === "tp" ? "hidden group-data-[short-tp]/steps:inline" : "hidden group-data-[short-check]/steps:inline";
   return (
     <Link href={step.href} aria-current={current ? "page" : undefined} className="item flex-none gap-2 py-1">
       <span aria-hidden className={`grid size-5 flex-none place-items-center rounded-full font-mono text-xs font-bold ${dot}`}>
@@ -84,6 +84,43 @@ function StepLink({ step, current }: { step: Step; current: boolean }) {
       </span>
     </Link>
   );
+}
+
+// Подписи в строке шагов сокращаются, только когда не помещаются: сначала «ТП», потом «Проверка», потом
+// у «Поиска», «Цены» и «Вопросов» остаются значки, в последнюю очередь пропадают стрелки между шагами — порядок
+// видно по номерам. Ширина строки зависит от статусов шагов и счётчика вопросов, поэтому она мерится, а не
+// угадывается по ширине панели. Не помещается и так — строка прокручивается.
+const FIT_LEVELS = [
+  { "data-short-tp": false, "data-short-check": false, "data-icons": false, "data-tight": false },
+  { "data-short-tp": true, "data-short-check": false, "data-icons": false, "data-tight": false },
+  { "data-short-tp": true, "data-short-check": true, "data-icons": false, "data-tight": false },
+  { "data-short-tp": true, "data-short-check": true, "data-icons": true, "data-tight": false },
+  { "data-short-tp": true, "data-short-check": true, "data-icons": true, "data-tight": true },
+];
+
+function useStepsFit(nav: RefObject<HTMLElement | null>, content: string) {
+  const [level, setLevel] = useState(0);
+  useLayoutEffect(() => {
+    const el = nav.current;
+    if (!el) return;
+    const apply = (i: number) => Object.entries(FIT_LEVELS[i]).forEach(([name, on]) => el.toggleAttribute(name, on));
+    const measure = () => {
+      let i = 0;
+      for (; i < FIT_LEVELS.length - 1; i++) {
+        apply(i);
+        if (el.scrollWidth <= el.clientWidth) break;
+      }
+      apply(i);
+      setLevel(i);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    void document.fonts?.ready.then(measure);
+    return () => observer.disconnect();
+  }, [nav, content]);
+  // Атрибуты — как у выбранного уровня: React их не сбросит при следующей отрисовке.
+  return Object.fromEntries(Object.entries(FIT_LEVELS[level]).map(([name, on]) => [name, on || undefined]));
 }
 
 // Что делать дальше — в конце шага, чтобы путь по закупке был виден без подсказок.
@@ -368,6 +405,8 @@ export function PurchaseView({ children }: { children: ReactNode }) {
   const onChat = pathname === `${base}/chat`;
   const onSearch = pathname === `${base}/search`;
   const onPrice = pathname === `${base}/price`;
+  const stepsNav = useRef<HTMLElement>(null);
+  const fit = useStepsFit(stepsNav, [pathname, asked, ...steps.map((s) => s.status)].join("|"));
 
   return (
     <div className="relative flex min-h-0 flex-1 gap-2">
@@ -434,13 +473,20 @@ export function PurchaseView({ children }: { children: ReactNode }) {
 
             {/* Шаги подготовки заявки по порядку; «Поиск», «Цена» и «Вопросы» — не шаги, а инструменты, стоят отдельно справа */}
             <nav
+              ref={stepsNav}
               aria-label="Подготовка заявки"
-              className="@container flex items-stretch overflow-x-auto border-t border-[var(--line)] px-2 py-1.5 [scrollbar-width:none]"
+              {...fit}
+              className="group/steps flex items-stretch overflow-x-auto border-t border-[var(--line)] px-2 py-1.5 [scrollbar-width:none]"
             >
-              <ol className="flex items-stretch">
+              <ol className="flex flex-none items-stretch">
                 {steps.map((step, i) => (
                   <li key={step.key} className="flex items-stretch">
-                    {i > 0 && <ChevronRightIcon aria-hidden className="mx-0.5 my-auto size-3.5 flex-none text-[var(--ink-3)] opacity-60" />}
+                    {i > 0 && (
+                      <ChevronRightIcon
+                        aria-hidden
+                        className="mx-0.5 my-auto size-3.5 flex-none text-[var(--ink-3)] opacity-60 group-data-[tight]/steps:hidden"
+                      />
+                    )}
                     <StepLink step={step} current={pathname === step.href} />
                   </li>
                 ))}
@@ -452,7 +498,7 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                   className={`item flex-none ${onSearch ? "t-strong" : "t-label text-[var(--ink-2)]"}`}
                 >
                   <SearchIcon className="size-4 text-[var(--ink-3)]" />
-                  <span className="@max-[792px]:sr-only">
+                  <span className="group-data-[icons]/steps:sr-only">
                     Поиск<span className="sr-only"> по документам</span>
                   </span>
                 </Link>
@@ -463,7 +509,7 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                   className={`item flex-none ${onPrice ? "t-strong" : "t-label text-[var(--ink-2)]"}`}
                 >
                   <CalculatorIcon className="size-4 text-[var(--ink-3)]" />
-                  <span className="@max-[792px]:sr-only">
+                  <span className="group-data-[icons]/steps:sr-only">
                     Цена<span className="sr-only"> — до какой цены снижаться</span>
                   </span>
                 </Link>
@@ -473,7 +519,7 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                   className={`item flex-none ${onChat ? "t-strong" : "t-label text-[var(--ink-2)]"}`}
                 >
                   <MessageSquareIcon className="size-4 text-[var(--ink-3)]" />
-                  <span className="@max-[792px]:sr-only">Вопросы</span>
+                  <span className="group-data-[icons]/steps:sr-only">Вопросы</span>
                   {asked > 0 && <span className="count rounded-md bg-[var(--paper-2)] px-1.5">{asked}</span>}
                 </Link>
               </div>
