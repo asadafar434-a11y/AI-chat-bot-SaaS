@@ -282,16 +282,83 @@
   .list-empty { margin: 0; padding: 4px var(--pad) 12px; font: var(--t-body); color: var(--ink-3); }
 
   /* ---------- главная ---------- */
-  .dash { display: grid; gap: 8px; align-items: start; }
-  @media (min-width: 1180px) { .dash { grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr); } }
-  .dash-side { display: grid; gap: 8px; min-width: 0; }
-  .ask-lead { margin: 0; font: var(--t-body); color: var(--ink-2); }
+  /* Главная — рабочий стол в одну колонку: самое срочное, закупки по этапам, данные компании */
+  .home { display: grid; gap: 8px; max-width: 1040px; }
+  .home .panel { container-type: inline-size; }
+  /* Название с подписью занимает строку, действие остаётся справа и на телефоне */
+  .home .panel-head > div:first-child { flex: 1 1 200px; min-width: 0; }
+  .home .meter { max-width: 240px; }
+  /* Бейдж статуса — пилюля: бледная заливка статуса, текст и иконка его цветом. Цвет всегда с подписью. */
+  .badge { display: inline-flex; align-items: center; gap: 4px; min-height: 22px; padding: 2px 8px; border-radius: var(--r-pill); font: var(--t-tag); letter-spacing: 0; white-space: nowrap; }
+  .badge > svg { flex: none; }
+  .badge.warn { background: var(--warn-tint); color: var(--warn); }
+  .badge.bad { background: var(--danger-tint); color: var(--danger); }
+  .badge.ok { background: var(--ok-tint); color: var(--ok); }
+  .badge.brand { background: var(--brand-tint); color: var(--brand); }
+  .badge.calm { background: var(--paper-2); color: var(--ink-2); }
+  .now .badge.calm { background: var(--card); }
+  /* Самое срочное дело — поверхностью внутри острова, с единственной главной кнопкой экрана */
+  .now { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; margin: 4px 8px 8px; padding: 12px; border-radius: var(--r-surface); background: var(--paper-2); }
+  .now-text { display: grid; gap: 6px; min-width: 0; flex: 1 1 320px; }
+  .now-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+  .now-title { margin: 0; font: var(--t-title); letter-spacing: -.01em; }
+  .now-sub { margin: 0; font: var(--t-body); color: var(--ink-2); }
+  .prow.task { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+  /* На узком острове бейдж уходит под название — название не обрезается */
+  @container (width < 520px) {
+    .prow.task { grid-template-columns: auto minmax(0, 1fr) auto; row-gap: 6px; }
+    .prow.task > .badge { grid-column: 2; grid-row: 2; justify-self: start; }
+    .prow.task > :first-child, .prow.task > .chev { grid-row: 1 / 3; }
+    .prow.task > .todo-dot { align-self: start; margin-top: 5px; }
+    .prow.task > .chev { grid-column: 3; }
+  }
+  .all-done { display: flex; align-items: center; gap: 8px; margin: 0; padding: 4px var(--pad) 14px; font: var(--t-body); color: var(--ink-2); }
+  /* Этапы — как колонки доски: сколько закупок и что на этапе ждёт вас. Нажатие оставляет в таблице только этап. */
+  .lanes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 4px var(--pad) 12px; }
+  .lane { appearance: none; border: 0; display: grid; align-content: start; justify-items: start; gap: 2px; min-width: 0; padding: 10px 12px; border-radius: var(--r-surface); background: var(--paper-2); color: var(--ink); text-align: left; }
+  .lane:hover:not(:disabled) { background: var(--paper-3); }
+  .lane:disabled { cursor: default; }
+  .lane:disabled .lane-count { color: var(--ink-3); }
+  .lane[aria-pressed="true"] { background: var(--select); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 35%, transparent); }
+  .lane-title { font: var(--t-caption); color: var(--ink-2); }
+  .lane-count { font: 600 20px/28px var(--mono); font-variant-numeric: tabular-nums; }
+  .lane-note { font: var(--t-tag); color: var(--ink-3); }
+  .lane-note.warn { color: var(--warn); }
+  .lane-note.bad { color: var(--danger); }
+  .lane-note.ok { color: var(--ok); }
+  .lane-note.brand { color: var(--brand); }
+  /* На узком острове этапы — строками по 44: название и что ждёт вас слева, число справа */
+  @container (width < 560px) {
+    .lanes { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .lane { grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 12px; min-height: 44px; padding: 6px 12px; border-radius: var(--r-card); }
+    .lane-title { grid-column: 1; grid-row: 1; font: var(--t-body); color: var(--ink); }
+    .lane-note { grid-column: 1; grid-row: 2; }
+    .lane-count { grid-column: 2; grid-row: 1 / 3; font-size: 16px; line-height: 24px; }
+  }
+  /* Закупки таблицей: название, что сейчас, срок. На узком острове бейджи уходят под название. */
+  .deals-head, .deal { display: grid; grid-template-columns: 32px minmax(0, 1fr) 184px 120px 16px; align-items: center; column-gap: 12px; }
+  .deals-head { margin: 0 var(--pad); padding: 0 0 6px; border-bottom: 1px solid var(--line); font: var(--t-caption); color: var(--ink-3); }
+  .deals-head span:first-child { grid-column: 2; }
+  .deals { list-style: none; margin: 0; padding: 4px 8px 8px; display: grid; gap: 2px; }
+  .deal { appearance: none; border: 0; background: none; width: 100%; row-gap: 6px; padding: 8px; border-radius: var(--r-ctl); color: var(--ink); text-align: left; }
+  .deal:hover { background: var(--hover); }
+  .deal-main { display: grid; gap: 2px; min-width: 0; }
+  .deal-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font: var(--t-strong); }
+  .deal-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--t-caption); color: var(--ink-3); }
+  .deal-tags { display: contents; }
+  .deal-tags .badge { justify-self: start; }
+  .deal > .chev { display: grid; color: var(--ink-3); }
+  @container (width < 640px) {
+    .deals-head { display: none; }
+    .deal { grid-template-columns: 32px minmax(0, 1fr) 16px; }
+    .deal > .chev { grid-column: 3; grid-row: 1; }
+    .deal-tags { display: flex; flex-wrap: wrap; gap: 6px; grid-column: 2; }
+  }
+  .home-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0; padding: 0 var(--pad) 12px; font: var(--t-caption); color: var(--ink-3); }
   .todo-dot { flex: none; width: 10px; height: 10px; margin: 0 11px; border-radius: 50%; background: var(--edge-2); box-shadow: 0 0 0 3px var(--paper-2); }
   .todo-dot.warn { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-tint); }
   .todo-dot.brand { background: var(--brand); box-shadow: 0 0 0 3px var(--brand-tint); }
-  .askbox { display: flex; align-items: flex-end; gap: 4px; padding: 4px; border: 1px solid var(--edge-2); border-radius: var(--r-card); background: var(--card); box-shadow: var(--hairline); }
-  .askbox:focus-within { border-color: var(--brand); box-shadow: var(--ring); }
-  .askbox textarea { flex: 1; min-width: 0; min-height: 32px; max-height: 140px; padding-block: 6px; border: 0; outline: none; resize: none; background: transparent; font: var(--t-doc); }
+  .todo-dot.bad { background: var(--danger); box-shadow: 0 0 0 3px var(--danger-tint); }
   .empty { display: grid; justify-items: start; gap: 12px; padding: var(--pad); }
   .empty p { margin: 0; max-width: 52ch; font: var(--t-body); color: var(--ink-2); }
   .or { font: var(--t-body); color: var(--ink-3); }
@@ -1622,11 +1689,10 @@
     profile: clone(PROFILE0), sources: clone(SOURCES0), suggestions: clone(SUGGEST0),
     docs: clone(DOCS0),
     general: { messages: [], docs: [], pending: [], thinking: false },
-    home: { text: "", files: [] },
     drafts: {},
     ui: {},
     busy: null,
-    info: false, fold: {}, q: "", tabs: {},
+    info: false, fold: {}, q: "", tabs: {}, lane: null,
   };
   const PURCHASE_SCREENS = ["req", "tp", "check", "chat", "price"];
   const WORK = ["list", ...PURCHASE_SCREENS];
@@ -1655,17 +1721,27 @@
       { key: "check", n: 3, title: "Проверка заявки", short: "Проверка", ...(!done ? { state: "todo", status: "не проверена", tone: "calm" } : bad ? { state: "fix", status: countText(bad, "ошибка", "ошибки", "ошибок"), tone: "bad" } : warn ? { state: "fix", status: countText(warn, "замечание", "замечания", "замечаний"), tone: "warn" } : { state: "done", status: "ошибок нет", tone: "ok" }) },
     ];
   }
-  // Где закупка сейчас — одной строкой для списков.
-  function stageOf(p) {
+  // Бейдж статуса: пилюля с бледной заливкой статуса, текст и иконка — его цветом. Цвет всегда с подписью:
+  // янтарь — нужно ваше действие, красный — ошибка, зелёный — готово, индиго — следующий шаг, серый — справка.
+  const badge = (tone, text, icon) => `<span class="badge ${tone}">${icon ? ic(icon, 14, icon === "check" ? 2.5 : 1.5) : ""}${esc(text)}</span>`;
+  // Что с закупкой сейчас — коротко, бейджем: в таблице на главной и в списке закупок.
+  function stageBadge(p) {
     const [, tp, check] = stepsOf(p);
     const due = dueLine(p.deadline, false);
-    if (due && due.days < 0) return { text: "Приём заявок закончился", tone: "calm" };
-    if (p.check.state === "done") return check.state === "done" ? { text: "Готово к подаче на площадке", tone: "ok" } : { text: `Шаг 3 · проверка: ${check.status}`, tone: check.tone };
-    if (tp.state === "todo") return { text: "Шаг 2 · составить ТП", tone: "brand" };
-    if (tp.state === "fix") return { text: `Шаг 2 · ТП: ${tp.status}`, tone: "warn" };
-    return { text: "Шаг 3 · проверить заявку", tone: "brand" };
+    if (due && due.days < 0) return badge("calm", "приём закончился");
+    if (p.check.state === "done") return check.state === "done" ? badge("ok", "готово к подаче", "check") : badge(check.tone === "bad" ? "bad" : "warn", check.status, "alert");
+    if (tp.state === "todo") return badge("brand", "составить ТП");
+    if (tp.state === "fix") return badge("warn", `ТП: ${tp.status}`, "pen");
+    return badge("brand", "проверить заявку");
   }
-  const stageHTML = (p) => { const st = stageOf(p); return `<span class="stage ${st.tone}">${esc(st.text)}</span>`; };
+  // Срок подачи бейджем: янтарный — неделя и меньше, серый — дальше или уже прошёл.
+  function dueBadge(p, long) {
+    const due = dueLine(p.deadline, false);
+    if (!due) return badge("calm", "срок не найден");
+    if (due.days < 0) return badge("calm", due.head.replace(/^Приём заявок закончился /, ""));
+    const text = due.days === 0 ? "подать сегодня" : long ? `${daysText(due.days)} до подачи` : daysText(due.days);
+    return badge(due.tone === "soon" ? "warn" : "calm", text, "clock");
+  }
   const needsFill = (t) => /\[[^\]]+\]/.test(t || "");
   const itemsFill = (tp) => tp.goods.filter((g) => needsFill(g.characteristics)).length + tp.items.filter((it) => needsFill(it.offer)).length + (needsFill(tp.form.consent) ? 1 : 0);
   const fillCount = (tp) => itemsFill(tp) + (castTodo(tp) ? 1 : 0);
@@ -1780,14 +1856,15 @@
   }
 
   /* ---------- шапка экрана: заголовок, подзаголовок, главное действие ---------- */
-  const newBtn = () => `<button class="btn" type="button" data-go="new" aria-label="Новая закупка">${ic("plus")}<span class="lbl">Новая закупка</span></button>`;
+  // Главная кнопка на экране одна: на главной она у самого срочного дела или у «С чего начать», и «Новая закупка» — обводкой.
+  const newBtn = (quiet) => `<button class="btn${quiet ? " line" : ""}" type="button" data-go="new" aria-label="Новая закупка">${ic("plus")}<span class="lbl">Новая закупка</span></button>`;
   function headInfo() {
     const n = S.purchases.length;
     const next = nextDue();
     const when = next ? (next.d.days === 0 ? "сегодня" : `через ${daysText(next.d.days)}`) : "";
     switch (S.screen) {
       case "home":
-        return { title: "Главная", sub: next ? `Ближайший срок подачи ${when}: ${next.p.short}` : n ? "Сроков подачи впереди нет" : "Начните с документов первой закупки", acts: newBtn() };
+        return { title: "Главная", sub: next ? `Ближайший срок подачи ${when}: ${next.p.short}` : n ? "Сроков подачи впереди нет" : "Начните с документов первой закупки", acts: newBtn(!n || tasksOf().length > 0) };
       case "ask":
         return { title: "Спросить про тендер", sub: "Общие вопросы по 44-ФЗ и 223-ФЗ — ответ со ссылкой на статью" };
       case "help":
@@ -1819,55 +1896,116 @@
       ${h.acts ? `<div class="head-acts">${h.acts}</div>` : ""}`;
   }
 
-  /* ---------- главная: дела, сроки, вопрос, свои данные ---------- */
-  // Что осталось сделать по закупкам, где ещё идёт приём, и по реквизитам. Порядок — по сроку подачи.
+  /* ---------- главная: самое срочное, закупки по этапам, данные компании ---------- */
+  // Главная — рабочий стол, а не всё сразу: сверху одно самое срочное дело с главной кнопкой экрана,
+  // ниже — закупки по этапам, в конце — данные компании. Вопросы — в разделе «Спросить про тендер».
+
+  // Что осталось сделать по закупкам, где ещё идёт приём. Порядок — по сроку подачи.
   function tasksOf() {
     const out = [];
     for (const p of [...S.purchases].sort(byUrgency)) {
       const due = dueLine(p.deadline, false);
       if (!due || due.days < 0) continue;
-      const when = due.days === 0 ? "подать сегодня" : `${daysText(due.days)} до подачи`;
       const urgent = due.tone === "soon" ? "warn" : "brand";
       const [, tp] = stepsOf(p);
       const bad = p.check.state === "done" ? checkCounts(p).bad : 0;
-      if (bad) out.push({ p, go: "check", text: bad === 1 ? "Исправить ошибку в заявке" : `Исправить ошибки в заявке — ${bad}`, when, tone: "bad" });
+      if (bad) out.push({ p, go: "check", text: bad === 1 ? "Исправить ошибку в заявке" : `Исправить ошибки в заявке — ${bad}`, tone: "bad" });
       else if (p.check.state !== "done") {
-        if (tp.state === "todo") out.push({ p, go: "tp", text: "Составить техническое предложение", when, tone: urgent });
-        else if (tp.state === "fix") out.push({ p, go: "tp", text: `Вписать свои данные в ТП — ${tp.status.replace(/^впишите /, "")}`, when, tone: urgent });
-        else out.push({ p, go: "check", text: "Проверить заявку перед подачей", when, tone: urgent });
+        if (tp.state === "todo") out.push({ p, go: "tp", text: "Составить техническое предложение", tone: urgent });
+        else if (tp.state === "fix") out.push({ p, go: "tp", text: `Вписать свои данные в ТП — ${tp.status.replace(/^впишите /, "")}`, tone: urgent });
+        else out.push({ p, go: "check", text: "Проверить заявку перед подачей", tone: urgent });
       }
-      if ((p.scans || []).length) out.push({ p, go: "req", text: `Сверить цифры в ${p.scans.length === 1 ? "файле со скана" : "файлах со скана"}`, when, tone: "warn" });
-      p.unreadable.forEach((f) => out.push({ p, go: "req", text: `Пересохранить «${f.name}» — файл не прочитан`, when, tone: "warn" }));
+      if ((p.scans || []).length) out.push({ p, go: "req", text: `Сверить цифры в ${p.scans.length === 1 ? "файле со скана" : "файлах со скана"}`, tone: "warn" });
+      p.unreadable.forEach((f) => out.push({ p, go: "req", text: `Пересохранить «${f.name}» — файл не прочитан`, tone: "warn" }));
     }
-    const missing = PROFILE_KEYS.length - filledCount();
-    if (missing) out.push({ go: "profile", text: `${missing === PROFILE_KEYS.length ? "Заполнить" : "Дозаполнить"} реквизиты — ${missing} ${plural(missing, "поле", "поля", "полей")}`, when: "подставятся в анкету, декларацию и цену", tone: "" });
     return out;
   }
-  function tasksHTML() {
-    const tasks = tasksOf();
-    if (!tasks.length) return '<p class="list-empty">Всё сделано: по открытым закупкам делать нечего.</p>';
-    return `<ul class="plist">${tasks.map((t) => `<li><button class="prow" type="button" data-go="${t.go}"${t.p ? ` data-id="${t.p.id}"` : ""}>
+  const GO_LABEL = { tp: "Открыть ТП", check: "Открыть проверку", req: "Открыть требования" };
+
+  // Самое срочное — крупно, с главной кнопкой; остальное — строками ниже.
+  function nowHTML(tasks) {
+    if (!tasks.length) return `<p class="all-done">${badge("ok", "всё сделано", "check")}По открытым закупкам делать нечего.</p>`;
+    const [top, ...rest] = tasks;
+    return `<div class="now">
+        <div class="now-text">
+          <div class="now-badges">${dueBadge(top.p, true)}${top.p.sample ? badge("calm", "пример") : ""}</div>
+          <p class="now-title">${esc(top.text)}</p>
+          <p class="now-sub">${esc(top.p.short)} · ${esc(top.p.customer)}</p>
+        </div>
+        <button class="btn" type="button" data-go="${top.go}" data-id="${top.p.id}">${GO_LABEL[top.go]}${ic("chev", 16)}</button>
+      </div>
+      ${rest.length ? `<ul class="plist">${rest.map((t) => `<li><button class="prow task" type="button" data-go="${t.go}" data-id="${t.p.id}">
         <span class="todo-dot ${t.tone}" aria-hidden="true"></span>
-        <span class="prow-text"><span class="prow-title">${esc(t.text)}</span><span class="prow-sub">${esc([t.p ? t.p.short : "", t.when].filter(Boolean).join(" · "))}</span></span>
+        <span class="prow-text"><span class="prow-title">${esc(t.text)}</span><span class="prow-sub">${esc(t.p.short)}</span></span>
+        ${dueBadge(t.p)}
         <span class="chev">${ic("chev", 16)}</span>
-      </button></li>`).join("")}</ul>`;
+      </button></li>`).join("")}</ul>` : ""}`;
+  }
+
+  // Этапы — как колонки доски у Контур.Закупок и этапы у Тендерплана, но по нашему пути из трёх шагов.
+  const LANES = [
+    { key: "tp", title: "Техническое предложение" },
+    { key: "check", title: "Проверка заявки" },
+    { key: "ready", title: "Готово к подаче" },
+    { key: "closed", title: "Приём закончился" },
+  ];
+  function laneOf(p) {
+    const due = dueLine(p.deadline, false);
+    if (due && due.days < 0) return "closed";
+    const [, tp, check] = stepsOf(p);
+    if (check.state === "done") return "ready";
+    return p.check.state === "done" || tp.state === "done" ? "check" : "tp";
+  }
+  // Что на этапе ждёт вас — одной строкой под числом.
+  function laneNote(key, list) {
+    const steps = list.map((p) => stepsOf(p));
+    if (!list.length) return { tone: "", text: "нет закупок" };
+    if (key === "tp") {
+      const fix = steps.filter(([, tp]) => tp.state === "fix").length;
+      return fix ? { tone: "warn", text: `${fix} ${plural(fix, "ждёт", "ждут", "ждут")} ваших данных` } : { tone: "brand", text: "составить ТП" };
+    }
+    if (key === "check") {
+      const bad = list.filter((p) => p.check.state === "done" && checkCounts(p).bad).length;
+      return bad ? { tone: "bad", text: `${bad} с ошибками` } : { tone: "brand", text: "проверить перед подачей" };
+    }
+    if (key === "ready") return { tone: "ok", text: "можно подавать" };
+    return { tone: "", text: "срок прошёл" };
+  }
+  function dealsHTML(list) {
+    const lane = S.lane && list.some((p) => laneOf(p) === S.lane) ? S.lane : null;
+    const shown = lane ? list.filter((p) => laneOf(p) === lane) : list;
+    const lanes = LANES.map((l) => {
+      const inLane = list.filter((p) => laneOf(p) === l.key);
+      const note = laneNote(l.key, inLane);
+      return `<button class="lane" type="button" data-act="lane" data-lane="${l.key}" aria-pressed="${lane === l.key}"${inLane.length ? "" : " disabled"}>
+        <span class="lane-title">${l.title}</span>
+        <span class="lane-count">${inLane.length}</span>
+        <span class="lane-note ${note.tone}">${esc(note.text)}</span>
+      </button>`;
+    }).join("");
+    const rows = shown.map((p) => `<li><button class="deal" type="button" data-go="p" data-id="${p.id}">
+        ${lawBadge(p)}
+        <span class="deal-main"><span class="deal-title">${esc(p.short)}</span><span class="deal-sub">${esc([p.sample ? "пример" : "", p.customer].filter(Boolean).join(" · "))}</span></span>
+        <span class="deal-tags">${stageBadge(p)}${dueBadge(p)}</span>
+        <span class="chev">${ic("chev", 16)}</span>
+      </button></li>`).join("");
+    return `<div class="lanes" role="group" aria-label="Этапы: нажмите, чтобы оставить в таблице только этап">${lanes}</div>
+      <div class="deals-head" aria-hidden="true"><span>Закупка</span><span>Что сейчас</span><span>До подачи</span></div>
+      <ul class="deals">${rows}</ul>
+      ${lane ? `<p class="home-foot">Показан этап «${esc(LANES.find((l) => l.key === lane).title)}». <button class="link quiet" type="button" data-act="lane" data-lane="${lane}">Показать все закупки</button></p>` : ""}`;
   }
 
   function homeHTML() {
     const list = [...S.purchases].sort(byUrgency);
-    const files = S.home.files;
-    const filled = filledCount(), total = PROFILE_KEYS.length;
-    const rows = list.map((p) => `<li><button class="prow wide" type="button" data-go="p" data-id="${p.id}">
-        ${lawBadge(p)}
-        <span class="prow-text"><span class="prow-title">${esc(p.short)}${p.sample ? ' <span class="sample">пример</span>' : ""}</span><span class="prow-sub">${dueText(p)}</span>${stageHTML(p)}</span>
-        <span class="chev">${ic("chev", 16)}</span>
-      </button></li>`).join("");
-    const dataRow = (screen, icon, title, sub, extra = "") => `<li><button class="prow" type="button" data-go="${screen}">
+    const tasks = tasksOf();
+    const filled = filledCount(), total = PROFILE_KEYS.length, missing = total - filled;
+    const tpSamples = samplesOf("tp").length;
+    const dataRow = (screen, icon, title, sub, tag, extra = "") => `<li><button class="prow task" type="button" data-go="${screen}">
         <span class="law icon" aria-hidden="true">${ic(icon, 16)}</span>
         <span class="prow-text"><span class="prow-title">${title}</span><span class="prow-sub">${sub}</span>${extra}</span>
+        ${tag}
         <span class="chev">${ic("chev", 16)}</span>
       </button></li>`;
-    const tasks = tasksOf().length;
     const start = `<section class="panel" aria-labelledby="start-title">
         <div class="panel-head"><h2 class="panel-title" id="start-title">С чего начать</h2><button class="link quiet small" type="button" data-go="help">Как это работает</button></div>
         <ol class="start-steps">
@@ -1877,39 +2015,22 @@
         </ol>
         <div class="panel-foot"><button class="btn" type="button" data-go="new">${ic("plus")}Загрузить документы закупки</button><span class="or">или <button class="link" type="button" data-act="sample">посмотреть на примере</button></span></div>
       </section>`;
-    return `<div class="dash">
-      <div class="dash-side">
-      ${list.length ? `<section class="panel" aria-labelledby="todo-title">
-        <div class="panel-head"><h2 class="panel-title" id="todo-title">Что сделать сейчас <span class="count">${tasks}</span></h2></div>
-        ${tasksHTML()}
+    return `<div class="home">
+      ${list.length ? `<section class="panel" aria-labelledby="now-title">
+        <div class="panel-head"><h2 class="panel-title" id="now-title">Сейчас важно${tasks.length ? ` <span class="count">${tasks.length}</span>` : ""}</h2></div>
+        ${nowHTML(tasks)}
       </section>
       <section class="panel" aria-labelledby="deals-title">
-        <div class="panel-head"><h2 class="panel-title" id="deals-title">Мои закупки <span class="count">${list.length}</span></h2><button class="link small" type="button" data-go="list">Все закупки</button></div>
-        <ul class="plist">${rows}</ul>
+        <div class="panel-head"><div><h2 class="panel-title" id="deals-title">Закупки по этапам <span class="count">${list.length}</span></h2><p class="panel-sub">Нажмите на этап — останутся только его закупки</p></div><button class="link small" type="button" data-go="list">Все закупки</button></div>
+        ${dealsHTML(list)}
       </section>` : start}
-      </div>
-      <div class="dash-side">
-        <section class="panel" aria-labelledby="ask-title">
-          <div class="panel-head"><h2 class="panel-title" id="ask-title">Спросить про тендер</h2></div>
-          <div class="panel-body">
-            <p class="ask-lead">Отвечу по 44-ФЗ, 223-ФЗ и вашим документам — со ссылкой на статью и пункт.</p>
-            <form class="askbox" id="home-form">
-              <label class="circle" for="home-file" title="Приложить документ">${ic("clip", 18)}<span class="sr-only">Приложить документ</span><input id="home-file" type="file" multiple class="sr-only"></label>
-              <textarea id="home-q" rows="1" placeholder="Ваш вопрос…" aria-label="Вопрос" data-enter>${esc(S.home.text)}</textarea>
-              <button class="circle send" type="submit" aria-label="Спросить">${ic("send")}</button>
-            </form>
-            ${files.length ? `<div class="chips">${files.map((n, i) => `<span class="file-chip">${ic("file", 14)}<span class="fc-name">${esc(n)}</span><button class="x" type="button" data-act="home-file-x" data-i="${i}" aria-label="Убрать ${esc(n)}">${ic("x", 14)}</button></span>`).join("")}</div>` : ""}
-            <div class="chips">${GENERAL_SUGGEST.map((q) => `<button class="chip" type="button" data-act="home-q" data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div>
-          </div>
-        </section>
-        <section class="panel" aria-labelledby="mine-title">
-          <div class="panel-head"><h2 class="panel-title" id="mine-title">Данные компании</h2>${list.length ? "" : '<span class="small muted">можно заполнить заранее</span>'}</div>
-          <ul class="plist">
-            ${dataRow("profile", "user", "Реквизиты", `Заполнено ${filled} из ${total} · для анкеты и декларации`, `<span class="meter" aria-hidden="true"><i style="width:${Math.round((filled / total) * 100)}%"></i></span>`)}
-            ${dataRow("docs", "folder", "Образцы и реквизиты", S.docs.length ? `${S.docs.length} ${plural(S.docs.length, "документ", "документа", "документов")} · по ним пишутся новые` : "Прошлые заявки — чтобы писать в вашем стиле")}
-          </ul>
-        </section>
-      </div>
+      <section class="panel" aria-labelledby="mine-title">
+        <div class="panel-head"><div><h2 class="panel-title" id="mine-title">Данные компании</h2><p class="panel-sub">Вписываются один раз и сами подставляются в анкету, декларацию и цену</p></div></div>
+        <ul class="plist">
+          ${dataRow("profile", "user", "Реквизиты", `Заполнено ${filled} из ${total}`, missing ? badge("warn", `не хватает ${missing} ${plural(missing, "поля", "полей", "полей")}`, "pen") : badge("ok", "заполнены", "check"), `<span class="meter" aria-hidden="true"><i style="width:${Math.round((filled / total) * 100)}%"></i></span>`)}
+          ${dataRow("docs", "folder", "Образцы и реквизиты", S.docs.length ? `${S.docs.length} ${plural(S.docs.length, "документ", "документа", "документов")} · по ним пишутся новые` : "Прошлые заявки — чтобы писать в вашем стиле", tpSamples ? badge("ok", `ТП: ${tpSamples}`, "check") : badge("warn", "нет образцов ТП", "alert"))}
+        </ul>
+      </section>
     </div>
     <p class="foot">Прототип: закупки, документы и ответы вымышленные. Файлы не читаются, ничего не сохраняется и никуда не отправляется. Ответы ИИ не являются юридической консультацией — проверяйте нормы по первоисточнику.</p>`;
   }
@@ -1985,7 +2106,7 @@
       const days = !due ? "" : due.days < 0 ? '<span class="days">срок прошёл</span>' : `<span class="days${due.tone === "soon" ? " soon" : ""}">${due.days === 0 ? "сегодня" : daysText(due.days)}</span>`;
       return `<li><button class="prow" type="button" data-go="p" data-id="${p.id}"${sel === p ? ' aria-current="true"' : ""}>
         ${lawBadge(p)}
-        <span class="prow-text"><span class="prow-title">${esc(p.short)}</span><span class="prow-sub">${esc([p.sample ? "пример" : "", p.customer].filter(Boolean).join(" · "))}</span>${stageHTML(p)}</span>
+        <span class="prow-text"><span class="prow-title">${esc(p.short)}</span><span class="prow-sub">${esc([p.sample ? "пример" : "", p.customer].filter(Boolean).join(" · "))}</span><span>${stageBadge(p)}</span></span>
         <span class="prow-side">${days}</span>
       </button></li>`;
     }).join("")}</ul>`;
@@ -2857,7 +2978,7 @@
       ["✓", "Подача", "на электронной площадке", "Заявку подаёте вы сами на площадке, до срока подачи. Срок и сколько дней осталось видны в шапке закупки."],
     ];
     const sections = [
-      ["home", "home", "Главная", "Что сделать сейчас по всем закупкам и ближайший срок подачи."],
+      ["home", "home", "Главная", "Самое срочное дело, закупки по этапам и данные компании."],
       ["list", "list", "Закупки", "Все закупки: список слева, открытая закупка справа — с шагами, расчётом, до какой цены снижаться, и вопросами по ней."],
       ["ask", "chat", "Спросить про тендер", "Общий вопрос по 44-ФЗ и 223-ФЗ. Вопрос про конкретную закупку задайте внутри неё — в «Вопросах»: отвечу по её документам."],
       ["profile", "user", "Реквизиты", "Данные компании. Сами попадают в анкету, декларацию и цену — но никогда в ТП: его подают анонимно."],
@@ -2877,10 +2998,11 @@
       <section class="panel" aria-labelledby="marks-title">
         <div class="panel-head"><h2 class="panel-title" id="marks-title">Что значат цвета</h2></div>
         <ul class="marks">
-          <li><span class="mark-dot" style="background:var(--warn)"></span><span>Янтарный — нужно ваше действие: вписать данные, сверить цифры.</span></li>
+          <li><span class="mark-dot" style="background:var(--brand)"></span><span>Индиго — ваш следующий шаг: составить ТП, проверить заявку.</span></li>
+          <li><span class="mark-dot" style="background:var(--warn)"></span><span>Янтарный — нужно ваше действие: вписать данные, сверить цифры; до подачи неделя и меньше.</span></li>
           <li><span class="mark-dot" style="background:var(--danger)"></span><span>Красный — ошибка в заявке, за неё могут отклонить.</span></li>
-          <li><span class="step-dot done" style="width:16px;height:16px;justify-self:center">${ic("check", 10, 3)}</span><span>Зелёный с галочкой — шаг сделан.</span></li>
-          <li><span class="mark-dot" style="background:var(--edge-2)"></span><span>Серый — ещё не начато.</span></li>
+          <li><span class="step-dot done" style="width:16px;height:16px;justify-self:center">${ic("check", 10, 3)}</span><span>Зелёный с галочкой — шаг сделан, заявка готова к подаче.</span></li>
+          <li><span class="mark-dot" style="background:var(--edge-2)"></span><span>Серый — справка или ещё не начато: дни до подачи, прошедший приём.</span></li>
         </ul>
       </section>
       <p class="foot m0">Прототип: закупки, документы и ответы вымышленные. Ответы ИИ не являются юридической консультацией — проверяйте нормы по первоисточнику.</p>
@@ -3167,7 +3289,7 @@
     const goTo = el.getAttribute("data-go");
     if (!act && !goTo) return null;
     let sel = scope + (act ? `[data-act="${act}"]` : `[data-go="${goTo}"]`);
-    for (const k of ["data-open", "data-q", "data-part", "data-edit", "data-key", "data-kind", "data-i", "data-id", "data-fold"]) {
+    for (const k of ["data-open", "data-q", "data-part", "data-edit", "data-key", "data-kind", "data-i", "data-id", "data-fold", "data-lane"]) {
       const v = el.getAttribute(k);
       if (v !== null) sel += `[${k}="${CSS.escape(v)}"]`;
     }
@@ -3333,16 +3455,6 @@
     m.done = true;
     refreshFeed(p);
   }
-  function homeAsk(text) {
-    const q = text.trim();
-    const files = S.home.files;
-    if (!q && !files.length) { $("#home-q").focus(); return; }
-    S.general.docs = [...new Set([...S.general.docs, ...files])];
-    S.home = { text: "", files: [] };
-    go("ask");
-    if (q) ask(null, q, files);
-    else toast("Документы в разговоре — задайте вопрос по ним.");
-  }
 
   /* ---------- действия ---------- */
   async function createPurchase() {
@@ -3478,8 +3590,7 @@
       case "drawer-close": setDrawer(false); break;
       case "close": closeModal(); break;
       case "sample": openSample(); break;
-      case "home-q": homeAsk(el.dataset.q); break;
-      case "home-file-x": S.home.text = $("#home-q").value; S.home.files.splice(Number(el.dataset.i), 1); rerender(); break;
+      case "lane": S.lane = S.lane === el.dataset.lane ? null : el.dataset.lane; rerender(); break;
       case "gdoc-x": {
         const [name] = S.general.docs.splice(Number(el.dataset.i), 1);
         S.general.pending = S.general.pending.filter((n) => n !== name);
@@ -3613,7 +3724,6 @@
   document.addEventListener("submit", (e) => {
     e.preventDefault();
     const f = e.target;
-    if (f.id === "home-form") { homeAsk($("#home-q").value); return; }
     const area = f.querySelector("textarea");
     const q = area ? area.value.trim() : "";
     if (!q) { if (area) area.focus(); return; }
@@ -3635,8 +3745,7 @@
   document.addEventListener("input", (e) => {
     const t = e.target;
     if (t.tagName === "TEXTAREA") autosize(t);
-    if (t.id === "home-q") S.home.text = t.value;
-    else if (t.id === "ask-q") S.drafts.ask = t.value;
+    if (t.id === "ask-q") S.drafts.ask = t.value;
     else if (t.id === "chat-q") S.drafts.chat = t.value;
     else if (t.dataset.edit) onEditInput(t);
     else if (t.dataset.cast) onCastInput(t);
@@ -3693,8 +3802,7 @@
     input.value = "";
     if (!files.length) return;
     const names = files.map((f) => f.name);
-    if (input.id === "home-file") { S.home.text = $("#home-q").value; S.home.files = [...new Set([...S.home.files, ...names])]; rerender(); }
-    else if (input.id === "g-file") { S.general.docs = [...new Set([...S.general.docs, ...names])]; S.general.pending = [...new Set([...S.general.pending, ...names])]; rerender(); }
+    if (input.id === "g-file") { S.general.docs = [...new Set([...S.general.docs, ...names])]; S.general.pending = [...new Set([...S.general.pending, ...names])]; rerender(); }
     else if (input.id === "file-new") createPurchase();
     else if (input.id === "add-doc" || input.id === "add-doc-2") addToPurchase(cur(), names);
     else if (input.id === "file-app") runCheck(cur());
