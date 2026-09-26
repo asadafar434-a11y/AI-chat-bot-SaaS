@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { BackupIsland } from "@/components/backup-island";
 import { CheckIcon, UploadIcon, WarningIcon } from "@/components/icons";
 import { Island } from "@/components/island";
 import { Note } from "@/components/note";
@@ -94,7 +95,8 @@ export default function ProfilePage() {
   const [fillNote, setFillNote] = useState<FillNote | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
+  // Реквизиты и документы перечитываются и после загрузки копии: из неё могли прийти и те, и другие.
+  function read() {
     Promise.all([getProfile(), getProfileMeta()]).then(
       ([p, m]) => {
         setProfile(p);
@@ -103,10 +105,20 @@ export default function ProfilePage() {
       () => setLoadError(true)
     );
     listMyDocuments().then(setDocs, () => setDocs([]));
+  }
+
+  useEffect(() => {
+    read();
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
   }, []);
+
+  // Ссылка из справки ведёт к копии данных внизу. Реквизиты появляются после загрузки и сдвигают её — докручиваем.
+  const loaded = profile !== null;
+  useEffect(() => {
+    if (loaded && window.location.hash === "#backup") document.getElementById("backup")?.scrollIntoView({ block: "start" });
+  }, [loaded]);
 
   function persist(nextProfile: Profile, nextMeta: ProfileMeta) {
     setProfile(nextProfile);
@@ -268,6 +280,8 @@ export default function ProfilePage() {
                 </div>
               </Island>
             ))}
+
+          <BackupIsland onRestored={read} />
         </div>
       </PageBody>
     </>

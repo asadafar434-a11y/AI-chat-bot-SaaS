@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode,
 import { usePathname } from "next/navigation";
 import { ConsentGate } from "@/components/consent-gate";
 import { SideNav } from "@/components/side-nav";
+import { askPersistentStorage } from "@/lib/backup";
 import { isLegalPath } from "@/lib/legal";
 
 type Shell = { menuOpen: boolean; openMenu: () => void; menuButton: RefObject<HTMLButtonElement | null> };
@@ -33,6 +34,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     returnFocus.current = true;
     setOpenAt(null);
   };
+
+  // Просим браузер не стирать данные сайта при нехватке места. Не разрешит — остаётся копия файлом на странице «Реквизиты».
+  useEffect(() => {
+    void askPersistentStorage();
+  }, []);
 
   useEffect(() => {
     const wide = window.matchMedia("(min-width: 64rem)");

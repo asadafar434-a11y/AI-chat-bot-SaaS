@@ -19,6 +19,7 @@ import { plural } from "@/lib/plural";
 import { identityValues, type Profile } from "@/lib/profile";
 import { scanWarning } from "@/lib/read-documents";
 import { formatRubles, parseRubles, rublesInWords } from "@/lib/rub-words";
+import { saveFile } from "@/lib/save-file";
 import { sampleTp } from "@/lib/sample-purchase";
 import { itemsFill, needsFill, type TpResult } from "@/lib/tp";
 import { PART_TITLES, partsOf, type TpPart } from "@/lib/tp-docx";
@@ -103,17 +104,6 @@ function fingerprint(value: unknown): string {
   let hash = 5381;
   for (let i = 0; i < text.length; i++) hash = (hash * 33 + text.charCodeAt(i)) | 0;
   return (hash >>> 0).toString(36);
-}
-
-function saveFile(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function PriceBlock({ tp, price, nmck, calcHref, onChange }: {
