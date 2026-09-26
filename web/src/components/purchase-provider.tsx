@@ -7,6 +7,7 @@ import { Note } from "@/components/note";
 import { upgradePurchase, type Purchase } from "@/lib/purchase";
 import { deletePurchase, getDocuments, getPurchase, savePurchase, savePurchaseWithDocuments, scansOf } from "@/lib/purchase-store";
 import type { SentDocument } from "@/lib/read-documents";
+import { isStaleSample, SAMPLE_DOCUMENTS, upgradeSample } from "@/lib/sample-purchase";
 
 type PurchaseContextValue = {
   purchase: Purchase;
@@ -43,7 +44,11 @@ export function PurchaseProvider({ id, children }: { id: string; children: React
   useEffect(() => {
     let cancelled = false;
     Promise.all([getPurchase(id), getDocuments(id)]).then(
-      ([stored, documents]) => {
+      async ([saved, savedDocuments]) => {
+        // Пример из старой версии приложения обновляется при открытии; не вышло — открывается как был.
+        const upgraded = saved && isStaleSample(saved) ? await upgradeSample(saved).catch(() => null) : null;
+        const stored = upgraded ?? saved;
+        const documents = upgraded ? SAMPLE_DOCUMENTS : savedDocuments;
         if (cancelled) return;
         // Список сканов у старой закупки появится с первым же сохранением.
         const purchase = stored && { ...upgradePurchase(stored), scans: stored.scans ?? scansOf(documents) };

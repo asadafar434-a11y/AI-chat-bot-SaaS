@@ -1,3 +1,4 @@
+import { castFromDraft } from "@/lib/cast";
 import type { PriceCalc } from "@/lib/price-floor";
 import type { Purchase } from "@/lib/purchase";
 import { listPurchases, savePurchaseWithDocuments } from "@/lib/purchase-store";
@@ -6,7 +7,7 @@ import type { SentDocument } from "@/lib/read-documents";
 import { REQ_GROUP_KEYS, type ReqGroups } from "@/lib/requirements";
 import { SAMPLE_GROUPS, SAMPLE_SUMMARY } from "@/lib/requirements-sample";
 import { NO_ANTI_DUMPING, PLAIN_FORM, type TpResult } from "@/lib/tp";
-import { SAMPLE_ITEMS } from "@/lib/tp-sample";
+import { SAMPLE_CAST, SAMPLE_ITEMS } from "@/lib/tp-sample";
 
 // Документы вымышленной закупки. Цитаты примеров сверяются с ними тем же кодом, что и ответы модели,
 // а с подключённым ключом по ним можно задавать вопросы.
@@ -46,6 +47,7 @@ export const SAMPLE_DOCUMENTS: SentDocument[] = [
       "3. Программа",
       "3.1. Программа мероприятия согласовывается с Заказчиком не позднее чем за 10 рабочих дней до даты проведения.",
       "3.4. Ведущий мероприятия — с опытом проведения официальных мероприятий не менее 3 лет.",
+      "3.5. Концертная программа церемонии: выступление вокалиста, имеющего почётное звание не ниже «Заслуженный артист Российской Федерации», в сопровождении инструментального ансамбля в составе не менее 4 музыкантов. В заявке указываются фамилия, имя, отчество и почётное звание (при наличии) каждого исполнителя.",
       "4. Техническое обеспечение",
       "4.1. Звуковое и световое оборудование, светодиодный экран размером не менее 3×2 м, не менее 2 радиомикрофонов.",
       "4.3. Фотосъёмка мероприятия; передача Заказчику не менее 100 обработанных фотографий в течение 5 рабочих дней после мероприятия.",
@@ -65,6 +67,7 @@ export const SAMPLE_DOCUMENTS: SentDocument[] = [
       "2.5. Оплата производится в течение 7 рабочих дней с даты подписания Заказчиком документа о приёмке.",
       "4. Порядок оказания услуг",
       "4.3. Заказчик в течение 3 рабочих дней с даты получения проекта программы согласовывает его либо направляет мотивированные замечания.",
+      "4.5. Замена исполнителей, указанных в заявке Исполнителя, допускается только по письменному согласованию с Заказчиком и на исполнителей с почётным званием не ниже требований технического задания.",
     ].join("\n"),
   },
   {
@@ -84,12 +87,18 @@ const checked = <T extends { quote: string }>(items: T[]) =>
   items.map((item) => ({ ...item, verified: quoteFound(item.quote, TEXTS) }));
 
 // В документах примера нет формы заявки, поэтому пример ТП — обычное предложение по пунктам ТЗ.
+// ТЗ требует назвать исполнителей — в черновике пустой состав: его вписывает участник.
 export const sampleTp = (): TpResult => ({
   form: PLAIN_FORM,
   goods: [],
   items: checked(SAMPLE_ITEMS),
   antiDumping: NO_ANTI_DUMPING,
+  cast: castFromDraft(SAMPLE_CAST, (quote) => quoteFound(quote, TEXTS)),
 });
+
+// Версия примера. Выросла — пример, уже сохранённый в браузере, при открытии получает новые документы
+// и требования, а составленный черновик ТП — заново по новому образцу.
+const SAMPLE_VERSION = 2;
 
 // Расходы вымышленного участника: в примере «До какой цены снижаться» сразу показывает расчёт.
 export const SAMPLE_PRICE_CALC: Partial<PriceCalc> = { costs: 420_000, extra: 2_000, taxPct: 6, guaranteeRatePct: 3, days: 90 };
@@ -104,12 +113,25 @@ function samplePurchase(): Purchase {
     files: SAMPLE_DOCUMENTS.map((d) => d.name),
     unreadable: [],
     requirements,
+    sampleVersion: SAMPLE_VERSION,
   };
+}
+
+export const isStaleSample = (p: Purchase) => p.sample === true && (p.sampleVersion ?? 1) < SAMPLE_VERSION;
+
+// Правки в расчёте цены и вопросы остаются; черновик ТП, если был, составляется заново.
+export async function upgradeSample(p: Purchase): Promise<Purchase> {
+  const fresh = samplePurchase();
+  return savePurchaseWithDocuments(
+    { ...p, ...SAMPLE_SUMMARY, files: fresh.files, requirements: fresh.requirements, sampleVersion: SAMPLE_VERSION, tp: p.tp ? sampleTp() : undefined },
+    SAMPLE_DOCUMENTS
+  );
 }
 
 // Пример один на браузер: повторное «посмотреть на примере» открывает уже созданный.
 export async function openSamplePurchase(): Promise<string> {
   const existing = (await listPurchases()).find((p) => p.sample);
+  // Пример из старой версии обновит сама закупка при открытии (purchase-provider.tsx).
   if (existing) return existing.id;
   const purchase = samplePurchase();
   await savePurchaseWithDocuments(purchase, SAMPLE_DOCUMENTS);

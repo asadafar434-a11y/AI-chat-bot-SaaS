@@ -1,4 +1,5 @@
 import * as z from "zod/v4";
+import { castTodo, type TpCast } from "@/lib/cast";
 
 const quote = z
   .string()
@@ -54,6 +55,36 @@ export const TpDraftSchema = z.object({
       .describe("Что обязан сделать участник, если снизит цену на 25% и более, по документам закупки, коротко и со ссылкой на пункт; пустая строка, если таких условий нет"),
     quote: z.string().describe("Дословная цитата с этим условием; пустая строка, если условий нет"),
   }),
+  cast: z.object({
+    clause: z.string().describe("Номер пункта ТЗ, где требуют назвать в заявке исполнителей, например «3.5»; пустая строка, если такого требования нет"),
+    requirement: z
+      .string()
+      .describe("Что требуют о составе, коротко, с маленькой буквы: кто, сколько человек, какое звание, что указать в заявке; пустая строка, если требования нет"),
+    quote: z.string().describe("Дословная цитата с требованием указать в заявке исполнителей; пустая строка, если требования нет"),
+    groups: z
+      .array(
+        z.object({
+          title: z.string().describe("Позиция из ТЗ — название над строками: «Вокалист», «Инструментальный ансамбль»"),
+          one: z.string().describe("Один человек этой позиции — для таблицы: «Вокалист», «Музыкант ансамбля»"),
+          acc: z.string().describe("Один человек этой позиции в винительном падеже — для кнопки «Добавить …»: «вокалиста», «музыканта»"),
+          count: z.number().int().describe("Сколько человек не меньше требует ТЗ; 1, если число не указано"),
+          rank: z
+            .enum(["none", "honored", "people"])
+            .describe("Почётное звание по ТЗ: honored — не ниже «Заслуженный артист Российской Федерации», people — не ниже «Народный артист Российской Федерации», none — звание не требуется или требуется другое"),
+          match: z
+            .array(z.string())
+            .describe("Короткие основы слов, по которым в списке исполнителей узнаётся эта позиция: «вокал», «певиц», «скрип», «фортеп»; пустой список, если таких слов нет"),
+        })
+      )
+      .describe("Позиции исполнителей, которых ТЗ или форма требуют назвать в заявке, в порядке ТЗ; пустой список, если называть людей не требуется"),
+    replace: z.object({
+      rule: z
+        .string()
+        .describe("Условие проекта контракта о замене исполнителей одним предложением, например «Заменить исполнителя из заявки можно только по письменному согласованию с заказчиком.»; пустая строка, если такого условия нет"),
+      source: z.string().describe("Где это условие, коротко: «Проект контракта, п. 4.5»; пустая строка, если условия нет"),
+      quote: z.string().describe("Дословная цитата условия о замене; пустая строка, если условия нет"),
+    }),
+  }),
 });
 
 export type TpDraft = z.infer<typeof TpDraftSchema>;
@@ -62,7 +93,8 @@ export type TpGood = TpDraft["goods"][number] & { verified: boolean };
 export type TpItem = TpDraft["items"][number] & { verified: boolean };
 export type TpAntiDumping = TpDraft["antiDumping"] & { verified: boolean };
 
-export type TpResult = { form: TpForm; goods: TpGood[]; items: TpItem[]; antiDumping: TpAntiDumping };
+// cast — состав исполнителей, если ТЗ требует назвать людей в заявке; в черновиках до него его нет.
+export type TpResult = { form: TpForm; goods: TpGood[]; items: TpItem[]; antiDumping: TpAntiDumping; cast?: TpCast };
 export type TpResponse = TpResult;
 
 // Документ без формы заказчика — обычное техническое предложение по пунктам ТЗ.
@@ -85,7 +117,10 @@ export const SAMPLES_LIMIT = 60_000;
 export const needsFill = (text: string) => /\[[^\]]+\]/.test(text);
 
 // Сколько мест в черновике ждут данных участника: поля «[…]» в характеристиках, предложениях и согласии.
-export const fillCount = (tp: TpResult) =>
+export const itemsFill = (tp: TpResult) =>
   tp.goods.filter((g) => needsFill(g.characteristics)).length +
   tp.items.filter((it) => needsFill(it.offer)).length +
   (needsFill(tp.form.consent) ? 1 : 0);
+
+// Недописанный состав исполнителей — ещё один пункт.
+export const fillCount = (tp: TpResult) => itemsFill(tp) + (castTodo(tp.cast) ? 1 : 0);

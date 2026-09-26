@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { CastPanel } from "@/components/cast-panel";
 import { ArrowRightIcon, CheckIcon, EditIcon, WarningIcon } from "@/components/icons";
 import { Island } from "@/components/island";
 import { Note, Warnings } from "@/components/note";
@@ -10,6 +11,7 @@ import { SourceQuote } from "@/components/purchase-bits";
 import { usePurchase } from "@/components/purchase-provider";
 import { StepIntro, TabBody } from "@/components/purchase-view";
 import { WorkingSteps } from "@/components/working-steps";
+import { castHistory, castLeaks, castTodo, rowsOf } from "@/lib/cast";
 import { getProfile, listMyDocuments, samplesOf, type MyDocument } from "@/lib/me-store";
 import { PART_SAMPLE_KIND, type PartKey } from "@/lib/my-docs";
 import type { PartDoc } from "@/lib/part-doc";
@@ -18,8 +20,10 @@ import { identityValues, type Profile } from "@/lib/profile";
 import { scanWarning } from "@/lib/read-documents";
 import { formatRubles, parseRubles, rublesInWords } from "@/lib/rub-words";
 import { sampleTp } from "@/lib/sample-purchase";
-import { fillCount, needsFill, type TpResult } from "@/lib/tp";
+import { itemsFill, needsFill, type TpResult } from "@/lib/tp";
 import { PART_TITLES, partsOf, type TpPart } from "@/lib/tp-docx";
+import { SAMPLE_CAST_HISTORY, SAMPLE_CAST_LIST } from "@/lib/tp-sample";
+import { usePurchases } from "@/lib/use-purchases";
 
 const WORKING_STEPS = [
   "Ищу в документах форму заявки…",
@@ -171,6 +175,8 @@ function PriceBlock({ tp, price, nmck, calcHref, onChange }: {
 
 export default function TpPage() {
   const { purchase, documents, update } = usePurchase();
+  // Составы других закупок — подсказки при наборе фамилии в составе исполнителей.
+  const { purchases } = usePurchases();
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
@@ -231,6 +237,15 @@ export default function TpPage() {
     saveFile(await res.blob(), `${PART_TITLES[part]}.docx`);
   }
 
+  // Состав исполнителей для таблицы в файле ТП: кто по ТЗ, ФИО и звание.
+  const castLines = (cast: TpResult["cast"]) =>
+    cast && {
+      clause: cast.clause,
+      rows: cast.groups.flatMap((g) =>
+        rowsOf(cast, g.key).map((r) => ({ who: g.one, name: r.name.trim(), title: r.title.trim(), titled: g.rank !== "none" }))
+      ),
+    };
+
   // Техническое предложение — всегда из черновика на экране. По этому же шаблону без ИИ собираются
   // остальные части в примере и когда ИИ не подключён.
   const templatePayload = (current: TpResult, part: TpPart) => ({
@@ -238,6 +253,8 @@ export default function TpPage() {
     form: current.form,
     goods: current.goods.map(({ name, characteristics, quantity }) => ({ name, characteristics, quantity })),
     items: current.items.map(({ clause, requirement, offer }) => ({ clause, requirement, offer })),
+    // Фамилии исполнителей нужны только в самом ТП.
+    cast: part === "tp" ? castLines(current.cast) : undefined,
     price: current.form.hasPrice ? purchase.tpPrice : undefined,
     // Реквизиты — только в анкету, декларацию и цену; техническое предложение подают анонимно.
     profile: part === "tp" ? undefined : profile,
@@ -330,10 +347,14 @@ export default function TpPage() {
     );
   }
 
-  const fill = fillCount(tp);
+  const fill = itemsFill(tp);
+  const castLeft = castTodo(tp.cast) > 0;
+  const points = `${fill} ${plural(fill, "пункт", "пункта", "пунктов")}`;
   // Всё, что уйдёт в техническое предложение: в нём не должно быть ничего, что раскрывает участника.
   const tpText = [tp.form.consent, ...tp.goods.flatMap((g) => [g.name, g.characteristics]), ...tp.items.map((it) => it.offer)].join(" ");
   const leaks = profile ? identityValues(profile).filter((value) => tpText.includes(value)) : [];
+  const ownLeaks = profile ? castLeaks(tp.cast, profile.signer) : [];
+  const history = [...castHistory(purchases ?? [], purchase.id), ...(purchase.sample ? SAMPLE_CAST_HISTORY : [])];
   const unverified = [...tp.goods, ...tp.items].filter((row) => !row.verified).length;
   const setGood = (index: number, characteristics: string) =>
     update({ tp: { ...tp, goods: tp.goods.map((g, i) => (i === index ? { ...g, characteristics } : g)) } });
@@ -351,9 +372,13 @@ export default function TpPage() {
           Техническое предложение идёт в первую часть заявки, поэтому в нём нет ни названия, ни ИНН, ни подписи участника.
         </StepIntro>
 
-        {fill ? (
+        {fill || castLeft ? (
           <Note tone="warn" icon={EditIcon}>
-            {`Впишите свои данные в ${fill} ${plural(fill, "пункт", "пункта", "пунктов")} — они выделены жёлтым. Нажмите на текст, чтобы исправить.`}
+            {fill && castLeft
+              ? `Впишите свои данные в ${points} и состав исполнителей. Пункты выделены жёлтым — нажмите на текст, чтобы исправить.`
+              : fill
+                ? `Впишите свои данные в ${points} — они выделены жёлтым. Нажмите на текст, чтобы исправить.`
+                : "Осталось вписать состав исполнителей — он ниже, после пунктов ТЗ."}
           </Note>
         ) : (
           <Note tone="ok" icon={CheckIcon}>
@@ -364,6 +389,8 @@ export default function TpPage() {
           items={[
             leaks.length > 0 &&
               `В техническом предложении есть ваши данные: ${leaks.map((v) => `«${v}»`).join(", ")}. Уберите их — ТП подают в первую часть заявки анонимно, иначе заявку отклонят.`,
+            ownLeaks.length > 0 &&
+              `Среди исполнителей — ${ownLeaks.map((v) => `«${v}»`).join(", ")}, как в подписи заявки. ТП подают в первую часть заявки анонимно: прежде чем подавать, уточните у юриста, не раскроет ли это участника.`,
             unverified > 0 &&
               `В ${unverified} ${plural(unverified, "строке", "строках", "строках")} цитата не найдена в документах дословно — сверьте их вручную.`,
             scanWarning(documents),
@@ -434,6 +461,17 @@ export default function TpPage() {
               ))}
             </ol>
           </Island>
+        )}
+
+        {tp.cast && (
+          <CastPanel
+            cast={tp.cast}
+            onChange={(cast) => update({ tp: { ...tp, cast } })}
+            history={history}
+            sample={purchase.sample ? SAMPLE_CAST_LIST : undefined}
+            open={open}
+            onToggle={toggle}
+          />
         )}
 
         <div className="grid gap-2">
