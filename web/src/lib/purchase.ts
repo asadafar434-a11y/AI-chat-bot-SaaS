@@ -15,6 +15,8 @@ export type Purchase = PurchaseSummary & {
   id: string;
   createdAt: string;
   sample?: boolean;
+  // Версия примера, по которой он сохранён в браузере (sample-purchase.ts).
+  sampleVersion?: number;
   files: string[];
   // Какие из файлов распознаны со скана. Хранится рядом с закупкой, чтобы главная не читала тексты документов.
   scans?: string[];

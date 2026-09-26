@@ -1,3 +1,4 @@
+import { castFromDraft } from "@/lib/cast";
 import { claudeErrorText, NO_KEY_TEXT } from "@/lib/claude-errors";
 import { askJson, cleanSamples, ModelStop, sampleBlocks } from "@/lib/claude-request";
 import { MAX_CONTEXT_CHARS } from "@/lib/chat-types";
@@ -40,7 +41,8 @@ export async function POST(request: Request) {
     });
 
     const texts = documents.map((d) => d.text);
-    const checked = <T extends { quote: string }>(item: T) => ({ ...item, verified: quoteFound(item.quote, texts) });
+    const found = (quote: string) => quoteFound(quote, texts);
+    const checked = <T extends { quote: string }>(item: T) => ({ ...item, verified: found(item.quote) });
     const body: TpResponse = {
       form: draft.form,
       goods: draft.goods.map(checked),
@@ -48,6 +50,7 @@ export async function POST(request: Request) {
       antiDumping: draft.antiDumping.rule
         ? checked(draft.antiDumping)
         : { ...draft.antiDumping, verified: false },
+      cast: castFromDraft(draft.cast, found),
     };
     return Response.json(body);
   } catch (error) {

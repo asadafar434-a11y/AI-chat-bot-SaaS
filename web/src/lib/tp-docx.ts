@@ -25,11 +25,15 @@ export const PART_TITLES: Record<TpPart, string> = {
   price: "Предложение о цене договора",
 };
 
+// Строка состава исполнителей: кто по ТЗ, ФИО и звание; titled — звание требует ТЗ, пустое — жёлтым.
+export type CastLine = { who: string; name: string; title: string; titled: boolean };
+
 export type TpDocx = {
   subject: string;
   form: TpForm;
   goods: { name: string; characteristics: string; quantity: string }[];
   items: { clause: string; requirement: string; offer: string }[];
+  cast: { clause: string; rows: CastLine[] } | null;
   price: number | null;
   // Реквизиты участника; в техническое предложение не передаются.
   profile: Profile | null;
@@ -107,7 +111,7 @@ const signature = (profile: Profile | null) => [
   new Paragraph({ spacing: { before: 120 }, children: [run("М.П. (при наличии)          «____» ________________ 20___ г.")] }),
 ];
 
-function tpBody({ form, goods, items }: TpDocx): (Paragraph | Table)[] {
+function tpBody({ form, goods, items, cast }: TpDocx): (Paragraph | Table)[] {
   const body: (Paragraph | Table)[] = [];
   if (goods.length) {
     body.push(...paragraphs(form.consent, { indent: true }));
@@ -135,6 +139,29 @@ function tpBody({ form, goods, items }: TpDocx): (Paragraph | Table)[] {
                 textCell(String(i + 1), 6),
                 textCell(item.requirement + (item.clause ? ` (п. ${item.clause} ТЗ)` : ""), 40),
                 cell(paragraphs(item.offer), 54),
+              ],
+            })
+        ),
+      ])
+    );
+  }
+  // Состав исполнителей — отдельной таблицей: на неё ссылается пункт ТЗ о концерте или выступлении.
+  if (cast && cast.rows.length) {
+    body.push(
+      new Paragraph({
+        spacing: { before: 240, after: 120 },
+        children: [run(`Состав исполнителей${cast.clause ? ` (п. ${cast.clause} ТЗ)` : ""}`, { bold: true })],
+      }),
+      table([
+        headerRow([["№", 6], ["Исполнитель", 26], ["Фамилия, имя, отчество", 38], ["Почётное звание", 30]]),
+        ...cast.rows.map(
+          (row, i) =>
+            new TableRow({
+              children: [
+                textCell(String(i + 1), 6),
+                textCell(row.who, 26),
+                cell([new Paragraph({ children: row.name ? [run(row.name)] : withFields("[фамилия, имя, отчество]") })], 38),
+                cell([new Paragraph({ children: row.title ? [run(row.title)] : row.titled ? withFields("[почётное звание]") : [run("—")] })], 30),
               ],
             })
         ),

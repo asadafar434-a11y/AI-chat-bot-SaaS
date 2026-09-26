@@ -1,4 +1,4 @@
-import { buildPartDocx, buildTpDocx, PART_TITLES, type TpPart } from "@/lib/tp-docx";
+import { buildPartDocx, buildTpDocx, PART_TITLES, type CastLine, type TpPart } from "@/lib/tp-docx";
 import { PartDocSchema, type PartDoc } from "@/lib/part-doc";
 import { EMPTY_PROFILE, PROFILE_KEYS, type Profile } from "@/lib/profile";
 import { PLAIN_FORM, type TpForm } from "@/lib/tp";
@@ -10,6 +10,7 @@ type DocxRequest = {
   form?: Loose<TpForm>;
   goods?: Loose<{ name: string; characteristics: string; quantity: string }>[];
   items?: Loose<{ clause: string; requirement: string; offer: string }>[];
+  cast?: { clause?: unknown; rows?: Loose<CastLine>[] };
   price?: unknown;
   profile?: Record<string, unknown>;
   // Анкета, декларация или цена, которые ИИ написал по образцам, — уже готовым документом.
@@ -55,6 +56,7 @@ export async function POST(request: Request) {
   if (goods.length === 0 && items.length === 0) {
     return new Response("В черновике нет пунктов для документа.", { status: 400 });
   }
+  const castRows = list<Loose<CastLine>>(body.cast?.rows).slice(0, 200);
   const price = Number(body.price);
   // Техническое предложение подают анонимно, поэтому реквизиты в него не попадают, даже если их прислали.
   const profile: Profile | null =
@@ -83,6 +85,17 @@ export async function POST(request: Request) {
       requirement: text(item.requirement, 4000),
       offer: text(item.offer, 8000),
     })),
+    cast: castRows.length
+      ? {
+          clause: text(body.cast?.clause, 40),
+          rows: castRows.map((row) => ({
+            who: text(row.who, 200),
+            name: text(row.name, 300).trim(),
+            title: text(row.title, 300).trim(),
+            titled: row.titled === true,
+          })),
+        }
+      : null,
     price: Number.isFinite(price) && price > 0 ? price : null,
     profile,
   });
