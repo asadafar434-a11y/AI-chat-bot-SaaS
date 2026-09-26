@@ -75,3 +75,28 @@ export async function transaction<T>(
     tx.onabort = () => reject(tx.error);
   });
 }
+
+// Удаляет обе базы целиком — «Удалить все мои данные». Свои соединения закрываем сразу; открытые в других вкладках
+// закроются сами (onversionchange), а если вкладка не отпускает базу — удаление дождётся её закрытия.
+export async function deleteDatabases(): Promise<"done" | "blocked"> {
+  for (const promise of opening.values()) {
+    try {
+      (await promise).close();
+    } catch {
+      // Не открылась — закрывать нечего.
+    }
+  }
+  opening.clear();
+  const results = await Promise.all(
+    (Object.keys(DATABASES) as DbName[]).map(
+      (name) =>
+        new Promise<"done" | "blocked">((resolve, reject) => {
+          const request = indexedDB.deleteDatabase(name);
+          request.onsuccess = () => resolve("done");
+          request.onerror = () => reject(request.error);
+          request.onblocked = () => resolve("blocked");
+        })
+    )
+  );
+  return results.includes("blocked") ? "blocked" : "done";
+}

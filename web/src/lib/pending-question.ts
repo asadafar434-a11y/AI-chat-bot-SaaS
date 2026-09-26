@@ -6,7 +6,7 @@ import type { FailedFile, SentDocument } from "@/lib/read-documents";
 // Файлы главная читает сама, поэтому здесь уже текст документов.
 export type PendingQuestion = { text: string; documents: SentDocument[]; failed: FailedFile[] };
 
-const KEY = "pending-question";
+export const PENDING_KEY = "pending-question";
 
 // Копия в памяти — на случай, если документы не влезли в хранилище вкладки.
 let memory: PendingQuestion | null = null;
@@ -14,7 +14,7 @@ let memory: PendingQuestion | null = null;
 export function setPendingQuestion(question: PendingQuestion) {
   memory = question;
   try {
-    sessionStorage.setItem(KEY, JSON.stringify(question));
+    sessionStorage.setItem(PENDING_KEY, JSON.stringify(question));
   } catch {
     // Не влезло или хранилище недоступно — вопрос уйдёт из копии в памяти.
   }
@@ -24,8 +24,8 @@ export function takePendingQuestion(): PendingQuestion | null {
   let question = memory;
   memory = null;
   try {
-    const raw = sessionStorage.getItem(KEY);
-    sessionStorage.removeItem(KEY);
+    const raw = sessionStorage.getItem(PENDING_KEY);
+    sessionStorage.removeItem(PENDING_KEY);
     question ??= raw ? (JSON.parse(raw) as PendingQuestion) : null;
   } catch {
     // Хранилище вкладки недоступно — остаётся копия в памяти.

@@ -7,6 +7,7 @@ import { CheckIcon, UploadIcon, WarningIcon } from "@/components/icons";
 import { Island } from "@/components/island";
 import { Note } from "@/components/note";
 import { PageBody, PageHeader } from "@/components/page-header";
+import { WipeIsland } from "@/components/wipe-island";
 import {
   fillProfileFromDocuments,
   getProfile,
@@ -299,6 +300,7 @@ export default function ProfilePage() {
             ))}
 
           <BackupIsland onRestored={read} />
+          <WipeIsland />
         </div>
       </PageBody>
     </>
