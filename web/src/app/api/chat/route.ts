@@ -138,8 +138,10 @@ export async function POST(request: Request) {
         }
 
         const client = new Anthropic();
+        // Потолок ответа вместе с размышлениями модели: хватает на развёрнутый ответ, а случайный бесконечный ответ
+        // стоит вдвое меньше. Упёрся — пользователь увидит «Попросите продолжить».
         const response = client.beta.messages.stream(
-          { ...baseRequest, max_tokens: 64000, cache_control: { type: "ephemeral" }, messages: claudeMessages },
+          { ...baseRequest, max_tokens: 32000, cache_control: { type: "ephemeral" }, messages: claudeMessages },
           { signal: request.signal }
         );
 

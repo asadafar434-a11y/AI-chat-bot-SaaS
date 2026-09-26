@@ -4,6 +4,7 @@ import { PDFParse } from "pdf-parse";
 import { claudeErrorText } from "@/lib/claude-errors";
 import { docText, DocTextError, isOle, rtfText } from "@/lib/doc-text";
 import { MAX_SCAN_PAGES, renderPages, transcribe } from "@/lib/ocr";
+import { createLimiter, OCR_PAGES_TOTAL } from "@/lib/rate-limit";
 
 // scan — текст распознан со скана или фото: в цифрах возможны ошибки.
 export type ExtractResult =
@@ -26,6 +27,10 @@ const letters = (text: string) => text.replace(/-- \d+ of \d+ --/g, "").replace(
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const NO_KEY_SCAN = "это скан — распознавать сканы приложение может, когда подключён ИИ";
 const OCR_OFF = "это скан, а распознавание сканов выключено — включите его под кнопкой загрузки или загрузите файл с текстом";
+const OCR_LIMIT = "это скан, а дневной лимит распознавания сканов на сервисе исчерпан — загрузите файл с текстом или повторите завтра";
+
+// Каждая страница скана — отдельный запрос к ИИ: за сутки на всех распознаём не больше OCR_PAGES_TOTAL страниц.
+const ocrPages = createLimiter(OCR_PAGES_TOTAL);
 
 // Страница, на которой почти нет букв, — скан или картинка: её текст распознаёт ИИ.
 // Так читаются и целиком отсканированные файлы, и обычные PDF с вклеенными сканами, например подписанной последней страницей.
@@ -44,6 +49,7 @@ async function pdfText(data: Uint8Array, ocr: boolean): Promise<ExtractResult> {
         ? { ok: false, reason: `скан на ${scanned.length} страниц — распознаю не больше ${MAX_SCAN_PAGES}; разделите файл на части` }
         : { ok: true, text: result.text };
     }
+    if (ocrPages("all", scanned.length)) return allScanned ? { ok: false, reason: OCR_LIMIT } : { ok: true, text: result.text };
 
     const recognized = await transcribe(await renderPages(parser, scanned));
     const byPage = new Map(scanned.map((num, i) => [num, recognized[i]]));
@@ -90,6 +96,7 @@ export async function extractText(file: File, { ocr = true }: { ocr?: boolean } 
       if (!ocr) return { ok: false, reason: OCR_OFF };
       if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: NO_KEY_SCAN };
       if (file.size > MAX_IMAGE_BYTES) return { ok: false, reason: "фото больше 5 МБ — уменьшите его или отсканируйте документ в PDF" };
+      if (ocrPages("all")) return { ok: false, reason: OCR_LIMIT };
       const mediaType = file.type === "image/png" || /\.png$/i.test(file.name) ? "image/png" : "image/jpeg";
       const [text] = await transcribe([{ data: Buffer.from(await file.arrayBuffer()), mediaType }]);
       return letters(text) < 20 ? { ok: false, reason: "на картинке не нашлось текста" } : { ok: true, text, scan: true };

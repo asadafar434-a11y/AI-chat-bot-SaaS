@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test src/lib/pd-mask.test.ts src/lib/price-floor.test.ts src/lib/price-scale.test.ts src/lib/cast.test.ts src/lib/read-documents.test.ts src/lib/legal.test.ts src/lib/access.test.ts src/lib/backup-format.test.ts"
+    "test": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test src/lib/pd-mask.test.ts src/lib/price-floor.test.ts src/lib/price-scale.test.ts src/lib/cast.test.ts src/lib/read-documents.test.ts src/lib/legal.test.ts src/lib/access.test.ts src/lib/backup-format.test.ts src/lib/rate-limit.test.ts src/lib/claude-errors.test.ts"
   },
   "dependencies": {
     "@ai-sdk/react": "^4.0.115",

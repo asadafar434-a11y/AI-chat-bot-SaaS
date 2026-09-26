@@ -10,8 +10,15 @@ export function claudeErrorText(error: unknown): string {
   if (error instanceof Anthropic.PermissionDeniedError) {
     return "Anthropic отклонил запрос: у ключа нет доступа к модели или API недоступен из этого региона.";
   }
+  // Лимиты расходов: https://platform.claude.com/docs/en/api/rate-limits#spend-limits
+  if (error instanceof Anthropic.RateLimitError && /enforced_spend_limit_reached/.test(error.message)) {
+    return "Исчерпан месячный лимит расходов на ИИ по тарифу Anthropic — ИИ заработает с 1-го числа следующего месяца. Напишите владельцу сервиса: контакты на странице «Контакты».";
+  }
   if (error instanceof Anthropic.RateLimitError) {
     return "Слишком много запросов к модели — повторите через минуту.";
+  }
+  if (error instanceof Anthropic.BadRequestError && /specified (workspace )?API usage limits/i.test(error.message)) {
+    return "Исчерпан месячный лимит расходов на ИИ, который задал владелец сервиса. Напишите ему: контакты на странице «Контакты».";
   }
   if (error instanceof Anthropic.BadRequestError && /credit balance/i.test(error.message)) {
     return "На счёте Anthropic нет денег — пополните баланс в консоли, раздел Billing.";
