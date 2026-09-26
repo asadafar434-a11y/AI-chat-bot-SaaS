@@ -1,3 +1,4 @@
+import type { PriceCalc } from "@/lib/price-floor";
 import type { Purchase } from "@/lib/purchase";
 import { listPurchases, savePurchaseWithDocuments } from "@/lib/purchase-store";
 import { quoteFound } from "@/lib/quotes";
@@ -89,6 +90,9 @@ export const sampleTp = (): TpResult => ({
   items: checked(SAMPLE_ITEMS),
   antiDumping: NO_ANTI_DUMPING,
 });
+
+// Расходы вымышленного участника: в примере «До какой цены снижаться» сразу показывает расчёт.
+export const SAMPLE_PRICE_CALC: Partial<PriceCalc> = { costs: 420_000, extra: 2_000, taxPct: 6, guaranteeRatePct: 3, days: 90 };
 
 function samplePurchase(): Purchase {
   const requirements = Object.fromEntries(REQ_GROUP_KEYS.map((key) => [key, checked(SAMPLE_GROUPS[key])])) as ReqGroups;

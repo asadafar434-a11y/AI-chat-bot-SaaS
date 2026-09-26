@@ -7,6 +7,7 @@ import {
   AlertTriangleIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
+  CalculatorIcon,
   CheckIcon,
   ChevronDownIcon,
   ChevronRightIcon,
@@ -58,8 +59,8 @@ const DOT = {
 // Где панель узкая, название короче («ТП», «Проверка»); диктор всегда читает полное.
 function StepLink({ step, current }: { step: Step; current: boolean }) {
   const dot = step.state === "fix" && step.tone === "bad" ? "bg-[color-mix(in_srgb,var(--danger)_12%,var(--card))] text-destructive" : DOT[step.state];
-  const full = step.key === "tp" ? "sr-only @min-[840px]:not-sr-only" : "sr-only @min-[760px]:not-sr-only";
-  const short = step.key === "tp" ? "@min-[840px]:hidden" : "@min-[760px]:hidden";
+  const full = step.key === "tp" ? "sr-only @min-[920px]:not-sr-only" : "sr-only @min-[824px]:not-sr-only";
+  const short = step.key === "tp" ? "@min-[920px]:hidden" : "@min-[824px]:hidden";
   return (
     <Link href={step.href} aria-current={current ? "page" : undefined} className="item flex-none gap-2 py-1">
       <span aria-hidden className={`grid size-5 flex-none place-items-center rounded-full font-mono text-xs font-bold ${dot}`}>
@@ -366,6 +367,7 @@ export function PurchaseView({ children }: { children: ReactNode }) {
   const due = dueLine(purchase.deadline, true);
   const onChat = pathname === `${base}/chat`;
   const onSearch = pathname === `${base}/search`;
+  const onPrice = pathname === `${base}/price`;
 
   return (
     <div className="relative flex min-h-0 flex-1 gap-2">
@@ -430,7 +432,7 @@ export function PurchaseView({ children }: { children: ReactNode }) {
               </div>
             </div>
 
-            {/* Шаги подготовки заявки по порядку; «Поиск» и «Вопросы» — не шаги, а инструменты, стоят отдельно справа */}
+            {/* Шаги подготовки заявки по порядку; «Поиск», «Цена» и «Вопросы» — не шаги, а инструменты, стоят отдельно справа */}
             <nav
               aria-label="Подготовка заявки"
               className="@container flex items-stretch overflow-x-auto border-t border-[var(--line)] px-2 py-1.5 [scrollbar-width:none]"
@@ -450,8 +452,19 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                   className={`item flex-none ${onSearch ? "t-strong" : "t-label text-[var(--ink-2)]"}`}
                 >
                   <SearchIcon className="size-4 text-[var(--ink-3)]" />
-                  <span className="@max-[660px]:sr-only">
+                  <span className="@max-[792px]:sr-only">
                     Поиск<span className="sr-only"> по документам</span>
+                  </span>
+                </Link>
+                <Link
+                  href={`${base}/price`}
+                  aria-current={onPrice ? "page" : undefined}
+                  title="До какой цены снижаться"
+                  className={`item flex-none ${onPrice ? "t-strong" : "t-label text-[var(--ink-2)]"}`}
+                >
+                  <CalculatorIcon className="size-4 text-[var(--ink-3)]" />
+                  <span className="@max-[792px]:sr-only">
+                    Цена<span className="sr-only"> — до какой цены снижаться</span>
                   </span>
                 </Link>
                 <Link
@@ -460,7 +473,7 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                   className={`item flex-none ${onChat ? "t-strong" : "t-label text-[var(--ink-2)]"}`}
                 >
                   <MessageSquareIcon className="size-4 text-[var(--ink-3)]" />
-                  <span className="@max-[660px]:sr-only">Вопросы</span>
+                  <span className="@max-[792px]:sr-only">Вопросы</span>
                   {asked > 0 && <span className="count rounded-md bg-[var(--paper-2)] px-1.5">{asked}</span>}
                 </Link>
               </div>
