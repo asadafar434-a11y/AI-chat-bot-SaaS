@@ -20,11 +20,12 @@ const doc = (href: string, text: string) => (
   </Link>
 );
 
-// Вход по закрытой ссылке: поле пароля, согласие на обработку персональных данных и кнопка.
-// Согласие — отдельной галочкой, не отмеченной заранее: с 1 сентября 2025 года его нельзя прятать в условия.
+// Вход по закрытой ссылке: поле пароля, согласие на обработку персональных данных, согласие на передачу за рубеж и кнопка.
+// Согласия — отдельными галочками, не отмеченными заранее: с 1 сентября 2025 года их нельзя прятать в условия.
 export function LoginForm() {
   const [password, setPassword] = useState("");
   const [agreed, setAgreed] = useState(false);
+  const [transfer, setTransfer] = useState(false);
   const [state, setState] = useState<"idle" | "busy" | "wrong" | "failed">("idle");
 
   async function submit(e: FormEvent) {
@@ -95,7 +96,20 @@ export function LoginForm() {
           />
           <span className="text-[var(--ink-2)]">Даю {doc("/consent", "согласие на обработку персональных данных")}</span>
         </label>
-        <button type="submit" disabled={state === "busy" || !password || !agreed} className="btn btn-lg">
+        <label className="flex items-start gap-2.5">
+          <input
+            type="checkbox"
+            checked={transfer}
+            onChange={(e) => setTransfer(e.currentTarget.checked)}
+            required
+            className="mt-0.5 size-4 flex-none accent-[var(--brand)]"
+          />
+          <span className="text-[var(--ink-2)]">
+            Даю {doc("/consent-transfer", "согласие на передачу данных за рубеж")} — модели ИИ в США, без этого сервис не прочитает
+            документы
+          </span>
+        </label>
+        <button type="submit" disabled={state === "busy" || !password || !agreed || !transfer} className="btn btn-lg">
           {state === "busy" ? "Вхожу…" : "Войти"}
         </button>
         <p className="t-caption text-[var(--ink-3)]">

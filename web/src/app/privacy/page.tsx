@@ -69,6 +69,13 @@ export default async function PrivacyPage() {
             ;
           </li>
           <li>
+            ваше отдельное{" "}
+            <Link href="/consent-transfer" className="link">
+              согласие на трансграничную передачу
+            </Link>{" "}
+            — для передачи модели ИИ в США;
+          </li>
+          <li>
             договор с вами —{" "}
             <Link href="/terms" className="link">
               условия использования
