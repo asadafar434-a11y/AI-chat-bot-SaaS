@@ -10,6 +10,12 @@ export function Val({ field }: { field: OperatorValue }) {
   return <mark className="rounded-sm bg-[var(--warn-tint)] px-1 text-[var(--warn)]">[{field.empty}]</mark>;
 }
 
+// Место, которое юрист должен проверить особо. Видно, пока тексты не отмечены проверенными (LEGAL_REVIEWED в lib/legal.ts).
+export function Review({ children }: { children: ReactNode }) {
+  if (LEGAL_REVIEWED) return null;
+  return <mark className="rounded-sm bg-[var(--warn-tint)] px-1 text-[var(--warn)]">[ТРЕБУЕТ ПРОВЕРКИ ЮРИСТОМ: {children}]</mark>;
+}
+
 export function Mail({ field }: { field: OperatorValue }) {
   if (!field.value) return <Val field={field} />;
   return (

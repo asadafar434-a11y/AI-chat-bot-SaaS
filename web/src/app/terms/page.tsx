@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
-import { LegalPage, Mail, Section, Val } from "@/components/legal-page";
+import { LegalPage, Mail, Review, Section, Val } from "@/components/legal-page";
 import { readOperator } from "@/lib/legal";
 
 export const metadata: Metadata = { title: "Условия использования — Тендерный юрист" };
@@ -55,6 +55,15 @@ export default async function TermsPage() {
             политике обработки персональных данных
           </Link>
           .
+        </p>
+        <p>
+          Вписывая в сервис данные других людей — например, исполнителей для технического предложения, — вы поручаете сервису
+          обработать их только для подготовки документов вашей заявки: собрать файл и показать его в браузере. Сервис хранит их
+          в тайне и не передаёт третьим лицам, кроме случаев, описанных в политике. Получить согласие этих людей, если оно
+          требуется, — ваша обязанность.{" "}
+          <Review>
+            содержание поручения по ч. 3 ст. 6 152-ФЗ: перечень действий, цели, конфиденциальность и меры защиты по ст. 19
+          </Review>
         </p>
       </Section>
 
