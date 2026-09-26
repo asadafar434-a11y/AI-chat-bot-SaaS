@@ -45,6 +45,7 @@
     --t-label: 500 13px/20px var(--ui);       /* пункты меню, шаги, подсказки-вопросы */
     --t-caption: 500 12px/16px var(--ui);     /* подписи: заказчик, даты, пометки файлов */
     --t-over: 600 12px/16px var(--ui);        /* надписи разделов капсом, метки */
+    --t-tag: 600 12px/16px var(--ui);         /* метки статусов: «Убыток», «впишите данные» */
     --t-num: 500 12px/16px var(--mono);       /* счётчики и сроки: цифры одной ширины */
     /* Поля внутри острова — 16 (12 на телефоне); между островами и у краёв окна — 8. Шаг отступов — 4. */
     --pad: 16px;
@@ -508,6 +509,41 @@
   .confirm { display: grid; gap: 10px; padding: 12px; }
   .confirm p { margin: 0; font: var(--t-strong); }
   .btn-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+  /* Состав исполнителей: кто нужен — из ТЗ, люди — под эту закупку. Сверка с ТЗ — строками статуса с иконкой. */
+  .cast-body { container-type: inline-size; display: grid; gap: 12px; padding: 0 var(--pad) var(--pad); }
+  .cast-need { display: grid; gap: 4px; }
+  .cast-checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .cast-checks li { display: flex; align-items: flex-start; gap: 6px; font: var(--t-strong); }
+  .cast-checks li > svg { flex: none; margin-top: 2px; }
+  .cast-checks .ok { color: var(--ok); }
+  .cast-checks .warn { color: var(--warn); }
+  .cast-group { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .cast-group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+  .cast-group-head h4 { margin: 0; font: var(--t-section); }
+  .cast-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .cast-row { display: grid; grid-template-columns: 16px minmax(0, 1fr) 28px; align-items: start; gap: 6px 8px; }
+  .cast-n { padding-top: 8px; text-align: right; font: var(--t-num); color: var(--ink-3); }
+  .cast-fields { display: grid; gap: 6px; min-width: 0; }
+  @container (width >= 520px) { .cast-fields { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }
+  .cast-field { position: relative; min-width: 0; }
+  .cast-row .icon-btn { margin-top: 2px; }
+  .cast-row-note { grid-column: 2 / -1; display: flex; align-items: flex-start; gap: 6px; margin: 0; font: var(--t-tag); color: var(--warn); }
+  .cast-row-note > svg { flex: none; margin-top: 1px; }
+  .cast-add { display: inline-flex; align-items: center; gap: 4px; justify-self: start; margin-left: 24px; font: var(--t-strong); text-decoration: none; }
+  .cast-add > svg { flex: none; }
+  .cast-foot { display: grid; gap: 4px; margin: 0; padding-top: 12px; border-top: 1px solid var(--line); font: var(--t-body); color: var(--ink-2); }
+  .icon-btn.xs { width: 28px; height: 28px; color: var(--ink-3); }
+  /* Вставка списком — поверхность внутри острова */
+  .paste-box { display: grid; gap: 8px; padding: 12px; border-radius: var(--r-surface); background: var(--paper-2); }
+  .paste-box label { font: var(--t-strong); }
+  .paste-box textarea.input { display: block; height: auto; min-height: 112px; padding: 6px 10px; resize: none; }
+  /* Подсказки при наборе — всплывающее меню: тень lg, пункты по 8 */
+  .sug { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; min-width: 100%; width: max-content; max-width: min(360px, 80vw); max-height: 264px; overflow-y: auto; list-style: none; margin: 0; padding: 4px; border-radius: var(--r-surface); background: var(--card); box-shadow: var(--float); }
+  .sug li { display: grid; padding: 6px 8px; border-radius: var(--r-ctl); cursor: pointer; font: var(--t-label); }
+  .sug li:hover, .sug li[aria-selected="true"] { background: var(--hover); }
+  .sug small { font: var(--t-caption); color: var(--ink-3); }
+  /* На телефоне поле 16 px, иначе браузер увеличивает страницу при вводе */
+  @media (pointer: coarse) { .cast-row .input, .paste-box textarea.input { font-size: 16px; } }
 
   /* ---------- до какой цены снижаться ---------- */
   .calc-body { container-type: inline-size; display: grid; gap: 16px; padding: 4px var(--pad) var(--pad); }
@@ -724,6 +760,7 @@
   .sheet th, .sheet td { padding: 4px 6px; border: 1px solid #000; text-align: left; vertical-align: top; font-size: 13.5px; line-height: 1.35; }
   .sheet td p { margin: 0; }
   .sheet mark { padding: 0; background: var(--sheet-mark); color: #000; }
+  .sheet .tbl-title { margin: 12px 0 0; font-weight: 700; }
   .sheet .sig { margin-top: 26px; }
   .sheet .hint { font-size: 12px; font-style: italic; }
   .sheet .sub-sig { padding-left: 4cm; font-size: 11px; }
@@ -1254,6 +1291,7 @@
   const D = (label, file, quote) => ({ label, file, quote });
 
   // Пример из кода приложения (web/src/lib/sample-purchase.ts): те же документы, требования и черновик ТП.
+  // Концерт с исполнителями (ТЗ, п. 3.5; проект контракта, п. 4.5) и состав исполнителей — пока только в прототипе.
   const P1 = {
     id: "p1", sample: true,
     short: "Церемония «Педагог года — 2026»",
@@ -1278,6 +1316,8 @@
         R("Не менее 120 участников", "ТЗ, п. 2.2", "Количество участников мероприятия: не менее 120 человек."),
         R("Программу согласовать с заказчиком не позднее чем за 10 рабочих дней", "ТЗ, п. 3.1", "Программа мероприятия согласовывается с Заказчиком не позднее чем за 10 рабочих дней до даты проведения."),
         R("Ведущий с опытом официальных мероприятий от 3 лет", "ТЗ, п. 3.4", "Ведущий мероприятия — с опытом проведения официальных мероприятий не менее 3 лет."),
+        R("Концерт: вокалист со званием не ниже «Заслуженный артист РФ» и ансамбль не менее 4 музыкантов; в заявке — ФИО и звание каждого", "ТЗ, п. 3.5", "Концертная программа церемонии: выступление вокалиста, имеющего почётное звание не ниже «Заслуженный артист Российской Федерации», в сопровождении инструментального ансамбля в составе не менее 4 музыкантов."),
+        R("Заменить исполнителя из заявки можно только по письменному согласованию с заказчиком и на исполнителя со званием не ниже требований ТЗ", "Проект контракта, п. 4.5", "Замена исполнителей, указанных в заявке Исполнителя, допускается только по письменному согласованию с Заказчиком и на исполнителей с почётным званием не ниже требований технического задания."),
         R("Звук, свет, светодиодный экран от 3×2 м, не менее 2 радиомикрофонов", "ТЗ, п. 4.1", "Звуковое и световое оборудование, светодиодный экран размером не менее 3×2 м, не менее 2 радиомикрофонов."),
         R("Не менее 100 обработанных фотографий в течение 5 рабочих дней", "ТЗ, п. 4.3", "Фотосъёмка мероприятия; передача Заказчику не менее 100 обработанных фотографий в течение 5 рабочих дней после мероприятия."),
         R("Кофе-брейк на 120 человек: чай, кофе, от 2 видов выпечки на человека", "ТЗ, п. 5.1", "Кофе-брейк на 120 человек: чай, кофе, не менее 2 наименований выпечки на человека."),
@@ -1300,11 +1340,25 @@
         { clause: "2.2", topic: "Участники", requirement: "Не менее 120 участников", quote: "Количество участников мероприятия: не менее 120 человек.", offer: "Обеспечим проведение мероприятия для 120 участников.", verified: true },
         { clause: "3.1", topic: "Программа", requirement: "Согласовать программу не позднее чем за 10 рабочих дней", quote: "Программа мероприятия согласовывается с Заказчиком не позднее чем за 10 рабочих дней до даты проведения.", offer: "Проект программы с таймингом приведён в приложении 1. Согласуем программу с Заказчиком не позднее чем за 10 рабочих дней до даты проведения.", verified: true },
         { clause: "3.4", topic: "Ведущий", requirement: "Опыт официальных мероприятий не менее 3 лет", quote: "Ведущий мероприятия — с опытом проведения официальных мероприятий не менее 3 лет.", offer: "Ведущий — [ФИО], опыт проведения официальных мероприятий — [число, не меньше 3] лет.", verified: true },
+        { clause: "3.5", topic: "Концертная программа", requirement: "Вокалист со званием не ниже «Заслуженный артист РФ» и ансамбль не менее 4 музыкантов", quote: "Концертная программа церемонии: выступление вокалиста, имеющего почётное звание не ниже «Заслуженный артист Российской Федерации», в сопровождении инструментального ансамбля в составе не менее 4 музыкантов.", offer: "Концертная программа: выступление вокалиста в сопровождении инструментального ансамбля из 4 музыкантов. Фамилии и почётные звания исполнителей — в таблице «Состав исполнителей».", verified: true },
         { clause: "4.1", topic: "Техника", requirement: "Звук, свет, экран от 3×2 м, не менее 2 радиомикрофонов", quote: "Звуковое и световое оборудование, светодиодный экран размером не менее 3×2 м, не менее 2 радиомикрофонов.", offer: "Предоставим звуковое и световое оборудование, светодиодный экран размером 4×2,5 м, 2 радиомикрофона.", verified: true },
         { clause: "4.3", topic: "Фотоотчёт", requirement: "Не менее 100 обработанных фото в течение 5 рабочих дней", quote: "Фотосъёмка мероприятия; передача Заказчику не менее 100 обработанных фотографий в течение 5 рабочих дней после мероприятия.", offer: "Проведём фотосъёмку мероприятия и передадим Заказчику 120 обработанных фотографий в течение 5 рабочих дней после мероприятия.", verified: true },
         { clause: "5.1", topic: "Кофе-брейк", requirement: "На 120 человек: чай, кофе, не менее 2 видов выпечки", quote: "Кофе-брейк на 120 человек: чай, кофе, не менее 2 наименований выпечки на человека.", offer: "Организуем кофе-брейк на 120 человек: чай, кофе, 2 наименования выпечки на человека.", verified: true },
         { clause: "6.2", topic: "Отчётность", requirement: "Акт оказанных услуг и фотоотчёт", quote: "По итогам оказания услуг Исполнитель представляет акт оказанных услуг и фотоотчёт.", offer: "По итогам оказания услуг представим акт оказанных услуг и фотоотчёт.", verified: true },
       ],
+      // ТЗ требует назвать исполнителей. ИИ выписывает только, кто нужен: позиции, сколько человек, звание,
+      // и слова, по которым в списке узнаётся позиция. Людей вписывает участник — под каждую закупку свой состав.
+      cast: {
+        clause: "3.5",
+        requirement: "вокалист со званием не ниже «Заслуженный артист РФ» и ансамбль не менее 4 музыкантов; в заявке — ФИО и почётное звание каждого",
+        quote: "В заявке указываются фамилия, имя, отчество и почётное звание (при наличии) каждого исполнителя.",
+        verified: true,
+        groups: [
+          { key: "vocal", title: "Вокалист", one: "Вокалист", acc: "вокалиста", count: 1, rank: 1, match: "вокал|певиц|певец|пение|сопрано|тенор|баритон|меццо" },
+          { key: "band", title: "Инструментальный ансамбль", one: "Музыкант ансамбля", acc: "музыканта", count: 4, rank: 0, match: "музыкант|ансамбл|скрип|альт|виолонч|контрабас|фортеп|пиан|роял|гитар|ударн|барабан|перкус|флейт|кларнет|гобо|фагот|саксоф|труб|тромбон|валторн|баян|аккорд|балалай|домр|клавиш" },
+        ],
+        replace: { text: "По проекту контракта заменить исполнителя из заявки можно только по письменному согласованию с заказчиком и на исполнителя со званием не ниже требований ТЗ.", src: "k-4.5" },
+      },
     },
     sources: {
       "izv-5.1.1": D("Извещение, п. 5.1.1", "Извещение.pdf", "5.1.1. Заявка подаётся в форме электронного документа через электронную площадку."),
@@ -1318,8 +1372,10 @@
       "k-2.1": D("Проект контракта, п. 2.1", "Проект контракта.pdf", "2.1. Цена контракта определяется по итогам электронного конкурса и не может превышать начальную (максимальную) цену контракта."),
       "k-2.5": D("Проект контракта, п. 2.5", "Проект контракта.pdf", "2.5. Оплата производится в течение 7 рабочих дней с даты подписания Заказчиком документа о приёмке."),
       "k-4.3": D("Проект контракта, п. 4.3", "Проект контракта.pdf", "4.3. Заказчик в течение 3 рабочих дней с даты получения проекта программы согласовывает его либо направляет мотивированные замечания."),
+      "k-4.5": D("Проект контракта, п. 4.5", "Проект контракта.pdf", "4.5. Замена исполнителей, указанных в заявке Исполнителя, допускается только по письменному согласованию с Заказчиком и на исполнителей с почётным званием не ниже требований технического задания."),
       "tz-2.1": D("ТЗ, п. 2.1", "Техническое задание.docx", "2.1. Исполнитель обеспечивает площадку проведения: зал вместимостью не менее 150 мест в пределах г. Энска, с гардеробом и условиями доступности для маломобильных граждан."),
       "tz-3.1": D("ТЗ, п. 3.1", "Техническое задание.docx", "3.1. Программа мероприятия согласовывается с Заказчиком не позднее чем за 10 рабочих дней до даты проведения."),
+      "tz-3.5": D("ТЗ, п. 3.5", "Техническое задание.docx", "3.5. Концертная программа церемонии: выступление вокалиста, имеющего почётное звание не ниже «Заслуженный артист Российской Федерации», в сопровождении инструментального ансамбля в составе не менее 4 музыкантов. В заявке указываются фамилия, имя, отчество и почётное звание (при наличии) каждого исполнителя."),
       "tz-4.3": D("ТЗ, п. 4.3", "Техническое задание.docx", "4.3. Фотосъёмка мероприятия; передача Заказчику не менее 100 обработанных фотографий в течение 5 рабочих дней после мероприятия."),
     },
     answers: {
@@ -1334,8 +1390,8 @@
         note: NOTE_44 + ONE_QUOTE,
       },
       "Что проверить в проекте контракта перед подачей?": {
-        text: "**В выдержках проекта контракта три условия, от которых зависят деньги и сроки.**\n\n- Цена — не выше начальной, 685 000 ₽ (п. 2.1).\n- Оплата — в течение 7 рабочих дней после того, как заказчик подпишет документ о приёмке (п. 2.5).\n- Программу заказчик согласует или вернёт с замечаниями в течение 3 рабочих дней (п. 4.3). Заложите это время в подготовку.\n\nОбеспечение исполнения контракта — 5% от цены контракта (извещение, раздел 11). Если предложите цену «на двадцать пять и более процентов ниже начальной (максимальной) цены контракта», контракт подпишут только после одного из двух: обеспечения исполнения в полтора раза больше указанного в извещении (с нижним порогом из ч. 1 ст. 37) или обычного обеспечения вместе со сведениями о добросовестности. Это три контракта за три года без неустоек, цена одного из них — не меньше 20% начальной (ч. 2 и 3 ст. 37 44-ФЗ).\n\nПроверьте вывод у юриста до подачи заявки.",
-        src: [{ doc: "k-2.1" }, { doc: "k-2.5" }, { doc: "k-4.3" }, { doc: "izv-11" }, { law: "44-37-2", hl: "на двадцать пять и более процентов ниже начальной (максимальной) цены контракта" }],
+        text: "**В выдержках проекта контракта три условия, от которых зависят деньги и сроки.**\n\n- Цена — не выше начальной, 685 000 ₽ (п. 2.1).\n- Оплата — в течение 7 рабочих дней после того, как заказчик подпишет документ о приёмке (п. 2.5).\n- Программу заказчик согласует или вернёт с замечаниями в течение 3 рабочих дней (п. 4.3). Заложите это время в подготовку.\n\nЕщё одно условие — про исполнителей: заменить тех, кто указан в заявке, можно только по письменному согласованию с заказчиком и на исполнителей со званием не ниже требований ТЗ (п. 4.5). Если состав может поменяться, договаривайтесь о замене заранее.\n\nОбеспечение исполнения контракта — 5% от цены контракта (извещение, раздел 11). Если предложите цену «на двадцать пять и более процентов ниже начальной (максимальной) цены контракта», контракт подпишут только после одного из двух: обеспечения исполнения в полтора раза больше указанного в извещении (с нижним порогом из ч. 1 ст. 37) или обычного обеспечения вместе со сведениями о добросовестности. Это три контракта за три года без неустоек, цена одного из них — не меньше 20% начальной (ч. 2 и 3 ст. 37 44-ФЗ).\n\nПроверьте вывод у юриста до подачи заявки.",
+        src: [{ doc: "k-2.1" }, { doc: "k-2.5" }, { doc: "k-4.3" }, { doc: "k-4.5" }, { doc: "izv-11" }, { law: "44-37-2", hl: "на двадцать пять и более процентов ниже начальной (максимальной) цены контракта" }],
         note: NOTE_44 + ONE_QUOTE,
       },
     },
@@ -1539,10 +1595,17 @@
     check: { state: "none", ok: 3, findings: [{ kind: "warn", what: "Номера программы не перечислены, а по ТЗ их должно быть не меньше шести.", todo: "Перечислите номера концерта.", src: "tz-2" }] },
   };
 
+  // Черновик ТП из заготовки ИИ. В составе исполнителей — пустые строки по числу людей, которое требует ТЗ.
+  function draftTp(p) {
+    const tp = clone(p.tpDraft);
+    if (tp.cast) tp.cast.rows = tp.cast.groups.flatMap((g) => Array.from({ length: g.count }, (_, i) => ({ id: `${p.id}-${g.key}-${i}`, group: g.key, name: "", title: "" })));
+    return tp;
+  }
+
   // Готовит закупку к работе: черновик ТП, ответы в истории вопросов.
   function prepare(raw, composed) {
     const p = clone(raw);
-    p.tp = composed ? clone(p.tpDraft) : null;
+    p.tp = composed ? draftTp(p) : null;
     p.tpPrice = null; p.tpPriceText = ""; p.parts = {}; p.thinking = false;
     const qs = [];
     p.chat = p.chat.map((m) => {
@@ -1604,7 +1667,8 @@
   }
   const stageHTML = (p) => { const st = stageOf(p); return `<span class="stage ${st.tone}">${esc(st.text)}</span>`; };
   const needsFill = (t) => /\[[^\]]+\]/.test(t || "");
-  const fillCount = (tp) => tp.goods.filter((g) => needsFill(g.characteristics)).length + tp.items.filter((it) => needsFill(it.offer)).length + (needsFill(tp.form.consent) ? 1 : 0);
+  const itemsFill = (tp) => tp.goods.filter((g) => needsFill(g.characteristics)).length + tp.items.filter((it) => needsFill(it.offer)).length + (needsFill(tp.form.consent) ? 1 : 0);
+  const fillCount = (tp) => itemsFill(tp) + (castTodo(tp) ? 1 : 0);
   const fields = (t) => esc(t).replace(/\[[^\]]+\]/g, (m) => `<mark class="fill">${m}</mark>`);
   const filledCount = () => PROFILE_KEYS.filter((k) => S.profile[k].trim()).length;
   const samplesOf = (kind) => S.docs.filter((d) => d.kinds.includes(kind));
@@ -2091,14 +2155,20 @@
 
   function tpNotes(p) {
     const tp = p.tp;
-    const fill = fillCount(tp);
+    const fill = itemsFill(tp);
+    const cast = castTodo(tp);
     const leaks = leaksOf(tp);
+    const own = castLeaks(tp);
     const unverified = [...tp.goods, ...tp.items].filter((r) => !r.verified).length;
-    let h = fill
-      ? noteHTML("warn", `Впишите свои данные в ${fill} ${plural(fill, "пункт", "пункта", "пунктов")} — они выделены жёлтым. Нажмите на текст, чтобы исправить.`, "", "pen")
+    const points = `${fill} ${plural(fill, "пункт", "пункта", "пунктов")}`;
+    let h = fill && cast
+      ? noteHTML("warn", `Впишите свои данные в ${points} и состав исполнителей. Пункты выделены жёлтым — нажмите на текст, чтобы исправить.`, "", "pen")
+      : fill ? noteHTML("warn", `Впишите свои данные в ${points} — они выделены жёлтым. Нажмите на текст, чтобы исправить.`, "", "pen")
+      : cast ? noteHTML("warn", "Осталось вписать состав исполнителей — он ниже, после пунктов ТЗ.", "", "pen")
       : noteHTML("ok", "Все пункты заполнены.", "", "check");
     return h + warnsHTML([
       leaks.length ? `В техническом предложении есть ваши данные: ${leaks.map((v) => `«${esc(v)}»`).join(", ")}. Уберите их — ТП подают в первую часть заявки анонимно, иначе заявку отклонят.` : "",
+      own.length ? `Среди исполнителей — ${own.map((v) => `«${esc(v)}»`).join(", ")}, как в подписи заявки. ТП подают в первую часть заявки анонимно: прежде чем подавать, уточните у юриста, не раскроет ли это участника.` : "",
       unverified ? `В ${unverified} ${plural(unverified, "строке", "строках", "строках")} цитата не найдена в документах дословно — сверьте их вручную.` : "",
       scanWarning(p),
     ].filter(Boolean));
@@ -2151,6 +2221,252 @@
   }
   const partsRows = (p) => partsOf(p.tp.form).filter((k) => k !== "tp").map((k) => partRow(p, k)).join("");
 
+  /* ---------- состав исполнителей ---------- */
+  // ТЗ требует назвать исполнителей. Кто нужен — выписано из ТЗ, людей участник вписывает под эту закупку:
+  // состав каждый раз свой, поэтому справочника нет. Подсказки при наборе — люди из прошлых закупок.
+  const RANK_NEED = ["", "«Заслуженный артист Российской Федерации»", "«Народный артист Российской Федерации»"];
+  const RANK_SHORT = ["", "заслуженного артиста", "народного артиста"];
+  const CAST_TITLES = ["Народный артист России", "Народная артистка России", "Заслуженный артист России", "Заслуженная артистка России", "Лауреат международного конкурса", "Лауреат всероссийского конкурса"];
+  // Кого участник вписывал в прошлых закупках. В приложении — из закупок в этом браузере, в прототипе — пример.
+  const CAST_HISTORY = [
+    { name: "Соколова Мария Андреевна", title: "Заслуженная артистка России", from: "Учитель года — 2025" },
+    { name: "Громов Павел Сергеевич", title: "Народный артист России", from: "День города — 2024" },
+    { name: "Лебедев Игорь Викторович", title: "Лауреат международного конкурса", from: "Учитель года — 2025" },
+    { name: "Орлова Дарья Игоревна", title: "", from: "День города — 2024" },
+    { name: "Ким Артём Олегович", title: "", from: "Учитель года — 2025" },
+    { name: "Белова Нина Петровна", title: "Лауреат всероссийского конкурса", from: "Выпускной — 2025" },
+    { name: "Соловьёв Денис Андреевич", title: "", from: "Выпускной — 2025" },
+  ];
+  const CAST_EXAMPLE = "Лебедев Игорь Викторович, скрипка, лауреат международного конкурса\nСоколова Мария Андреевна, вокал, заслуженная артистка России\nОрлова Дарья Игоревна, фортепиано\nКим Артём Олегович, виолончель\nБелова Нина Петровна, флейта";
+
+  // Звание — по словам: «народный артист» выше «заслуженного», другие звания требованию из ТЗ не засчитываются.
+  const rankOf = (title) => (/народн\S*\s+артист/i.test(title || "") ? 2 : /заслуж\S*\s+артист/i.test(title || "") ? 1 : 0);
+  function castRows(cast, key) { return cast.rows.filter((r) => r.group === key); }
+  // Сверка с ТЗ по каждой позиции: хватает ли людей и нужного звания.
+  function castCheck(cast) {
+    return cast.groups.map((g) => {
+      const named = castRows(cast, g.key).filter((r) => r.name.trim());
+      const fit = g.rank ? named.filter((r) => rankOf(r.title) >= g.rank).length : named.length;
+      const need = `${g.title}${g.rank ? ` со званием не ниже ${RANK_SHORT[g.rank]}` : ""}`;
+      const one = g.count === 1;
+      if (fit >= g.count) return { ok: true, rankFail: false, text: `${need} — ${one ? "есть" : `${fit} ${plural(fit, "человек", "человека", "человек")}, по ТЗ не менее ${g.count}`}` };
+      if (named.length < g.count) return { ok: false, rankFail: false, text: `${need} — ${one ? "не указан" : named.length ? `вписано ${named.length}, по ТЗ не менее ${g.count}` : `по ТЗ не менее ${g.count} ${plural(g.count, "человека", "человек", "человек")}`}` };
+      const blank = named.every((r) => !r.title.trim());
+      return { ok: false, rankFail: true, text: `${need} — ${one ? (blank ? "впишите звание" : "у вписанного нет такого звания") : `с таким званием ${fit}, по ТЗ не менее ${g.count}`}` };
+    });
+  }
+  function castTodo(tp) { return tp.cast ? castCheck(tp.cast).filter((c) => !c.ok).length : 0; }
+  // Если среди исполнителей тот, кто подписывает заявку, его фамилия в ТП может выдать участника.
+  function castLeaks(tp) {
+    if (!tp.cast) return [];
+    const surname = S.profile.signer.trim().split(/\s+/)[0] || "";
+    const found = surname.length >= 4 && tp.cast.rows.some((r) => (r.name.trim().split(/\s+/)[0] || "").toLowerCase() === surname.toLowerCase());
+    return found ? [surname] : [];
+  }
+  function castNote(g, r, rankFail) {
+    if (!g.rank || !rankFail || !r.name.trim() || rankOf(r.title) >= g.rank) return "";
+    return `${r.title.trim() ? "Не вижу нужного звания" : "Впишите звание"}: по ТЗ — не ниже ${RANK_NEED[g.rank]}`;
+  }
+  const castChecksHTML = (checks) => checks.map((c) => `<li class="${c.ok ? "ok" : "warn"}">${ic(c.ok ? "check" : "alert", 16, 2)}<span>${esc(c.text)}</span></li>`).join("");
+  function castRowHTML(g, r, i, rankFail) {
+    const who = `${g.one} ${i + 1}`;
+    const note = castNote(g, r, rankFail);
+    const box = (field, placeholder, label) => `<div class="cast-field"><input class="input" id="cast-${field}-${r.id}" data-cast="${field}" data-row="${r.id}" value="${esc(r[field])}" placeholder="${placeholder}" aria-label="${esc(who)}: ${label}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false"></div>`;
+    return `<li class="cast-row">
+      <span class="cast-n" aria-hidden="true">${i + 1}</span>
+      <div class="cast-fields">${box("name", "Фамилия, имя, отчество", "фамилия, имя, отчество")}${box("title", g.rank ? "Почётное звание" : "Звание, если есть", "почётное звание")}</div>
+      <button class="icon-btn xs" type="button" data-act="cast-del" data-key="${r.id}" aria-label="Убрать: ${esc(who.toLowerCase())}">${ic("x", 16)}</button>
+      <p class="cast-row-note" id="cast-note-${r.id}"${note ? "" : " hidden"}>${ic("alert", 14)}<span>${esc(note)}</span></p>
+    </li>`;
+  }
+  function castHTML(p) {
+    const cast = p.tp.cast;
+    if (!cast) return "";
+    const checks = castCheck(cast);
+    const replace = cast.replace && p.sources[cast.replace.src] ? cast.replace : null;
+    return `<section class="panel" id="cast" aria-labelledby="cast-title">
+      <div class="panel-head">
+        <div><h3 class="panel-title" id="cast-title">Состав исполнителей${checks.some((c) => !c.ok) ? ' <span class="flag" data-flag>впишите исполнителей</span>' : ""}</h3>
+        <p class="panel-sub">Кто выступит в этот раз, знаете только вы. ИИ фамилий не видит и не придумывает.</p></div>
+        <button class="btn soft xs" type="button" data-act="cast-paste" aria-expanded="${S.ui.castPaste ? "true" : "false"}">Вставить списком</button>
+      </div>
+      <div class="cast-body">
+        <div class="cast-need"><p class="need">В ТЗ${cast.clause ? `, п. ${esc(cast.clause)}` : ""}: ${esc(cast.requirement)}</p>${sourceHTML("cast", "", cast.quote, cast.verified, "состав")}</div>
+        ${S.ui.castPaste ? `<div class="paste-box">
+          <label for="cast-paste-text">Список исполнителей: по человеку в строке — ФИО, через запятую роль и звание</label>
+          <textarea class="input" id="cast-paste-text" placeholder="Соколова Мария Андреевна, вокал, заслуженная артистка России">${esc(S.ui.castText || "")}</textarea>
+          <div class="btn-row"><button class="btn xs" type="button" data-act="cast-split">Разложить по строкам</button><button class="btn soft xs" type="button" data-act="cast-paste">Отмена</button><button class="link quiet" type="button" data-act="cast-example">Вставить пример</button></div>
+        </div>` : ""}
+        <ul class="cast-checks" id="cast-checks" aria-label="Сверка с ТЗ">${castChecksHTML(checks)}</ul>
+        ${cast.groups.map((g, gi) => {
+          const rows = castRows(cast, g.key);
+          return `<div class="cast-group" role="group" aria-labelledby="cg-${g.key}">
+            <div class="cast-group-head"><h4 id="cg-${g.key}">${esc(g.title)}</h4><span class="need">${g.count === 1 ? "1 человек" : `не менее ${g.count} человек`}${g.rank ? ` · звание не ниже ${RANK_NEED[g.rank]}` : ""}</span></div>
+            ${rows.length ? `<ol class="cast-rows">${rows.map((r, i) => castRowHTML(g, r, i, checks[gi].rankFail)).join("")}</ol>` : ""}
+            <button class="link cast-add" type="button" data-act="cast-add" data-key="${g.key}">${ic("plus", 16)}Добавить ${esc(g.acc)}</button>
+          </div>`;
+        }).join("")}
+        ${replace ? `<div class="cast-foot"><p class="m0">Состав поменяется после подачи? ${esc(replace.text)}</p>${refBtn({ doc: replace.src }, p)}</div>` : ""}
+      </div>
+    </section>`;
+  }
+  // Статусы и пометки — на месте, без перерисовки полей: курсор остаётся там, где печатают.
+  function refreshCast(p) {
+    const cast = p.tp.cast;
+    const checks = castCheck(cast);
+    const box = $("#cast-checks");
+    if (box) box.innerHTML = castChecksHTML(checks);
+    cast.groups.forEach((g, gi) => castRows(cast, g.key).forEach((r) => {
+      const el = document.getElementById(`cast-note-${r.id}`);
+      if (!el) return;
+      const note = castNote(g, r, checks[gi].rankFail);
+      el.hidden = !note;
+      el.querySelector("span").textContent = note;
+    }));
+    const title = $("#cast-title"), flag = title && title.querySelector("[data-flag]");
+    const todo = checks.some((c) => !c.ok);
+    if (todo && title && !flag) title.insertAdjacentHTML("beforeend", ' <span class="flag" data-flag>впишите исполнителей</span>');
+    else if (!todo && flag) flag.remove();
+    $("#tp-notes").innerHTML = tpNotes(p);
+    refreshCounts();
+  }
+
+  // Подсказки при наборе: фамилии — из прошлых закупок, звания — обычные почётные звания.
+  let sug = null;
+  function castPeople(p) {
+    const seen = new Set(p.tp.cast.rows.map((r) => r.name.trim().toLowerCase()));
+    const past = S.purchases.filter((x) => x !== p && x.tp && x.tp.cast)
+      .flatMap((x) => x.tp.cast.rows.filter((r) => r.name.trim()).map((r) => ({ name: r.name.trim(), title: r.title.trim(), from: x.short })));
+    return [...past, ...CAST_HISTORY].filter((h) => {
+      const k = h.name.toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }
+  function sugItems(p, input) {
+    const q = input.value.trim().toLowerCase().replace(/\s+/g, " ");
+    if (input.dataset.cast === "title") return CAST_TITLES.filter((t) => t.toLowerCase().includes(q) && t.toLowerCase() !== q).map((t) => ({ value: t }));
+    if (!q) return [];
+    return castPeople(p)
+      .filter((h) => { const words = h.name.toLowerCase().split(/\s+/); return words.some((w, i) => words.slice(i).join(" ").startsWith(q)); })
+      .slice(0, 6)
+      .map((h) => ({ value: h.name, title: h.title, sub: `${h.title ? `${h.title} · ` : ""}из закупки «${h.from}»` }));
+  }
+  function showSug(p, input) {
+    const items = sugItems(p, input);
+    if (sug && sug.input !== input) hideSug();
+    if (!items.length) { hideSug(); return; }
+    sug = { input, items, active: -1 };
+    let list = $("#cast-sug");
+    if (!list) { input.insertAdjacentHTML("afterend", '<ul class="sug" id="cast-sug" role="listbox"></ul>'); list = $("#cast-sug"); }
+    list.setAttribute("aria-label", input.dataset.cast === "name" ? "Люди из прошлых закупок" : "Почётные звания");
+    list.innerHTML = items.map((it, i) => `<li role="option" id="cast-sug-${i}" data-sug="${i}" aria-selected="false"><span>${esc(it.value)}</span>${it.sub ? `<small>${esc(it.sub)}</small>` : ""}</li>`).join("");
+    input.setAttribute("aria-expanded", "true");
+    input.setAttribute("aria-controls", "cast-sug");
+    input.removeAttribute("aria-activedescendant");
+  }
+  function hideSug() {
+    const list = $("#cast-sug");
+    if (list) list.remove();
+    if (sug) {
+      sug.input.setAttribute("aria-expanded", "false");
+      sug.input.removeAttribute("aria-controls");
+      sug.input.removeAttribute("aria-activedescendant");
+    }
+    sug = null;
+  }
+  function moveSug(step) {
+    const n = sug.items.length;
+    sug.active = step > 0 ? (sug.active + 1) % n : sug.active <= 0 ? n - 1 : sug.active - 1;
+    document.querySelectorAll("#cast-sug [data-sug]").forEach((li, i) => li.setAttribute("aria-selected", String(i === sug.active)));
+    sug.input.setAttribute("aria-activedescendant", `cast-sug-${sug.active}`);
+    const li = $(`#cast-sug-${sug.active}`);
+    if (li) li.scrollIntoView({ block: "nearest" });
+  }
+  function pickSug(i) {
+    const p = cur(), it = sug && sug.items[i];
+    if (!p || !it) return;
+    const input = sug.input;
+    const row = p.tp.cast.rows.find((r) => r.id === input.dataset.row);
+    hideSug();
+    if (!row) return;
+    input.value = it.value;
+    row[input.dataset.cast] = it.value;
+    // Человек из прошлой закупки — вместе со званием, если звание ещё не вписано
+    if (input.dataset.cast === "name" && it.title && !row.title.trim()) {
+      row.title = it.title;
+      const t = document.getElementById(`cast-title-${row.id}`);
+      if (t) t.value = it.title;
+    }
+    refreshCast(p);
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  }
+  function onCastInput(input) {
+    const p = cur();
+    const row = p && p.tp && p.tp.cast && p.tp.cast.rows.find((r) => r.id === input.dataset.row);
+    if (!row) return;
+    row[input.dataset.cast] = input.value;
+    refreshCast(p);
+    showSug(p, input);
+  }
+
+  // Список из сообщения или таблицы: человек в строке — ФИО, дальше через запятую роль и звание.
+  // Раскладывается по позициям из ТЗ без ИИ: по роли, если она названа; со званием — туда, где звание нужно;
+  // остальные — по порядку, лишние — новыми строками.
+  const TITLE_WORDS = /артист|лауреат|дипломант|деятел|заслуж|народн|звани/i;
+  function parseCast(text) {
+    return text.split(/\n+/).map((line) => line.replace(/^\s*(?:\d+\s*[.)]|[-–—•*])\s*/, "").trim()).filter(Boolean).map((line) => {
+      const parts = line.split(/\s*[,;\t]\s*|\s+[—–-]\s+/).map((x) => x.trim()).filter(Boolean);
+      const name = (parts.shift() || "").replace(/\s+/g, " ");
+      const title = parts.filter((x) => TITLE_WORDS.test(x)).join(", ");
+      return { name, title: title.charAt(0).toUpperCase() + title.slice(1), rest: parts.join(" ") };
+    }).filter((x) => x.name);
+  }
+  function splitCast(p) {
+    const cast = p.tp.cast;
+    const area = $("#cast-paste-text");
+    const text = area ? area.value : S.ui.castText || "";
+    const taken = new Set(cast.rows.map((r) => r.name.trim().toLowerCase()).filter(Boolean));
+    const people = parseCast(text).filter((x) => {
+      const k = x.name.toLowerCase();
+      if (taken.has(k)) return false;
+      taken.add(k);
+      return true;
+    });
+    if (!people.length) {
+      toast(text.trim() ? "Все из списка уже в составе." : "Вставьте список — по человеку в строке.");
+      if (area) area.focus();
+      return;
+    }
+    const empty = (g) => castRows(cast, g.key).filter((r) => !r.name.trim());
+    const put = (g, x) => {
+      const slot = empty(g)[0];
+      if (slot) { slot.name = x.name; slot.title = x.title; }
+      else cast.rows.push({ id: uid(), group: g.key, name: x.name, title: x.title });
+    };
+    const left = [];
+    people.forEach((x) => {
+      const g = cast.groups.find((gr) => gr.match && new RegExp(gr.match, "i").test(x.rest));
+      if (g) put(g, x); else left.push(x);
+    });
+    cast.groups.filter((g) => g.rank).forEach((g) => empty(g).forEach((slot) => {
+      const i = left.findIndex((x) => rankOf(x.title) >= g.rank);
+      if (i < 0) return;
+      const [x] = left.splice(i, 1);
+      slot.name = x.name; slot.title = x.title;
+    }));
+    const plain = cast.groups.filter((g) => !g.rank);
+    left.forEach((x) => put(plain.find((g) => empty(g).length) || plain[plain.length - 1] || cast.groups[cast.groups.length - 1], x));
+    S.ui.castPaste = false;
+    S.ui.castText = "";
+    rerender();
+    const btn = $('[data-act="cast-paste"]');
+    if (btn) btn.focus({ preventScroll: true });
+    toast(`Добавил из списка: ${people.length} ${plural(people.length, "человек", "человека", "человек")}. Проверьте, кто куда попал.`);
+  }
+
   function tpHTML(p) {
     if (!p.tp) {
       const tpSamples = samplesOf("tp");
@@ -2193,6 +2509,7 @@
         </section>` : ""}
       ${goods}
       ${items}
+      ${castHTML(p)}
       ${S.ui.confirmRedo ? `<div class="confirm">
           <p>Составить черновик заново? Ваши правки в этом черновике пропадут.</p>
           <div class="btn-row"><button class="btn xs" type="button" data-act="redo">Составить заново</button><button class="btn xs soft" type="button" data-act="cancel-redo">Отмена</button></div>
@@ -2689,6 +3006,12 @@
     if (items.length) {
       h += `<table><thead><tr><th style="width:6%">№</th><th style="width:40%">Требование заказчика</th><th>Предложение участника закупки</th></tr></thead><tbody>${items.map((it, i) => `<tr><td>${i + 1}</td><td>${esc(it.requirement)}${it.clause ? ` (п. ${esc(it.clause)} ТЗ)` : ""}</td><td>${paras(it.offer)}</td></tr>`).join("")}</tbody></table>`;
     }
+    if (p.tp.cast) {
+      const cast = p.tp.cast;
+      const rows = cast.groups.flatMap((g) => castRows(cast, g.key).map((r) => ({ g, r })));
+      h += `<p class="tbl-title">Состав исполнителей${cast.clause ? ` (п. ${esc(cast.clause)} ТЗ)` : ""}</p>`;
+      h += `<table><thead><tr><th style="width:6%">№</th><th style="width:24%">Исполнитель</th><th>Фамилия, имя, отчество</th><th style="width:32%">Почётное звание</th></tr></thead><tbody>${rows.map(({ g, r }, i) => `<tr><td>${i + 1}</td><td>${esc(g.one)}</td><td>${r.name.trim() ? esc(r.name.trim()) : "<mark>[фамилия, имя, отчество]</mark>"}</td><td>${r.title.trim() ? esc(r.title.trim()) : g.rank ? "<mark>[почётное звание]</mark>" : "—"}</td></tr>`).join("")}</tbody></table>`;
+    }
     return h;
   }
   function anketaDoc(p) {
@@ -2797,7 +3120,7 @@
     }
   }
   function autosize(el) {
-    const max = el.classList.contains("edit-area") ? 600 : el.closest(".prompt") ? 160 : 140;
+    const max = el.classList.contains("edit-area") ? 600 : el.closest(".prompt") ? 160 : el.closest(".paste-box") ? 320 : 140;
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, max)}px`;
   }
@@ -3047,7 +3370,7 @@
   async function compose(p) {
     if (!p.sample && !(await runSteps(TP_STEPS))) return;
     S.busy = null;
-    p.tp = clone(p.tpDraft);
+    p.tp = draftTp(p);
     p.parts = {};
     S.ui = {};
     render();
@@ -3190,6 +3513,37 @@
       case "part": onPartClick(p, el.dataset.part, false); break;
       case "part-redo": onPartClick(p, el.dataset.part, true); break;
       case "preview-tp": openPreview(p, "tp"); break;
+      case "cast-paste": {
+        S.ui.castPaste = !S.ui.castPaste;
+        rerender();
+        const target = S.ui.castPaste ? $("#cast-paste-text") : $('[data-act="cast-paste"]');
+        if (target) target.focus();
+        break;
+      }
+      case "cast-example": {
+        S.ui.castText = CAST_EXAMPLE;
+        const area = $("#cast-paste-text");
+        if (area) { area.value = CAST_EXAMPLE; autosize(area); area.focus(); }
+        break;
+      }
+      case "cast-split": splitCast(p); break;
+      case "cast-add": {
+        const id = uid();
+        p.tp.cast.rows.push({ id, group: el.dataset.key, name: "", title: "" });
+        rerender();
+        const input = document.getElementById(`cast-name-${id}`);
+        if (input) input.focus();
+        break;
+      }
+      case "cast-del": {
+        const row = p.tp.cast.rows.find((r) => r.id === el.dataset.key);
+        if (!row) break;
+        p.tp.cast.rows = p.tp.cast.rows.filter((r) => r !== row);
+        rerender();
+        const add = $(`[data-act="cast-add"][data-key="${row.group}"]`);
+        if (add) add.focus();
+        break;
+      }
       case "sample-check": runCheck(p); break;
       case "recheck": p.check.state = "none"; rerender(); toTop(); break;
       case "floor-price": {
@@ -3242,8 +3596,11 @@
   }
 
   /* ---------- события ---------- */
+  document.addEventListener("mousedown", (e) => { if (e.target.closest && e.target.closest("#cast-sug")) e.preventDefault(); });
   document.addEventListener("click", (e) => {
     const t = e.target;
+    const opt = t.closest && t.closest("#cast-sug [data-sug]");
+    if (opt) { pickSug(Number(opt.dataset.sug)); return; }
     if (t.id === "modal") { closeModal(); return; }
     if (t.id === "scrim") { setDrawer(false); return; }
     const nav = t.closest("[data-go]");
@@ -3282,6 +3639,8 @@
     else if (t.id === "ask-q") S.drafts.ask = t.value;
     else if (t.id === "chat-q") S.drafts.chat = t.value;
     else if (t.dataset.edit) onEditInput(t);
+    else if (t.dataset.cast) onCastInput(t);
+    else if (t.id === "cast-paste-text") S.ui.castText = t.value;
     else if (t.id === "tp-price") onPriceInput(t);
     else if (t.id === "plist-q") { S.q = t.value; const body = $("#plist-body"); if (body) body.innerHTML = plistBodyHTML(PURCHASE_SCREENS.includes(S.screen) ? cur() : null); }
     else if (t.dataset.pf) onProfileInput(t);
@@ -3303,6 +3662,16 @@
     const t = e.target;
     if (t.classList && t.classList.contains("calc")) t.value = showNum(parseNum(t.value));
   });
+
+  document.addEventListener("focusin", (e) => {
+    const t = e.target;
+    if (!t.dataset || t.dataset.cast !== "title" || t.value.trim()) return;
+    const p = cur();
+    const row = p && p.tp && p.tp.cast && p.tp.cast.rows.find((r) => r.id === t.dataset.row);
+    const g = row && p.tp.cast.groups.find((x) => x.key === row.group);
+    if (g && g.rank) showSug(p, t);
+  });
+  document.addEventListener("focusout", (e) => { if (sug && e.target === sug.input) hideSug(); });
 
   // Правка закончилась — поле снова становится текстом. Заменяем только его, чтобы не сорвать нажатие рядом.
   document.addEventListener("focusout", (e) => {
@@ -3333,6 +3702,15 @@
   });
 
   document.addEventListener("keydown", (e) => {
+    if (e.target.dataset && e.target.dataset.cast) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        if (!sug || sug.input !== e.target) { const p = cur(); if (p) showSug(p, e.target); }
+        if (sug) { e.preventDefault(); moveSug(e.key === "ArrowDown" ? 1 : -1); }
+        return;
+      }
+      if (sug && sug.input === e.target && e.key === "Enter" && sug.active >= 0) { e.preventDefault(); pickSug(sug.active); return; }
+      if (sug && sug.input === e.target && e.key === "Escape") { e.preventDefault(); hideSug(); return; }
+    }
     if (e.key === "Escape") {
       if (closeModal()) return;
       if (S.drawer && narrow.matches) { setDrawer(false); return; }
