@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon } from "@/components/icons";
 import { Note } from "@/components/note";
 import { openSamplePurchase } from "@/lib/sample-purchase";
 import { STORAGE_ERROR, usePurchases } from "@/lib/use-purchases";

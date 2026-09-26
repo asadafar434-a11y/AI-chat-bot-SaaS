@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Island } from "@/components/island";
 import { Warnings } from "@/components/note";
+import { PriceTeaser } from "@/components/price-teaser";
 import { SourceQuote } from "@/components/purchase-bits";
 import { usePurchase } from "@/components/purchase-provider";
 import { NextStep, StepIntro, TabBody } from "@/components/purchase-view";
@@ -81,6 +82,8 @@ export default function RequirementsPage() {
           </Island>
         );
       })}
+
+      <PriceTeaser purchase={purchase} />
 
       <NextStep from="req" />
     </TabBody>

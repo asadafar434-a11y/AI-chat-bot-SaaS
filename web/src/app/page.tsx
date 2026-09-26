@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangleIcon, ChevronRightIcon, FolderIcon, PlusIcon, UserRoundIcon, type LucideIcon } from "lucide-react";
+import { CaretRightIcon, FolderIcon, PlusIcon, UserIcon, WarningIcon, type IconComponent } from "@/components/icons";
 import { AskBox } from "@/components/ask-box";
 import { Island } from "@/components/island";
 import { Note } from "@/components/note";
@@ -81,7 +81,7 @@ function DueText({ purchase }: { purchase: Purchase }) {
   );
 }
 
-function DataRow({ href, icon: Icon, title, sub, children }: { href: string; icon: LucideIcon; title: string; sub: string; children?: ReactNode }) {
+function DataRow({ href, icon: Icon, title, sub, children }: { href: string; icon: IconComponent; title: string; sub: string; children?: ReactNode }) {
   return (
     <li>
       <Link href={href} className={ROW}>
@@ -93,7 +93,7 @@ function DataRow({ href, icon: Icon, title, sub, children }: { href: string; ico
           <span className="t-caption truncate text-[var(--ink-3)]">{sub}</span>
           {children}
         </span>
-        <ChevronRightIcon className="my-auto size-4 text-[var(--ink-3)]" />
+        <CaretRightIcon className="my-auto size-4 text-[var(--ink-3)]" />
       </Link>
     </li>
   );
@@ -218,7 +218,7 @@ export default function HomePage() {
         <div className="grid items-start gap-2 split:grid-cols-[minmax(0,1.6fr)_minmax(300px,1fr)]">
           <div className="grid min-w-0 gap-2">
             {(error || sampleError) && (
-              <Note tone="warn" icon={AlertTriangleIcon}>
+              <Note tone="warn" icon={WarningIcon}>
                 {STORAGE_ERROR}
               </Note>
             )}
@@ -239,7 +239,7 @@ export default function HomePage() {
                             <span className="t-strong line-clamp-2">{t.text}</span>
                             <span className="t-caption truncate text-[var(--ink-3)]">{t.sub}</span>
                           </span>
-                          <ChevronRightIcon className="my-auto size-4 text-[var(--ink-3)]" />
+                          <CaretRightIcon className="my-auto size-4 text-[var(--ink-3)]" />
                         </Link>
                       </li>
                     ))}
@@ -276,7 +276,7 @@ export default function HomePage() {
                             </span>
                             <span className={`t-tag mt-0.5 ${TONE_TEXT[stage.tone]}`}>{stage.text}</span>
                           </span>
-                          <ChevronRightIcon className="my-auto size-4 text-[var(--ink-3)]" />
+                          <CaretRightIcon className="my-auto size-4 text-[var(--ink-3)]" />
                         </Link>
                       </li>
                     );
@@ -296,7 +296,7 @@ export default function HomePage() {
               <ul className={ROWS}>
                 <DataRow
                   href="/me/profile"
-                  icon={UserRoundIcon}
+                  icon={UserIcon}
                   title="Реквизиты"
                   sub={me ? `Заполнено ${me.filled} из ${total} · для анкеты и декларации` : "…"}
                 >

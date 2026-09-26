@@ -403,14 +403,19 @@
   .marks li { display: grid; grid-template-columns: 16px minmax(0, 1fr); align-items: center; gap: 12px; }
   .mark-dot { width: 10px; height: 10px; justify-self: center; border-radius: 50%; }
   /* Подписи в строке шагов сокращаются, только когда не помещаются (fitTabs): сначала «ТП», потом «Проверка»,
-     потом у «Цены» и «Вопросов» остаются значки, в последнюю очередь пропадают стрелки между шагами. Диктор читает
-     полное название. Не помещается и так — строка прокручивается. */
+     потом у «Цены» и «Вопросов» остаются значки, потом пропадают стрелки между шагами. Диктор читает полное
+     название. Не помещается и так (телефон) — инструменты с подписями уходят на свою строку, шаги листаются
+     отдельно: иначе «Цена» и «Вопросы» оказываются за краем экрана. */
   .tab .short { display: none; }
   .tabs[data-short-tp] .full-tp, .tabs[data-short-check] .full-check, .tabs[data-icons] .aside-lbl {
     position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
   }
   .tabs[data-short-tp] .short-tp, .tabs[data-short-check] .short-check { display: inline; }
   .tabs[data-tight] .step-sep { display: none; }
+  .tabs[data-stack] { flex-wrap: wrap; row-gap: 4px; }
+  .tabs[data-stack] .steps { flex: 1 0 100%; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .tabs[data-stack] .steps::-webkit-scrollbar { display: none; }
+  .tabs[data-stack] .tab-tools { margin-left: 0; }
   .tabs::-webkit-scrollbar { display: none; }
   /* Шаг, «Цена» и «Вопросы» — пункты-пилюли, как пункты меню в острове: открытый — индиго-тинт */
   .tab {
@@ -547,6 +552,59 @@
   .res-text { font: var(--t-body); color: var(--ink-2); }
   .res-warn { font: var(--t-strong); color: var(--warn); }
   .hint, .cell-sub, .res-label, .calc-table thead th { letter-spacing: 0; }
+  /* Шкала цены: зоны убытка и без убытка — бледные заливки статусов с иконкой и подписью, граница антидемпинга,
+     круглая ручка — ваша цена. Ползунок поверх прозрачный, бегунок в 1 px — чтобы цена совпадала со шкалой. */
+  .scale-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 24px; }
+  .profit { display: grid; align-content: start; gap: 2px; }
+  .profit-head { font: var(--t-strong); }
+  .profit-line { display: flex; align-items: center; gap: 6px; font: var(--t-body); }
+  .ok-ic, .bad-ic { display: inline-flex; }
+  .ok-ic { color: var(--ok); }
+  .bad-ic { color: var(--danger); }
+  .scale { display: grid; gap: 6px; }
+  .scale-top { position: relative; height: 20px; }
+  .scale-floor, .scale-tip { position: absolute; top: 0; margin: 0; padding: 2px 4px; border-radius: 6px; white-space: nowrap; font: var(--t-caption); color: var(--ink-2); }
+  button.scale-floor { border: 0; background: none; cursor: pointer; }
+  button.scale-floor:hover { background: var(--hover); }
+  .scale-floor b, .scale-tip b { font-family: var(--mono); font-weight: 600; color: var(--ink); }
+  .scale-tip { padding-inline: 6px; background: var(--card); box-shadow: var(--float); pointer-events: none; }
+  .scale-track { position: relative; height: 32px; }
+  .zones { position: absolute; inset: 4px 0; display: flex; gap: 2px; }
+  .zone { container-type: inline-size; display: flex; align-items: center; min-width: 0; }
+  .zone.loss { border-radius: 6px 0 0 6px; background: color-mix(in srgb, var(--danger) 14%, var(--paper)); }
+  .zone.ok { flex: 1; justify-content: flex-end; border-radius: 0 6px 6px 0; background: var(--ok-tint); }
+  .zone.none { flex: 1; border-radius: 6px; background: var(--paper-2); }
+  .zone.all { flex: 1; border-radius: 6px; }
+  .zone-label { display: none; align-items: center; gap: 4px; padding: 0 8px; white-space: nowrap; font: var(--t-tag); color: var(--ink-2); }
+  /* Справа — место под ручку: без вашей цены она стоит на начальной */
+  .zone.ok .zone-label { padding-right: 16px; }
+  .zone.loss .zone-label svg { color: var(--danger); }
+  .zone.ok .zone-label svg { color: var(--ok); }
+  @container (width >= 92px) { .zone.loss .zone-label { display: flex; } }
+  @container (width >= 124px) { .zone.ok .zone-label { display: flex; } }
+  .scale-caret { position: absolute; top: 0; width: 1px; height: 4px; background: var(--ink-3); }
+  .scale-hover { position: absolute; top: 4px; width: 1px; height: 24px; background: var(--ink-2); pointer-events: none; }
+  .scale-range { position: absolute; inset: 0; z-index: 1; width: 100%; height: 32px; margin: 0; opacity: 0; cursor: pointer; appearance: none; background: transparent; }
+  .scale-range::-webkit-slider-thumb { appearance: none; width: 1px; height: 32px; }
+  .scale-range::-moz-range-thumb { width: 1px; height: 32px; border: 0; }
+  .scale-pin { position: absolute; top: 8px; width: 16px; height: 16px; translate: -50% 0; border-radius: 50%; background: var(--brand); box-shadow: 0 0 0 2px var(--paper), 0 1px 3px rgb(16 18 39 / .3); pointer-events: none; }
+  .scale-range:focus-visible + .scale-pin { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .scale-band { height: 4px; }
+  .scale-band i { display: block; height: 4px; border-radius: 999px; background: var(--warn); }
+  .scale-ticks { position: relative; height: 16px; color: var(--ink-3); }
+  .scale-ticks span { position: absolute; top: 0; white-space: nowrap; font: var(--t-num); }
+  .scale-ticks span.word { font: var(--t-caption); }
+  .scale-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin: 0; font: var(--t-caption); color: var(--ink-3); }
+  .scale-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .scale-legend i { flex: none; width: 12px; height: 4px; border-radius: 999px; background: var(--warn); }
+  /* Вход в калькулятор на шаге «Требования» */
+  .teaser { display: grid; gap: 12px; padding: 12px var(--pad); }
+  .teaser-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+  .teaser-main { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+  .teaser-ic { display: grid; flex: none; place-items: center; width: 36px; height: 36px; border-radius: var(--r-card); background: var(--brand-tint); color: var(--brand); }
+  .teaser .next-title { margin: 0; }
+  .tab.aside.accent > svg { color: var(--brand); }
+  .fact-link { display: block; margin-top: 2px; text-align: left; font-size: 12px; line-height: 16px; }
 
   /* ---------- загрузка и ожидание ---------- */
   .drop {
@@ -753,37 +811,43 @@
   };
   const plural = (n, one, few, many) => { const a = Math.abs(n) % 100, b = a % 10; return a > 10 && a < 20 ? many : b === 1 ? one : b >= 2 && b <= 4 ? few : many; };
 
-  /* ---------- иконки (lucide) ---------- */
-  const PATHS = {
-    scale: '<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>',
-    menu: '<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/>',
-    x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
-    home: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
-    chat: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
-    plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
-    chev: '<path d="m9 18 6-6-6-6"/>',
-    back: '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
-    down: '<path d="m6 9 6 6 6-6"/>',
-    search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
-    list: '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>',
-    panel: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/>',
-    landmark: '<path d="M3 22h18"/><path d="M6 18v-7"/><path d="M10 18v-7"/><path d="M14 18v-7"/><path d="M18 18v-7"/><path d="M12 2 20 7H4z"/>',
-    ruble: '<path d="M6 11h8a4 4 0 0 0 0-8H9v18"/><path d="M6 15h8"/>',
-    moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
-    file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
-    clip: '<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
-    up: '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
-    clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
-    alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
-    check: '<path d="M20 6 9 17l-5-5"/>',
-    pen: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
-    upload: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M12 17v-6"/><path d="m9 14 3-3 3 3"/>',
-    user: '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>',
-    folder: '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
-    info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
-    calc: '<rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/>',
+  /* ---------- иконки: набор Craftwork Outline из Figma (узел 8029:378), недостающие дорисованы в том же стиле ---------- */
+  // Первая буква пути: f — заливка, e — заливка чёт-нечет, s — обводка 1,5 (в мелком кружке шага галочку делаем жирнее).
+  const ICONS = {
+    scale: ["sM12 4.25V19.25", "sM8.25 19.25H15.75", "sM5.5 7H18.5", "sM3.5 13.25L5.5 7L7.5 13.25", "sM16.5 13.25L18.5 7L20.5 13.25", "sM3.25 13.25H7.75A2.25 2.25 0 0 1 3.25 13.25Z", "sM16.25 13.25H20.75A2.25 2.25 0 0 1 16.25 13.25Z"],
+    menu: ["eM19.75 12C19.75 11.59 19.41 11.25 19 11.25H5C4.59 11.25 4.25 11.59 4.25 12C4.25 12.41 4.59 12.75 5 12.75H19C19.41 12.75 19.75 12.41 19.75 12Z", "eM19.75 7C19.75 6.59 19.41 6.25 19 6.25H5C4.59 6.25 4.25 6.59 4.25 7C4.25 7.41 4.59 7.75 5 7.75H19C19.41 7.75 19.75 7.41 19.75 7Z", "eM19.75 17C19.75 16.59 19.41 16.25 19 16.25H5C4.59 16.25 4.25 16.59 4.25 17C4.25 17.41 4.59 17.75 5 17.75H19C19.41 17.75 19.75 17.41 19.75 17Z"],
+    x: ["sM8.46 15.54L15.54 8.46", "sM8.46 8.46L15.54 15.54"],
+    home: ["eM13.56 5.53C12.69 4.7 11.31 4.7 10.44 5.53L5.82 9.97C5.7 10.08 5.63 10.22 5.6 10.38C5.04 13.4 5 16.49 5.48 19.53L5.59 20.25H8.57V14.04C8.57 13.62 8.9 13.29 9.32 13.29H14.68C15.1 13.29 15.43 13.62 15.43 14.04V20.25H18.41L18.52 19.53C19 16.49 18.96 13.4 18.4 10.38C18.37 10.22 18.3 10.08 18.18 9.97L13.56 5.53ZM9.4 4.45C10.85 3.06 13.15 3.06 14.6 4.45L19.22 8.89C19.56 9.22 19.79 9.64 19.88 10.11C20.46 13.3 20.51 16.56 20.01 19.76L19.82 20.92C19.75 21.4 19.34 21.75 18.85 21.75H14.68C14.27 21.75 13.93 21.41 13.93 21V14.79H10.07V21C10.07 21.41 9.73 21.75 9.32 21.75H5.15C4.66 21.75 4.25 21.4 4.18 20.92L3.99 19.76C3.49 16.56 3.54 13.3 4.12 10.11C4.21 9.64 4.44 9.22 4.78 8.89L9.4 4.45Z"],
+    chat: ["fM8 9.5C7.31 9.5 6.75 10.06 6.75 10.75C6.75 11.44 7.31 12 8 12C8.69 12 9.25 11.44 9.25 10.75C9.25 10.06 8.69 9.5 8 9.5Z", "fM12 9.5C11.31 9.5 10.75 10.06 10.75 10.75C10.75 11.44 11.31 12 12 12C12.69 12 13.25 11.44 13.25 10.75C13.25 10.06 12.69 9.5 12 9.5Z", "fM14.75 10.75C14.75 10.06 15.31 9.5 16 9.5C16.69 9.5 17.25 10.06 17.25 10.75C17.25 11.44 16.69 12 16 12C15.31 12 14.75 11.44 14.75 10.75Z", "eM16.1 4.59C13.41 4.36 10.7 4.35 8 4.55L7.81 4.57C5.24 4.76 3.25 6.9 3.25 9.48V18C3.25 18.26 3.39 18.51 3.62 18.64C3.84 18.78 4.12 18.79 4.36 18.66L8.27 16.56C8.45 16.46 8.65 16.41 8.86 16.41H17.83C18.97 16.41 19.94 15.6 20.14 14.49C20.55 12.23 20.58 9.92 20.24 7.65L20.13 6.98C19.95 5.77 18.95 4.84 17.72 4.73L16.1 4.59ZM8.11 6.05C10.73 5.85 13.36 5.86 15.97 6.09L17.6 6.23C18.13 6.27 18.57 6.68 18.65 7.21L18.75 7.88C19.08 9.98 19.04 12.12 18.66 14.22C18.59 14.62 18.24 14.91 17.83 14.91H8.86C8.4 14.91 7.96 15.02 7.56 15.24L4.75 16.75V9.48C4.75 7.69 6.13 6.2 7.92 6.06L8.11 6.05Z"],
+    plus: ["sM12 17V7", "sM7 12L17 12"],
+    chev: ["eM9.97 7.47C10.26 7.18 10.74 7.18 11.03 7.47L15.03 11.47C15.32 11.76 15.32 12.24 15.03 12.53L11.03 16.53C10.74 16.82 10.26 16.82 9.97 16.53C9.68 16.24 9.68 15.76 9.97 15.47L13.44 12L9.97 8.53C9.68 8.24 9.68 7.76 9.97 7.47Z"],
+    back: ["fM11.03 8.53C11.32 8.24 11.32 7.76 11.03 7.47C10.74 7.18 10.26 7.18 9.97 7.47L5.97 11.47C5.82 11.62 5.75 11.81 5.75 12C5.75 12.1 5.77 12.2 5.81 12.29C5.84 12.38 5.9 12.46 5.97 12.53L9.97 16.53C10.26 16.82 10.74 16.82 11.03 16.53C11.32 16.24 11.32 15.76 11.03 15.47L8.31 12.75H18C18.41 12.75 18.75 12.41 18.75 12C18.75 11.59 18.41 11.25 18 11.25H8.31L11.03 8.53Z"],
+    down: ["eM16.53 8.97C16.82 9.26 16.82 9.74 16.53 10.03L12.53 14.03C12.24 14.32 11.76 14.32 11.47 14.03L7.47 10.03C7.18 9.74 7.18 9.26 7.47 8.97C7.76 8.68 8.24 8.68 8.53 8.97L12 12.44L15.47 8.97C15.76 8.68 16.24 8.68 16.53 8.97Z"],
+    search: ["eM14.39 15.45C11.73 17.57 7.86 17.4 5.4 14.94C2.76 12.31 2.76 8.03 5.4 5.4C8.03 2.76 12.31 2.76 14.94 5.4C17.4 7.86 17.57 11.73 15.45 14.39L20.6 19.54C20.89 19.83 20.89 20.31 20.6 20.6C20.31 20.89 19.83 20.89 19.54 20.6L14.39 15.45ZM6.46 13.88C4.41 11.83 4.41 8.51 6.46 6.46C8.51 4.41 11.83 4.41 13.88 6.46C15.93 8.51 15.93 11.83 13.89 13.88C13.89 13.88 13.89 13.88 13.88 13.88C13.88 13.89 13.88 13.89 13.88 13.89C11.83 15.93 8.51 15.93 6.46 13.88Z"],
+    list: ["eM15.65 4.26L16.46 4.36C18.34 4.6 19.75 6.19 19.75 8.09V18.57C19.75 20.41 18.38 21.96 16.56 22.19C13.53 22.57 10.47 22.57 7.44 22.19C5.62 21.96 4.25 20.41 4.25 18.57V8.09C4.25 6.19 5.66 4.6 7.54 4.36L8.35 4.26C8.67 3.1 9.74 2.25 11 2.25H13C14.26 2.25 15.33 3.1 15.65 4.26ZM8.25 5.79L7.72 5.85C6.6 5.99 5.75 6.95 5.75 8.09V18.57C5.75 19.66 6.55 20.57 7.63 20.7C10.53 21.06 13.47 21.06 16.37 20.7C17.45 20.57 18.25 19.66 18.25 18.57V8.09C18.25 6.95 17.4 5.99 16.28 5.85L15.75 5.79V7C15.75 7.41 15.41 7.75 15 7.75H9C8.59 7.75 8.25 7.41 8.25 7V5.79ZM9.75 5C9.75 4.31 10.31 3.75 11 3.75H13C13.69 3.75 14.25 4.31 14.25 5V6.25H9.75V5Z", "fM15.75 11.75C15.75 11.34 15.41 11 15 11H9C8.59 11 8.25 11.34 8.25 11.75C8.25 12.16 8.59 12.5 9 12.5H15C15.41 12.5 15.75 12.16 15.75 11.75Z", "fM14.75 14.75C14.75 14.34 14.41 14 14 14H9C8.59 14 8.25 14.34 8.25 14.75C8.25 15.16 8.59 15.5 9 15.5H14C14.41 15.5 14.75 15.16 14.75 14.75Z"],
+    panel: ["eM7.32 3.77C10.4 3.42 13.6 3.42 16.68 3.77C18.51 3.97 19.98 5.41 20.2 7.25C20.57 10.41 20.57 13.59 20.2 16.75C19.98 18.59 18.51 20.03 16.68 20.23C13.6 20.58 10.4 20.58 7.32 20.23C5.49 20.03 4.02 18.59 3.8 16.75C3.43 13.59 3.43 10.41 3.8 7.25C4.02 5.41 5.49 3.97 7.32 3.77ZM16.52 5.26C13.54 4.93 10.46 4.93 7.48 5.26C6.34 5.39 5.42 6.29 5.29 7.42C4.93 10.46 4.93 13.54 5.29 16.58C5.42 17.71 6.34 18.61 7.48 18.74C10.46 19.07 13.54 19.07 16.52 18.74C17.66 18.61 18.58 17.71 18.71 16.58C19.07 13.54 19.07 10.46 18.71 7.42C18.58 6.29 17.66 5.39 16.52 5.26Z", "sM14.25 5V19"],
+    landmark: ["eM11.42 2.4C11.8 2.28 12.2 2.28 12.58 2.4L15.57 3.31C17.13 3.79 18.61 4.5 19.96 5.4C21.01 6.11 20.52 7.75 19.25 7.75H4.75C3.48 7.75 2.99 6.11 4.04 5.4C5.39 4.5 6.87 3.79 8.43 3.31L11.42 2.4ZM12.14 3.83C12.05 3.8 11.95 3.8 11.86 3.83L8.87 4.75C7.69 5.11 6.56 5.61 5.5 6.25H18.5C17.44 5.61 16.31 5.11 15.13 4.75L12.14 3.83Z", "fM4.25 21C4.25 20.59 4.59 20.25 5 20.25H19C19.41 20.25 19.75 20.59 19.75 21C19.75 21.41 19.41 21.75 19 21.75H5C4.59 21.75 4.25 21.41 4.25 21Z", "fM6.25 17C6.25 17.41 6.59 17.75 7 17.75C7.41 17.75 7.75 17.41 7.75 17L7.75 11C7.75 10.59 7.41 10.25 7 10.25C6.59 10.25 6.25 10.59 6.25 11L6.25 17Z", "fM12 17.75C11.59 17.75 11.25 17.41 11.25 17L11.25 11C11.25 10.59 11.59 10.25 12 10.25C12.41 10.25 12.75 10.59 12.75 11V17C12.75 17.41 12.41 17.75 12 17.75Z", "fM16.25 17C16.25 17.41 16.59 17.75 17 17.75C17.41 17.75 17.75 17.41 17.75 17V11C17.75 10.59 17.41 10.25 17 10.25C16.59 10.25 16.25 10.59 16.25 11V17Z"],
+    ruble: ["sM9.25 19.25V4.75H13.5A3.75 3.75 0 0 1 13.5 12.25H9.25", "sM6.75 15.75H14.25"],
+    moon: ["eM11.49 4.77C7.72 5.03 4.75 8.17 4.75 12C4.75 16 8 19.25 12 19.25C15.21 19.25 17.93 17.17 18.88 14.28C18.15 14.58 17.34 14.75 16.5 14.75C13.05 14.75 10.25 11.95 10.25 8.5C10.25 7.1 10.71 5.81 11.49 4.77ZM3.25 12C3.25 7.17 7.17 3.25 12 3.25C12.45 3.25 12.89 3.28 13.32 3.35C13.62 3.4 13.87 3.62 13.94 3.91C14.01 4.2 13.9 4.51 13.66 4.69C12.5 5.56 11.75 6.94 11.75 8.5C11.75 11.12 13.88 13.25 16.5 13.25C17.63 13.25 18.67 12.85 19.49 12.19C19.73 12 20.05 11.97 20.32 12.11C20.58 12.26 20.74 12.54 20.71 12.84C20.28 17.28 16.55 20.75 12 20.75C7.17 20.75 3.25 16.83 3.25 12Z"],
+    file: ["fM15.75 13C15.75 12.59 15.41 12.25 15 12.25H9C8.59 12.25 8.25 12.59 8.25 13C8.25 13.41 8.59 13.75 9 13.75H15C15.41 13.75 15.75 13.41 15.75 13Z", "fM15.75 17C15.75 16.59 15.41 16.25 15 16.25H9C8.59 16.25 8.25 16.59 8.25 17C8.25 17.41 8.59 17.75 9 17.75H15C15.41 17.75 15.75 17.41 15.75 17Z", "eM7 2.25C5.48 2.25 4.25 3.48 4.25 5V19C4.25 20.52 5.48 21.75 7 21.75H17C18.52 21.75 19.75 20.52 19.75 19V7.97C19.75 7.59 19.63 7.22 19.4 6.91L16.4 2.95C16.07 2.51 15.55 2.25 15 2.25H7ZM5.75 5C5.75 4.31 6.31 3.75 7 3.75H14.25V8.15C14.25 8.56 14.59 8.9 15 8.9H18.25V19C18.25 19.69 17.69 20.25 17 20.25H7C6.31 20.25 5.75 19.69 5.75 19V5Z"],
+    clip: ["eM2.25 12C2.25 8.27 5.27 5.25 9 5.25H17C19.62 5.25 21.75 7.38 21.75 10C21.75 12.62 19.62 14.75 17 14.75H8.86C7.34 14.75 6.11 13.52 6.11 12C6.11 10.48 7.34 9.25 8.86 9.25H16.71C17.13 9.25 17.46 9.59 17.46 10C17.46 10.41 17.13 10.75 16.71 10.75H8.86C8.17 10.75 7.61 11.31 7.61 12C7.61 12.69 8.17 13.25 8.86 13.25H17C18.79 13.25 20.25 11.79 20.25 10C20.25 8.21 18.79 6.75 17 6.75H9C6.1 6.75 3.75 9.1 3.75 12C3.75 14.9 6.1 17.25 9 17.25H16.71C17.13 17.25 17.46 17.59 17.46 18C17.46 18.41 17.13 18.75 16.71 18.75H9C5.27 18.75 2.25 15.73 2.25 12Z"],
+    send: ["eM21.75 12C21.75 12.27 21.6 12.52 21.36 12.66L19.08 13.92C14.57 16.43 9.81 18.47 4.89 20.01L4.22 20.22C4 20.29 3.75 20.25 3.56 20.1C3.36 19.96 3.25 19.74 3.25 19.5L3.25 13.75C3.25 13.36 3.55 13.03 3.94 13L4.17 12.98C6.32 12.81 8.45 12.48 10.56 12C8.42 11.51 6.26 11.18 4.08 11.01L3.94 11C3.55 10.97 3.25 10.64 3.25 10.25L3.25 4.5C3.25 4.26 3.36 4.04 3.56 3.9C3.75 3.75 4 3.71 4.22 3.78L4.89 3.99C9.81 5.53 14.57 7.57 19.08 10.08L21.36 11.34C21.6 11.48 21.75 11.73 21.75 12ZM19.46 12L18.35 11.39C14.03 8.98 9.47 7.02 4.75 5.52L4.75 9.56C7.68 9.82 10.58 10.37 13.4 11.19L13.71 11.28C14.03 11.37 14.25 11.67 14.25 12C14.25 12.33 14.03 12.63 13.71 12.72L13.32 12.83C10.52 13.64 7.65 14.18 4.75 14.44L4.75 18.48C9.47 16.98 14.03 15.02 18.35 12.61L19.46 12Z"],
+    clock: ["fM12.75 7C12.75 6.59 12.41 6.25 12 6.25C11.59 6.25 11.25 6.59 11.25 7V12C11.25 12.26 11.38 12.5 11.6 12.64L14.6 14.51C14.95 14.73 15.42 14.62 15.64 14.27C15.86 13.92 15.75 13.46 15.4 13.24L12.75 11.58V7Z", "eM12 3.25C7.17 3.25 3.25 7.17 3.25 12C3.25 16.83 7.17 20.75 12 20.75C16.83 20.75 20.75 16.83 20.75 12C20.75 7.17 16.83 3.25 12 3.25ZM4.75 12C4.75 8 8 4.75 12 4.75C16 4.75 19.25 8 19.25 12C19.25 16 16 19.25 12 19.25C8 19.25 4.75 16 4.75 12Z"],
+    alert: ["fM13 9C13 9.55 12.55 10 12 10C11.45 10 11 9.55 11 9C11 8.45 11.45 8 12 8C12.55 8 13 8.45 13 9Z", "fM12 11.75C12.41 11.75 12.75 12.09 12.75 12.5V17.5C12.75 17.91 12.41 18.25 12 18.25C11.59 18.25 11.25 17.91 11.25 17.5V12.5C11.25 12.09 11.59 11.75 12 11.75Z", "eM14.27 3.99C13.18 2.39 10.82 2.39 9.73 3.99L9.3 4.62C6.59 8.58 4.27 12.79 2.35 17.19L2.26 17.4C1.59 18.95 2.61 20.71 4.29 20.89C9.41 21.47 14.59 21.47 19.71 20.89C21.39 20.71 22.41 18.95 21.74 17.4L21.65 17.19C19.73 12.79 17.41 8.58 14.7 4.62L14.27 3.99ZM10.97 4.84C11.46 4.11 12.54 4.11 13.03 4.84L13.46 5.47C16.12 9.35 18.4 13.48 20.27 17.79L20.36 17.99C20.63 18.62 20.22 19.33 19.55 19.4C14.53 19.96 9.47 19.96 4.45 19.4C3.78 19.33 3.37 18.62 3.64 17.99L3.73 17.79C5.6 13.48 7.88 9.35 10.54 5.47L10.97 4.84Z"],
+    check: ["sM6.5 11.5L10.5 15.5L17.5 8.5"],
+    pen: ["eM21.45 5.42C21.65 5.71 21.62 6.1 21.36 6.36L12.17 15.55C12.07 15.65 11.95 15.71 11.83 15.75L8 16.75C7.87 16.78 7.74 16.78 7.62 16.75C7.49 16.71 7.37 16.65 7.28 16.55C7.09 16.36 7.01 16.09 7.08 15.83L8.08 12C8.11 11.89 8.17 11.78 8.24 11.69L17.47 2.47C17.55 2.39 17.65 2.33 17.75 2.29C17.83 2.26 17.92 2.25 18 2.25C18.2 2.25 18.39 2.33 18.53 2.47L21.36 5.3C21.4 5.33 21.43 5.37 21.45 5.42ZM19.77 5.83L18 4.06L9.48 12.58L8.86 14.97L11.25 14.35L19.77 5.83Z", "fM19.64 17.16C19.91 14.82 20 12.47 19.9 10.12C19.9 10.01 19.94 9.9 20.02 9.82L21 8.84C21.12 8.72 21.33 8.79 21.34 8.96C21.53 11.75 21.46 14.55 21.13 17.33C20.89 19.36 19.27 20.94 17.26 21.17C13.79 21.55 10.21 21.55 6.74 21.17C4.73 20.94 3.11 19.36 2.87 17.33C2.45 13.79 2.45 10.21 2.87 6.67C3.11 4.64 4.73 3.06 6.74 2.83C9.37 2.54 12.07 2.47 14.73 2.62C14.9 2.63 14.98 2.84 14.86 2.96L13.87 3.95C13.79 4.03 13.68 4.07 13.57 4.07C11.34 3.99 9.1 4.08 6.91 4.32C5.58 4.47 4.51 5.52 4.36 6.84C3.96 10.27 3.96 13.73 4.36 17.16C4.51 18.48 5.58 19.53 6.91 19.68C10.26 20.05 13.74 20.05 17.09 19.68C18.42 19.53 19.49 18.48 19.64 17.16Z"],
+    upload: ["eM4.25 5C4.25 3.48 5.48 2.25 7 2.25H14.99C15.55 2.25 16.08 2.52 16.41 2.98L19.42 7.18C19.64 7.47 19.75 7.83 19.75 8.2V19C19.75 20.52 18.52 21.75 17 21.75H7C5.48 21.75 4.25 20.52 4.25 19V5ZM7 3.75C6.31 3.75 5.75 4.31 5.75 5V19C5.75 19.69 6.31 20.25 7 20.25H17C17.69 20.25 18.25 19.69 18.25 19V8.9H15C14.59 8.9 14.25 8.56 14.25 8.15V3.75H7Z", "fM15.09 13.22C14.83 13.54 14.36 13.59 14.03 13.34L12.75 12.31V15.75C12.75 16.16 12.41 16.5 12 16.5C11.59 16.5 11.25 16.16 11.25 15.75V12.31L9.97 13.34C9.65 13.59 9.17 13.54 8.91 13.22C8.66 12.9 8.71 12.42 9.03 12.16L11.53 10.17C11.66 10.06 11.82 10 11.99 10C12 10 12 10 12 10L12 10C12.18 10 12.35 10.06 12.47 10.17L14.97 12.16C15.29 12.42 15.34 12.9 15.09 13.22Z"],
+    user: ["eM7.75 7.5C7.75 5.15 9.65 3.25 12 3.25C14.35 3.25 16.25 5.15 16.25 7.5C16.25 9.85 14.35 11.75 12 11.75C9.65 11.75 7.75 9.85 7.75 7.5ZM12 4.75C10.48 4.75 9.25 5.98 9.25 7.5C9.25 9.02 10.48 10.25 12 10.25C13.52 10.25 14.75 9.02 14.75 7.5C14.75 5.98 13.52 4.75 12 4.75Z", "eM8 14.75C6.76 14.75 5.75 15.76 5.75 17V18.19C5.75 18.21 5.76 18.22 5.78 18.22C9.9 18.9 14.1 18.9 18.22 18.22C18.24 18.22 18.25 18.21 18.25 18.19V17C18.25 15.76 17.24 14.75 16 14.75H15.66C15.63 14.75 15.61 14.75 15.58 14.76L14.72 15.05C12.95 15.62 11.05 15.62 9.28 15.05L8.42 14.76C8.39 14.75 8.37 14.75 8.34 14.75H8ZM4.25 17C4.25 14.93 5.93 13.25 8 13.25H8.34C8.53 13.25 8.71 13.28 8.88 13.34L9.75 13.62C11.21 14.1 12.79 14.1 14.25 13.62L15.12 13.34C15.29 13.28 15.47 13.25 15.66 13.25H16C18.07 13.25 19.75 14.93 19.75 17V18.19C19.75 18.94 19.2 19.58 18.46 19.71C14.18 20.4 9.82 20.4 5.54 19.71C4.8 19.58 4.25 18.94 4.25 18.19V17Z"],
+    folder: ["eM19.6 16.98C20.02 14.67 20.05 12.3 19.68 9.98L19.62 9.58C19.53 9.02 19.04 8.61 18.47 8.61H9.76C9.17 8.61 8.7 8.13 8.7 7.55C8.7 7.11 8.34 6.75 7.9 6.75H5.61C5.01 6.75 4.51 7.2 4.44 7.79L4.17 10.06C3.9 12.32 3.97 14.61 4.38 16.85C4.47 17.36 4.89 17.74 5.41 17.78L6.92 17.88C10.3 18.13 13.7 18.13 17.08 17.88L18.72 17.77C19.16 17.74 19.52 17.41 19.6 16.98ZM21.16 9.75C21.56 12.23 21.53 14.77 21.08 17.25C20.87 18.35 19.95 19.18 18.83 19.26L17.19 19.38C13.73 19.63 10.27 19.63 6.81 19.38L5.3 19.27C4.1 19.19 3.12 18.3 2.9 17.12C2.46 14.73 2.39 12.29 2.68 9.88L2.95 7.61C3.11 6.26 4.26 5.25 5.61 5.25L7.9 5.25C9.02 5.25 9.95 6.05 10.16 7.11L18.47 7.11C19.78 7.11 20.89 8.06 21.1 9.35L21.16 9.75Z"],
+    info: ["fM12 10.75C12.41 10.75 12.75 11.09 12.75 11.5V16.5C12.75 16.91 12.41 17.25 12 17.25C11.59 17.25 11.25 16.91 11.25 16.5V11.5C11.25 11.09 11.59 10.75 12 10.75Z", "fM12 9C12.55 9 13 8.55 13 8C13 7.45 12.55 7 12 7C11.45 7 11 7.45 11 8C11 8.55 11.45 9 12 9Z", "eM3.25 12C3.25 7.17 7.17 3.25 12 3.25C16.83 3.25 20.75 7.17 20.75 12C20.75 16.83 16.83 20.75 12 20.75C7.17 20.75 3.25 16.83 3.25 12ZM12 4.75C8 4.75 4.75 8 4.75 12C4.75 16 8 19.25 12 19.25C16 19.25 19.25 16 19.25 12C19.25 8 16 4.75 12 4.75Z"],
+    help: ["eM3.25 12C3.25 7.17 7.17 3.25 12 3.25C16.83 3.25 20.75 7.17 20.75 12C20.75 16.83 16.83 20.75 12 20.75C7.17 20.75 3.25 16.83 3.25 12ZM12 4.75C8 4.75 4.75 8 4.75 12C4.75 16 8 19.25 12 19.25C16 19.25 19.25 16 19.25 12C19.25 8 16 4.75 12 4.75Z", "eM12 8.12C11.05 8.12 10.25 8.93 10.25 9.95C10.25 10.37 9.91 10.7 9.5 10.7C9.09 10.7 8.75 10.37 8.75 9.95C8.75 8.13 10.19 6.62 12 6.62C13.81 6.62 15.25 8.13 15.25 9.95C15.25 11.38 14.36 12.61 13.1 13.07C12.97 13.12 12.87 13.19 12.81 13.26C12.75 13.32 12.75 13.36 12.75 13.38C12.75 13.79 12.41 14.12 12 14.12C11.59 14.12 11.25 13.79 11.25 13.38C11.25 12.46 11.99 11.88 12.58 11.66C13.25 11.41 13.75 10.74 13.75 9.95C13.75 8.93 12.95 8.12 12 8.12Z", "fM13 16.38C13 16.93 12.55 17.38 12 17.38C11.45 17.38 11 16.93 11 16.38C11 15.82 11.45 15.38 12 15.38C12.55 15.38 13 15.82 13 16.38Z"],
+    calc: ["sM8.5 3.75C10.83 3.49 13.17 3.49 15.5 3.75C16.93 3.91 18.09 5.07 18.25 6.5C18.66 10.17 18.66 13.83 18.25 17.5C18.09 18.93 16.93 20.09 15.5 20.25C13.17 20.51 10.83 20.51 8.5 20.25C7.07 20.09 5.91 18.93 5.75 17.5C5.34 13.83 5.34 10.17 5.75 6.5C5.91 5.07 7.07 3.91 8.5 3.75Z", "sM9.6 6.5C11.2 6.32 12.8 6.32 14.4 6.5C14.97 6.56 15.44 7.03 15.5 7.6C15.53 7.87 15.53 8.13 15.5 8.4C15.44 8.97 14.97 9.44 14.4 9.5C12.8 9.68 11.2 9.68 9.6 9.5C9.03 9.44 8.56 8.97 8.5 8.4C8.47 8.13 8.47 7.87 8.5 7.6C8.56 7.03 9.03 6.56 9.6 6.5Z", "fM7.75 13.25A1 1 0 1 0 9.75 13.25A1 1 0 1 0 7.75 13.25Z", "fM11 13.25A1 1 0 1 0 13 13.25A1 1 0 1 0 11 13.25Z", "fM14.25 13.25A1 1 0 1 0 16.25 13.25A1 1 0 1 0 14.25 13.25Z", "fM7.75 16.5A1 1 0 1 0 9.75 16.5A1 1 0 1 0 7.75 16.5Z", "fM11 16.5A1 1 0 1 0 13 16.5A1 1 0 1 0 11 16.5Z", "fM14.25 16.5A1 1 0 1 0 16.25 16.5A1 1 0 1 0 14.25 16.5Z"],
   };
-  const ic = (name, size = 18) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PATHS[name]}</svg>`;
+  const ic = (name, size = 18, weight = 1.5) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="currentColor" aria-hidden="true">${ICONS[name].map((p) => {
+    const d = p.slice(1);
+    if (p[0] === "s") return `<path d="${d}" fill="none" stroke="currentColor" stroke-width="${weight}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    return p[0] === "e" ? `<path d="${d}" fill-rule="evenodd" clip-rule="evenodd"/>` : `<path d="${d}"/>`;
+  }).join("")}</svg>`;
 
   /* ---------- выдержки из законов: дословно, из web/src/data/laws (pravo.gov.ru) ---------- */
   const LAW = {
@@ -949,15 +1013,36 @@
   // уводит в убыток, поэтому нижняя цена — на копейку выше трёх четвертей начальной.
   function priceFloor(c) {
     const r = calcReady(c);
-    if (!r) return { floor: { ok: false, reason: "input" }, at: () => null };
+    if (!r) return { floor: { ok: false, reason: "input" }, at: () => null, raisedBelow: null };
     const at = (price) => (price > 0 ? breakdownAt(r, price) : null);
-    const done = (price, kind) => ({ floor: { ok: true, price, kind, aboveNmck: price > r.nmck }, at });
+    // Самая высокая цена, при которой обеспечение уже повышенное; null — антидемпинг не действует.
+    const raisedBelow = r.antiDumping ? Math.floor((3 * kopecks(r.nmck)) / 4) / 100 : null;
+    const done = (price, kind) => ({ floor: { ok: true, price, kind, aboveNmck: price > r.nmck }, at, raisedBelow });
     const plain = breakEven(r, r.share);
-    if (plain === null) return { floor: { ok: false, reason: "impossible" }, at };
+    if (plain === null) return { floor: { ok: false, reason: "impossible" }, at, raisedBelow };
     if (!raisedAt(r, ceilKopecks(plain))) return done(ceilKopecks(plain), "plain");
     const raised = breakEven(r, r.raisedShare);
     if (raised !== null && raisedAt(r, ceilKopecks(raised))) return done(ceilKopecks(raised), "antiDumping");
     return done((Math.floor((3 * kopecks(r.nmck)) / 4) + 1) / 100, "threshold");
+  }
+  // Шкала цены: от начальной вниз, кратно 10 %, чтобы с запасом влезли нижняя цена и граница антидемпинга.
+  // Масштаб не зависит от вашей цены — иначе шкала сдвигалась бы под пальцем, пока тянете ползунок.
+  function scaleModel(nmck, floor, raisedBelow) {
+    const marks = [floor.ok ? floor.price : null, raisedBelow].filter((v) => v !== null && v > 0 && v < nmck);
+    const lowest = Math.min(nmck, ...marks);
+    const dropMax = Math.min(0.9, Math.max(0.3, Math.ceil((1 - lowest / nmck + 0.04) * 10 - 1e-9) / 10));
+    const step = 10 ** Math.max(0, Math.floor(Math.log10(nmck / 500)));
+    const lo = Math.floor((nmck * (1 - dropMax)) / step) * step;
+    const hi = nmck;
+    const x = (v) => ((Math.min(Math.max(v, lo), hi) - lo) / (hi - lo)) * 100;
+    const loss = !floor.ok ? "unknown" : floor.aboveNmck ? "all" : floor.price <= lo ? "none" : "part";
+    const every = dropMax > 0.6 ? 0.2 : 0.1;
+    const ticks = [];
+    for (let i = Math.floor(dropMax / every + 1e-9); i >= 0; i--) {
+      const drop = Math.round(i * every * 10) / 10;
+      ticks.push({ x: x(nmck * (1 - drop)), label: drop === 0 ? "начальная" : `−${Math.round(drop * 100)}\u00a0%` });
+    }
+    return { lo, hi, step, x, loss, floorX: loss === "part" ? x(floor.price) : null, raisedX: raisedBelow !== null && raisedBelow > lo ? x(raisedBelow) : null, ticks };
   }
   // «Обеспечение исполнения контракта — 5% от цены контракта». Между словами и процентом не должно быть
   // ни обеспечения заявки или гарантийных обязательств, ни нового предложения, ни «не требуется».
@@ -1620,7 +1705,7 @@
         </section>
       </div>
       <div class="side-foot">
-        ${nav("help", "info", "Как это работает", undefined, S.screen === "help")}
+        ${nav("help", "help", "Как это работает", undefined, S.screen === "help")}
         <button class="nav-item" type="button" role="switch" aria-checked="${isDark()}" data-act="theme">${ic("moon")}<span>Тёмная тема</span><span class="switch" aria-hidden="true"></span></button>
         <button class="me" type="button" data-go="profile" aria-label="Реквизиты: ${esc(name)}">
           <span class="avatar" aria-hidden="true">${esc(initials(name))}</span>
@@ -1747,7 +1832,7 @@
             <form class="askbox" id="home-form">
               <label class="circle" for="home-file" title="Приложить документ">${ic("clip", 18)}<span class="sr-only">Приложить документ</span><input id="home-file" type="file" multiple class="sr-only"></label>
               <textarea id="home-q" rows="1" placeholder="Ваш вопрос…" aria-label="Вопрос" data-enter>${esc(S.home.text)}</textarea>
-              <button class="circle send" type="submit" aria-label="Спросить">${ic("up")}</button>
+              <button class="circle send" type="submit" aria-label="Спросить">${ic("send")}</button>
             </form>
             ${files.length ? `<div class="chips">${files.map((n, i) => `<span class="file-chip">${ic("file", 14)}<span class="fc-name">${esc(n)}</span><button class="x" type="button" data-act="home-file-x" data-i="${i}" aria-label="Убрать ${esc(n)}">${ic("x", 14)}</button></span>`).join("")}</div>` : ""}
             <div class="chips">${GENERAL_SUGGEST.map((q) => `<button class="chip" type="button" data-act="home-q" data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div>
@@ -1791,7 +1876,7 @@
         <textarea id="${kind}-q" rows="1" placeholder="${placeholder}" aria-label="Вопрос" data-enter>${esc(S.drafts[kind] || "")}</textarea>
         <div class="prompt-foot">
           ${attach ? `<label class="tool-btn" for="g-file">${ic("clip", 14)}Документ<input id="g-file" type="file" multiple class="sr-only"></label>` : "<span></span>"}
-          <button class="circle send" type="submit" aria-label="Отправить">${ic("up")}</button>
+          <button class="circle send" type="submit" aria-label="Отправить">${ic("send")}</button>
         </div>
       </div>
       <p class="disclaimer">Ответы ИИ не являются юридической консультацией. Проверяйте нормы по первоисточнику.</p>
@@ -1846,13 +1931,13 @@
     const n = asked(p);
     const label = (st) => st.short === st.title ? esc(st.title) : `<span class="full-${st.key}">${esc(st.title)}</span><span class="short short-${st.key}" aria-hidden="true">${esc(st.short)}</span>`;
     const step = (st, i) => `<li>${i ? `<span class="step-sep" aria-hidden="true">${ic("chev", 14)}</span>` : ""}<button class="tab step" type="button" data-go="${st.key}" data-id="${p.id}"${S.screen === st.key ? ' aria-current="page"' : ""}>
-        <span class="step-dot ${st.state}${st.tone === "bad" ? " bad" : ""}" aria-hidden="true">${st.state === "done" ? ic("check", 12) : st.n}</span>
+        <span class="step-dot ${st.state}${st.tone === "bad" ? " bad" : ""}" aria-hidden="true">${st.state === "done" ? ic("check", 12, 3) : st.n}</span>
         <span class="step-text"><span class="step-title"><span class="sr-only">Шаг ${st.n}: </span>${label(st)}</span><span class="stage ${st.tone}">${esc(st.status)}</span></span>
       </button></li>`;
     return `<nav class="tabs" id="tabs" aria-label="Подготовка заявки">
       <ol class="steps">${stepsOf(p).map(step).join("")}</ol>
       <div class="tab-tools">
-        <button class="tab aside" type="button" data-go="price" data-id="${p.id}"${S.screen === "price" ? ' aria-current="page"' : ""} title="До какой цены снижаться">${ic("calc", 16)}<span class="aside-lbl">Цена<span class="sr-only"> — до какой цены снижаться</span></span></button>
+        <button class="tab aside accent" type="button" data-go="price" data-id="${p.id}"${S.screen === "price" ? ' aria-current="page"' : ""} title="До какой цены снижаться">${ic("calc", 16)}<span class="aside-lbl">Цена<span class="sr-only"> — до какой цены снижаться</span></span></button>
         <button class="tab aside" type="button" data-go="chat" data-id="${p.id}"${S.screen === "chat" ? ' aria-current="page"' : ""}>${ic("chat", 16)}<span class="aside-lbl">Вопросы</span>${n ? `<span class="count">${n}</span>` : ""}</button>
       </div>
     </nav>`;
@@ -1923,7 +2008,7 @@
     const facts = [
       due ? fact("clock", "Срок подачи", due.head.replace(/^Подать /, "").replace(/^Приём заявок /, ""), due.left ? `<span class="${due.tone === "soon" ? "warn-t" : "muted"}">${esc(due.left)}</span>` : "") : "",
       fact("landmark", "Заказчик", p.customer),
-      fact("ruble", "Начальная цена", p.price),
+      fact("ruble", "Начальная цена", p.price, `<button class="link fact-link" type="button" data-go="price" data-id="${p.id}">До какой цены снижаться</button>`),
       fact("scale", "Закон и способ", p.kind),
     ].join("");
     const scans = p.scans || [];
@@ -1988,6 +2073,7 @@
           ${items.length ? `<ul class="list">${items.map((it, i) => `<li><span>${esc(it.text)}</span>${sourceHTML(`${key}-${i}`, it.source, it.quote, it.verified, "пункт")}</li>`).join("")}</ul>` : `<p class="empty-group">${GROUPS[key].empty}</p>`}
         </section>`;
       }).join("")}
+      ${priceTeaserHTML(p)}
       ${nextHTML(p, "req")}
     </div>`;
   }
@@ -2190,6 +2276,99 @@
     </div>`;
   }
 
+  // Шкала цены: где убыток, где прибыль и докуда обеспечение повышенное. С ползунком — на экране «Цена»,
+  // без — в блоке на шаге «Требования». Подпись у точки: у краёв прижата к краю, между ними сдвигается плавно.
+  const anchored = (x) => `left:${x}%;translate:-${x}% 0`;
+  const rubShort = (v) => rub(v).replace(",00 ₽", " ₽");
+  const outcome = (b) => `${b.profit < 0 ? "убыток" : "прибыль"} ${rubShort(Math.abs(b.profit))}`;
+  const valueText = (c, shown, b) => `${rubShort(shown)}, на ${dropText(1 - shown / c.nmck)} % ниже начальной${b ? `, ${outcome(b)}` : ""}`;
+  function scaleHTML(c, interactive) {
+    const { floor, at, raisedBelow } = priceFloor(c);
+    const m = scaleModel(c.nmck, floor, raisedBelow);
+    const shown = Math.min(Math.max(c.price ?? c.nmck, m.lo), m.hi);
+    const floorInner = m.floorX !== null && floor.ok ? `Нижняя цена <b>${rubShort(floor.price)}</b>` : "";
+    const top = !floorInner ? "" : interactive
+      ? `<button class="scale-floor" type="button" data-act="floor-price" title="Поставить свою цену на нижнюю" style="${anchored(m.floorX)}">${floorInner}</button>`
+      : `<p class="scale-floor" style="${anchored(m.floorX)}">${floorInner}</p>`;
+    const zones = m.loss === "unknown" ? '<div class="zone none"></div>'
+      : `${m.loss !== "none" ? `<div class="zone loss${m.loss === "all" ? " all" : ""}"${m.loss === "part" ? ` style="width:${m.floorX}%"` : ""}><span class="zone-label">${ic("alert", 14)}Убыток</span></div>` : ""}${m.loss !== "all" ? `<div class="zone ok${m.loss === "none" ? " all" : ""}"><span class="zone-label">${ic("check", 14, 2.5)}Без убытка</span></div>` : ""}`;
+    const legend = [
+      m.raisedX !== null ? `<span><i aria-hidden="true"></i>Снижение на 25 % и больше — обеспечение ${pctText(raisedPct(c.securityPct || 0))} %</span>` : "",
+      m.loss === "all" ? "<span>Без убытка — только выше начальной цены</span>" : "",
+      m.loss === "unknown" ? "<span>Впишите себестоимость — покажу, где начинается убыток</span>" : "",
+    ].filter(Boolean).join("");
+    return `<div class="scale" data-lo="${m.lo}" data-hi="${m.hi}" data-step="${m.step}">
+      <div class="scale-top">${top}</div>
+      <div class="scale-track">
+        <div class="zones">${zones}</div>
+        ${m.floorX !== null ? `<span class="scale-caret" aria-hidden="true" style="left:${m.floorX}%"></span>` : ""}
+        ${interactive ? `<input class="scale-range" type="range" id="calc-range" data-calc="price" min="${m.lo}" max="${m.hi}" step="${m.step}" value="${shown}" aria-label="Ваша цена" aria-valuetext="${esc(valueText(c, shown, at(c.price ?? c.nmck)))}">` : ""}
+        ${interactive || c.price !== null ? `<span class="scale-pin" aria-hidden="true" style="left:${m.x(shown)}%"></span>` : ""}
+      </div>
+      ${m.raisedX !== null ? `<div class="scale-band"><i style="width:${m.raisedX}%"></i></div>` : ""}
+      <div class="scale-ticks">${m.ticks.map((t) => `<span${t.x === 100 ? ' class="word"' : ""} style="${anchored(t.x)}">${t.label}</span>`).join("")}</div>
+      ${legend ? `<p class="scale-legend">${legend}</p>` : ""}
+    </div>`;
+  }
+  // Наведение на шкалу: вместо подписи нижней цены — цена под курсором и что по ней останется.
+  function scaleHover(el, clientX) {
+    const track = el.querySelector(".scale-track");
+    const box = track.getBoundingClientRect();
+    const lo = Number(el.dataset.lo), hi = Number(el.dataset.hi), step = Number(el.dataset.step);
+    const pos = Math.min(Math.max((clientX - box.left) / box.width, 0), 1);
+    const price = Math.min(hi, lo + Math.round((pos * (hi - lo)) / step) * step);
+    const x = ((price - lo) / (hi - lo)) * 100;
+    const b = priceFloor(calcOf(cur())).at(price);
+    const top = el.querySelector(".scale-top");
+    if (el.dataset.top === undefined) el.dataset.top = top.innerHTML;
+    top.innerHTML = `<p class="scale-tip" style="${anchored(x)}"><b>${rubShort(price)}</b>${b ? ` — ${outcome(b)}` : ""}</p>`;
+    let line = track.querySelector(".scale-hover");
+    if (!line) { line = document.createElement("span"); line.className = "scale-hover"; line.setAttribute("aria-hidden", "true"); track.appendChild(line); }
+    line.style.left = `${x}%`;
+  }
+  function scaleUnhover(el) {
+    if (el.dataset.top === undefined) return;
+    el.querySelector(".scale-top").innerHTML = el.dataset.top;
+    delete el.dataset.top;
+    const line = el.querySelector(".scale-hover");
+    if (line) line.remove();
+  }
+  // Что останется по вашей цене, а пока её нет — по начальной.
+  function profitHTML(c) {
+    const { at } = priceFloor(c);
+    const mine = c.price ? at(c.price) : null;
+    const b = mine || (c.nmck ? at(c.nmck) : null);
+    if (!b) return "";
+    const loss = b.profit < 0;
+    return `<span class="profit-head">${mine ? "По вашей цене" : "По начальной цене"}</span>
+      <span class="profit-line">${loss ? `<span class="bad-ic">${ic("alert", 16)}</span>` : `<span class="ok-ic">${ic("check", 16, 2.5)}</span>`}<span class="ink2">${loss ? "убыток" : "прибыль"}</span><span class="res-num">${rubShort(Math.abs(b.profit))}</span></span>
+      ${Math.abs(b.profit) >= 0.5 ? `<span class="hint">${pctText(Math.round((Math.abs(b.profit) / b.price) * 1000) / 10)} % цены</span>` : ""}`;
+  }
+  const priceHint = (c) => (c.price !== null && c.nmck !== null && c.price > c.nmck
+    ? '<span class="warn-t">Выше начальной — такую заявку отклонят</span>'
+    : c.price !== null && c.nmck ? `На ${dropText(1 - c.price / c.nmck)} % ниже начальной` : "Сколько хотите предложить на торгах");
+
+  // Вход в калькулятор с шага «Требования», рядом со сроками и деньгами: ответ, если уже посчитан, и шкала.
+  function priceTeaserHTML(p) {
+    const c = calcOf(p);
+    const { floor, at } = priceFloor(c);
+    const atFloor = floor.ok && !floor.aboveNmck ? at(floor.price) : null;
+    const text = atFloor ? `Можно снижаться до ${rub(atFloor.price)} — на ${dropText(atFloor.drop)} % ниже начальной.`
+      : floor.ok ? "Даже по начальной цене контракт в убытке — проверьте расходы."
+      : floor.reason === "impossible" ? "Налог и стоимость обеспечения съедают всю цену — проверьте проценты."
+      : `Впишите себестоимость — посчитаю нижнюю цену без убытка${c.nmck ? "" : " (начальную цену тоже впишите: в документах она не нашлась)"}: с налогом, обеспечением и антидемпингом.`;
+    return `<section class="panel teaser" aria-labelledby="req-price">
+      <div class="teaser-head">
+        <div class="teaser-main">
+          <span class="teaser-ic" aria-hidden="true">${ic("calc", 20)}</span>
+          <div class="next-text"><p class="next-label">Перед торгами</p><h3 class="next-title" id="req-price">До какой цены снижаться</h3><p class="next-desc">${text}</p></div>
+        </div>
+        <button class="btn line" type="button" data-go="price" data-id="${p.id}">${ic("calc", 16)}${floor.ok ? "Открыть расчёт" : "Посчитать"}</button>
+      </div>
+      ${floor.ok && c.nmck ? scaleHTML(c, false) : ""}
+    </section>`;
+  }
+
   // Ответ экрана — плавающим островом внизу, как «Скачать ТП»: виден, пока правите расходы и обеспечение.
   function calcResultHTML(c) {
     const { floor, at } = priceFloor(c);
@@ -2215,12 +2394,8 @@
     const { floor, at } = priceFloor(c);
     const atFloor = floor.ok ? at(floor.price) : null;
     const mine = c.price ? at(c.price) : null;
-    const warns = mine ? warnsHTML([
-      c.nmck !== null && mine.price > c.nmck ? "Цена выше начальной — такую заявку отклонят." : "",
-      mine.profit < 0 ? `По этой цене контракт в убытке на ${rub(-mine.profit)}.` : "",
-    ].filter(Boolean)) : "";
     const cols = [...(atFloor ? [["Нижняя", atFloor]] : []), ...(mine ? [["Ваша", mine]] : [])];
-    if (!cols.length) return warns;
+    if (!cols.length) return "";
     const rows = [
       { label: "Цена", cell: (b) => rub(b.price), strong: true },
       { label: "Снижение", cell: (b) => (b.drop >= 0 ? `${dropText(b.drop)} %` : "выше начальной") },
@@ -2239,7 +2414,7 @@
         sub: (b) => (Math.abs(b.profit) >= 0.5 ? `${pctText(Math.round((b.profit / b.price) * 1000) / 10)} % цены` : ""),
       },
     ];
-    return `${warns}<div class="calc-table-wrap"><table class="calc-table">
+    return `<div class="calc-table-wrap"><table class="calc-table">
       <thead><tr><td></td>${cols.map(([title]) => `<th scope="col">${title}</th>`).join("")}</tr></thead>
       <tbody>${rows.map((row) => `<tr${row.strong ? ' class="strong"' : ""}><th scope="row">${row.label}${row.note ? `<span class="cell-sub">${esc(row.note)}</span>` : ""}</th>${cols.map(([, b]) => {
         const sub = row.sub ? row.sub(b) : "";
@@ -2261,6 +2436,16 @@
     const methods = [["guarantee", "Независимая гарантия"], ["money", "Свои деньги"]];
     return `<div class="tab-body">
       <p class="tab-lead">До какой цены можно снижаться на торгах, чтобы контракт не ушёл в убыток. Учитываю расходы, налог, стоимость обеспечения исполнения и антидемпинговые меры 44-ФЗ. Считается прямо в браузере — цифры никуда не отправляются.</p>
+      <section class="panel" aria-labelledby="calc-scale-title">
+        <div class="panel-head"><div><h3 class="panel-title" id="calc-scale-title">Где убыток, где прибыль</h3><p class="panel-sub">Двигайте ползунок или впишите цену — покажу, что останется</p></div></div>
+        <div class="calc-body">
+          <div class="scale-head">
+            ${numField("price", "calc-price", "Ваша цена", "₽", c.price, priceHint(c))}
+            <div class="profit" id="calc-profit" aria-live="polite">${profitHTML(c)}</div>
+          </div>
+          <div id="calc-scale">${c.nmck ? scaleHTML(c, true) : '<p class="hint">Впишите начальную цену — нарисую шкалу.</p>'}</div>
+        </div>
+      </section>
       <section class="panel" aria-labelledby="calc-costs-title">
         <div class="panel-head"><div><h3 class="panel-title" id="calc-costs-title">Цена и расходы</h3>${p.sample ? '<p class="panel-sub">В примере — вымышленные расходы</p>' : ""}</div></div>
         <div class="calc-body"><div class="calc-grid">
@@ -2297,19 +2482,17 @@
           ${rule ? noteHTML("info", `В документах закупки: ${esc(rule)}`) : ""}
         </div>
       </section>
-      <section class="panel" aria-labelledby="calc-check-title">
-        <div class="panel-head"><h3 class="panel-title" id="calc-check-title">Проверить свою цену</h3></div>
-        <div class="calc-body">
-          ${numField("price", "calc-price", "Ваша цена", "₽", c.price, "Сколько хотите предложить — покажу, что останется")}
-          <div class="calc-out" id="calc-out">${calcTableHTML(c)}</div>
-        </div>
+      <section class="panel" aria-labelledby="calc-table-title" id="calc-table-panel"${calcTableHTML(c) ? "" : " hidden"}>
+        <div class="panel-head"><div><h3 class="panel-title" id="calc-table-title">Из чего складывается цена</h3><p class="panel-sub">Нижняя цена и ваша — рядом, чтобы видеть разницу</p></div></div>
+        <div class="calc-body"><div class="calc-out" id="calc-out">${calcTableHTML(c)}</div></div>
       </section>
     </div>
     <div class="sticky-actions"><div class="result-bar" id="calc-result" aria-live="polite">${calcResultHTML(c)}</div></div>`;
   }
 
   // Правка поля: пересчитываются таблица и ответ, условные строки показываются и прячутся — само поле не перерисовывается.
-  function refreshPrice(p) {
+  // Ползунок (source "range") двигает только отметку: шкалу с ним не перерисовываем, чтобы не сорвать перетаскивание.
+  function refreshPrice(p, source) {
     const c = calcOf(p);
     const sec = secured(c);
     const show = (id, on) => { const el = document.getElementById(id); if (el) el.hidden = !on; };
@@ -2322,8 +2505,21 @@
     if (none) none.textContent = adNone(c);
     const hint = $("#calc-ad-on-hint");
     if (hint) hint.textContent = adHint(p, c);
-    $("#calc-out").innerHTML = calcTableHTML(c);
+    const table = calcTableHTML(c);
+    $("#calc-out").innerHTML = table;
+    show("calc-table-panel", !!table);
     $("#calc-result").innerHTML = calcResultHTML(c);
+    $("#calc-profit").innerHTML = profitHTML(c);
+    $("#calc-price-hint").innerHTML = priceHint(c);
+    if (source !== "price") $("#calc-price").value = showNum(c.price);
+    const range = $("#calc-range");
+    if (source === "range" && range) {
+      const { floor, at, raisedBelow } = priceFloor(c);
+      const m = scaleModel(c.nmck, floor, raisedBelow);
+      const shown = Math.min(Math.max(c.price ?? c.nmck, m.lo), m.hi);
+      range.nextElementSibling.style.left = `${m.x(shown)}%`;
+      range.setAttribute("aria-valuetext", valueText(c, shown, at(c.price ?? c.nmck)));
+    } else $("#calc-scale").innerHTML = c.nmck ? scaleHTML(c, true) : '<p class="hint">Впишите начальную цену — нарисую шкалу.</p>';
   }
   function onCalcInput(input) {
     const p = cur();
@@ -2331,7 +2527,7 @@
     p.priceCalc = { ...(p.priceCalc || {}), [input.dataset.calc]: value };
     // Способ обеспечения меняет подписи и ставку в поле — экран перерисовывается, фокус остаётся на переключателе.
     if (input.type === "radio") rerender();
-    else refreshPrice(p);
+    else refreshPrice(p, input.type === "range" ? "range" : input.id === "calc-price" ? "price" : "field");
   }
 
   /* ---------- как это работает: путь по закупке, разделы, цвета ---------- */
@@ -2350,7 +2546,7 @@
       ["profile", "user", "Реквизиты", "Данные компании. Сами попадают в анкету, декларацию и цену — но никогда в ТП: его подают анонимно."],
       ["docs", "folder", "Образцы и реквизиты", "Ваши прошлые заявки, анкеты, карточка предприятия. По ним заполняются реквизиты и пишутся новые документы — так же, как пишете вы."],
     ];
-    const num = (n) => n === "+" ? ic("plus", 14) : n === "✓" ? ic("check", 14) : n;
+    const num = (n) => n === "+" ? ic("plus", 14) : n === "✓" ? ic("check", 14, 3) : n;
     return `<div class="page-col">
       <section class="panel" aria-labelledby="path-title">
         <div class="panel-head"><h2 class="panel-title" id="path-title">Путь по одной закупке</h2></div>
@@ -2366,7 +2562,7 @@
         <ul class="marks">
           <li><span class="mark-dot" style="background:var(--warn)"></span><span>Янтарный — нужно ваше действие: вписать данные, сверить цифры.</span></li>
           <li><span class="mark-dot" style="background:var(--danger)"></span><span>Красный — ошибка в заявке, за неё могут отклонить.</span></li>
-          <li><span class="step-dot done" style="width:16px;height:16px;justify-self:center">${ic("check", 10)}</span><span>Зелёный с галочкой — шаг сделан.</span></li>
+          <li><span class="step-dot done" style="width:16px;height:16px;justify-self:center">${ic("check", 10, 3)}</span><span>Зелёный с галочкой — шаг сделан.</span></li>
           <li><span class="mark-dot" style="background:var(--edge-2)"></span><span>Серый — ещё не начато.</span></li>
         </ul>
       </section>
@@ -2606,14 +2802,25 @@
     el.style.height = `${Math.min(el.scrollHeight, max)}px`;
   }
   // Строка шагов: подписи сокращаются по ступеням, пока она не поместится, — как в приложении (purchase-view.tsx).
+  // Не помещается и так — инструменты уходят на свою строку, шаги листаются отдельно.
+  const FIT_NAMES = ["short-tp", "short-check", "icons", "tight", "stack"];
   const FIT_LEVELS = [[], ["short-tp"], ["short-tp", "short-check"], ["short-tp", "short-check", "icons"], ["short-tp", "short-check", "icons", "tight"]];
+  const STACKED = ["short-tp", "short-check", "tight", "stack"];
   function fitTabs() {
     const nav = $("#tabs");
     if (!nav || !nav.offsetParent) return;
+    const apply = (level) => FIT_NAMES.forEach((name) => nav.toggleAttribute(`data-${name}`, level.includes(name)));
     for (const level of FIT_LEVELS) {
-      for (const name of FIT_LEVELS[FIT_LEVELS.length - 1]) nav.toggleAttribute(`data-${name}`, level.includes(name));
+      apply(level);
       if (nav.scrollWidth <= nav.clientWidth) return;
     }
+    apply(STACKED);
+    // Шаги листаются отдельно — текущий должен быть на виду.
+    const row = nav.querySelector(".steps"), current = row.querySelector('[aria-current="page"]');
+    if (!current) return;
+    const r = row.getBoundingClientRect(), c = current.getBoundingClientRect();
+    if (c.right > r.right) row.scrollLeft += c.right - r.right + 8;
+    else if (c.left < r.left) row.scrollLeft -= r.left - c.left + 8;
   }
   window.addEventListener("resize", fitTabs);
   if (document.fonts) document.fonts.ready.then(fitTabs);
@@ -2985,6 +3192,11 @@
       case "preview-tp": openPreview(p, "tp"); break;
       case "sample-check": runCheck(p); break;
       case "recheck": p.check.state = "none"; rerender(); toTop(); break;
+      case "floor-price": {
+        const { floor } = priceFloor(calcOf(p));
+        if (floor.ok) { p.priceCalc = { ...(p.priceCalc || {}), price: floor.price }; refreshPrice(p, "floor"); }
+        break;
+      }
       case "fill": fillFromDocs(); break;
       case "sug-accept": case "sug-dismiss": {
         const group = groupSuggestions(S.suggestions)[Number(el.dataset.i)];
@@ -3075,6 +3287,16 @@
     else if (t.dataset.pf) onProfileInput(t);
     else if (t.dataset.calc && t.type !== "checkbox" && t.type !== "radio") onCalcInput(t);
   });
+
+  // Наведение на шкалу цены: цена под курсором и что по ней останется. Только мышью и без нажатой кнопки.
+  document.addEventListener("pointermove", (e) => {
+    const track = e.target.closest && e.target.closest(".scale-track");
+    const hovered = $(".scale[data-top]");
+    if (hovered && (!track || !hovered.contains(track))) scaleUnhover(hovered);
+    if (track && e.pointerType === "mouse" && e.buttons === 0) scaleHover(track.parentElement, e.clientX);
+    else if (track) scaleUnhover(track.parentElement);
+  });
+  document.addEventListener("pointerleave", () => { const hovered = $(".scale[data-top]"); if (hovered) scaleUnhover(hovered); });
 
   // Поле расчёта отпустили — число показывается с пробелами между разрядами.
   document.addEventListener("focusout", (e) => {

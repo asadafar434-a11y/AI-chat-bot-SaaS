@@ -3,7 +3,7 @@
 import { useEffect, useEffectEvent, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { FileTextIcon, PaperclipIcon, XIcon } from "lucide-react";
+import { AttachIcon, CrossIcon, DocumentIcon } from "@/components/icons";
 import { SUGGESTIONS } from "@/components/ask-box";
 import { ChatFeed, ComposerDock, fmtChars, PROMPT_CLASS, PROMPT_TEXTAREA_CLASS } from "@/components/chat-feed";
 import { PageBody, PageHeader } from "@/components/page-header";
@@ -42,7 +42,7 @@ function AttachmentChips() {
     <PromptInputHeader>
       {files.map((f) => (
         <span key={f.id} className="file-chip max-w-60">
-          <FileTextIcon className="size-3.5" />
+          <DocumentIcon className="size-3.5" />
           <span className="truncate">{f.filename}</span>
           <button
             type="button"
@@ -50,7 +50,7 @@ function AttachmentChips() {
             onClick={() => remove(f.id)}
             className="grid size-6 shrink-0 place-items-center rounded-full text-[var(--ink-3)] hover:bg-[var(--paper-3)] hover:text-foreground"
           >
-            <XIcon className="size-3.5" />
+            <CrossIcon className="size-3.5" />
           </button>
         </span>
       ))}
@@ -62,7 +62,7 @@ function AttachButton() {
   const { openFileDialog } = usePromptInputAttachments();
   return (
     <PromptInputButton onClick={openFileDialog} tooltip="Приложить документ">
-      <PaperclipIcon className="size-3.5" />
+      <AttachIcon className="size-3.5" />
       Документ
     </PromptInputButton>
   );
@@ -177,7 +177,7 @@ export default function GeneralChatPage() {
                   <span>В разговоре:</span>
                   {documents.map((d) => (
                     <span key={d.name} className="file-chip max-w-72 text-foreground">
-                      <FileTextIcon className="size-3.5" />
+                      <DocumentIcon className="size-3.5" />
                       <span className="truncate">{d.name}</span>
                       <span className="shrink-0 text-[var(--ink-3)]">{fmtChars(d.text.length)}</span>
                       <button
@@ -186,7 +186,7 @@ export default function GeneralChatPage() {
                         onClick={() => setDocuments((ds) => ds.filter((x) => x.name !== d.name))}
                         className="grid size-6 shrink-0 place-items-center rounded-full text-[var(--ink-3)] hover:bg-[var(--paper-3)] hover:text-foreground"
                       >
-                        <XIcon className="size-3.5" />
+                        <CrossIcon className="size-3.5" />
                       </button>
                     </span>
                   ))}

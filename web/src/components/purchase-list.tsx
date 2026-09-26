@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { PlusIcon, SearchIcon } from "lucide-react";
+import { PlusIcon, SearchIcon } from "@/components/icons";
 import { Note } from "@/components/note";
 import { daysText, LawBadge } from "@/components/purchase-bits";
 import { dueLine } from "@/lib/deadline";

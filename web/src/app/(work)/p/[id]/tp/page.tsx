@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangleIcon, ArrowRightIcon, CheckIcon, PencilIcon } from "lucide-react";
+import { ArrowRightIcon, CheckIcon, EditIcon, WarningIcon } from "@/components/icons";
 import { Island } from "@/components/island";
 import { Note, Warnings } from "@/components/note";
 import { scrollToTop } from "@/components/page-header";
@@ -154,12 +154,12 @@ function PriceBlock({ tp, price, nmck, calcHref, onChange }: {
         До какой цены снижаться
       </Link>
       {drop !== null && drop < 0 && (
-        <Note tone="warn" icon={AlertTriangleIcon}>
+        <Note tone="warn" icon={WarningIcon}>
           Цена выше начальной — такую заявку отклонят.
         </Note>
       )}
       {drop !== null && drop >= 25 && (
-        <Note tone="warn" icon={AlertTriangleIcon}>
+        <Note tone="warn" icon={WarningIcon}>
           {`Снижение ${percent}% — это 25% и больше. `}
           {tp.antiDumping.rule ||
             "В таких случаях обычно действуют антидемпинговые меры: обеспечение исполнения в полтора раза больше или подтверждение опыта. Проверьте условия в извещении."}
@@ -317,7 +317,7 @@ export default function TpPage() {
             </p>
             {!purchase.sample && <SamplesLine count={usedSamples.length} />}
             {error && (
-              <Note tone="warn" icon={AlertTriangleIcon}>
+              <Note tone="warn" icon={WarningIcon}>
                 {error}
               </Note>
             )}
@@ -352,7 +352,7 @@ export default function TpPage() {
         </StepIntro>
 
         {fill ? (
-          <Note tone="warn" icon={PencilIcon}>
+          <Note tone="warn" icon={EditIcon}>
             {`Впишите свои данные в ${fill} ${plural(fill, "пункт", "пункта", "пунктов")} — они выделены жёлтым. Нажмите на текст, чтобы исправить.`}
           </Note>
         ) : (
@@ -458,7 +458,7 @@ export default function TpPage() {
             </p>
           )}
           {error && (
-            <Note tone="warn" icon={AlertTriangleIcon}>
+            <Note tone="warn" icon={WarningIcon}>
               {error}
             </Note>
           )}

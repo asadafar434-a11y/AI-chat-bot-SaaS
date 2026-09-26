@@ -15,6 +15,7 @@ Support-chat SaaS (аналог Intercom) с ИИ-агентом. Прорабо
 - [design-system/patterns.md](design-system/patterns.md) — раскладки экранов и правила
 - [design-system/mockup/support-chat.html](design-system/mockup/support-chat.html) — макет: виджет и инбокс
 - [design-system/mockup/style-directions.html](design-system/mockup/style-directions.html) — конструктор стиля
+- [design-system/mockup/icons.html](design-system/mockup/icons.html) — лист иконок: набор Craftwork и дорисованные
 
 **Читать перед любой работой по UI.** Ключевое:
 
@@ -37,6 +38,9 @@ Support-chat SaaS (аналог Intercom) с ИИ-агентом. Прорабо
 - Сообщение пользователя — бабл `--paper-3` справа, ~80% ширины.
   Сообщение ассистента — без фона, во всю ширину.
 - Иконочные кнопки в плотных зонах — 28×28, иконка 16.
+- Иконки — набор Craftwork, вариант Outline (Figma, узел `8029:378`): сетка 24, линия 1,5, мягкие углы.
+  В приложении — `web/src/components/icons.tsx`, в прототипе — `ICONS`; lucide не использовать (линтер не пустит).
+  Недостающие дорисовывать в том же стиле: обводка 1,5 со скруглёнными концами, мягкий прямоугольник как у `Info-rect`.
 - Накладки поверх брендовой заливки — от `--on-brand` через `color-mix`, не от белого.
 
 Источник: Figma `NDctJTjd4iyzeT9zWg3WwZ` («AI Elements — ▲ Vercel (Community)»),

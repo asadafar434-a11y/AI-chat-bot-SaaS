@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertTriangleIcon, CheckIcon, FileTextIcon, PlusIcon } from "lucide-react";
+import { CheckIcon, DocumentIcon, PlusIcon, WarningIcon } from "@/components/icons";
 import { FileDrop } from "@/components/file-drop";
 import { Island } from "@/components/island";
 import { Note } from "@/components/note";
@@ -207,7 +207,7 @@ export default function MyDocumentsPage() {
           </p>
 
           {error && (
-            <Note tone="warn" icon={AlertTriangleIcon}>
+            <Note tone="warn" icon={WarningIcon}>
               {error}
             </Note>
           )}
@@ -220,7 +220,7 @@ export default function MyDocumentsPage() {
                 </Note>
               )}
               {report.sortError && (
-                <Note tone="warn" icon={AlertTriangleIcon}>
+                <Note tone="warn" icon={WarningIcon}>
                   {`Разложить по видам с помощью ИИ не получилось (${report.sortError.replace(/\.$/, "")}), поэтому разложил по названиям файлов. Проверьте виды и поправьте, где нужно.`}
                 </Note>
               )}
@@ -236,12 +236,12 @@ export default function MyDocumentsPage() {
                 </Note>
               )}
               {report.profileError && (
-                <Note tone="warn" icon={AlertTriangleIcon}>
+                <Note tone="warn" icon={WarningIcon}>
                   {`Реквизиты заполнить не получилось: ${report.profileError}`}
                 </Note>
               )}
               {report.failed.length > 0 && (
-                <Note tone="warn" icon={AlertTriangleIcon}>
+                <Note tone="warn" icon={WarningIcon}>
                   {`Не получилось прочитать: ${report.failed.map((f) => `${f.name} — ${f.reason}`).join("; ")}.`}
                 </Note>
               )}
@@ -279,7 +279,7 @@ export default function MyDocumentsPage() {
                             doc.scan ? "bg-[var(--warn-tint)] text-[var(--warn)]" : "bg-[var(--paper-2)] text-[var(--ink-3)]"
                           }`}
                         >
-                          <FileTextIcon className="size-4" />
+                          <DocumentIcon className="size-4" />
                         </span>
                         <div className="grid min-w-0 gap-1">
                           <span className="t-strong break-words">{doc.name}</span>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangleIcon } from "lucide-react";
+import { WarningIcon } from "@/components/icons";
 import { FileDrop } from "@/components/file-drop";
 import { Note } from "@/components/note";
 import { PageBody, PageHeader } from "@/components/page-header";
@@ -69,7 +69,7 @@ export default function NewPurchasePage() {
                 Загрузите извещение, ТЗ и проект контракта — выпишу требования и сроки. Потом закупка откроется на шаге 1 «Требования», а дальше будут техническое предложение и проверка заявки.
               </p>
               {error && (
-                <Note tone="warn" icon={AlertTriangleIcon}>
+                <Note tone="warn" icon={WarningIcon}>
                   {error}
                 </Note>
               )}

@@ -129,17 +129,24 @@ export type Floor =
 
 const ceilKopecks = (value: number) => Math.ceil(value * 100 - 1e-6) / 100;
 
-export function priceFloor(c: PriceCalc): { floor: Floor; at: (price: number) => Breakdown | null } {
+// raisedBelow — самая высокая цена, при которой обеспечение уже повышенное, или null, если антидемпинг не действует.
+export function priceFloor(c: PriceCalc): {
+  floor: Floor;
+  at: (price: number) => Breakdown | null;
+  raisedBelow: number | null;
+} {
   const r = ready(c);
-  if (!r) return { floor: { ok: false, reason: "input" }, at: () => null };
+  if (!r) return { floor: { ok: false, reason: "input" }, at: () => null, raisedBelow: null };
   const at = (price: number) => (price > 0 ? breakdownAt(r, price) : null);
+  const raisedBelow = r.antiDumping ? Math.floor((3 * kopecks(r.nmck)) / 4) / 100 : null;
   const done = (price: number, kind: FloorKind) => ({
     floor: { ok: true as const, price, kind, aboveNmck: price > r.nmck },
     at,
+    raisedBelow,
   });
 
   const plain = breakEven(r, r.share);
-  if (plain === null) return { floor: { ok: false, reason: "impossible" }, at };
+  if (plain === null) return { floor: { ok: false, reason: "impossible" }, at, raisedBelow };
   if (!raisedAt(r, ceilKopecks(plain))) return done(ceilKopecks(plain), "plain");
 
   const raised = breakEven(r, r.raisedShare);

@@ -4,25 +4,25 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefO
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  AlertTriangleIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
+  AttachIcon,
+  BankIcon,
   CalculatorIcon,
+  CaretDownIcon,
+  CaretRightIcon,
+  ChatIcon,
   CheckIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
   ClockIcon,
-  FileTextIcon,
-  LandmarkIcon,
-  MessageSquareIcon,
+  CrossIcon,
+  DocumentIcon,
   PanelRightIcon,
-  PaperclipIcon,
-  RussianRubleIcon,
-  ScaleIcon,
+  RubleIcon,
+  ScalesIcon,
   SearchIcon,
-  XIcon,
-  type LucideIcon,
-} from "lucide-react";
+  WarningIcon,
+  type IconComponent,
+} from "@/components/icons";
 import { Note } from "@/components/note";
 import { DueChip, LawBadge } from "@/components/purchase-bits";
 import { usePurchase } from "@/components/purchase-provider";
@@ -87,15 +87,17 @@ function StepLink({ step, current }: { step: Step; current: boolean }) {
 }
 
 // Подписи в строке шагов сокращаются, только когда не помещаются: сначала «ТП», потом «Проверка», потом
-// у «Поиска», «Цены» и «Вопросов» остаются значки, в последнюю очередь пропадают стрелки между шагами — порядок
-// видно по номерам. Ширина строки зависит от статусов шагов и счётчика вопросов, поэтому она мерится, а не
-// угадывается по ширине панели. Не помещается и так — строка прокручивается.
+// у «Поиска», «Цены» и «Вопросов» остаются значки, потом пропадают стрелки между шагами — порядок видно по номерам.
+// Не помещается и так (телефон) — инструменты с подписями уходят на свою строку, а шаги листаются отдельно:
+// иначе «Цена» и «Вопросы» оказываются за краем экрана. Ширина строки зависит от статусов шагов и счётчика
+// вопросов, поэтому она мерится, а не угадывается по ширине панели.
 const FIT_LEVELS = [
-  { "data-short-tp": false, "data-short-check": false, "data-icons": false, "data-tight": false },
-  { "data-short-tp": true, "data-short-check": false, "data-icons": false, "data-tight": false },
-  { "data-short-tp": true, "data-short-check": true, "data-icons": false, "data-tight": false },
-  { "data-short-tp": true, "data-short-check": true, "data-icons": true, "data-tight": false },
-  { "data-short-tp": true, "data-short-check": true, "data-icons": true, "data-tight": true },
+  { "data-short-tp": false, "data-short-check": false, "data-icons": false, "data-tight": false, "data-stack": false },
+  { "data-short-tp": true, "data-short-check": false, "data-icons": false, "data-tight": false, "data-stack": false },
+  { "data-short-tp": true, "data-short-check": true, "data-icons": false, "data-tight": false, "data-stack": false },
+  { "data-short-tp": true, "data-short-check": true, "data-icons": true, "data-tight": false, "data-stack": false },
+  { "data-short-tp": true, "data-short-check": true, "data-icons": true, "data-tight": true, "data-stack": false },
+  { "data-short-tp": true, "data-short-check": true, "data-icons": false, "data-tight": true, "data-stack": true },
 ];
 
 function useStepsFit(nav: RefObject<HTMLElement | null>, content: string) {
@@ -112,12 +114,33 @@ function useStepsFit(nav: RefObject<HTMLElement | null>, content: string) {
       }
       apply(i);
       setLevel(i);
+      // Шаги листаются отдельно — текущий должен быть на виду.
+      const row = el.querySelector("ol");
+      const current = row?.querySelector('[aria-current="page"]');
+      if (row && current) {
+        const r = row.getBoundingClientRect();
+        const c = current.getBoundingClientRect();
+        if (c.right > r.right) row.scrollLeft += c.right - r.right + 8;
+        else if (c.left < r.left) row.scrollLeft -= r.left - c.left + 8;
+      }
     };
     measure();
-    const observer = new ResizeObserver(measure);
+    // Перемеряем, только когда меняется ширина, и в следующем кадре: высоту строка меняет сама, когда инструменты
+    // уходят на свою строку, — отвечать на это из обработчика значит зациклить его.
+    let width = el.clientWidth;
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      if (el.clientWidth === width) return;
+      width = el.clientWidth;
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    });
     observer.observe(el);
     void document.fonts?.ready.then(measure);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
   }, [nav, content]);
   // Атрибуты — как у выбранного уровня: React их не сбросит при следующей отрисовке.
   return Object.fromEntries(Object.entries(FIT_LEVELS[level]).map(([name, on]) => [name, on || undefined]));
@@ -189,7 +212,7 @@ function Fold({ title, count, children }: { title: string; count?: number; child
         >
           {title}
           {count !== undefined && <span className="count">{count}</span>}
-          <ChevronDownIcon className={`ml-auto size-4 text-[var(--ink-3)] transition-transform ${open ? "" : "-rotate-90"}`} />
+          <CaretDownIcon className={`ml-auto size-4 text-[var(--ink-3)] transition-transform ${open ? "" : "-rotate-90"}`} />
         </button>
       </h3>
       {open && <div className="grid gap-3 px-[var(--pad)] pb-4 pt-0.5">{children}</div>}
@@ -197,7 +220,7 @@ function Fold({ title, count, children }: { title: string; count?: number; child
   );
 }
 
-function Fact({ icon: Icon, label, children }: { icon: LucideIcon; label: string; children: ReactNode }) {
+function Fact({ icon: Icon, label, children }: { icon: IconComponent; label: string; children: ReactNode }) {
   return (
     <div className="grid grid-cols-[16px_minmax(0,1fr)] gap-2.5">
       <Icon className="mt-0.5 size-4 text-[var(--ink-3)]" />
@@ -215,7 +238,7 @@ function FileRow({ name, meta, warn }: { name: string; meta: string; warn: boole
       <span
         className={`grid size-7 place-items-center rounded-md ${warn ? "bg-[var(--warn-tint)] text-[var(--warn)]" : "bg-[var(--paper-2)] text-[var(--ink-3)]"}`}
       >
-        {warn ? <AlertTriangleIcon className="size-3.5" /> : <FileTextIcon className="size-3.5" />}
+        {warn ? <WarningIcon className="size-3.5" /> : <DocumentIcon className="size-3.5" />}
       </span>
       <span className="grid min-w-0">
         <span className="t-label truncate" title={name}>
@@ -256,7 +279,7 @@ function InfoPane({ purchase, documents, onAdd, onClose, closeButton }: {
     <div className="grid min-h-0 flex-1 content-start gap-2 overflow-y-auto overscroll-contain pb-2 pl-px pt-1 wide:-mr-2 wide:-mt-1 wide:pr-2 wide:[scrollbar-gutter:stable] max-wide:p-2">
       <div className="island relative grid justify-items-center gap-1.5 px-[var(--pad)] pb-4 pt-5 text-center">
         <button ref={closeButton} type="button" onClick={onClose} aria-label="Скрыть сведения" className="icon-btn absolute right-2 top-2 wide:hidden">
-          <XIcon className="size-4" />
+          <CrossIcon className="size-4" />
         </button>
         <LawBadge purchase={purchase} big />
         <p className="t-section mt-1 text-balance">{purchase.subject || titleOf(purchase)}</p>
@@ -274,17 +297,20 @@ function InfoPane({ purchase, documents, onAdd, onClose, closeButton }: {
           </Fact>
         )}
         {purchase.customer && (
-          <Fact icon={LandmarkIcon} label="Заказчик">
+          <Fact icon={BankIcon} label="Заказчик">
             <b className="t-strong break-words">{purchase.customer}</b>
           </Fact>
         )}
         {purchase.price && (
-          <Fact icon={RussianRubleIcon} label="Начальная цена">
+          <Fact icon={RubleIcon} label="Начальная цена">
             <b className="t-strong">{purchase.price}</b>
+            <Link href={`/p/${purchase.id}/price`} className="link t-caption justify-self-start">
+              До какой цены снижаться
+            </Link>
           </Fact>
         )}
         {purchase.kind && (
-          <Fact icon={ScaleIcon} label="Закон и способ">
+          <Fact icon={ScalesIcon} label="Закон и способ">
             <b className="t-strong">{purchase.kind}</b>
           </Fact>
         )}
@@ -452,7 +478,7 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                   title="Добавить документы закупки"
                   className="btn btn-line btn-xs"
                 >
-                  <PaperclipIcon />
+                  <AttachIcon />
                   <span className="@max-[560px]:hidden">Добавить документы</span>
                 </button>
                 <button
@@ -476,13 +502,13 @@ export function PurchaseView({ children }: { children: ReactNode }) {
               ref={stepsNav}
               aria-label="Подготовка заявки"
               {...fit}
-              className="group/steps flex items-stretch overflow-x-auto border-t border-[var(--line)] px-2 py-1.5 [scrollbar-width:none]"
+              className="group/steps flex items-stretch gap-y-1 overflow-x-auto border-t border-[var(--line)] px-2 py-1.5 [scrollbar-width:none] data-[stack]:flex-wrap"
             >
-              <ol className="flex flex-none items-stretch">
+              <ol className="flex flex-none items-stretch group-data-[stack]/steps:min-w-0 group-data-[stack]/steps:flex-[1_0_100%] group-data-[stack]/steps:overflow-x-auto group-data-[stack]/steps:[scrollbar-width:none]">
                 {steps.map((step, i) => (
                   <li key={step.key} className="flex items-stretch">
                     {i > 0 && (
-                      <ChevronRightIcon
+                      <CaretRightIcon
                         aria-hidden
                         className="mx-0.5 my-auto size-3.5 flex-none text-[var(--ink-3)] opacity-60 group-data-[tight]/steps:hidden"
                       />
@@ -491,7 +517,7 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                   </li>
                 ))}
               </ol>
-              <div className="ml-auto flex flex-none items-stretch gap-0.5">
+              <div className="ml-auto flex flex-none items-stretch gap-0.5 group-data-[stack]/steps:ml-0">
                 <Link
                   href={`${base}/search`}
                   aria-current={onSearch ? "page" : undefined}
@@ -508,7 +534,7 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                   title="До какой цены снижаться"
                   className={`item flex-none ${onPrice ? "t-strong" : "t-label text-[var(--ink-2)]"}`}
                 >
-                  <CalculatorIcon className="size-4 text-[var(--ink-3)]" />
+                  <CalculatorIcon className="size-4 text-primary" />
                   <span className="group-data-[icons]/steps:sr-only">
                     Цена<span className="sr-only"> — до какой цены снижаться</span>
                   </span>
@@ -518,7 +544,7 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                   aria-current={onChat ? "page" : undefined}
                   className={`item flex-none ${onChat ? "t-strong" : "t-label text-[var(--ink-2)]"}`}
                 >
-                  <MessageSquareIcon className="size-4 text-[var(--ink-3)]" />
+                  <ChatIcon className="size-4 text-[var(--ink-3)]" />
                   <span className="group-data-[icons]/steps:sr-only">Вопросы</span>
                   {asked > 0 && <span className="count rounded-md bg-[var(--paper-2)] px-1.5">{asked}</span>}
                 </Link>
@@ -540,7 +566,7 @@ export function PurchaseView({ children }: { children: ReactNode }) {
           ) : (
             <>
               {error && (
-                <Note tone="warn" icon={AlertTriangleIcon} className="mb-2">
+                <Note tone="warn" icon={WarningIcon} className="mb-2">
                   {error}
                 </Note>
               )}

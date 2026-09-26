@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { AlertTriangleIcon, ScaleIcon } from "lucide-react";
+import { ScalesIcon, WarningIcon } from "@/components/icons";
 import { Note } from "@/components/note";
 
 // Куда вернуться после входа: только страница этого же сайта, чужой адрес в ?next= не пройдёт.
@@ -52,7 +52,7 @@ export function LoginForm() {
       <form onSubmit={submit} className="island grid w-full max-w-[360px] gap-4 p-6 max-sm:p-5">
         <div className="flex items-center gap-2.5">
           <span className="grid size-7 flex-none place-items-center rounded-[var(--r-ctl)] bg-primary text-primary-foreground shadow-[inset_0_-2px_0_rgb(0_0_0/.12)]">
-            <ScaleIcon className="size-4" />
+            <ScalesIcon className="size-4" />
           </span>
           <span className="font-heading text-sm leading-5 font-bold tracking-[-0.01em]">Тендерный юрист</span>
         </div>
@@ -76,12 +76,12 @@ export function LoginForm() {
           />
         </label>
         {state === "wrong" && (
-          <Note tone="warn" icon={AlertTriangleIcon}>
+          <Note tone="warn" icon={WarningIcon}>
             Неверный пароль. Проверьте раскладку клавиатуры и попробуйте ещё раз.
           </Note>
         )}
         {state === "failed" && (
-          <Note tone="warn" icon={AlertTriangleIcon}>
+          <Note tone="warn" icon={WarningIcon}>
             Не получилось войти — проверьте интернет и попробуйте ещё раз.
           </Note>
         )}

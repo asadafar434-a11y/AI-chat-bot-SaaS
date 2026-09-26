@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { UploadIcon } from "lucide-react";
+import { FileUploadIcon } from "@/components/icons";
 import { ACCEPTED_FILES } from "@/lib/read-documents";
 
 type FileDropProps = {
@@ -30,7 +30,7 @@ export function FileDrop({ hint, button, onFiles, onSample }: FileDropProps) {
       }`}
     >
       <span className="grid size-10 place-items-center rounded-[var(--r-ctl)] bg-[var(--brand-tint)] text-primary">
-        <UploadIcon className="size-5" />
+        <FileUploadIcon className="size-5" />
       </span>
       <p className="max-w-[46ch] text-[var(--ink-2)]">{hint}</p>
       <button type="button" onClick={() => input.current?.click()} className="btn btn-lg">

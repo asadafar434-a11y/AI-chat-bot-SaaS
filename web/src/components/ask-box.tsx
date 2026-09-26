@@ -2,7 +2,7 @@
 
 import { useRef, useState, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUpIcon, FileTextIcon, PaperclipIcon, XIcon } from "lucide-react";
+import { AttachIcon, CrossIcon, DocumentIcon, SendIcon } from "@/components/icons";
 import { setPendingQuestion } from "@/lib/pending-question";
 import { ACCEPTED_FILES, readDocuments, type FailedFile, type SentDocument } from "@/lib/read-documents";
 
@@ -75,7 +75,7 @@ export function AskBox() {
             title="Приложить документ"
             className="grid size-8 shrink-0 place-items-center rounded-full text-[var(--ink-3)] hover:bg-[var(--hover)] hover:text-foreground"
           >
-            <PaperclipIcon className="size-4" />
+            <AttachIcon className="size-4" />
           </button>
           <textarea
             value={text}
@@ -92,7 +92,7 @@ export function AskBox() {
             aria-label="Спросить"
             className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground hover:bg-[var(--brand-press)] disabled:opacity-40"
           >
-            <ArrowUpIcon className="size-4" />
+            <SendIcon className="size-4" />
           </button>
           <input
             ref={input}
@@ -111,7 +111,7 @@ export function AskBox() {
           <div className="flex flex-wrap gap-2">
             {files.map((f) => (
               <span key={f.name} className="file-chip">
-                <FileTextIcon className="size-3.5" />
+                <DocumentIcon className="size-3.5" />
                 <span className="truncate">{f.name}</span>
                 <button
                   type="button"
@@ -119,7 +119,7 @@ export function AskBox() {
                   onClick={() => setFiles((current) => current.filter((x) => x !== f))}
                   className="grid size-6 shrink-0 place-items-center rounded-full text-[var(--ink-3)] hover:bg-[var(--paper-3)] hover:text-foreground"
                 >
-                  <XIcon className="size-3.5" />
+                  <CrossIcon className="size-3.5" />
                 </button>
               </span>
             ))}

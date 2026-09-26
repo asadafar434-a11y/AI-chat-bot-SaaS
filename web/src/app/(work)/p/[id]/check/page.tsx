@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { AlertTriangleIcon, CheckIcon, FileTextIcon, XIcon } from "lucide-react";
+import { CheckIcon, CrossIcon, DocumentIcon, WarningIcon } from "@/components/icons";
 import { FileDrop } from "@/components/file-drop";
 import { Island } from "@/components/island";
 import { Note, Warnings } from "@/components/note";
@@ -25,7 +25,7 @@ const WORKING_STEPS = [
 
 const Warning = ({ children }: { children: string }) => (
   <p className="t-caption flex items-center gap-2 text-[var(--warn)]">
-    <AlertTriangleIcon className="size-4 shrink-0" />
+    <WarningIcon className="size-4 shrink-0" />
     {children}
   </p>
 );
@@ -42,7 +42,7 @@ function Finding({ finding: f, open, onToggle }: { finding: CheckFinding; open: 
           bad ? "bg-[color-mix(in_srgb,var(--danger)_12%,var(--card))] text-destructive" : "t-strong bg-[var(--warn-tint)] text-[var(--warn)]"
         }`}
       >
-        {bad ? <XIcon className="size-3.5" /> : "!"}
+        {bad ? <CrossIcon className="size-3.5" /> : "!"}
       </span>
       <div className="grid min-w-0 gap-1">
         <p className="t-section">
@@ -52,7 +52,7 @@ function Finding({ finding: f, open, onToggle }: { finding: CheckFinding; open: 
         <p className="t-read text-[var(--ink-2)]">{f.todo}</p>
         {(f.quote || f.inApplication) && (
           <button type="button" aria-expanded={open} onClick={onToggle} className="src">
-            <FileTextIcon className="size-3" />
+            <DocumentIcon className="size-3" />
             {f.source || "цитаты"}
           </button>
         )}
@@ -175,7 +175,7 @@ export default function CheckPage() {
           Шаг 3 — перед подачей. Загрузите заявку или техническое предложение, которые собираетесь подавать: сверю их с извещением и ТЗ по каждому пункту и скажу, за что могут отклонить.
         </StepIntro>
         {error && (
-          <Note tone="warn" icon={AlertTriangleIcon}>
+          <Note tone="warn" icon={WarningIcon}>
             {error}
           </Note>
         )}
