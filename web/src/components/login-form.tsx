@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import Link from "next/link";
+import { ConsentChecks, legalLink as doc } from "@/components/consent-checks";
 import { ScalesIcon, WarningIcon } from "@/components/icons";
 import { Note } from "@/components/note";
+import { saveConsent } from "@/lib/consent";
 
 // Куда вернуться после входа: только страница этого же сайта, чужой адрес в ?next= не пройдёт.
 function nextPath() {
@@ -12,13 +13,6 @@ function nextPath() {
   const url = new URL(next, window.location.origin);
   return url.origin === window.location.origin && url.pathname !== "/login" ? url.pathname + url.search + url.hash : "/";
 }
-
-// Документы открываются в новой вкладке: введённый пароль не пропадёт.
-const doc = (href: string, text: string) => (
-  <Link href={href} target="_blank" className="link">
-    {text}
-  </Link>
-);
 
 // Вход по закрытой ссылке: поле пароля, согласие на обработку персональных данных, согласие на передачу за рубеж и кнопка.
 // Согласия — отдельными галочками, не отмеченными заранее: с 1 сентября 2025 года их нельзя прятать в условия.
@@ -42,6 +36,8 @@ export function LoginForm() {
         return;
       }
       if (!res.ok) throw new Error(res.statusText);
+      // Галочки отмечены — согласие на этом устройстве записано, второй раз его не спросят.
+      saveConsent();
       window.location.replace(nextPath());
     } catch {
       setState("failed");
@@ -86,29 +82,7 @@ export function LoginForm() {
             Не получилось войти — проверьте интернет и попробуйте ещё раз.
           </Note>
         )}
-        <label className="flex items-start gap-2.5">
-          <input
-            type="checkbox"
-            checked={agreed}
-            onChange={(e) => setAgreed(e.currentTarget.checked)}
-            required
-            className="mt-0.5 size-4 flex-none accent-[var(--brand)]"
-          />
-          <span className="text-[var(--ink-2)]">Даю {doc("/consent", "согласие на обработку персональных данных")}</span>
-        </label>
-        <label className="flex items-start gap-2.5">
-          <input
-            type="checkbox"
-            checked={transfer}
-            onChange={(e) => setTransfer(e.currentTarget.checked)}
-            required
-            className="mt-0.5 size-4 flex-none accent-[var(--brand)]"
-          />
-          <span className="text-[var(--ink-2)]">
-            Даю {doc("/consent-transfer", "согласие на передачу данных за рубеж")} — модели ИИ в США, без этого сервис не прочитает
-            документы
-          </span>
-        </label>
+        <ConsentChecks processing={agreed} transfer={transfer} onProcessing={setAgreed} onTransfer={setTransfer} />
         <button type="submit" disabled={state === "busy" || !password || !agreed || !transfer} className="btn btn-lg">
           {state === "busy" ? "Вхожу…" : "Войти"}
         </button>

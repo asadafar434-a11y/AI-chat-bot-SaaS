@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { usePathname } from "next/navigation";
+import { ConsentGate } from "@/components/consent-gate";
 import { SideNav } from "@/components/side-nav";
 import { isLegalPath } from "@/lib/legal";
 
@@ -61,6 +62,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (pathname === "/login" || isLegalPath(pathname)) return children;
 
   return (
+    <ConsentGate>
     <ShellContext value={{ menuOpen: open, openMenu: () => setOpenAt(pathname), menuButton }}>
       <div className="grid h-full grid-cols-[var(--side-w)_minmax(0,1fr)] max-lg:grid-cols-1 lg:pl-2">
         <aside
@@ -81,5 +83,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </div>
     </ShellContext>
+    </ConsentGate>
   );
 }

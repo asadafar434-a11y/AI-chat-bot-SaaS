@@ -8,6 +8,11 @@ const encoder = new TextEncoder();
 
 export const accessPassword = () => (process.env.ACCESS_PASSWORD ?? "").trim();
 
+// Без пароля приложение открыто — так можно только на своём компьютере (next dev). На хостинге (production) без пароля
+// запросы к ИИ закрыты: иначе ключ тратит кто угодно, а данные обрабатываются без согласия. Открыть намеренно — OPEN_ACCESS=1.
+export const closedWithoutPassword = (env: Record<string, string | undefined> = process.env) =>
+  env.NODE_ENV === "production" && env.OPEN_ACCESS !== "1";
+
 // Метка входа — HMAC от постоянной строки на ключе-пароле. Сам пароль в cookie не лежит,
 // а сменили пароль — все прежние входы перестают действовать.
 export async function accessToken(password: string): Promise<string> {
