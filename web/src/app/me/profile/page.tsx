@@ -19,6 +19,7 @@ import {
 import { REQUISITE_KINDS, type FoundField } from "@/lib/my-docs";
 import { plural } from "@/lib/plural";
 import { filledCount, PROFILE_GROUPS, PROFILE_KEYS, type Profile, type ProfileKey } from "@/lib/profile";
+import { profileProblems } from "@/lib/requisites-check";
 
 type SaveState = "idle" | "saving" | "saved" | "failed";
 type FillNote = { tone: "ok" | "info" | "warn"; text: string };
@@ -93,6 +94,8 @@ export default function ProfilePage() {
   const [loadError, setLoadError] = useState(false);
   const [filling, setFilling] = useState(false);
   const [fillNote, setFillNote] = useState<FillNote | null>(null);
+  // Подсказка о формате не появляется, пока поле в фокусе: недописанный номер — ещё не ошибка.
+  const [focused, setFocused] = useState<ProfileKey | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Реквизиты и документы перечитываются и после загрузки копии: из неё могли прийти и те, и другие.
@@ -186,6 +189,8 @@ export default function ProfilePage() {
     }
   }
 
+  const problems = profile ? profileProblems(profile) : {};
+
   const saveText =
     save === "saving" ? "Сохраняю…" : save === "saved" ? "Сохранено" : save === "failed" ? "Не сохранилось — попробуйте ещё раз" : "";
 
@@ -254,29 +259,41 @@ export default function ProfilePage() {
             PROFILE_GROUPS.map((group, gi) => (
               <Island key={group.title} id={`pg-${gi}`} title={group.title}>
                 <div className="grid px-[var(--pad)] pb-3 pt-1">
-                  {group.fields.map((field) => (
-                    <div
-                      key={field.key}
-                      className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-center gap-x-4 gap-y-1 py-1.5 max-sm:grid-cols-1"
-                    >
-                      <label htmlFor={`pf-${field.key}`} className="text-[var(--ink-2)]">
-                        {field.label}
-                      </label>
-                      <input
-                        id={`pf-${field.key}`}
-                        value={profile[field.key]}
-                        onChange={(e) => change(field.key, e.target.value)}
-                        placeholder={field.example}
-                        autoComplete="off"
-                        className="field"
-                      />
-                      {meta.sources[field.key] && (
-                        <span className="t-caption col-start-2 text-[var(--ink-3)] max-sm:col-start-1">
-                          из «{meta.sources[field.key]}»
-                        </span>
-                      )}
-                    </div>
-                  ))}
+                  {group.fields.map((field) => {
+                    const hint = focused === field.key ? undefined : problems[field.key];
+                    return (
+                      <div
+                        key={field.key}
+                        className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-center gap-x-4 gap-y-1 py-1.5 max-sm:grid-cols-1"
+                      >
+                        <label htmlFor={`pf-${field.key}`} className="text-[var(--ink-2)]">
+                          {field.label}
+                        </label>
+                        <input
+                          id={`pf-${field.key}`}
+                          value={profile[field.key]}
+                          onChange={(e) => change(field.key, e.target.value)}
+                          onFocus={() => setFocused(field.key)}
+                          onBlur={() => setFocused(null)}
+                          placeholder={field.example}
+                          autoComplete="off"
+                          aria-invalid={hint ? true : undefined}
+                          aria-describedby={hint ? `pf-${field.key}-hint` : undefined}
+                          className="field"
+                        />
+                        {hint && (
+                          <span id={`pf-${field.key}-hint`} className="t-caption col-start-2 text-[var(--warn)] max-sm:col-start-1">
+                            {hint}
+                          </span>
+                        )}
+                        {meta.sources[field.key] && (
+                          <span className="t-caption col-start-2 text-[var(--ink-3)] max-sm:col-start-1">
+                            из «{meta.sources[field.key]}»
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </Island>
             ))}
