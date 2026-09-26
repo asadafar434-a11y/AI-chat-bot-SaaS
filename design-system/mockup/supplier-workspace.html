@@ -136,6 +136,9 @@
   .nav-item[aria-current="page"] { background: var(--brand); color: var(--on-brand); font-weight: 600; box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 40%, transparent); }
   .nav-item[aria-current="page"] > svg, .nav-item[aria-current="page"] .count { color: color-mix(in srgb, var(--on-brand) 78%, transparent); }
   .count { margin-left: auto; font: var(--t-num); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  /* Новое в разделе — пилюлей бренда: «Вопросы юристу 1» */
+  .count.fresh { min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill); display: grid; place-items: center; background: var(--brand); color: var(--on-brand); font: 600 12px/16px var(--ui); }
+  .nav-item[aria-current="page"] .count.fresh { background: var(--on-brand); color: var(--brand); }
   .sec-label { margin: 0 10px 4px; font: var(--t-over); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
   .side-foot { display: grid; gap: 4px; padding: 8px; border-top: 1px solid var(--line); }
   .switch { position: relative; flex: none; width: 36px; height: 20px; margin-left: auto; border-radius: var(--r-pill); background: var(--edge-2); transition: background .15s ease; }
@@ -166,6 +169,23 @@
   .head h1:focus { outline: none; }
   .head-sub { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--t-caption); color: var(--ink-3); }
   .head-acts { flex: none; display: flex; align-items: center; gap: 12px; }
+  /* Колокольчик — в шапке каждого экрана; число новых — пилюлей бренда на углу */
+  .icon-btn.bell { position: relative; }
+  .bell-dot { position: absolute; top: 1px; right: 1px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--r-pill); display: grid; place-items: center; background: var(--brand); color: var(--on-brand); font: 600 12px/16px var(--ui); box-shadow: 0 0 0 2px var(--canvas); }
+  /* Уведомления — всплывающий остров под колокольчиком (тень --float): пункты без разделителей, новые — жирным и с точкой */
+  .notif-pop { position: fixed; top: 60px; right: 16px; z-index: 50; width: min(380px, calc(100vw - 16px)); max-height: min(560px, calc(100dvh - 76px)); overflow-y: auto; overscroll-behavior: contain; display: grid; align-content: start; gap: 4px; padding: 4px 0 12px; border-radius: var(--r-island); background: var(--card); box-shadow: var(--float); }
+  .notif-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; padding: 8px var(--pad) 0; }
+  .notif-list { list-style: none; margin: 0; padding: 0 8px; display: grid; gap: 2px; }
+  .notif-item { appearance: none; border: 0; background: none; width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) 8px; column-gap: 10px; align-items: start; padding: 8px; border-radius: var(--r-ctl); color: var(--ink); text-align: left; }
+  .notif-item:hover { background: var(--hover); }
+  .notif-item .todo-dot { margin: 5px 3px 0; }
+  .notif-item .prow-title { font: var(--t-body); color: var(--ink-2); }
+  .notif-item.unread .prow-title { font: var(--t-strong); color: var(--ink); }
+  .notif-text { font: var(--t-caption); color: var(--ink-2); }
+  .notif-item .prow-sub { white-space: normal; }
+  .notif-new { width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--brand); }
+  .notif-foot { margin: 4px var(--pad) 0; padding-top: 10px; border-top: 1px solid var(--line); font: var(--t-caption); color: var(--ink-3); }
+  .notif-empty { margin: 0; padding: 4px var(--pad) 8px; font: var(--t-body); color: var(--ink-3); }
   /* Холст под шапкой; поля по 8 px — место для кольца и тени островов, иначе край прокрутки их срежет */
   .view { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 8px 16px; scrollbar-gutter: stable; }
   .view.fill { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 8px; scrollbar-gutter: auto; }
@@ -213,6 +233,8 @@
   .input { width: 100%; height: 32px; padding-inline: 10px; border: 1px solid var(--edge-2); border-radius: var(--r-ctl); outline: none; background: var(--card); font: var(--t-doc); box-shadow: var(--hairline); }
   .input:focus { border-color: var(--brand); box-shadow: var(--ring); }
   .input.num { max-width: 240px; font: 400 16px/24px var(--mono); font-variant-numeric: tabular-nums; }
+  .input.area { height: auto; min-height: 96px; padding-block: 6px; resize: vertical; }
+  .form-err { margin: 0; font: var(--t-caption); color: var(--danger); }
   textarea::placeholder, input::placeholder { color: var(--ink-3); }
 
   /* Плашка на холсте — отдельный блок со скруглением острова, внутри острова — мельче */
@@ -413,6 +435,8 @@
   .pd-title { margin: 0; font: var(--t-title); letter-spacing: -.01em; }
   .pd-title:focus { outline: none; }
   .pd-sub { margin: 0; font: var(--t-caption); color: var(--ink-3); }
+  /* Срок подачи в подзаголовке не обрезается: переносится на вторую строку */
+  .pd-text .pd-sub { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; }
   .pd-acts { flex: none; display: flex; align-items: center; gap: 4px; }
   .due-chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; margin-right: 8px; padding-inline: 10px; border-radius: var(--r-pill); background: var(--paper-2); color: var(--ink-2); font: 600 12px/16px var(--ui); white-space: nowrap; }
   .due-chip > svg { flex: none; }
@@ -452,6 +476,8 @@
   .pd-head { container-type: inline-size; }
   .btn.info-toggle { display: none; }
   @media (max-width: 1559px) { .btn.info-toggle { display: inline-flex; } }
+  /* Подписи кнопок шапки сокращаются по месту: сначала у «Добавить документы» и «Сведений», потом у всех */
+  @container (width < 820px) { .pd-acts .pd-lbl.opt { display: none; } .pd-acts .btn.opt { width: 32px; padding: 0; } }
   @container (width < 560px) { .pd-acts .pd-lbl { display: none; } .pd-acts .btn { width: 32px; padding: 0; } }
   .start-steps { display: grid; gap: 16px 24px; margin: 0; padding: 8px var(--pad) 16px; list-style: none; }
   @media (min-width: 768px) { .start-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
@@ -567,6 +593,19 @@
   .part-name { font: var(--t-strong); }
   .part-status { grid-column: 1; font: var(--t-caption); color: var(--ink-3); }
   .parts .btn { grid-column: 2; grid-row: 1 / span 2; }
+  /* Документы заявки — все файлы в одном окне: название, статус бейджем, «Скачать»; строки с разделителями */
+  .files-list { list-style: none; margin: 0; padding: 0; display: grid; }
+  .file-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto auto; column-gap: 12px; row-gap: 6px; align-items: center; padding: 10px 0; }
+  .file-row + .file-row, .file-note { border-top: 1px solid var(--line); }
+  .file-title { font: var(--t-strong); }
+  .file-sub { font: var(--t-caption); color: var(--ink-3); }
+  .file-note { padding: 10px 0 0; font: var(--t-body); color: var(--ink-3); }
+  @media (max-width: 559px) {
+    .file-row { grid-template-columns: 32px minmax(0, 1fr) auto; }
+    .file-row > .badge { grid-column: 2; grid-row: 2; justify-self: start; }
+    .file-row > .btn { grid-column: 3; grid-row: 1 / 3; }
+    .file-row > .law { grid-row: 1 / 3; align-self: start; }
+  }
   /* Главное действие шага — плавающим островом внизу; полоса холста под ним закрывает черновик до края */
   .sticky-actions {
     position: sticky; bottom: -8px; z-index: 5; margin: auto -8px -8px; padding: 8px;
@@ -759,6 +798,37 @@
   .msg.bot > :last-child { margin-bottom: 0; }
   .msg .note-line { font-style: italic; color: var(--ink-3); }
   .msg-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin-top: 12px; font: var(--t-caption); color: var(--ink-3); }
+
+  /* ---------- вопросы юристу: список вопросов и разговор — как закупки ---------- */
+  .law-ws { display: grid; grid-template-columns: var(--list-w) minmax(0, 1fr); gap: 8px; align-items: start; max-width: 1040px; }
+  .law-ws > .panel { min-width: 0; }
+  .law-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .law-row .prow-text > span:last-child { margin-top: 2px; }
+  .icon-btn.law-back { display: none; }
+  @media (max-width: 1179px) {
+    .law-ws { grid-template-columns: minmax(0, 1fr); }
+    .law-ws[data-open] > .law-list, .law-ws:not([data-open]) > .law-thread { display: none; }
+    .icon-btn.law-back { display: grid; }
+  }
+  .law-head { display: flex; align-items: flex-start; gap: 8px; padding: 12px var(--pad) 4px; }
+  .law-head-text { flex: 1; min-width: 0; display: grid; gap: 6px; }
+  .law-title { margin: 0; font: var(--t-title); letter-spacing: -.01em; }
+  .law-title:focus { outline: none; }
+  .law-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font: var(--t-caption); color: var(--ink-3); }
+  .law-body { display: grid; gap: 16px; padding: 8px var(--pad) var(--pad); }
+  .law-ctx { display: grid; gap: 4px; padding: 10px 12px; border-radius: var(--r-card); background: var(--paper-2); }
+  .law-ctx-label { margin: 0; font: var(--t-caption); color: var(--ink-3); }
+  .law-ctx-text { margin: 0; font: var(--t-read); color: var(--ink-2); }
+  .law-feed { display: grid; gap: 16px; }
+  .msg.lawyer { display: grid; gap: 8px; font: var(--t-read); }
+  .msg.lawyer p { margin: 0; }
+  .msg.lawyer .who { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font: var(--t-caption); color: var(--ink-3); }
+  .msg.lawyer .who b { font: var(--t-strong); color: var(--ink); }
+  .law-wait { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; border-radius: var(--r-card); background: var(--paper-2); font: var(--t-body); color: var(--ink-2); }
+  .law-wait > svg { flex: none; margin-top: 2px; color: var(--ink-3); }
+  .law-compose { padding: 0 var(--pad) var(--pad); }
+  .law-form { display: grid; gap: 8px; }
+  .law-form .field-label { margin-top: 4px; }
   .refs { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
   .thinking { margin: 0; font: var(--t-body); color: var(--ink-3); animation: pulse 1.2s ease-in-out infinite; }
   .composer {
@@ -892,6 +962,7 @@
 </div>
 
 <div class="modal-scrim" id="modal" hidden></div>
+<div class="notif-pop" id="notif" role="dialog" aria-labelledby="notif-title" hidden></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -946,6 +1017,9 @@
     info: ["fM12 10.75C12.41 10.75 12.75 11.09 12.75 11.5V16.5C12.75 16.91 12.41 17.25 12 17.25C11.59 17.25 11.25 16.91 11.25 16.5V11.5C11.25 11.09 11.59 10.75 12 10.75Z", "fM12 9C12.55 9 13 8.55 13 8C13 7.45 12.55 7 12 7C11.45 7 11 7.45 11 8C11 8.55 11.45 9 12 9Z", "eM3.25 12C3.25 7.17 7.17 3.25 12 3.25C16.83 3.25 20.75 7.17 20.75 12C20.75 16.83 16.83 20.75 12 20.75C7.17 20.75 3.25 16.83 3.25 12ZM12 4.75C8 4.75 4.75 8 4.75 12C4.75 16 8 19.25 12 19.25C16 19.25 19.25 16 19.25 12C19.25 8 16 4.75 12 4.75Z"],
     help: ["eM3.25 12C3.25 7.17 7.17 3.25 12 3.25C16.83 3.25 20.75 7.17 20.75 12C20.75 16.83 16.83 20.75 12 20.75C7.17 20.75 3.25 16.83 3.25 12ZM12 4.75C8 4.75 4.75 8 4.75 12C4.75 16 8 19.25 12 19.25C16 19.25 19.25 16 19.25 12C19.25 8 16 4.75 12 4.75Z", "eM12 8.12C11.05 8.12 10.25 8.93 10.25 9.95C10.25 10.37 9.91 10.7 9.5 10.7C9.09 10.7 8.75 10.37 8.75 9.95C8.75 8.13 10.19 6.62 12 6.62C13.81 6.62 15.25 8.13 15.25 9.95C15.25 11.38 14.36 12.61 13.1 13.07C12.97 13.12 12.87 13.19 12.81 13.26C12.75 13.32 12.75 13.36 12.75 13.38C12.75 13.79 12.41 14.12 12 14.12C11.59 14.12 11.25 13.79 11.25 13.38C11.25 12.46 11.99 11.88 12.58 11.66C13.25 11.41 13.75 10.74 13.75 9.95C13.75 8.93 12.95 8.12 12 8.12Z", "fM13 16.38C13 16.93 12.55 17.38 12 17.38C11.45 17.38 11 16.93 11 16.38C11 15.82 11.45 15.38 12 15.38C12.55 15.38 13 15.82 13 16.38Z"],
     calc: ["sM8.5 3.75C10.83 3.49 13.17 3.49 15.5 3.75C16.93 3.91 18.09 5.07 18.25 6.5C18.66 10.17 18.66 13.83 18.25 17.5C18.09 18.93 16.93 20.09 15.5 20.25C13.17 20.51 10.83 20.51 8.5 20.25C7.07 20.09 5.91 18.93 5.75 17.5C5.34 13.83 5.34 10.17 5.75 6.5C5.91 5.07 7.07 3.91 8.5 3.75Z", "sM9.6 6.5C11.2 6.32 12.8 6.32 14.4 6.5C14.97 6.56 15.44 7.03 15.5 7.6C15.53 7.87 15.53 8.13 15.5 8.4C15.44 8.97 14.97 9.44 14.4 9.5C12.8 9.68 11.2 9.68 9.6 9.5C9.03 9.44 8.56 8.97 8.5 8.4C8.47 8.13 8.47 7.87 8.5 7.6C8.56 7.03 9.03 6.56 9.6 6.5Z", "fM7.75 13.25A1 1 0 1 0 9.75 13.25A1 1 0 1 0 7.75 13.25Z", "fM11 13.25A1 1 0 1 0 13 13.25A1 1 0 1 0 11 13.25Z", "fM14.25 13.25A1 1 0 1 0 16.25 13.25A1 1 0 1 0 14.25 13.25Z", "fM7.75 16.5A1 1 0 1 0 9.75 16.5A1 1 0 1 0 7.75 16.5Z", "fM11 16.5A1 1 0 1 0 13 16.5A1 1 0 1 0 11 16.5Z", "fM14.25 16.5A1 1 0 1 0 16.25 16.5A1 1 0 1 0 14.25 16.5Z"],
+    // «Скачать» — Craftwork Files/Download; колокольчика в наборе нет — дорисован: обводка 1,5, скруглённые концы.
+    download: ["eM10.74 3.25C9.96 3.25 9.32 3.84 9.25 4.61C9.11 6.22 9.07 7.84 9.14 9.46C9.06 9.46 8.98 9.47 8.89 9.47L7.4 9.58C6.45 9.65 5.92 10.71 6.43 11.52C7.53 13.23 8.94 14.73 10.59 15.91L11.19 16.34C11.67 16.69 12.33 16.69 12.81 16.34L13.41 15.91C15.06 14.73 16.47 13.23 17.57 11.52C18.08 10.71 17.55 9.65 16.6 9.58L15.11 9.47C15.02 9.47 14.94 9.46 14.86 9.46C14.93 7.84 14.89 6.22 14.75 4.61C14.68 3.84 14.04 3.25 13.26 3.25H10.74ZM10.68 10.11C10.57 8.33 10.59 6.53 10.75 4.75H13.26C13.41 6.53 13.43 8.33 13.32 10.11C13.31 10.32 13.37 10.51 13.51 10.66C13.64 10.81 13.83 10.9 14.03 10.91C14.35 10.93 14.68 10.95 15 10.97L16.08 11.05C15.12 12.46 13.92 13.7 12.53 14.69L12 15.08L11.47 14.69C10.08 13.7 8.88 12.46 7.92 11.05L9 10.97C9.32 10.95 9.65 10.93 9.97 10.91C10.17 10.9 10.36 10.81 10.49 10.66C10.63 10.51 10.69 10.32 10.68 10.11Z", "fM5.75 17C5.75 16.59 5.41 16.25 5 16.25C4.59 16.25 4.25 16.59 4.25 17V19C4.25 19.97 5.03 20.75 6 20.75H18C18.97 20.75 19.75 19.97 19.75 19V17C19.75 16.59 19.41 16.25 19 16.25C18.59 16.25 18.25 16.59 18.25 17V19C18.25 19.14 18.14 19.25 18 19.25H6C5.86 19.25 5.75 19.14 5.75 19V17Z"],
+    bell: ["sM6.75 10.5C6.75 7.6 9.1 5.25 12 5.25C14.9 5.25 17.25 7.6 17.25 10.5V13.6C17.25 14.6 17.62 15.57 18.3 16.31L18.75 16.75H5.25L5.7 16.31C6.38 15.57 6.75 14.6 6.75 13.6V10.5Z", "sM10 19.25C10.4 20.03 11.15 20.5 12 20.5C12.85 20.5 13.6 20.03 14 19.25", "sM12 3.25V5.25"],
   };
   const ic = (name, size = 18, weight = 1.5) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="currentColor" aria-hidden="true">${ICONS[name].map((p) => {
     const d = p.slice(1);
@@ -1683,6 +1757,23 @@
   }
 
   /* ---------- состояние ---------- */
+  // Вопросы юристу: отвечает живой юрист по закупкам, обычно в течение рабочего дня. В прототипе — пример переписки.
+  const LAWYER = { name: "Анна Кузнецова", role: "юрист по 44-ФЗ и 223-ФЗ", initials: "АК" };
+  const THREADS0 = [
+    {
+      id: "t1", pid: P1.id, title: "Можно ли заменить исполнителя после подачи заявки?", unread: true,
+      ctx: { label: "ответ ИИ из «Вопросов» закупки", text: "По проекту контракта (п. 4.5) замена исполнителей допускается только по согласованию с заказчиком. Как оформить согласование, в документах не сказано." },
+      messages: [
+        { role: "user", text: "Можно ли заменить исполнителя после подачи заявки? Вокалистка может заболеть к концу ноября.", when: "вчера, 18:12" },
+        { role: "lawyer", text: "Можно, но только с согласия заказчика: так сказано в п. 4.5 проекта контракта.\n\nНапишите заказчику письмо: кого меняете и на кого, ФИО и звание нового исполнителя, приложите подтверждение звания. Звание должно быть не ниже, чем требует ТЗ в п. 3.5, иначе заказчик вправе отказать. Меняйте исполнителя, только когда получите согласие письменно.", when: "сегодня, 10:40" },
+      ],
+    },
+    {
+      id: "t2", pid: "", title: "Когда вернут обеспечение заявки, если мы не победим?", unread: false, ctx: null,
+      messages: [{ role: "user", text: "Когда вернут обеспечение заявки, если мы не победим? И нужно ли для этого что-то писать?", when: "сегодня, 09:15" }],
+    },
+  ];
+
   const S = {
     screen: "home", id: null, drawer: false, visit: 0,
     purchases: [prepare(P1, true), prepare(P2, false), prepare(P3, true)],
@@ -1693,6 +1784,8 @@
     ui: {},
     busy: null,
     info: false, fold: {}, q: "", tabs: {}, lane: null,
+    law: { open: null, want: null, threads: clone(THREADS0) },
+    notes: [], notifOpen: false,
   };
   const PURCHASE_SCREENS = ["req", "tp", "check", "chat", "price"];
   const WORK = ["list", ...PURCHASE_SCREENS];
@@ -1821,7 +1914,11 @@
 
   /* ---------- сайдбар: только разделы ---------- */
   function sideHTML() {
-    const nav = (screen, icon, label, count, current) => `<button class="nav-item" type="button" data-go="${screen}"${current ? ' aria-current="page"' : ""}>${ic(icon)}<span>${label}</span>${count !== undefined ? `<span class="count">${count}</span>` : ""}</button>`;
+    const countHTML = (count) => count === undefined ? ""
+      : count.fresh ? `<span class="count fresh">${count.fresh}<span class="sr-only"> ${plural(count.fresh, "новый ответ", "новых ответа", "новых ответов")}</span></span>`
+      : `<span class="count">${count}</span>`;
+    const nav = (screen, icon, label, count, current) => `<button class="nav-item" type="button" data-go="${screen}"${current ? ' aria-current="page"' : ""}>${ic(icon)}<span>${label}</span>${countHTML(count)}</button>`;
+    const lawFresh = S.law.threads.filter((t) => t.unread).length;
     const pr = S.profile;
     const name = pr.shortName.trim() || pr.fullName.trim() || "Участник закупок";
     const sub = pr.email.trim() || (pr.inn.trim() ? `ИНН ${pr.inn.trim()}` : "реквизиты не заполнены");
@@ -1835,6 +1932,7 @@
           ${nav("home", "home", "Главная", undefined, S.screen === "home")}
           ${nav("list", "list", "Закупки", S.purchases.length, WORK.includes(S.screen) || S.screen === "new")}
           ${nav("ask", "chat", "Спросить про тендер", undefined, S.screen === "ask")}
+          ${nav("lawyer", "scale", "Вопросы юристу", lawFresh ? { fresh: lawFresh } : undefined, S.screen === "lawyer")}
         </nav>
         <section aria-labelledby="side-me">
           <h2 class="sec-label" id="side-me">Данные компании</h2>
@@ -1867,6 +1965,8 @@
         return { title: "Главная", sub: next ? `Ближайший срок подачи ${when}: ${next.p.short}` : n ? "Сроков подачи впереди нет" : "Начните с документов первой закупки", acts: newBtn(!n || tasksOf().length > 0) };
       case "ask":
         return { title: "Спросить про тендер", sub: "Общие вопросы по 44-ФЗ и 223-ФЗ — ответ со ссылкой на статью" };
+      case "lawyer":
+        return { title: "Вопросы юристу", sub: "Живой юрист по 44-ФЗ и 223-ФЗ · ответ в течение рабочего дня", acts: `<button class="btn" type="button" data-act="lawyer-new">${ic("plus")}<span class="lbl">Новый вопрос</span></button>` };
       case "help":
         return { title: "Как это работает", sub: "Путь по закупке и где что лежит" };
       case "new":
@@ -1893,6 +1993,7 @@
     const h = headInfo();
     return `<button class="icon-btn menu-btn" type="button" id="menu-btn" data-act="drawer" aria-label="Открыть меню" aria-controls="side" aria-expanded="${S.drawer && narrow.matches}">${ic("menu", 22)}</button>
       <div class="head-text"><h1 id="page-title" tabindex="-1">${esc(h.title)}</h1>${h.sub ? `<p class="head-sub">${esc(h.sub)}</p>` : ""}</div>
+      ${bellHTML()}
       ${h.acts ? `<div class="head-acts">${h.acts}</div>` : ""}`;
   }
 
@@ -1914,13 +2015,20 @@
         if (tp.state === "todo") out.push({ p, go: "tp", text: "Составить техническое предложение", tone: urgent });
         else if (tp.state === "fix") out.push({ p, go: "tp", text: `Вписать свои данные в ТП — ${tp.status.replace(/^впишите /, "")}`, tone: urgent });
         else out.push({ p, go: "check", text: "Проверить заявку перед подачей", tone: urgent });
-      }
+      } else if (stepsOf(p)[2].state === "done") out.push({ p, go: "files", text: "Скачать документы и подать заявку на площадке", tone: urgent });
       if ((p.scans || []).length) out.push({ p, go: "req", text: `Сверить цифры в ${p.scans.length === 1 ? "файле со скана" : "файлах со скана"}`, tone: "warn" });
       p.unreadable.forEach((f) => out.push({ p, go: "req", text: `Пересохранить «${f.name}» — файл не прочитан`, tone: "warn" }));
     }
+    // Новый ответ юриста — сразу после самого срочного дела: его ждали, но срок подачи важнее.
+    const answers = S.law.threads.filter((t) => t.unread).map((t) => ({ p: lawPurchase(t), thread: t.id, text: `Прочитать ответ юриста: «${t.title}»`, tone: "brand" }));
+    out.splice(Math.min(1, out.length), 0, ...answers);
     return out;
   }
-  const GO_LABEL = { tp: "Открыть ТП", check: "Открыть проверку", req: "Открыть требования" };
+  const GO_LABEL = { tp: "Открыть ТП", check: "Открыть проверку", req: "Открыть требования", files: "Скачать документы" };
+  // Кнопка дела: шаг закупки, окно документов заявки или разговор с юристом.
+  const taskAttrs = (t) => t.thread ? `data-act="law-open" data-thread="${t.thread}"` : t.go === "files" ? `data-act="files" data-id="${t.p.id}"` : `data-go="${t.go}" data-id="${t.p.id}"`;
+  const taskBadge = (t, long) => (t.thread ? badge("brand", "новый ответ") : dueBadge(t.p, long));
+  const taskWhere = (t) => (t.p ? t.p.short : "Общий вопрос");
 
   // Самое срочное — крупно, с главной кнопкой; остальное — строками ниже.
   function nowHTML(tasks) {
@@ -1928,16 +2036,16 @@
     const [top, ...rest] = tasks;
     return `<div class="now">
         <div class="now-text">
-          <div class="now-badges">${dueBadge(top.p, true)}${top.p.sample ? badge("calm", "пример") : ""}</div>
+          <div class="now-badges">${taskBadge(top, true)}${top.p && top.p.sample ? badge("calm", "пример") : ""}</div>
           <p class="now-title">${esc(top.text)}</p>
-          <p class="now-sub">${esc(top.p.short)} · ${esc(top.p.customer)}</p>
+          <p class="now-sub">${esc(taskWhere(top))}${top.p ? ` · ${esc(top.p.customer)}` : ""}</p>
         </div>
-        <button class="btn" type="button" data-go="${top.go}" data-id="${top.p.id}">${GO_LABEL[top.go]}${ic("chev", 16)}</button>
+        <button class="btn" type="button" ${taskAttrs(top)}>${top.thread ? "Прочитать ответ" : GO_LABEL[top.go]}${ic("chev", 16)}</button>
       </div>
-      ${rest.length ? `<ul class="plist">${rest.map((t) => `<li><button class="prow task" type="button" data-go="${t.go}" data-id="${t.p.id}">
+      ${rest.length ? `<ul class="plist">${rest.map((t) => `<li><button class="prow task" type="button" ${taskAttrs(t)}>
         <span class="todo-dot ${t.tone}" aria-hidden="true"></span>
-        <span class="prow-text"><span class="prow-title">${esc(t.text)}</span><span class="prow-sub">${esc(t.p.short)}</span></span>
-        ${dueBadge(t.p)}
+        <span class="prow-text"><span class="prow-title">${esc(t.text)}</span><span class="prow-sub">${esc(taskWhere(t))}</span></span>
+        ${taskBadge(t)}
         <span class="chev">${ic("chev", 16)}</span>
       </button></li>`).join("")}</ul>` : ""}`;
   }
@@ -2036,16 +2144,16 @@
   }
 
   /* ---------- вопросы: общий чат и чат закупки ---------- */
-  function msgHTML(m, p) {
+  function msgHTML(m, p, i) {
     if (m.role === "user") {
       const files = (m.files || []).length ? `<div class="msg-files">${m.files.map((n) => `<span class="file-chip plain">${ic("file", 14)}<span class="fc-name">${esc(n)}</span></span>`).join("")}</div>` : "";
       return files + (m.text ? `<div class="msg user">${esc(m.text)}</div>` : "");
     }
     const done = m.done !== false;
     const refs = (m.src || []).map((r) => refBtn(r, p)).join("");
-    return `<div class="msg bot">${md(done ? m.text : m.shown)}${done && m.note ? `<p class="note-line">${esc(m.note)}</p>` : ""}${done ? `<div class="msg-meta">${refs ? `<span class="refs">Источники: ${refs}</span>` : ""}<button class="link quiet" type="button" data-act="lawyer">Спросить юриста</button></div>` : ""}</div>`;
+    return `<div class="msg bot">${md(done ? m.text : m.shown)}${done && m.note ? `<p class="note-line">${esc(m.note)}</p>` : ""}${done ? `<div class="msg-meta">${refs ? `<span class="refs">Источники: ${refs}</span>` : ""}<button class="link quiet" type="button" data-act="lawyer" data-i="${i}">Спросить юриста</button></div>` : ""}</div>`;
   }
-  const feedInner = (messages, thinking, p) => messages.map((m) => msgHTML(m, p)).join("") + (thinking ? '<p class="thinking">Изучаю документы и закон…</p>' : "");
+  const feedInner = (messages, thinking, p) => messages.map((m, i) => msgHTML(m, p, i)).join("") + (thinking ? '<p class="thinking">Изучаю документы и закон…</p>' : "");
 
   function chipsHTML(list, used) {
     const left = list.filter((q) => !used.includes(q));
@@ -2135,11 +2243,12 @@
     let n = null;
     if (from === "req" && tp.state !== "done") n = { label: "Дальше — шаг 2 из 3", title: "Техническое предложение", text: tp.state === "todo" ? "Составлю черновик по ТЗ: товары с характеристиками и предложение по каждому пункту. Вам останется вписать своё." : `Черновик готов — осталось вписать свои данные: ${tp.status.replace(/^впишите /, "")}.`, go: "tp", action: tp.state === "todo" ? "Составить ТП" : "Открыть ТП" };
     else if (from !== "check" && check.state === "todo") n = { label: "Дальше — шаг 3 из 3", title: "Проверка заявки", text: "Соберите заявку и загрузите её перед подачей — сверю с извещением и ТЗ по каждому пункту.", go: "check", action: "Проверить заявку" };
-    else if (check.state === "done") n = { label: "Готово к подаче", title: "Подайте заявку на электронной площадке", text: due ? `${due.head}${due.left ? ` — ${due.left}` : ""}.` : "Срок подачи — в извещении о закупке." };
+    else if (check.state === "done") n = { label: "Готово к подаче", title: "Подайте заявку на электронной площадке", text: `${due ? `${due.head}${due.left ? ` — ${due.left}` : ""}.` : "Срок подачи — в извещении о закупке."} Файлы заявки — одним архивом.`, act: "files", action: "Скачать документы заявки" };
     if (!n) return "";
     return `<section class="next" aria-label="${esc(n.label)}">
       <div class="next-text"><p class="next-label${n.go ? "" : " ok"}">${esc(n.label)}</p><p class="next-title">${esc(n.title)}</p><p class="next-desc">${esc(n.text)}</p></div>
-      ${n.go ? `<button class="btn" type="button" data-go="${n.go}" data-id="${p.id}">${esc(n.action)}${ic("chev", 16)}</button>` : ""}
+      ${n.go ? `<button class="btn" type="button" data-go="${n.go}" data-id="${p.id}">${esc(n.action)}${ic("chev", 16)}</button>`
+        : n.act ? `<button class="btn" type="button" data-act="${n.act}" data-id="${p.id}">${ic("download", 16)}${esc(n.action)}</button>` : ""}
     </section>`;
   }
 
@@ -2172,8 +2281,9 @@
         ${lawBadge(p)}
         <div class="pd-text"><h2 class="pd-title" id="pd-title" tabindex="-1">${esc(p.short)}</h2><p class="pd-sub">${pdDue(p)}${p.sample ? " · пример" : ""}</p></div>
         <div class="pd-acts">
-          <label class="btn line xs" for="add-doc" title="Добавить документы закупки">${ic("clip", 16)}<span class="pd-lbl">Добавить документы</span><input id="add-doc" type="file" multiple class="sr-only" aria-label="Добавить документы закупки"></label>
-          <button class="btn line xs info-toggle" id="info-toggle" type="button" data-act="info" aria-controls="ws-info" aria-expanded="${S.info}" title="Сведения о закупке">${ic("panel", 16)}<span class="pd-lbl">Сведения</span><span class="sr-only"> о закупке</span></button>
+          <button class="btn line xs" type="button" data-act="files" data-id="${p.id}" aria-label="Скачать заявку" title="Документы заявки — файлы Word">${ic("download", 16)}<span class="pd-lbl">Скачать заявку</span></button>
+          <label class="btn line xs opt" for="add-doc" title="Добавить документы закупки">${ic("clip", 16)}<span class="pd-lbl opt">Добавить документы</span><input id="add-doc" type="file" multiple class="sr-only" aria-label="Добавить документы закупки"></label>
+          <button class="btn line xs info-toggle opt" id="info-toggle" type="button" data-act="info" aria-controls="ws-info" aria-expanded="${S.info}" aria-label="Сведения о закупке" title="Сведения о закупке">${ic("panel", 16)}<span class="pd-lbl opt">Сведения</span><span class="sr-only"> о закупке</span></button>
         </div>
       </div>
       ${tabsHTML(p)}</div></div>
@@ -2252,13 +2362,13 @@
     return `<div class="tab-body">
       <p class="tab-lead">Шаг 1 — разобраться, подходит ли вам закупка и что подать. Всё выписано из документов закупки; нажмите на ссылку под пунктом, чтобы увидеть точную цитату.</p>
       ${notes ? `<div class="notes">${notes}</div>` : ""}
+      ${priceTeaserHTML(p)}
       ${REQ_KEYS.map((key) => {
         const items = p.requirements[key];
         return `<section class="panel" aria-labelledby="req-${key}"><div class="panel-head"><h3 class="panel-title" id="req-${key}">${GROUPS[key].title}${items.length ? ` <span class="count">${items.length}</span>` : ""}</h3></div>
           ${items.length ? `<ul class="list">${items.map((it, i) => `<li><span>${esc(it.text)}</span>${sourceHTML(`${key}-${i}`, it.source, it.quote, it.verified, "пункт")}</li>`).join("")}</ul>` : `<p class="empty-group">${GROUPS[key].empty}</p>`}
         </section>`;
       }).join("")}
-      ${priceTeaserHTML(p)}
       ${nextHTML(p, "req")}
     </div>`;
   }
@@ -2664,7 +2774,7 @@
       <section class="panel verdict" aria-labelledby="check-verdict">
         <h3 class="check-title" id="check-verdict">${title}</h3>
         <p class="small ink2 m0">${lead}</p>
-        <p class="under"><button class="link" type="button" data-act="recheck">${found ? "Проверить исправленный файл" : "Проверить другой файл"}</button><span>Сомневаетесь? <button class="link" type="button" data-act="lawyer">Спросить юриста</button></span></p>
+        <p class="under"><button class="link" type="button" data-act="recheck">${found ? "Проверить исправленный файл" : "Проверить другой файл"}</button><span>Сомневаетесь? <button class="link" type="button" data-act="lawyer" data-from="check">Спросить юриста</button></span></p>
       </section>
       <section class="panel" aria-labelledby="find-title">
         <div class="panel-head"><h3 class="panel-title" id="find-title">${found ? `Что исправить <span class="count">${found}</span>` : "Проверенные пункты"}</h3></div>
@@ -2786,7 +2896,7 @@
     ? '<span class="warn-t">Выше начальной — такую заявку отклонят</span>'
     : c.price !== null && c.nmck ? `На ${dropText(1 - c.price / c.nmck)} % ниже начальной` : "Сколько хотите предложить на торгах");
 
-  // Вход в калькулятор с шага «Требования», рядом со сроками и деньгами: ответ, если уже посчитан, и шкала.
+  // Вход в калькулятор — первым на шаге «Требования», над «Кто может участвовать»: ответ, если уже посчитан, и шкала.
   function priceTeaserHTML(p) {
     const c = calcOf(p);
     const { floor, at } = priceFloor(c);
@@ -2980,6 +3090,7 @@
     const sections = [
       ["home", "home", "Главная", "Самое срочное дело, закупки по этапам и данные компании."],
       ["list", "list", "Закупки", "Все закупки: список слева, открытая закупка справа — с шагами, расчётом, до какой цены снижаться, и вопросами по ней."],
+      ["lawyer", "scale", "Вопросы юристу", "Живой юрист по закупкам: ответ обычно в течение рабочего дня. Ответил — число в меню, уведомление в колокольчике наверху и письмо на почту."],
       ["ask", "chat", "Спросить про тендер", "Общий вопрос по 44-ФЗ и 223-ФЗ. Вопрос про конкретную закупку задайте внутри неё — в «Вопросах»: отвечу по её документам."],
       ["profile", "user", "Реквизиты", "Данные компании. Сами попадают в анкету, декларацию и цену — но никогда в ТП: его подают анонимно."],
       ["docs", "folder", "Образцы и реквизиты", "Ваши прошлые заявки, анкеты, карточка предприятия. По ним заполняются реквизиты и пишутся новые документы — так же, как пишете вы."],
@@ -3153,7 +3264,241 @@
     return `<h3>${esc(PART_TITLES.price)}</h3><p class="c">Предмет закупки: ${esc(p.subject)}</p>${paras(`Предлагаемая цена договора составляет ${amount}, ${vat}.`, true)}${paras(p.tp.form.priceNote, true)}${signature()}`;
   }
 
-  function openPreview(p, part) {
+  /* ---------- документы заявки: все готовые файлы в одном окне ---------- */
+  // Скачать заявку можно из шапки закупки, из «Готово к подаче» в конце шагов и из дела на главной.
+  // Каждая часть — отдельным файлом Word; жёлтые поля — то, что осталось вписать.
+  function filesRows(p) {
+    const [, tp] = stepsOf(p);
+    const missing = PROFILE_KEYS.length - filledCount();
+    const row = (name, sub, tag, action) => `<li class="file-row">
+        <span class="law icon" aria-hidden="true">${ic("file", 16)}</span>
+        <span class="prow-text"><span class="file-title">${esc(name)}</span><span class="file-sub">${sub}</span></span>
+        ${tag}${action}
+      </li>`;
+    const dl = (k) => `<button class="btn soft xs" type="button" data-act="file-dl" data-part="${k}" data-id="${p.id}"${S.ui.writing ? " disabled" : ""}>${S.ui.writing === k ? "Пишу…" : "Скачать"}</button>`;
+    const rows = [row(PART_TITLES.tp, "первая часть заявки — без названия и реквизитов участника",
+      tp.state === "todo" ? badge("calm", "не составлено") : tp.state === "fix" ? badge("warn", tp.status, "pen") : badge("ok", "готово", "check"),
+      tp.state === "todo" ? `<button class="btn soft xs" type="button" data-go="tp" data-id="${p.id}">Составить</button>` : dl("tp"))];
+    if (!p.tp) return rows.join("") + '<li class="file-note">Анкета, декларация и предложение о цене появятся, когда составите ТП: форму заявки беру из документов закупки.</li>';
+    for (const k of partsOf(p.tp.form).filter((x) => x !== "tp")) {
+      const writing = S.ui.writing === k;
+      const price = k === "price";
+      const tag = writing ? badge("calm", "пишу документ…")
+        : price ? (p.tpPrice ? badge("ok", "цена вписана", "check") : badge("warn", "впишите цену", "pen"))
+        : missing ? badge("warn", "впишите реквизиты", "pen") : badge("ok", "готово", "check");
+      const sub = price ? (p.tpPrice ? "цена — из шага 2" : "цену вписывают на шаге 2, в ТП")
+        : missing ? `в «Реквизитах» не хватает ${missing} ${plural(missing, "поля", "полей", "полей")} — в файле они жёлтые` : "реквизиты — из «Реквизитов»";
+      rows.push(row(PART_TITLES[k], sub, tag, dl(k)));
+    }
+    return rows.join("");
+  }
+  function openFiles(p) {
+    if (!p) return;
+    const [, , check] = stepsOf(p);
+    const n = p.tp ? partsOf(p.tp.form).length : 1;
+    openModal(`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
+      <button class="icon-btn x-close" type="button" data-act="close" aria-label="Закрыть">${ic("x", 20)}</button>
+      <span class="eyebrow">${esc(p.short)}</span>
+      <h2 id="m-title">Документы заявки</h2>
+      <p class="small ink2 m0">Каждая часть — отдельным файлом Word. Что осталось вписать, в файле выделено жёлтым.</p>
+      <ul class="files-list" id="files-list">${filesRows(p)}</ul>
+      <div class="btn-row"><button class="btn" type="button" data-act="files-zip" data-id="${p.id}"${p.tp ? "" : " disabled"}>${ic("download", 16)}Скачать всё архивом</button><span class="small muted">${n} ${plural(n, "файл", "файла", "файлов")} Word</span></div>
+      ${check.state === "done" ? "" : `<p class="small ink2 m0">Перед подачей проверьте заявку: <button class="link" type="button" data-go="check" data-id="${p.id}">шаг 3, проверка заявки</button>.</p>`}
+    </div>`);
+  }
+
+  /* ---------- уведомления: колокольчик в шапке ---------- */
+  // Ответы юриста, сроки подачи и конец приёма заявок. Новые — жирным и с точкой бренда, число — на колокольчике.
+  // Копии уходят письмом на почту из «Реквизитов».
+  function initNotes() {
+    const notes = S.law.threads.filter((t) => t.unread).map((t) => ({ id: `n-${t.id}`, tone: "brand", title: "Юрист ответил на вопрос", text: `«${t.title}»`, sub: `${lawPurchase(t) ? lawPurchase(t).short : "Общий вопрос"} · ${t.messages[t.messages.length - 1].when}`, unread: true, thread: t.id }));
+    for (const p of [...S.purchases].sort(byUrgency)) {
+      const due = dueLine(p.deadline, false);
+      if (!due) continue;
+      const [, tp] = stepsOf(p);
+      if (due.days >= 0 && due.tone === "soon") {
+        notes.push({ id: `n-due-${p.id}`, tone: "warn", title: `До подачи ${daysText(due.days)}`, text: tp.state === "fix" ? `В ТП осталось: ${tp.status}` : tp.state === "todo" ? "ТП ещё не составлено" : "", sub: `${p.short} · сегодня, 09:00`, unread: false, go: "p", id: p.id });
+      } else if (due.days < 0) {
+        notes.push({ id: `n-end-${p.id}`, tone: "", title: "Приём заявок закончился", text: "", sub: `${p.short} · ${due.head.replace(/^Приём заявок закончился /, "")}`, unread: false, go: "p", id: p.id });
+      }
+    }
+    return notes;
+  }
+  function bellHTML() {
+    const fresh = S.notes.filter((n) => n.unread).length;
+    return `<button class="icon-btn bell" type="button" id="bell" data-act="notif" aria-haspopup="dialog" aria-controls="notif" aria-expanded="${S.notifOpen}" aria-label="Уведомления${fresh ? `, новых: ${fresh}` : ""}">${ic("bell", 20)}${fresh ? `<span class="bell-dot" aria-hidden="true">${fresh}</span>` : ""}</button>`;
+  }
+  function notifHTML() {
+    const fresh = S.notes.filter((n) => n.unread).length;
+    const email = S.profile.email.trim();
+    return `<div class="notif-head"><h2 class="panel-title" id="notif-title">Уведомления${fresh ? ` <span class="count">${fresh}</span>` : ""}</h2>${fresh ? '<button class="link quiet small" type="button" data-act="notif-read">Прочитать все</button>' : ""}</div>
+      ${S.notes.length ? `<ul class="notif-list">${S.notes.map((n) => `<li><button class="notif-item${n.unread ? " unread" : ""}" type="button" data-act="note" data-note="${n.id}">
+        <span class="todo-dot ${n.tone}" aria-hidden="true"></span>
+        <span class="prow-text"><span class="prow-title">${esc(n.title)}${n.unread ? '<span class="sr-only">, новое</span>' : ""}</span>${n.text ? `<span class="notif-text">${esc(n.text)}</span>` : ""}<span class="prow-sub">${esc(n.sub)}</span></span>
+        ${n.unread ? '<span class="notif-new" aria-hidden="true"></span>' : "<span></span>"}
+      </button></li>`).join("")}</ul>` : '<p class="notif-empty">Уведомлений пока нет.</p>'}
+      <p class="notif-foot">Копии приходят письмом на ${email ? esc(email) : "почту из «Реквизитов»"}. В прототипе письма не отправляются.</p>`;
+  }
+  function renderNotif() {
+    const box = $("#notif");
+    box.hidden = !S.notifOpen;
+    box.innerHTML = S.notifOpen ? notifHTML() : "";
+    const bell = $("#bell");
+    if (bell) bell.setAttribute("aria-expanded", String(S.notifOpen));
+  }
+  // focusBell — вернуть фокус на колокольчик (закрыли клавишей или кнопкой), а не при переходе по уведомлению.
+  function setNotif(open, focusBell = true) {
+    S.notifOpen = open;
+    renderNotif();
+    if (open) { const first = $("#notif .notif-item") || $("#notif .link"); if (first) first.focus(); }
+    else if (focusBell) { const bell = $("#bell"); if (bell) bell.focus(); }
+  }
+
+  /* ---------- вопросы юристу ---------- */
+  // Живой юрист по закупкам: вопрос уходит вместе с документами закупки, ответ — обычно в течение рабочего дня.
+  // Ответил — число в меню, уведомление в колокольчике, дело на главной и письмо на почту из «Реквизитов».
+  function lawPurchase(t) { return S.purchases.find((p) => p.id === t.pid); }
+  function lawStatus(t) {
+    const last = t.messages[t.messages.length - 1];
+    if (last.role === "user") return badge("calm", "ждёт ответа", "clock");
+    return t.unread ? badge("brand", "новый ответ") : badge("ok", "юрист ответил", "check");
+  }
+  function lawRowsHTML() {
+    return S.law.threads.map((t) => `<li><button class="prow law-row" type="button" data-act="law-open" data-thread="${t.id}"${S.law.open === t.id ? ' aria-current="true"' : ""}>
+        <span class="prow-text"><span class="prow-title">${esc(t.title)}</span><span class="prow-sub">${esc(lawPurchase(t) ? lawPurchase(t).short : "Общий вопрос")}</span><span>${lawStatus(t)}</span></span>
+        <span class="chev">${ic("chev", 16)}</span>
+      </button></li>`).join("");
+  }
+  const lawMetaHTML = (t) => `${lawPurchase(t) ? `<button class="link" type="button" data-go="p" data-id="${t.pid}">${esc(lawPurchase(t).short)}</button>` : "<span>Общий вопрос</span>"}${lawStatus(t)}`;
+  function lawBodyHTML(t) {
+    const p = lawPurchase(t);
+    const waiting = t.messages[t.messages.length - 1].role === "user";
+    const msgs = t.messages.map((m) => (m.role === "user"
+      ? `<div class="msg user">${esc(m.text)}</div>`
+      : `<div class="msg lawyer"><p class="who"><span class="avatar" aria-hidden="true">${LAWYER.initials}</span><b>${esc(LAWYER.name)}</b><span>${esc(LAWYER.role)} · ${esc(m.when)}</span></p>${m.text.split(/\n\n+/).map((x) => `<p>${esc(x)}</p>`).join("")}</div>`)).join("");
+    const ctx = t.ctx
+      ? `<div class="law-ctx"><p class="law-ctx-label">Приложено к вопросу: ${esc(t.ctx.label)}${p ? " и документы закупки" : ""}</p><p class="law-ctx-text">${esc(t.ctx.text)}</p></div>`
+      : p ? `<p class="law-ctx-label">Приложены документы закупки: ${p.files.length}</p>` : "";
+    return `${ctx}
+      <div class="law-feed" aria-live="polite">${msgs}</div>
+      ${waiting ? `<p class="law-wait">${ic("clock", 16)}<span>Юрист ответит в течение рабочего дня. Когда ответит — уведомление в колокольчике наверху и письмо на почту.</span></p>` : ""}`;
+  }
+  function threadHTML(t) {
+    return `<section class="panel law-thread" aria-labelledby="law-t-title">
+      <div class="law-head">
+        <button class="icon-btn law-back" type="button" data-act="law-back" aria-label="Все вопросы">${ic("back", 18)}</button>
+        <div class="law-head-text">
+          <h2 class="law-title" id="law-t-title" tabindex="-1">${esc(t.title)}</h2>
+          <div class="law-meta">${lawMetaHTML(t)}</div>
+        </div>
+      </div>
+      <div class="law-body">${lawBodyHTML(t)}</div>
+      <form class="law-compose" id="law-reply">
+        <div class="prompt">
+          <textarea id="law-reply-q" rows="1" placeholder="Уточнить у юриста…" aria-label="Сообщение юристу" data-enter>${esc(S.drafts.law || "")}</textarea>
+          <div class="prompt-foot"><span></span><button class="circle send" type="submit" aria-label="Отправить юристу">${ic("send")}</button></div>
+        </div>
+      </form>
+    </section>`;
+  }
+  function lawyerHTML() {
+    const threads = S.law.threads;
+    if (!threads.length) {
+      return `<div class="page-col"><section class="panel"><div class="empty"><p>Вопросов юристу пока нет. Задайте вопрос — ответит живой юрист по закупкам, обычно в течение рабочего дня.</p><button class="btn" type="button" data-act="lawyer-new">${ic("plus")}Задать вопрос</button></div></section></div>`;
+    }
+    const open = threads.find((t) => t.id === S.law.open);
+    return `<div class="law-ws"${open ? " data-open" : ""}>
+      <section class="panel law-list" aria-labelledby="law-list-title">
+        <div class="panel-head"><h2 class="panel-title" id="law-list-title">Вопросы <span class="count">${threads.length}</span></h2></div>
+        <ul class="plist">${lawRowsHTML()}</ul>
+      </section>
+      ${open ? threadHTML(open) : '<section class="panel law-thread"><p class="list-empty">Выберите вопрос в списке.</p></section>'}
+    </div>`;
+  }
+  function markThreadRead(t) {
+    t.unread = false;
+    S.notes.forEach((n) => { if (n.thread === t.id) n.unread = false; });
+  }
+  function openThread(id) {
+    const t = S.law.threads.find((x) => x.id === id);
+    if (!t) return;
+    if (S.screen !== "lawyer") { S.law.want = id; go("lawyer"); }
+    else { S.law.open = id; markThreadRead(t); rerender(); }
+    const h = $("#law-t-title");
+    if (h) h.focus({ preventScroll: true });
+  }
+  // Ответ пришёл, пока открыт раздел: список и разговор перерисовываются, а поле ответа — нет, если в нём печатают.
+  function refreshLaw() {
+    renderHead();
+    renderSide();
+    if (S.screen === "home") { rerender(); return; }
+    if (S.screen !== "lawyer") return;
+    const list = $(".law-list .plist");
+    if (list) list.innerHTML = lawRowsHTML();
+    const t = S.law.threads.find((x) => x.id === S.law.open);
+    const box = $(".law-thread");
+    if (!t || !box) return;
+    const typing = box.contains(document.activeElement) && document.activeElement.tagName === "TEXTAREA";
+    if (typing) { box.querySelector(".law-body").innerHTML = lawBodyHTML(t); box.querySelector(".law-meta").innerHTML = lawMetaHTML(t); }
+    else box.outerHTML = threadHTML(t);
+  }
+  // Окно вопроса: закупка, что приложить (ответ ИИ или итог проверки) и сам вопрос.
+  function openAskLawyer(ctx = {}) {
+    const pid = ctx.pid !== undefined ? ctx.pid : PURCHASE_SCREENS.includes(S.screen) && cur() ? cur().id : "";
+    S.ui.lawCtx = ctx;
+    const email = S.profile.email.trim();
+    const options = [`<option value="">Без закупки — общий вопрос</option>`, ...S.purchases.map((p) => `<option value="${p.id}"${p.id === pid ? " selected" : ""}>${esc(p.short)}</option>`)].join("");
+    openModal(`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
+      <button class="icon-btn x-close" type="button" data-act="close" aria-label="Закрыть">${ic("x", 20)}</button>
+      <span class="eyebrow">Вопрос юристу</span>
+      <h2 id="m-title">Спросить юриста по закупкам</h2>
+      <p class="small ink2 m0">Отвечает живой юрист по 44-ФЗ и 223-ФЗ, обычно в течение рабочего дня. Когда ответит — уведомление в колокольчике наверху${email ? ` и письмо на ${esc(email)}` : " и письмо на почту из «Реквизитов»"}.</p>
+      <form class="law-form" id="law-form" novalidate>
+        <label class="field-label" for="law-pid">Закупка</label>
+        <select class="input" id="law-pid">${options}</select>
+        ${ctx.text ? `<div class="law-ctx"><p class="law-ctx-label">Приложу к вопросу: ${esc(ctx.label)}</p><p class="law-ctx-text">${esc(ctx.text)}</p></div>` : ""}
+        <label class="field-label" for="law-q">Ваш вопрос</label>
+        <textarea class="input area" id="law-q" rows="4" placeholder="Например: можно ли заменить исполнителя после подачи заявки?" aria-describedby="law-q-err">${esc(ctx.question || "")}</textarea>
+        <p class="form-err" id="law-q-err" hidden>Напишите вопрос — так юрист поймёт, что уточнить.</p>
+        <p class="small muted m0">Юрист увидит вопрос${ctx.text ? ", приложенный фрагмент" : ""} и документы выбранной закупки.</p>
+        <div class="btn-row"><button class="btn" type="submit">${ic("send", 16)}Отправить юристу</button><button class="btn soft" type="button" data-act="close">Отмена</button></div>
+      </form>
+    </div>`);
+    const q = $("#law-q");
+    if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+  }
+  function sendLawQuestion() {
+    const area = $("#law-q"), err = $("#law-q-err");
+    const text = area.value.trim();
+    if (!text) { err.hidden = false; area.setAttribute("aria-invalid", "true"); area.focus(); return; }
+    const ctx = S.ui.lawCtx || {};
+    const title = text.split(/\n/)[0];
+    const t = {
+      id: uid(), pid: $("#law-pid").value, title: title.length > 90 ? `${title.slice(0, 88).trim()}…` : title, unread: false,
+      ctx: ctx.text ? { label: ctx.label, text: ctx.text } : null, messages: [{ role: "user", text, when: "только что" }],
+    };
+    S.law.threads.unshift(t);
+    S.ui.lawCtx = null;
+    closeModal();
+    if (S.screen === "lawyer") { S.law.open = t.id; rerender(); } else renderSide();
+    toast("Вопрос отправлен юристу. Ответ придёт в «Вопросы юристу» — пришлём уведомление.");
+    lawReplyLater(t);
+  }
+  // В прототипе юрист «отвечает» через 12 секунд, чтобы было видно уведомление. В жизни — в течение рабочего дня.
+  function lawReplyLater(t) {
+    setTimeout(() => {
+      if (!S.law.threads.includes(t)) return;
+      t.messages.push({ role: "lawyer", text: "Это пример ответа в прототипе. В рабочей версии здесь будет ответ юриста по вашему вопросу и документам закупки — обычно в течение рабочего дня.", when: "только что" });
+      const reading = S.screen === "lawyer" && S.law.open === t.id;
+      t.unread = !reading;
+      if (!reading) S.notes.unshift({ id: `n-${t.id}-${t.messages.length}`, tone: "brand", title: "Юрист ответил на вопрос", text: `«${t.title}»`, sub: `${lawPurchase(t) ? lawPurchase(t).short : "Общий вопрос"} · только что`, unread: true, thread: t.id });
+      refreshLaw();
+      if (S.notifOpen) renderNotif();
+      toast(reading ? "Юрист ответил." : "Юрист ответил на ваш вопрос — откройте колокольчик наверху.");
+    }, 12000);
+  }
+
+  function openPreview(p, part, back) {
     const body = part === "tp" ? tpDoc(p) : part === "participant" ? anketaDoc(p) : part === "declaration" ? declDoc(p) : priceDoc(p);
     const basis = part === "tp" ? "" : p.sample ? "По стандартному шаблону: в документах примера нет формы заказчика." : `Составлено ${p.parts[part] ? p.parts[part].basis : basisText(p, part)}. Реквизиты — из «Реквизитов».`;
     openModal(`<div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="m-title">
@@ -3163,6 +3508,7 @@
       ${basis ? `<p class="small muted m0">${esc(basis)}</p>` : ""}
       <div class="sheet">${body}</div>
       <p class="small muted m0">В приложении этот файл скачивается на компьютер. Жёлтые поля остаются жёлтыми и в Word — сразу видно, что осталось вписать.</p>
+      ${back ? `<p class="m0"><button class="link" type="button" data-act="files" data-id="${p.id}">К документам заявки</button></p>` : ""}
     </div>`);
   }
 
@@ -3234,6 +3580,7 @@
     switch (S.screen) {
       case "home": return homeHTML();
       case "ask": return askHTML();
+      case "lawyer": return lawyerHTML();
       case "new": return newHTML();
       case "profile": return profileHTML();
       case "docs": return docsHTML();
@@ -3319,6 +3666,8 @@
   let busyToken = 0;
   function go(screen, id, focusSel) {
     busyToken++;
+    S.notifOpen = false;
+    renderNotif();
     S.busy = null;
     if (screen === "p") screen = S.tabs[id || S.id] || "req";
     // На широком экране закупка открыта рядом со списком — как переписка в мессенджере.
@@ -3329,6 +3678,14 @@
     if (id && id !== S.id) S.info = false;
     if (id) S.id = id;
     S.screen = screen;
+    // Вопросы юристу: открыт нужный разговор; на широком экране без выбора — первый, на узком — список.
+    if (screen === "lawyer") {
+      const want = S.law.want;
+      S.law.want = null;
+      S.law.open = want || (single.matches ? null : S.law.open || (S.law.threads[0] && S.law.threads[0].id) || null);
+      const t = S.law.threads.find((x) => x.id === S.law.open);
+      if (t) markThreadRead(t);
+    }
     if (PURCHASE_SCREENS.includes(screen)) {
       if (cur()) S.tabs[S.id] = screen;
       else S.screen = "list";
@@ -3488,18 +3845,26 @@
     render();
     toTop();
   }
-  async function writePart(p, k) {
+  // Документ пишется около минуты; строка на шаге ТП и в окне документов заявки показывает, что идёт работа.
+  async function writePart(p, k, back) {
     const visit = S.visit;
+    const redraw = () => {
+      const parts = $("#parts-list"), files = $("#files-list");
+      if (parts) parts.innerHTML = partsRows(p);
+      if (files) files.innerHTML = filesRows(p);
+    };
     if (!p.sample) {
       S.ui.writing = k;
-      $("#parts-list").innerHTML = partsRows(p);
+      redraw();
       await wait(1600);
       if (S.visit !== visit) return;
       p.parts[k] = { key: basisKey(p, k), basis: basisText(p, k) };
       S.ui.writing = null;
-      $("#parts-list").innerHTML = partsRows(p);
+      redraw();
+      // Окно документов закрыли, пока документ писался, — не открываем его снова.
+      if (back && $("#modal").hidden) return;
     }
-    openPreview(p, k);
+    openPreview(p, k, back);
   }
   function onPartClick(p, k, redo) {
     const made = p.parts[k];
@@ -3604,7 +3969,63 @@
       }
       case "toggle": S.ui.open = S.ui.open === el.dataset.open ? null : el.dataset.open; rerender(); break;
       case "ref": openRef(el.dataset.ref, el.dataset.hl); break;
-      case "lawyer": toast("В рабочей версии вопрос уйдёт юристу по закупкам, ответ — в течение дня. Сейчас ничего не отправляется."); break;
+      case "lawyer": {
+        // Что приложить: итог проверки заявки или ответ ИИ, после которого возник вопрос.
+        if (el.dataset.from === "check" && p) {
+          const found = p.check.findings.map((f) => f.what).join(" ");
+          openAskLawyer({ pid: p.id, label: "итог проверки заявки", text: found || "Проверка заявки: ошибок нет.", question: "" });
+          break;
+        }
+        const list = S.screen === "ask" ? S.general.messages : p ? p.chat : [];
+        const i = Number(el.dataset.i);
+        const m = list[i];
+        const before = list.slice(0, i).reverse().find((x) => x.role === "user");
+        const plain = m ? m.text.replace(/\*\*/g, "").replace(/\s+/g, " ").trim() : "";
+        openAskLawyer({ pid: S.screen === "ask" ? "" : p ? p.id : "", label: "ответ ИИ", text: plain.length > 240 ? `${plain.slice(0, 238).trim()}…` : plain, question: before ? before.text : "" });
+        break;
+      }
+      case "lawyer-new": openAskLawyer({ pid: "" }); break;
+      case "law-open": openThread(el.dataset.thread); break;
+      case "law-back": {
+        const was = S.law.open;
+        S.law.open = null;
+        rerender();
+        const row = $(`[data-act="law-open"][data-thread="${was}"]`);
+        if (row) row.focus();
+        break;
+      }
+      case "notif": setNotif(!S.notifOpen); break;
+      case "notif-read": {
+        S.notes.forEach((n) => { n.unread = false; });
+        renderHead();
+        renderNotif();
+        const first = $("#notif .notif-item");
+        if (first) first.focus();
+        break;
+      }
+      case "note": {
+        const n = S.notes.find((x) => x.id === el.dataset.note);
+        if (!n) break;
+        n.unread = false;
+        setNotif(false, false);
+        if (n.thread) openThread(n.thread);
+        else go(n.go, n.id);
+        break;
+      }
+      case "files": openFiles(S.purchases.find((x) => x.id === el.dataset.id) || p); break;
+      case "file-dl": {
+        const q = S.purchases.find((x) => x.id === el.dataset.id) || p;
+        const k = el.dataset.part;
+        const made = q.parts[k];
+        if (k === "tp" || q.sample || (made && made.key === basisKey(q, k))) openPreview(q, k, true);
+        else writePart(q, k, true);
+        break;
+      }
+      case "files-zip": {
+        const q = S.purchases.find((x) => x.id === el.dataset.id) || p;
+        toast(`В рабочей версии скачается архив «${q.short} — заявка.zip» со всеми файлами Word. В прототипе откройте файлы по одному.`);
+        break;
+      }
       case "ask-delete": S.ui.confirmDelete = true; rerender(); { const b = $('[data-act="cancel-delete"]'); if (b) b.focus(); } break;
       case "cancel-delete": S.ui.confirmDelete = false; rerender(); break;
       case "delete": S.purchases = S.purchases.filter((x) => x !== p); S.id = null; go("list"); toast("Закупка удалена."); break;
@@ -3714,7 +4135,9 @@
     if (opt) { pickSug(Number(opt.dataset.sug)); return; }
     if (t.id === "modal") { closeModal(); return; }
     if (t.id === "scrim") { setDrawer(false); return; }
+    if (S.notifOpen && !t.closest("#notif") && !t.closest("#bell")) setNotif(false, false);
     const nav = t.closest("[data-go]");
+    if (nav && nav.closest("#modal")) closeModal();
     // Во вкладках и в списке закупок фокус остаётся там, где нажали.
     if (nav) { go(nav.dataset.go, nav.dataset.id, nav.closest(".tabs, .ws-list") ? focusKey(nav) : null); return; }
     const act = t.closest("[data-act]");
@@ -3724,6 +4147,7 @@
   document.addEventListener("submit", (e) => {
     e.preventDefault();
     const f = e.target;
+    if (f.id === "law-form") { sendLawQuestion(); return; }
     const area = f.querySelector("textarea");
     const q = area ? area.value.trim() : "";
     if (!q) { if (area) area.focus(); return; }
@@ -3739,6 +4163,16 @@
       area.value = "";
       autosize(area);
       ask(cur(), q);
+    } else if (f.id === "law-reply") {
+      const t = S.law.threads.find((x) => x.id === S.law.open);
+      if (!t) return;
+      t.messages.push({ role: "user", text: q, when: "только что" });
+      S.drafts.law = "";
+      area.value = "";
+      autosize(area);
+      refreshLaw();
+      toast("Отправлено юристу. Ответ придёт сюда — пришлём уведомление.");
+      lawReplyLater(t);
     }
   });
 
@@ -3747,6 +4181,8 @@
     if (t.tagName === "TEXTAREA") autosize(t);
     if (t.id === "ask-q") S.drafts.ask = t.value;
     else if (t.id === "chat-q") S.drafts.chat = t.value;
+    else if (t.id === "law-reply-q") S.drafts.law = t.value;
+    else if (t.id === "law-q" && t.value.trim()) { const err = $("#law-q-err"); if (err) err.hidden = true; t.removeAttribute("aria-invalid"); }
     else if (t.dataset.edit) onEditInput(t);
     else if (t.dataset.cast) onCastInput(t);
     else if (t.id === "cast-paste-text") S.ui.castText = t.value;
@@ -3821,6 +4257,7 @@
     }
     if (e.key === "Escape") {
       if (closeModal()) return;
+      if (S.notifOpen) { setNotif(false); return; }
       if (S.drawer && narrow.matches) { setDrawer(false); return; }
       if (S.info && !wide.matches && $("#ws-info")) { setInfo(false); return; }
       if (e.target.classList && e.target.classList.contains("edit-area")) e.target.blur();
@@ -3863,6 +4300,7 @@
     else if (kind === "mydocs") addMyDocs(files);
   });
 
+  S.notes = initNotes();
   render();
   applyDrawer();
 })();
