@@ -76,7 +76,9 @@ function DueText({ purchase }: { purchase: Purchase }) {
   if (!due.left) return <span className={soon}>{due.head}</span>;
   return (
     <>
-      {due.head} · <span className={soon}>{due.left}</span>
+      {due.head}
+      {"\u00a0· "}
+      <span className={soon}>{due.left}</span>
     </>
   );
 }
@@ -271,7 +273,7 @@ export default function HomePage() {
                               {titleOf(p)}
                               {p.sample && <span className="t-tag ml-2 text-[var(--ink-3)]">пример</span>}
                             </span>
-                            <span className="t-caption truncate text-[var(--ink-3)]">
+                            <span className="t-caption text-pretty text-[var(--ink-3)]">
                               <DueText purchase={p} />
                             </span>
                             <span className={`t-tag mt-0.5 ${TONE_TEXT[stage.tone]}`}>{stage.text}</span>

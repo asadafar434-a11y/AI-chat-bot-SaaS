@@ -452,13 +452,15 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                 <h2 id="pd-title" className="t-title truncate max-sm:line-clamp-2 max-sm:whitespace-normal">
                   {titleOf(purchase)}
                 </h2>
-                <p className="t-caption truncate text-[var(--ink-3)]">
+                {/* Срок — главная цифра экрана: на узком экране переносится на вторую строку, а не обрезается.
+                    Точка-разделитель держится за словом перед ней, чтобы строка не начиналась с неё. */}
+                <p className="t-caption text-pretty text-[var(--ink-3)]">
                   {due ? (
                     <>
                       {due.head}
                       {due.left && (
                         <>
-                          {" · "}
+                          {"\u00a0· "}
                           <span className={due.tone === "soon" ? "t-tag text-[var(--warn)]" : ""}>{due.left}</span>
                         </>
                       )}
@@ -466,7 +468,8 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                   ) : (
                     "Срок подачи не найден в документах"
                   )}
-                  {purchase.sample && " · пример"}
+                  {/* На телефоне пометка лишняя: пример подписан в сведениях и в списке закупок. */}
+                  {purchase.sample && <span className="max-sm:hidden">{"\u00a0· пример"}</span>}
                 </p>
               </div>
               <div className="flex flex-none items-center gap-1.5">
