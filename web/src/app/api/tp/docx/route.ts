@@ -1,6 +1,6 @@
 import { buildPartDocx, buildTpDocx, type CastLine } from "@/lib/tp-docx";
 import { PART_TITLES, type TpPart } from "@/lib/tp-parts";
-import { PartDocSchema, type PartDoc } from "@/lib/part-doc";
+import { PartDocFileSchema, type PartDoc } from "@/lib/part-doc";
 import { EMPTY_PROFILE, PROFILE_KEYS, type Profile } from "@/lib/profile";
 import { PLAIN_FORM, type TpForm } from "@/lib/tp";
 import { badRequest, readJson } from "@/lib/read-json";
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
 
   // Техническое предложение так не собирается никогда: в нём не должно быть ничего об участнике.
   if (body.doc !== undefined && part !== "tp") {
-    const parsed = PartDocSchema.safeParse(body.doc);
+    const parsed = PartDocFileSchema.safeParse(body.doc);
     if (!parsed.success) return new Response("Документ повреждён — составьте его заново.", { status: 400 });
     return word(await buildPartDocx(cleanPartDoc(parsed.data)), part);
   }

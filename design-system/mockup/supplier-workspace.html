@@ -604,6 +604,9 @@
   .parts > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; row-gap: 4px; align-items: center; padding: 10px 0; }
   .parts > li + li { border-top: 1px solid var(--line); }
   .parts-foot { margin: 0 var(--pad); padding: 10px 0 12px; border-top: 1px solid var(--line); font: var(--t-body); color: var(--ink-3); }
+  .part-gaps { grid-column: 1 / -1; display: grid; gap: 4px; margin: 4px 0 0; padding: 0; list-style: none; font: var(--t-caption); color: var(--warn); }
+  .part-gaps > li { display: flex; align-items: flex-start; gap: 8px; }
+  .part-gaps svg { flex: none; }
   .part-name { font: var(--t-strong); }
   .part-status { grid-column: 1; font: var(--t-caption); color: var(--ink-3); }
   .parts .btn { grid-column: 2; grid-row: 1 / span 2; }
@@ -1470,9 +1473,36 @@
     participant: "Анкета участника закупки",
     declaration: "Декларация о принадлежности к субъектам малого и среднего предпринимательства",
     price: "Предложение о цене договора",
+    experience: "Сведения об опыте участника закупки",
+    staff: "Сведения о специалистах и иных работниках участника закупки",
   };
-  const PART_SAMPLE_KIND = { participant: "anketa", declaration: "declaration", price: "price" };
-  const partsOf = (form) => ["tp", "participant", ...(form.smeDeclaration ? ["declaration"] : []), ...(form.hasPrice ? ["price"] : [])];
+  const PART_SAMPLE_KIND = { participant: "anketa", declaration: "declaration", price: "price", experience: "experience", staff: "staff" };
+  // Опыт и специалисты — части заявки, только если за них дают баллы (web/src/lib/tp-parts.ts).
+  const EVIDENCE_RULES = [["experience", /опыт/i], ["staff", /специалист|работник|трудов\S* ресурс|кадр|персонал/i]];
+  const isEvidence = (k) => k === "experience" || k === "staff";
+  const evidenceRows = (criteria, k) => (criteria && criteria.howWins === "points" ? criteria.rows.filter((r) => EVIDENCE_RULES.find(([x]) => x === k)[1].test(`${r.indicator} ${r.detail}`)) : []);
+  const partsOf = (form, criteria) => ["tp", "participant", ...(form.smeDeclaration ? ["declaration"] : []), ...(form.hasPrice ? ["price"] : []),
+    ...EVIDENCE_RULES.filter(([k]) => evidenceRows(criteria, k).length).map(([k]) => k)];
+  // Что в приложении напишет ИИ из договоров и документов сотрудников примера («Образцы и реквизиты», d6, d8, d9, d10):
+  // строки, ожидаемые баллы по шкале из порядка оценки и чего не хватает до максимума.
+  const EVIDENCE_DEMO = {
+    experience: {
+      score: "≈ 59 баллов показателя — 8,8 из 100 итоговых: 2 договора на 1 762 000 ₽ из 3 000 000 ₽",
+      gaps: ["До максимума не хватает исполненных договоров на 1 238 000 ₽ — с ними за опыт будет 15 из 100."],
+      rows: [
+        ["Управление образования администрации г. Энска", "Организация церемонии «Учитель года — 2025»", "№ 14-УГ от 12.03.2025", "612 000,00", "28.04.2025"],
+        ["Администрация г. Энска", "Организация праздника «День города — 2024»", "№ 7-ДГ от 20.07.2024", "1 150 000,00", "05.09.2024"],
+      ],
+    },
+    staff: {
+      score: "≈ 50 баллов показателя — 7,5 из 100 итоговых: засчитают режиссёра-постановщика и электромонтёра IV группы",
+      gaps: ["Нет звукорежиссёра и специалиста по охране труда — с ними будет 100 баллов показателя, ещё 7,5 итоговых."],
+      rows: [
+        ["Лебедева Анна Сергеевна", "Режиссёр-постановщик", "Высшее, «Режиссура театрализованных представлений и праздников»", "Диплом [серия и номер]", "Трудовой договор [номер и дата]"],
+        ["Кузнецов Олег Викторович", "Электромонтёр", "Группа по электробезопасности IV", "Удостоверение о проверке знаний, действует до 03.2027", "Трудовой договор [номер и дата]"],
+      ],
+    },
+  };
   const PLAIN_FORM = { title: "Техническое предложение", source: "", participantFields: [], consent: "", hasPrice: false, priceNote: "", smeDeclaration: "", partForms: {} };
 
   const REQ_KEYS = ["who", "submit", "scope", "terms"];
@@ -2728,7 +2758,7 @@
     const fresh = made && made.key === basisKey(p, k);
     const samples = samplesOf(PART_SAMPLE_KIND[k]);
     const writing = S.ui.writing === k;
-    const status = p.sample ? "в примере — по стандартному шаблону"
+    const status = p.sample ? (isEvidence(k) ? EVIDENCE_DEMO[k].score : "в примере — по стандартному шаблону")
       : writing ? "Пишу документ — это около минуты…"
       : fresh ? esc(made.basis)
       : made ? "реквизиты, цена или образцы изменились — составлю заново"
@@ -2738,9 +2768,10 @@
       <span class="part-name">${esc(PART_TITLES[k])}</span>
       <button class="btn soft xs" type="button" data-act="part" data-part="${k}"${S.ui.writing ? " disabled" : ""}>${writing ? "Пишу…" : "Скачать"}</button>
       <span class="part-status">${status}${fresh && !p.sample && !writing ? ` · <button class="link quiet" type="button" data-act="part-redo" data-part="${k}">составить заново</button>` : ""}</span>
+      ${p.sample && isEvidence(k) ? `<ul class="part-gaps">${EVIDENCE_DEMO[k].gaps.map((g) => `<li>${ic("alert", 16)}${esc(g)}</li>`).join("")}</ul>` : ""}
     </li>`;
   }
-  const partsRows = (p) => partsOf(p.tp.form).filter((k) => k !== "tp").map((k) => partRow(p, k)).join("");
+  const partsRows = (p) => partsOf(p.tp.form, p.criteria).filter((k) => k !== "tp").map((k) => partRow(p, k)).join("");
 
   /* ---------- состав исполнителей ---------- */
   // ТЗ требует назвать исполнителей. Кто нужен — выписано из ТЗ, людей участник вписывает под эту закупку:
@@ -3690,6 +3721,20 @@
       ${signature()}`;
   }
   const declDoc = (p) => `<h3>${esc(PART_TITLES.declaration)}</h3>${paras(fillFromProfile(p.tp.form.smeDeclaration), true)}${signature()}`;
+  function evidenceDoc(p, k) {
+    const cols = k === "experience"
+      ? ["Заказчик", "Предмет договора", "Номер и дата договора", "Цена договора, руб.", "Дата акта о приёмке"]
+      : ["Фамилия, имя, отчество", "Должность, роль", "Образование, квалификация", "Документ о квалификации, срок действия", "Основание работы"];
+    const demo = EVIDENCE_DEMO[k];
+    const tail = k === "experience"
+      ? "Общая цена исполненных договоров: 1 762 000,00 руб.\nПриложения: копии исполненных договоров и актов о приёмке — 4 шт."
+      : "Приложения: копии дипломов, удостоверений и трудовых договоров — 4 шт.";
+    return `<h3>${esc(PART_TITLES[k])}</h3>
+      <p>Участник закупки: ${S.profile.fullName.trim() ? esc(S.profile.fullName.trim()) : "<mark>[наименование участника]</mark>"}</p>
+      <table><thead><tr><th style="width:6%">№</th>${cols.map((c) => `<th>${esc(c)}</th>`).join("")}</tr></thead>
+      <tbody>${demo.rows.map((r, i) => `<tr><td>${i + 1}</td>${r.map((v) => `<td>${docFields(v)}</td>`).join("")}</tr>`).join("")}</tbody></table>
+      ${paras(tail)}${signature()}`;
+  }
   function priceDoc(p) {
     const price = p.tpPrice;
     const amount = price ? `${fmtRub(price)} руб. (${rublesInWords(price)})` : "[цена договора цифрами] руб. ([цена прописью])";
@@ -3713,8 +3758,15 @@
       tp.state === "todo" ? badge("calm", "не составлено") : tp.state === "fix" ? badge("warn", tp.status, "pen") : badge("ok", "готово", "check"),
       tp.state === "todo" ? `<button class="btn soft xs" type="button" data-go="tp" data-id="${p.id}">Составить</button>` : dl("tp"))];
     if (!p.tp) return rows.join("") + '<li class="file-note">Анкета, декларация и предложение о цене появятся, когда составите ТП: форму заявки беру из документов закупки.</li>';
-    for (const k of partsOf(p.tp.form).filter((x) => x !== "tp")) {
+    for (const k of partsOf(p.tp.form, p.criteria).filter((x) => x !== "tp")) {
       const writing = S.ui.writing === k;
+      if (isEvidence(k)) {
+        const n = S.docs.filter((d) => d.kinds.includes(k)).length;
+        rows.push(row(PART_TITLES[k], n ? `из ${n} ${plural(n, "документа", "документов", "документов")} в «Образцах и реквизитах» · за них дают баллы` : "загрузите документы в «Образцы и реквизиты» — без них баллов не будет",
+          writing ? badge("calm", "пишу документ…") : p.sample ? badge("warn", k === "experience" ? "8,8 из 15 баллов" : "7,5 из 15 баллов", "alert") : n ? badge("brand", "за них баллы") : badge("warn", "нет документов", "alert"),
+          dl(k)));
+        continue;
+      }
       const price = k === "price";
       const tag = writing ? badge("calm", "пишу документ…")
         : price ? (p.tpPrice ? badge("ok", "цена вписана", "check") : badge("warn", "впишите цену", "pen"))
@@ -3728,7 +3780,7 @@
   function openFiles(p) {
     if (!p) return;
     const [, , check] = stepsOf(p);
-    const n = p.tp ? partsOf(p.tp.form).length : 1;
+    const n = p.tp ? partsOf(p.tp.form, p.criteria).length : 1;
     openModal(`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
       <button class="icon-btn x-close" type="button" data-act="close" aria-label="Закрыть">${ic("x", 20)}</button>
       <span class="eyebrow">${esc(p.short)}</span>
@@ -3932,7 +3984,7 @@
   }
 
   function openPreview(p, part, back) {
-    const body = part === "tp" ? tpDoc(p) : part === "participant" ? anketaDoc(p) : part === "declaration" ? declDoc(p) : priceDoc(p);
+    const body = part === "tp" ? tpDoc(p) : part === "participant" ? anketaDoc(p) : part === "declaration" ? declDoc(p) : isEvidence(part) ? evidenceDoc(p, part) : priceDoc(p);
     const basis = part === "tp" ? "" : p.sample ? "По стандартному шаблону: в документах примера нет формы заказчика." : `Составлено ${p.parts[part] ? p.parts[part].basis : basisText(p, part)}. Реквизиты — из «Реквизитов».`;
     openModal(`<div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="m-title">
       <button class="icon-btn x-close" type="button" data-act="close" aria-label="Закрыть">${ic("x", 20)}</button>

@@ -35,9 +35,27 @@ export const DOC_KIND_KEYS = Object.keys(DOC_KINDS) as [DocKind, ...DocKind[]];
 // Реквизиты берём не отовсюду: в ТП их нет по правилам, а в договорах и протоколах рядом стоят реквизиты заказчика.
 export const REQUISITE_KINDS: DocKind[] = ["anketa", "company", "letter", "price", "declaration"];
 
-// Какими образцами пишется каждая часть заявки, кроме ТП.
-export type PartKey = "participant" | "declaration" | "price";
-export const PART_SAMPLE_KIND: Record<PartKey, DocKind> = { participant: "anketa", declaration: "declaration", price: "price" };
+// Какими образцами пишется каждая часть заявки, кроме ТП. Для сведений об опыте и о специалистах документы участника
+// того же вида — не образцы стиля, а сами сведения: договоры с актами, дипломы, удостоверения.
+export type PartKey = "participant" | "declaration" | "price" | "experience" | "staff";
+export const PART_SAMPLE_KIND: Record<PartKey, DocKind> = {
+  participant: "anketa",
+  declaration: "declaration",
+  price: "price",
+  experience: "experience",
+  staff: "staff",
+};
+
+export type EvidencePart = "experience" | "staff";
+export const isEvidencePart = (part: PartKey): part is EvidencePart => part === "experience" || part === "staff";
+
+// Договоры бывают по 15–20 страниц, а для перечня опыта хватает начала — стороны, предмет, цена — и конца —
+// подписи, акт о приёмке. Сведений на запрос — до EVIDENCE_LIMIT знаков.
+export const EVIDENCE_HEAD = 8000;
+export const EVIDENCE_TAIL = 2000;
+export const EVIDENCE_LIMIT = 150_000;
+export const clipEvidence = (text: string) =>
+  text.length <= EVIDENCE_HEAD + EVIDENCE_TAIL ? text : `${text.slice(0, EVIDENCE_HEAD)}\n[…]\n${text.slice(-EVIDENCE_TAIL)}`;
 
 // Для раскладки хватает начала и конца документа: заголовок, первые разделы и подписи.
 // Больше SORT_BATCH документов за раз не раскладываем — браузер присылает их пачками.

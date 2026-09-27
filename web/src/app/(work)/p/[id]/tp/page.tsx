@@ -12,8 +12,8 @@ import { usePurchase } from "@/components/purchase-provider";
 import { StepIntro, TabBody } from "@/components/purchase-view";
 import { WorkingSteps } from "@/components/working-steps";
 import { castHistory, castLeaks, castTodo, rowsOf } from "@/lib/cast";
-import { getProfile, listMyDocuments, samplesOf, type MyDocument } from "@/lib/me-store";
-import { PART_SAMPLE_KIND, type PartKey } from "@/lib/my-docs";
+import { evidenceOf, getProfile, listMyDocuments, samplesOf, type MyDocument } from "@/lib/me-store";
+import { isEvidencePart, PART_SAMPLE_KIND, type PartKey } from "@/lib/my-docs";
 import type { PartDoc } from "@/lib/part-doc";
 import { plural } from "@/lib/plural";
 import { identityValues, type Profile } from "@/lib/profile";
@@ -22,7 +22,7 @@ import { formatRubles, parseRubles, rublesInWords } from "@/lib/rub-words";
 import { saveFile } from "@/lib/save-file";
 import { sampleTp } from "@/lib/sample-purchase";
 import { itemsFill, needsFill, type TpResult } from "@/lib/tp";
-import { PART_TITLES, partsOf, type TpPart } from "@/lib/tp-parts";
+import { criteriaRowsFor, PART_TITLES, partsOf, type TpPart } from "@/lib/tp-parts";
 import { SAMPLE_CAST_HISTORY, SAMPLE_CAST_LIST } from "@/lib/tp-sample";
 import { usePurchases } from "@/lib/use-purchases";
 
@@ -163,6 +163,20 @@ function PriceBlock({ tp, price, nmck, calcHref, onChange }: {
   );
 }
 
+
+// Сведения об опыте и о специалистах, пока не составлены: из чего составлю — или чего не хватает для баллов.
+function evidenceStatus(part: "experience" | "staff", count: number): string {
+  const docs = `${count} ${plural(count, "документ", "документа", "документов")}`;
+  if (part === "experience") {
+    return count
+      ? `составлю из ваших договоров и актов (${docs}) и оценю баллы`
+      : "ваших договоров с актами нет — загрузите их в «Образцы и реквизиты», иначе баллов за опыт не будет";
+  }
+  return count
+    ? `составлю из документов сотрудников (${docs}) и оценю баллы`
+    : "документов сотрудников нет — загрузите дипломы, удостоверения и договоры в «Образцы и реквизиты», иначе баллов за специалистов не будет";
+}
+
 export default function TpPage() {
   const { purchase, documents, update } = usePurchase();
   // Составы других закупок — подсказки при наборе фамилии в составе исполнителей.
@@ -181,7 +195,11 @@ export default function TpPage() {
   const tp = purchase.tp;
   const toggle = (id: string) => setOpen(open === id ? null : id);
   const usedSamples = samplesOf(myDocs, "tp");
-  const partSamples = (part: PartKey) => samplesOf(myDocs, PART_SAMPLE_KIND[part]);
+  // Для опыта и специалистов — не образцы оформления, а сами сведения: договоры с актами, документы сотрудников.
+  const partSamples = (part: PartKey) =>
+    isEvidencePart(part) ? evidenceOf(myDocs, PART_SAMPLE_KIND[part]) : samplesOf(myDocs, PART_SAMPLE_KIND[part]);
+  // Строки порядка оценки, по которым собираются сведения об опыте и о специалистах.
+  const partCriteria = (part: PartKey) => (isEvidencePart(part) ? criteriaRowsFor(purchase.criteria, part) : null);
 
   useEffect(() => {
     void Promise.allSettled([
@@ -268,6 +286,7 @@ export default function TpPage() {
       profile,
       price: current.form.hasPrice ? (purchase.tpPrice ?? null) : null,
       samples: partSamples(part).map((d) => d.id),
+      criteria: partCriteria(part),
     });
 
   // Анкета, декларация и цена пишутся по форме заказчика и образцам того же вида. Готовая часть хранится
@@ -291,6 +310,7 @@ export default function TpPage() {
             samples: partSamples(part).map(({ name, text }) => ({ name, text })),
             profile,
             price: current.form.hasPrice ? purchase.tpPrice : undefined,
+            criteria: partCriteria(part) ?? undefined,
           }),
         });
         if (res.status === 503) {
@@ -494,7 +514,7 @@ export default function TpPage() {
 
         <Island id="tp-parts" level={3} title="Остальные части заявки" sub="Каждая — отдельным файлом Word">
           <ul className="divide-y divide-[var(--line)] px-[var(--pad)]">
-            {partsOf(tp.form)
+            {partsOf(tp.form, purchase.criteria)
               .filter((part): part is PartKey => part !== "tp")
               .map((part) => {
                 const made = purchase.parts?.[part];
@@ -507,12 +527,17 @@ export default function TpPage() {
                     : downloading === part && !fresh
                       ? "Пишу документ — это около минуты…"
                       : fresh
-                        ? made.doc.basis
+                        ? made.doc.score || made.doc.basis
                         : made
                           ? "реквизиты, цена или образцы изменились — составлю заново"
-                          : samples.length
-                            ? `составлю по вашему образцу «${samples[0].name}»${samples.length > 1 ? ` и ещё ${samples.length - 1}` : ""}`
-                            : "ваших образцов нет — составлю по форме заказчика";
+                          : isEvidencePart(part)
+                            ? evidenceStatus(part, samples.length)
+                            : samples.length
+                              ? `составлю по вашему образцу «${samples[0].name}»${samples.length > 1 ? ` и ещё ${samples.length - 1}` : ""}`
+                              : "ваших образцов нет — составлю по форме заказчика";
+                // Нет договоров или документов сотрудников — баллы по показателю потеряны: подсказка янтарная.
+                const missing = meReady && !purchase.sample && !fresh && !made && isEvidencePart(part) && samples.length === 0;
+                const gaps = fresh && !purchase.sample ? (made.doc.gaps ?? []) : [];
                 return (
                   <li key={part} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-0.5 py-2.5 max-sm:grid-cols-1">
                     <span className="t-strong">{PART_TITLES[part]}</span>
@@ -524,7 +549,7 @@ export default function TpPage() {
                     >
                       {downloading === part ? (fresh ? "Собираю…" : "Пишу…") : "Скачать"}
                     </button>
-                    <span className="t-caption text-[var(--ink-3)]">
+                    <span className={`t-caption ${missing ? "text-[var(--warn)]" : "text-[var(--ink-3)]"}`}>
                       {status}
                       {fresh && !purchase.sample && downloading !== part && (
                         <>
@@ -540,6 +565,16 @@ export default function TpPage() {
                         </>
                       )}
                     </span>
+                    {gaps.length > 0 && (
+                      <ul className="t-caption col-span-full mt-1 grid gap-1 text-[var(--warn)]">
+                        {gaps.map((gap, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <WarningIcon className="size-4 shrink-0" />
+                            {gap}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </li>
                 );
               })}

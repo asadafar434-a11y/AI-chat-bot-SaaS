@@ -1,7 +1,9 @@
 import { STORES, transaction } from "@/lib/db";
 import {
+  clipEvidence,
   clipForSort,
   DOC_KINDS,
+  EVIDENCE_LIMIT,
   guessKinds,
   REQUISITE_KINDS,
   SORT_BATCH,
@@ -92,6 +94,20 @@ export function samplesOf(docs: MyDocument[], kind: DocKind, limit = SAMPLES_LIM
     if (!doc.kinds.includes(kind) || total + doc.text.length > limit) continue;
     picked.push(doc);
     total += doc.text.length;
+  }
+  return picked;
+}
+
+// Сведения для перечня опыта или специалистов: документы нужного вида, каждый — началом и концом, пока хватает места.
+export function evidenceOf(docs: MyDocument[], kind: DocKind): MyDocument[] {
+  const picked: MyDocument[] = [];
+  let total = 0;
+  for (const doc of docs) {
+    if (!doc.kinds.includes(kind)) continue;
+    const text = clipEvidence(doc.text);
+    if (total + text.length > EVIDENCE_LIMIT) continue;
+    picked.push({ ...doc, text });
+    total += text.length;
   }
   return picked;
 }

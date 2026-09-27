@@ -191,11 +191,53 @@ function priceBody({ form, price, profile }: TpDocx) {
   ];
 }
 
+// Сведения об опыте и о специалистах без ИИ — в примере и когда ИИ не подключён: таблица с полями для заполнения.
+// С ИИ они составляются по форме заказчика из договоров и документов сотрудников (part-doc.ts).
+const blankTable = (columns: [string, number][], rows: number) =>
+  table([
+    headerRow(columns),
+    ...Array.from({ length: rows }, (_, i) =>
+      new TableRow({
+        children: columns.map(([title, width], c) =>
+          c === 0 ? textCell(String(i + 1), width) : cell([new Paragraph({ children: withFields(`[${title.toLowerCase()}]`) })], width)
+        ),
+      })
+    ),
+  ]);
+
+const participantLine = (profile: Profile | null) =>
+  new Paragraph({
+    spacing: { after: 120 },
+    children: [run("Участник закупки: "), ...(profile?.fullName.trim() ? [run(profile.fullName.trim())] : withFields("[наименование участника]"))],
+  });
+
+const experienceBody = ({ profile }: TpDocx) => [
+  participantLine(profile),
+  blankTable(
+    [["№", 6], ["Заказчик", 20], ["Предмет договора", 26], ["Номер и дата договора", 16], ["Цена договора, руб.", 14], ["Дата акта о приёмке", 18]],
+    3
+  ),
+  ...paragraphs("Общая цена исполненных договоров: [сумма] руб.\nПриложения: копии исполненных договоров и актов о приёмке — [количество] шт."),
+  ...signature(profile),
+];
+
+const staffBody = ({ profile }: TpDocx) => [
+  participantLine(profile),
+  blankTable(
+    [["№", 6], ["Фамилия, имя, отчество", 20], ["Должность, роль", 16], ["Образование, квалификация", 20], ["Документ о квалификации, срок действия", 22], ["Основание работы", 16]],
+    3
+  ),
+  ...paragraphs("Приложения: копии документов о квалификации и договоров с работниками — [количество] шт."),
+  ...signature(profile),
+];
+
 const BODIES: Record<TpPart, (data: TpDocx) => (Paragraph | Table)[]> = {
   tp: tpBody,
   participant: participantBody,
   declaration: declarationBody,
   price: priceBody,
+  experience: experienceBody,
+  staff: staffBody,
 };
 
 const docTitle = (text: string) =>
