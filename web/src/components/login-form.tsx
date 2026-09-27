@@ -20,7 +20,9 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [transfer, setTransfer] = useState(false);
-  const [state, setState] = useState<"idle" | "busy" | "wrong" | "failed">("idle");
+  const [state, setState] = useState<"idle" | "busy" | "wrong" | "limited" | "failed">("idle");
+  // Сколько ждать до следующей попытки — так, как написал сервер.
+  const [limit, setLimit] = useState("");
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -33,6 +35,11 @@ export function LoginForm() {
       });
       if (res.status === 401) {
         setState("wrong");
+        return;
+      }
+      if (res.status === 429) {
+        setLimit((await res.text()).trim() || "Слишком много попыток входа — попробуйте позже.");
+        setState("limited");
         return;
       }
       if (!res.ok) throw new Error(res.statusText);
@@ -64,7 +71,7 @@ export function LoginForm() {
             value={password}
             onChange={(e) => {
               setPassword(e.currentTarget.value);
-              if (state === "wrong" || state === "failed") setState("idle");
+              if (state === "wrong" || state === "limited" || state === "failed") setState("idle");
             }}
             autoComplete="current-password"
             autoFocus
@@ -75,6 +82,11 @@ export function LoginForm() {
         {state === "wrong" && (
           <Note tone="warn" icon={WarningIcon}>
             Неверный пароль. Проверьте раскладку клавиатуры и попробуйте ещё раз.
+          </Note>
+        )}
+        {state === "limited" && (
+          <Note tone="warn" icon={WarningIcon}>
+            {limit}
           </Note>
         )}
         {state === "failed" && (
