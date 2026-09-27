@@ -617,6 +617,15 @@
   .file-title { font: var(--t-strong); }
   .file-sub { font: var(--t-caption); color: var(--ink-3); }
   .file-note { padding: 10px 0 0; font: var(--t-body); color: var(--ink-3); }
+  /* Что требует заказчик — пункты «Что подать» с галочкой «готово»; цитата — под пунктом */
+  .files-h { margin: 8px 0 0; font: var(--t-section); }
+  .ask-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 12px; }
+  .ask-row { display: grid; gap: 4px; padding: 10px 0; }
+  .ask-row + .ask-row { border-top: 1px solid var(--line); }
+  .ask-row label { display: flex; align-items: flex-start; gap: 10px; font: var(--t-doc); }
+  .ask-row input { flex: none; width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--brand); }
+  .ask-row.ready .ask-text { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--edge-2); }
+  .ask-row .src, .ask-row .quote { margin-left: 26px; }
   @media (max-width: 559px) {
     .file-row { grid-template-columns: 32px minmax(0, 1fr) auto; }
     .file-row > .badge { grid-column: 2; grid-row: 2; justify-self: start; }
@@ -3777,6 +3786,24 @@
     }
     return rows.join("");
   }
+  // Что требует заказчик — все пункты «Что подать» из требований: выписки, лицензии, обеспечение и остальное,
+  // что участник собирает сам. Отметки «готово» — по тексту пункта. С файлами выше пункты не сопоставляем:
+  // ошибка спрятала бы нужный документ.
+  const readyOf = (p) => p.submitReady || [];
+  function askRows(p) {
+    return p.requirements.submit.map((it, i) => {
+      const ready = readyOf(p).includes(it.text);
+      return `<li class="ask-row${ready ? " ready" : ""}"><label><input type="checkbox" data-ready="${i}"${ready ? " checked" : ""}><span class="ask-text">${esc(it.text)}</span></label>${sourceHTML(`ask-${i}`, it.source, it.quote, it.verified, "пункт")}</li>`;
+    }).join("");
+  }
+  const askCount = (p) => `готово ${p.requirements.submit.filter((it) => readyOf(p).includes(it.text)).length} из ${p.requirements.submit.length}`;
+  function askHTML(p) {
+    const items = p.requirements.submit;
+    return `<div class="ask-head"><h3 class="files-h">Что требует заказчик</h3>${items.length ? `<span class="small muted" id="files-ask-count">${askCount(p)}</span>` : ""}</div>
+      ${items.length
+        ? `<p class="small muted m0">Всё, что заказчик просит приложить. Часть закрывают файлы выше — отметьте, что уже готово.</p><ul class="files-list" id="files-ask" data-id="${p.id}">${askRows(p)}</ul>`
+        : '<p class="small muted m0">Перечня документов в документах закупки не нашлось — сверьтесь с извещением: что подать, обычно сказано в требованиях к заявке.</p>'}`;
+  }
   function openFiles(p) {
     if (!p) return;
     const [, , check] = stepsOf(p);
@@ -3785,9 +3812,11 @@
       <button class="icon-btn x-close" type="button" data-act="close" aria-label="Закрыть">${ic("x", 20)}</button>
       <span class="eyebrow">${esc(p.short)}</span>
       <h2 id="m-title">Документы заявки</h2>
-      <p class="small ink2 m0">Каждая часть — отдельным файлом Word. Что осталось вписать, в файле выделено жёлтым.</p>
+      <p class="small ink2 m0">Состав заявки задаёт заказчик. Часть файлов пишу я — каждый отдельным файлом Word, что осталось вписать, выделено жёлтым. Остальное собираете вы.</p>
+      <h3 class="files-h">Файлы, которые пишу я</h3>
       <ul class="files-list" id="files-list">${filesRows(p)}</ul>
       <div class="btn-row"><button class="btn" type="button" data-act="files-zip" data-id="${p.id}"${p.tp ? "" : " disabled"}>${ic("download", 16)}Скачать всё архивом</button><span class="small muted">${n} ${plural(n, "файл", "файла", "файлов")} Word</span></div>
+      ${askHTML(p)}
       ${check.state === "done" ? "" : `<p class="small ink2 m0">Перед подачей проверьте заявку: <button class="link" type="button" data-go="check" data-id="${p.id}">шаг 3, проверка заявки</button>.</p>`}
     </div>`);
   }
@@ -4470,7 +4499,17 @@
         else ask(p, el.dataset.q);
         break;
       }
-      case "toggle": S.ui.open = S.ui.open === el.dataset.open ? null : el.dataset.open; rerender(); break;
+      case "toggle": {
+        S.ui.open = S.ui.open === el.dataset.open ? null : el.dataset.open;
+        // Цитата под пунктом в окне «Документы заявки» — окно не перерисовывается вместе с экраном.
+        const ask = el.closest("#files-ask");
+        if (ask) {
+          ask.innerHTML = askRows(S.purchases.find((x) => x.id === ask.dataset.id));
+          const again = ask.querySelector(`[data-open="${el.dataset.open}"]`);
+          if (again) again.focus();
+        } else rerender();
+        break;
+      }
       case "ref": openRef(el.dataset.ref, el.dataset.hl); break;
       case "lawyer": {
         // Что приложить: итог проверки заявки или ответ ИИ, после которого возник вопрос.
@@ -4741,6 +4780,19 @@
     const input = e.target;
     if (input.dataset && input.dataset.calc && (input.type === "checkbox" || input.type === "radio")) { onCalcInput(input); return; }
     if (input.dataset && input.dataset.ocr !== undefined) { S.ocr = input.checked; return; }
+    if (input.dataset && input.dataset.ready !== undefined) {
+      const ask = input.closest("#files-ask");
+      const q = ask && S.purchases.find((x) => x.id === ask.dataset.id);
+      if (!q) return;
+      const text = q.requirements.submit[Number(input.dataset.ready)].text;
+      const ready = new Set(readyOf(q));
+      if (input.checked) ready.add(text); else ready.delete(text);
+      q.submitReady = q.requirements.submit.map((it) => it.text).filter((t) => ready.has(t));
+      input.closest(".ask-row").classList.toggle("ready", input.checked);
+      const count = $("#files-ask-count");
+      if (count) count.textContent = askCount(q);
+      return;
+    }
     if (input.id === "consent-processing" || input.id === "consent-transfer") {
       $("#consent-ok").disabled = !($("#consent-processing").checked && $("#consent-transfer").checked);
       return;
