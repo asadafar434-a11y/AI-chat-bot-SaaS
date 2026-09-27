@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import { MAX_CONTEXT_CHARS, type ChatDocument, type ChatMessage } from "@/lib/chat-types";
-import { claudeErrorText } from "@/lib/claude-errors";
+import { claudeErrorText, WRITE_OWNER } from "@/lib/claude-errors";
 import { baseRequest, documentBlocks, maskDocuments, usageLine } from "@/lib/claude-request";
 import { pickLawArticles } from "@/lib/law-pick";
 import { checkQuotes, lawExcerpts, quotesNote } from "@/lib/laws";
@@ -76,6 +76,11 @@ async function* stubAnswer(
     : general
       ? "- нет"
       : "- нет — добавьте их на странице закупки";
+  // На хостинге пользователю — только что делать; ключ и файл настроек — разработчику на своём компьютере.
+  if (process.env.NODE_ENV !== "development") {
+    yield `**ИИ пока не подключён.** ${WRITE_OWNER}`;
+    return;
+  }
   const text = [
     "**Тестовый режим: модель не подключена.** Чтобы ассистент отвечал по-настоящему, получите ключ в [console.anthropic.com](https://console.anthropic.com), добавьте строку `ANTHROPIC_API_KEY=...` в файл `web/.env.local` и перезапустите сервер.",
     "",
