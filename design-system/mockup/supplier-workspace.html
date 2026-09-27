@@ -1971,17 +1971,31 @@
   function hintBtn(title, text, id = "") {
     return `<button class="hint-btn" type="button"${id ? ` id="${id}"` : ""} data-act="hint" data-hint-title="${esc(title)}" data-hint="${esc(text)}" aria-label="Подсказка: ${esc(title)}" aria-expanded="false" aria-controls="hint-pop">${ic("help", 16)}</button>`;
   }
+  // Мышью подсказка открывается наведением и закрывается, когда мышь уходит с кнопки и карточки; нажатие её закрепляет.
+  // На телефоне и с клавиатуры — нажатием (Enter, пробел). hintPinned — открыта нажатием: уход мыши её не закрывает.
   let hintFrom = null;
+  let hintPinned = false;
+  let hintTimer = 0;
+  const HINT_DELAY = 150;
+  const stopHintTimer = () => { clearTimeout(hintTimer); hintTimer = 0; };
   function closeHint(refocus) {
+    stopHintTimer();
     if (!hintFrom) return;
     $("#hint-pop").hidden = true;
     hintFrom.setAttribute("aria-expanded", "false");
     if (refocus && hintFrom.isConnected) hintFrom.focus();
     hintFrom = null;
+    hintPinned = false;
   }
   // Карточка — над кнопкой, а если сверху нет места — под ней; по ширине не выходит за экран.
-  function openHint(btn) {
-    if (hintFrom === btn) { closeHint(false); return; }
+  // pin — открыта нажатием. Нажатие на кнопку открытой наведением подсказки закрепляет её, повторное — закрывает.
+  function openHint(btn, pin = true) {
+    stopHintTimer();
+    if (hintFrom === btn) {
+      if (pin && !hintPinned) hintPinned = true;
+      else if (pin) closeHint(false);
+      return;
+    }
     closeHint(false);
     const pop = $("#hint-pop");
     $("#hint-pop-title").textContent = btn.dataset.hintTitle;
@@ -1994,7 +2008,24 @@
     pop.style.top = `${top}px`;
     btn.setAttribute("aria-expanded", "true");
     hintFrom = btn;
+    hintPinned = pin;
   }
+  // Наведение мыши: открыть с небольшой задержкой; уйти с кнопки на карточку и обратно — не значит уйти совсем.
+  document.addEventListener("pointerover", (e) => {
+    if (e.pointerType !== "mouse" || !e.target.closest) return;
+    const btn = e.target.closest(".hint-btn");
+    if (btn) {
+      stopHintTimer();
+      if (hintFrom !== btn) hintTimer = setTimeout(() => openHint(btn, false), HINT_DELAY);
+    } else if (e.target.closest("#hint-pop")) stopHintTimer();
+  });
+  document.addEventListener("pointerout", (e) => {
+    if (e.pointerType !== "mouse" || !e.target.closest || !e.target.closest(".hint-btn, #hint-pop")) return;
+    const to = e.relatedTarget;
+    if (to && to.closest && (to.closest("#hint-pop") || (hintFrom && to.closest(".hint-btn") === hintFrom))) return;
+    stopHintTimer();
+    if (hintFrom && !hintPinned) hintTimer = setTimeout(() => closeHint(false), HINT_DELAY);
+  });
   const noteHTML = (tone, text, cls = "", icon = "") => `<div class="note ${tone} ${cls}">${icon ? ic(icon, 18) : ""}<div>${text}</div></div>`;
   // Одно предупреждение — плашкой, несколько — одной плашкой со списком.
   const warnsHTML = (items) => !items.length ? "" : items.length === 1
@@ -4569,7 +4600,7 @@
       if (sug && sug.input === e.target && e.key === "Escape") { e.preventDefault(); hideSug(); return; }
     }
     if (e.key === "Escape") {
-      if (hintFrom) { closeHint(true); return; }
+      if (hintFrom) { closeHint(hintPinned); return; }
       if (closeModal()) return;
       if (S.notifOpen) { setNotif(false); return; }
       if (S.drawer && narrow.matches) { setDrawer(false); return; }
