@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useEffectEvent, useState } from "react";
+import { useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { AttachIcon, CrossIcon, DocumentIcon } from "@/components/icons";
-import { SUGGESTIONS } from "@/components/ask-box";
 import { ChatFeed, ComposerDock, fmtChars, PROMPT_CLASS, PROMPT_TEXTAREA_CLASS } from "@/components/chat-feed";
 import { PageBody, PageHeader } from "@/components/page-header";
 import {
@@ -20,10 +19,11 @@ import {
   usePromptInputAttachments,
 } from "@/components/ai-elements/prompt-input";
 import { MAX_CONTEXT_CHARS, type ChatMessage } from "@/lib/chat-types";
-import { takePendingQuestion } from "@/lib/pending-question";
 import { ACCEPTED_FILES, readDocuments, type FailedFile, type SentDocument } from "@/lib/read-documents";
 
 const transport = new DefaultChatTransport<ChatMessage>({ api: "/api/chat" });
+
+const SUGGESTIONS = ["Заказчик не подписывает акт — что делать?", "Как вернуть обеспечение заявки?"];
 
 const today = () => new Date().toLocaleDateString("ru-RU");
 
@@ -79,25 +79,6 @@ export default function GeneralChatPage() {
 
   const busy = status === "submitted" || status === "streaming";
   const requestBody = (docs: SentDocument[]) => ({ documents: docs, general: true });
-
-  // Вопрос с главной уходит сразу, документы к нему главная уже прочитала.
-  const receivePending = useEffectEvent(() => {
-    const pending = takePendingQuestion();
-    if (!pending) return;
-    setDocuments(pending.documents);
-    setNotice(failedNotice(pending.failed));
-    if (!pending.text) return;
-    void sendMessage(
-      { text: pending.text, metadata: { files: pending.documents.map((d) => d.name), date: today() } },
-      { body: requestBody(pending.documents) }
-    );
-  });
-  // Отправка — в следующем такте. В режиме разработки React монтирует страницу дважды,
-  // и чат при первом размонтировании молча отменил бы уже начатую отправку.
-  useEffect(() => {
-    const timer = setTimeout(() => receivePending(), 0);
-    return () => clearTimeout(timer);
-  }, []);
 
   async function ask(question: string, files: File[]) {
     if (busy) throw new Error("Дождитесь ответа");

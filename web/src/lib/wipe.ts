@@ -1,6 +1,5 @@
 import { CONSENT_KEY } from "@/lib/consent";
 import { deleteDatabases } from "@/lib/db";
-import { PENDING_KEY } from "@/lib/pending-question";
 import { SCAN_OCR_KEY } from "@/lib/scan-setting";
 
 // «Удалить все мои данные»: закупки с документами, реквизиты, образцы, настройки и отметка о согласии — всё,
@@ -10,7 +9,6 @@ export async function wipeAll(): Promise<"done" | "blocked"> {
   for (const [store, key] of [
     [() => window.localStorage, CONSENT_KEY],
     [() => window.localStorage, SCAN_OCR_KEY],
-    [() => window.sessionStorage, PENDING_KEY],
   ] as const) {
     try {
       store().removeItem(key);
