@@ -29,6 +29,7 @@ export async function exportBackup(): Promise<{ backup: Backup; purchases: numbe
 }
 
 // Записывает из копии только то, чего в браузере нет: ничего из сделанного здесь не затирается.
+// Записи кладутся как есть, со своим номером формата: старые догонят текущий формат при чтении (data-format.ts).
 export async function restoreBackup(dump: Dump): Promise<{ purchases: number; samples: number; profile: boolean }> {
   const [purchases, samples, profile] = await Promise.all([
     ids(STORES.purchases),

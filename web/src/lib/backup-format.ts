@@ -1,5 +1,8 @@
+import { isNewer, type RecordKind } from "@/lib/data-format";
+
 // Копия данных — файлом: всё, что лежит в браузере, — закупки с текстами документов, реквизиты, образцы.
-// Модуль без зависимостей: формат проверяют тесты без сборки (npm test). Чтение и запись баз — в backup.ts.
+// Модуль не обращается к базам: формат копии проверяют тесты (npm test). Чтение и запись баз — в backup.ts.
+// Записи идут в копию как есть, со своим номером формата (data-format.ts): старые догонят текущий формат при чтении.
 
 export const BACKUP_FORMAT = "tender-lawyer-backup";
 export const BACKUP_VERSION = 1;
@@ -15,7 +18,8 @@ export type Dump = {
 export type Backup = Dump & { format: typeof BACKUP_FORMAT; version: number; savedAt: string };
 
 // Из настроек в копию и обратно идут только реквизиты: остальное браузер заведёт сам.
-const SETTING_KEYS = new Set(["profile", "profile-meta"]);
+const SETTING_KINDS: Record<string, RecordKind> = { profile: "profile", "profile-meta": "profileMeta" };
+const SETTING_KEYS = new Set(Object.keys(SETTING_KINDS));
 
 export const buildBackup = (dump: Dump, now = new Date()): Backup => ({
   format: BACKUP_FORMAT,
@@ -46,6 +50,12 @@ export function parseBackup(raw: unknown): Parsed {
     (e): e is [string, unknown] => Array.isArray(e) && typeof e[0] === "string" && SETTING_KEYS.has(e[0]) && isObject(e[1])
   );
   if (!purchases.length && !samples.length && !settings.length) return { ok: false, reason: "В копии нет данных." };
+  const newer =
+    purchases.some((p) => isNewer("purchase", p)) ||
+    samples.some((s) => isNewer("myDocument", s)) ||
+    documents.some(([, docs]) => docs.some((d) => isNewer("document", d))) ||
+    settings.some(([key, value]) => isNewer(SETTING_KINDS[key], value));
+  if (newer) return { ok: false, reason: "Копию сделала более новая версия приложения — обновите страницу и загрузите копию ещё раз." };
   return { ok: true, dump: { purchases, documents, settings, samples } };
 }
 

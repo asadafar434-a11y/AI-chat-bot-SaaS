@@ -1,3 +1,4 @@
+import { fromStore, toStore } from "@/lib/data-format";
 import { STORES, transaction } from "@/lib/db";
 import {
   clipEvidence,
@@ -39,37 +40,35 @@ const PROFILE_KEY = "profile";
 const META_KEY = "profile-meta";
 const EMPTY_META: ProfileMeta = { sources: {}, suggestions: [] };
 
+// Настройки читаются и пишутся через data-format.ts: старые записи догоняют текущий формат при чтении.
+const readSetting = async (key: string) =>
+  transaction<unknown>([STORES.settings], "readonly", (tx) => tx.objectStore(STORES.settings).get(key));
+
 export async function getProfile(): Promise<Profile> {
-  const stored = await transaction<Partial<Profile> | undefined>([STORES.settings], "readonly", (tx) =>
-    tx.objectStore(STORES.settings).get(PROFILE_KEY)
-  );
-  return { ...EMPTY_PROFILE, ...stored };
+  const stored = await readSetting(PROFILE_KEY);
+  return { ...EMPTY_PROFILE, ...(stored === undefined ? {} : fromStore<Partial<Profile>>("profile", stored)) };
 }
 
 export async function getProfileMeta(): Promise<ProfileMeta> {
-  const stored = await transaction<Partial<ProfileMeta> | undefined>([STORES.settings], "readonly", (tx) =>
-    tx.objectStore(STORES.settings).get(META_KEY)
-  );
-  return { ...EMPTY_META, ...stored };
+  const stored = await readSetting(META_KEY);
+  return { ...EMPTY_META, ...(stored === undefined ? {} : fromStore<Partial<ProfileMeta>>("profileMeta", stored)) };
 }
 
 export const saveProfile = (profile: Profile, meta?: ProfileMeta) =>
   transaction<void>([STORES.settings], "readwrite", (tx) => {
-    tx.objectStore(STORES.settings).put(profile, PROFILE_KEY);
-    if (meta) tx.objectStore(STORES.settings).put(meta, META_KEY);
+    tx.objectStore(STORES.settings).put(toStore("profile", profile), PROFILE_KEY);
+    if (meta) tx.objectStore(STORES.settings).put(toStore("profileMeta", meta), META_KEY);
   });
 
-// Сначала здесь лежали только образцы ТП — без видов. Виды, которые потом убрали («опыт», «протоколы»),
-// превращаются в «Другое»: файл не пропадает из раздела.
-function upgrade(doc: Omit<MyDocument, "kinds" | "about"> & Partial<MyDocument>): MyDocument {
-  if (!doc.kinds?.length) return { ...doc, kinds: ["tp"], about: doc.about ?? "" };
-  const kinds = [...new Set(doc.kinds.map((kind) => (kind in DOC_KINDS ? kind : "other")))];
-  return { ...doc, kinds, about: doc.about ?? "" };
+// Документ участника в текущем формате. Вид, которого в приложении уже нет, — «Другое»: файл не пропадает из раздела.
+export function readMyDocument(raw: unknown): MyDocument {
+  const doc = fromStore<MyDocument>("myDocument", raw);
+  return { ...doc, kinds: [...new Set(doc.kinds.map((kind) => (kind in DOC_KINDS ? kind : "other")))] };
 }
 
 export const listMyDocuments = async () =>
-  (await transaction<MyDocument[]>([STORES.samples], "readonly", (tx) => tx.objectStore(STORES.samples).getAll()))
-    .map(upgrade)
+  (await transaction<unknown[]>([STORES.samples], "readonly", (tx) => tx.objectStore(STORES.samples).getAll()))
+    .map(readMyDocument)
     .sort((a, b) => b.addedAt.localeCompare(a.addedAt));
 
 // Главной нужно только число: тексты документов, иногда многостраничные сканы, она не читает.
@@ -78,7 +77,7 @@ export const countMyDocuments = () =>
 
 export const saveMyDocuments = (docs: MyDocument[]) =>
   transaction<void>([STORES.samples], "readwrite", (tx) => {
-    for (const doc of docs) tx.objectStore(STORES.samples).put(doc);
+    for (const doc of docs) tx.objectStore(STORES.samples).put(toStore("myDocument", doc));
   });
 
 export const deleteMyDocument = (id: string) =>

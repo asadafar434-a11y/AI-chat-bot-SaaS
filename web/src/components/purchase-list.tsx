@@ -24,7 +24,7 @@ function Days({ purchase }: { purchase: Purchase }) {
 
 // Список закупок как список переписок: значок закона, название, заказчик и шаг, на котором закупка;
 // справа — сколько дней до подачи. Строки — пункты острова, как в меню: без разделителей, открытая — тинтом.
-export function PurchaseListPane({ purchases, error, openId }: { purchases: Purchase[] | null; error: boolean; openId?: string }) {
+export function PurchaseListPane({ purchases, error, openId }: { purchases: Purchase[] | null; error: string | null; openId?: string }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [sampleError, setSampleError] = useState(false);
@@ -64,7 +64,7 @@ export function PurchaseListPane({ purchases, error, openId }: { purchases: Purc
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-2 pt-1">
         {(error || sampleError) && (
           <div className="pb-2">
-            <Note tone="warn">{STORAGE_ERROR}</Note>
+            <Note tone="warn">{error ?? STORAGE_ERROR}</Note>
           </div>
         )}
         {purchases?.length === 0 && (

@@ -221,7 +221,7 @@ export default function HomePage() {
           <div className="grid min-w-0 gap-2">
             {(error || sampleError) && (
               <Note tone="warn" icon={WarningIcon}>
-                {STORAGE_ERROR}
+                {error ?? STORAGE_ERROR}
               </Note>
             )}
 
