@@ -25,9 +25,18 @@ export const DOT: Record<Tone, string> = {
 };
 
 // onPaper — бейдж на серой поверхности («Сейчас важно»): серому бейджу там нужна белая заливка, иначе он пропадает.
-export function Badge({ tone, text, icon, onPaper = false, className = "" }: BadgeInfo & { onPaper?: boolean; className?: string }) {
+// selected — бейдж в выбранной строке списка: её индиго-тинт совпадает с заливкой индиго-бейджа, ему и серому — белая.
+export function Badge({
+  tone,
+  text,
+  icon,
+  onPaper = false,
+  selected = false,
+  className = "",
+}: BadgeInfo & { onPaper?: boolean; selected?: boolean; className?: string }) {
   const Icon = icon && ICONS[icon];
-  const colors = onPaper && tone === "calm" ? "bg-card text-[var(--ink-2)]" : TONES[tone];
+  const white = (onPaper && tone === "calm") || (selected && (tone === "calm" || tone === "brand"));
+  const colors = white ? `bg-card ${tone === "brand" ? "text-primary" : "text-[var(--ink-2)]"}` : TONES[tone];
   return (
     <span className={`t-tag inline-flex min-h-[22px] items-center gap-1 whitespace-nowrap rounded-[var(--r-pill)] px-2 py-0.5 ${colors} ${className}`}>
       {Icon && <Icon aria-hidden className="size-3.5 flex-none" />}

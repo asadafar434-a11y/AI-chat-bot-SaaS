@@ -3,13 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Badge } from "@/components/badge";
 import { PlusIcon, SearchIcon } from "@/components/icons";
 import { Note } from "@/components/note";
 import { daysText, LawBadge } from "@/components/purchase-bits";
 import { dueLine } from "@/lib/deadline";
+import { stageBadge } from "@/lib/home";
 import { titleOf, type Purchase } from "@/lib/purchase";
 import { openSamplePurchase } from "@/lib/sample-purchase";
-import { stageOf, TONE_TEXT } from "@/lib/steps";
 import { STORAGE_ERROR } from "@/lib/use-purchases";
 
 function Days({ purchase }: { purchase: Purchase }) {
@@ -22,8 +23,9 @@ function Days({ purchase }: { purchase: Purchase }) {
   );
 }
 
-// Список закупок как список переписок: значок закона, название, заказчик и шаг, на котором закупка;
-// справа — сколько дней до подачи. Строки — пункты острова, как в меню: без разделителей, открытая — тинтом.
+// Список закупок как список переписок: значок закона, название, заказчик и что с закупкой сейчас — бейджем,
+// как на главной; справа — сколько дней до подачи. Строки — пункты острова, как в меню: без разделителей,
+// открытая — тинтом.
 export function PurchaseListPane({ purchases, error, openId }: { purchases: Purchase[] | null; error: string | null; openId?: string }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -92,25 +94,22 @@ export function PurchaseListPane({ purchases, error, openId }: { purchases: Purc
           <ul className="grid gap-0.5">
             {shown.map((p) => {
               const current = p.id === openId;
-              const stage = stageOf(p);
               return (
                 <li key={p.id}>
                   <Link
                     href={`/p/${p.id}`}
                     aria-current={current ? "true" : undefined}
-                    className="item grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2.5 gap-y-0.5 py-2"
+                    className="item grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2.5 py-2"
                   >
-                    <span className="row-span-2 grid">
-                      <LawBadge purchase={p} selected={current} />
-                    </span>
-                    <span className="grid min-w-0">
+                    <LawBadge purchase={p} selected={current} />
+                    <span className="grid min-w-0 gap-1">
                       <span className="t-strong line-clamp-2">{titleOf(p)}</span>
                       <span className="t-caption truncate text-[var(--ink-3)]">
                         {[p.sample ? "пример" : "", p.customer].filter(Boolean).join(" · ") || p.kind}
                       </span>
+                      <Badge {...stageBadge(p)} selected={current} className="justify-self-start" />
                     </span>
                     <Days purchase={p} />
-                    <span className={`t-tag col-span-2 truncate ${TONE_TEXT[stage.tone]}`}>{stage.text}</span>
                   </Link>
                 </li>
               );

@@ -288,6 +288,8 @@
   .prow:hover { background: var(--hover); }
   .prow[aria-current] { background: var(--select); }
   .prow[aria-current] .law { background: var(--card); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 25%, transparent); }
+  /* Тинт выбранной строки совпадает с заливкой индиго-бейджа — ему и серому бейджу белая заливка */
+  .prow[aria-current] .badge.brand, .prow[aria-current] .badge.calm { background: var(--card); }
   .prow-text { display: grid; gap: 4px; min-width: 0; }
   .prow-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--t-caption); color: var(--ink-3); }
   .prow-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font: var(--t-strong); }

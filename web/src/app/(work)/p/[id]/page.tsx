@@ -31,8 +31,8 @@ const GROUPS: Record<ReqGroupKey, { title: string; empty: string }> = {
   },
 };
 
-// Шаг 1 «Требования»: каждая группа требований — свой остров, после «Кто может участвовать» — как оценят заявку,
-// в конце — остров «Дальше».
+// Шаг 1 «Требования»: первым — вход в «Цену» («Перед торгами»), дальше каждая группа требований — свой остров,
+// после «Кто может участвовать» — как оценят заявку, в конце — остров «Дальше».
 export default function RequirementsPage() {
   const { purchase, documents } = usePurchase();
   const [open, setOpen] = useState<string | null>(null);
@@ -88,11 +88,11 @@ export default function RequirementsPage() {
         ]}
       />
 
+      <PriceTeaser purchase={purchase} />
+
       {group("who")}
       <CriteriaIsland criteria={criteria} open={open} onToggle={toggle} />
       {REQ_GROUP_KEYS.filter((key) => key !== "who").map(group)}
-
-      <PriceTeaser purchase={purchase} />
 
       <NextStep from="req" />
     </TabBody>

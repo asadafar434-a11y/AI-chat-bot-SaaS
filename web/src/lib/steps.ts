@@ -1,5 +1,4 @@
 import { checkCounts } from "@/lib/check";
-import { dueLine } from "@/lib/deadline";
 import { plural } from "@/lib/plural";
 import type { Purchase } from "@/lib/purchase";
 import { REQ_GROUP_KEYS } from "@/lib/requirements";
@@ -70,20 +69,6 @@ export function stepsOf(p: Purchase): Step[] {
   };
 
   return [req, tp, check];
-}
-
-// Где закупка сейчас — одной строкой для списков: какой шаг и что на нём сделать.
-export function stageOf(p: Purchase): { text: string; tone: Tone; href: string } {
-  const [, tp, check] = stepsOf(p);
-  const due = dueLine(p.deadline, false);
-  if (due && due.days < 0) return { text: "Приём заявок закончился", tone: "calm", href: `/p/${p.id}` };
-  if (p.check) {
-    if (check.state === "done") return { text: "Готово к подаче на площадке", tone: "ok", href: check.href };
-    return { text: `Шаг 3 · проверка: ${check.status}`, tone: check.tone, href: check.href };
-  }
-  if (tp.state === "todo") return { text: "Шаг 2 · составить ТП", tone: "brand", href: tp.href };
-  if (tp.state === "fix") return { text: `Шаг 2 · ТП: ${tp.status}`, tone: "warn", href: tp.href };
-  return { text: "Шаг 3 · проверить заявку", tone: "brand", href: check.href };
 }
 
 export const TONE_TEXT: Record<Tone, string> = {
