@@ -1,9 +1,8 @@
 import { ClockIcon, DocumentIcon, WarningIcon } from "@/components/icons";
-import type { Due } from "@/lib/deadline";
-import { plural } from "@/lib/plural";
+import { daysText, type Due } from "@/lib/deadline";
 import type { Purchase } from "@/lib/purchase";
 
-export const daysText = (n: number) => `${n} ${plural(n, "день", "дня", "дней")}`;
+export { daysText };
 
 // Значок закупки — номер закона: 44-ФЗ и 223-ФЗ поставщик различает с первого взгляда.
 export const lawOf = (p: Purchase) => /(?<!\d)(44|223)-ФЗ/.exec(p.kind)?.[1] ?? "";

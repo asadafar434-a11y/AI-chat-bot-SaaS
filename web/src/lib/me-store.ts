@@ -71,9 +71,28 @@ export const listMyDocuments = async () =>
     .map(readMyDocument)
     .sort((a, b) => b.addedAt.localeCompare(a.addedAt));
 
-// Главной нужно только число: тексты документов, иногда многостраничные сканы, она не читает.
-export const countMyDocuments = () =>
-  transaction<number>([STORES.samples], "readonly", (tx) => tx.objectStore(STORES.samples).count());
+// Сколько документов каждого вида — для острова «Данные компании» на главной. Тексты документов, иногда
+// многостраничные сканы, главная в памяти не держит: документы идут по одному и сразу отбрасываются.
+// Запись новее приложения считается без вида.
+export async function countMyDocumentKinds(): Promise<{ total: number; kinds: Partial<Record<DocKind, number>> }> {
+  const kinds: Partial<Record<DocKind, number>> = {};
+  let total = 0;
+  await transaction<void>([STORES.samples], "readonly", (tx) => {
+    const cursor = tx.objectStore(STORES.samples).openCursor();
+    cursor.onsuccess = () => {
+      const current = cursor.result;
+      if (!current) return;
+      total++;
+      try {
+        for (const kind of readMyDocument(current.value).kinds) kinds[kind] = (kinds[kind] ?? 0) + 1;
+      } catch {
+        // Новее приложения — вид не знаем, но документ есть.
+      }
+      current.continue();
+    };
+  });
+  return { total, kinds };
+}
 
 export const saveMyDocuments = (docs: MyDocument[]) =>
   transaction<void>([STORES.samples], "readwrite", (tx) => {

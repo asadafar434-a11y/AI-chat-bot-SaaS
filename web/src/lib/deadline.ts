@@ -6,6 +6,8 @@ const MONTHS = [
   "июля", "августа", "сентября", "октября", "ноября", "декабря",
 ];
 
+export const daysText = (n: number) => `${n} ${plural(n, "день", "дня", "дней")}`;
+
 // head — сама дата, left — обратный отсчёт; text — всё вместе.
 export type Due = { text: string; head: string; left?: string; tone: "soon" | "calm" | "past"; days: number };
 
