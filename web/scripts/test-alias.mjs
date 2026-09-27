@@ -1,5 +1,6 @@
 // Тесты (npm test) запускают модули приложения без сборки. Здесь импорт «@/…» превращается в путь к src/,
-// у относительного импорта без расширения дописывается .ts, а «server-only» заменяется пустым модулем.
+// у относительного импорта без расширения дописывается .ts, «next/server» ведёт к файлу next/server.js (у пакета next
+// нет карты exports, и Node без неё расширение не подставляет), а «server-only» заменяется пустым модулем.
 import { existsSync } from "node:fs";
 import { register } from "node:module";
 import { fileURLToPath } from "node:url";
@@ -17,6 +18,7 @@ function withExtension(base) {
 
 export async function resolve(specifier, context, next) {
   if (specifier === "server-only") return { url: "data:text/javascript,", shortCircuit: true };
+  if (/^next\/[\w-]+$/.test(specifier)) return next(`${specifier}.js`, context);
   if (specifier.startsWith("@/")) {
     const url = withExtension(new URL(specifier.slice(2), SRC));
     if (url) return next(url, context);
