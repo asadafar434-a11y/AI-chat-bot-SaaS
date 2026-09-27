@@ -164,7 +164,7 @@ export function docText(buf: Buffer): string {
 }
 
 // RTF: текст идёт вперемешку с командами форматирования, кириллица — кодами \'e0 в кодировке документа
-// или ၲ. Служебные группы (шрифты, стили, картинки, коды полей) пропускаем целиком.
+// или номером буквы в Юникоде: \u1072? — «а». Служебные группы (шрифты, стили, картинки, коды полей) пропускаем целиком.
 const SKIP_GROUPS = new Set([
   "fonttbl", "colortbl", "stylesheet", "info", "pict", "object", "listtable", "listoverridetable", "rsidtbl",
   "generator", "themedata", "colorschememapping", "latentstyles", "datastore", "xmlnstbl", "fldinst", "header",
