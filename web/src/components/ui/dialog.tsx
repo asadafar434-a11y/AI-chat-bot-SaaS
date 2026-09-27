@@ -72,7 +72,7 @@ function DialogContent({
           >
             <CrossIcon
             />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">Закрыть</span>
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Popup>
