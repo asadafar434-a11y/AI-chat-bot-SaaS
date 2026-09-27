@@ -1,3 +1,4 @@
+import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import mammoth from "mammoth";
 import { PDFParse } from "pdf-parse";

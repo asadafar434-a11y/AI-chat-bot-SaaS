@@ -1,3 +1,4 @@
+import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import * as z from "zod/v4";
 import { CLAUDE_MODEL } from "@/lib/claude";

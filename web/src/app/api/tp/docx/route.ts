@@ -1,4 +1,5 @@
-import { buildPartDocx, buildTpDocx, PART_TITLES, type CastLine, type TpPart } from "@/lib/tp-docx";
+import { buildPartDocx, buildTpDocx, type CastLine } from "@/lib/tp-docx";
+import { PART_TITLES, type TpPart } from "@/lib/tp-parts";
 import { PartDocSchema, type PartDoc } from "@/lib/part-doc";
 import { EMPTY_PROFILE, PROFILE_KEYS, type Profile } from "@/lib/profile";
 import { PLAIN_FORM, type TpForm } from "@/lib/tp";

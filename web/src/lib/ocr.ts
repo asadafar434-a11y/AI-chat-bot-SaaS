@@ -1,3 +1,4 @@
+import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { PDFParse } from "pdf-parse";
 import { CLAUDE_MODEL } from "@/lib/claude";

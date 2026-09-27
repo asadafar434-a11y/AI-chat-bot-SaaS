@@ -1,3 +1,4 @@
+import "server-only";
 import {
   AlignmentType,
   Document,
@@ -13,17 +14,7 @@ import type { PartBlock, PartDoc } from "@/lib/part-doc";
 import { ANKETA, fillFromProfile, type Profile } from "@/lib/profile";
 import { formatRubles, rublesInWords } from "@/lib/rub-words";
 import type { TpForm } from "@/lib/tp";
-
-// Части заявки собираются отдельными файлами: техническое предложение подают в первую часть,
-// и в нём не должно быть ничего, что раскрывает участника, — ни названия, ни ИНН, ни подписи.
-export type TpPart = "tp" | "participant" | "declaration" | "price";
-
-export const PART_TITLES: Record<TpPart, string> = {
-  tp: "Техническое предложение",
-  participant: "Анкета участника закупки",
-  declaration: "Декларация о принадлежности к субъектам малого и среднего предпринимательства",
-  price: "Предложение о цене договора",
-};
+import { PART_TITLES, type TpPart } from "@/lib/tp-parts";
 
 // Строка состава исполнителей: кто по ТЗ, ФИО и звание; titled — звание требует ТЗ, пустое — жёлтым.
 export type CastLine = { who: string; name: string; title: string; titled: boolean };
@@ -38,14 +29,6 @@ export type TpDocx = {
   // Реквизиты участника; в техническое предложение не передаются.
   profile: Profile | null;
 };
-
-// Техническое предложение и анкета нужны всегда; декларация и цена — если их требует форма заказчика.
-export const partsOf = (form: TpForm): TpPart[] => [
-  "tp",
-  "participant",
-  ...(form.smeDeclaration ? (["declaration"] as const) : []),
-  ...(form.hasPrice ? (["price"] as const) : []),
-];
 
 // Строки формы заказчика, которые уже есть в анкете под другим названием, не повторяем.
 const COVERED = [/^наименование$/i, /^(фамилия|имя|отчество)/i, /место нахождения|место жительства/i, /банковские реквизиты/i, /^инн участника/i];

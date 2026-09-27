@@ -5,7 +5,8 @@ import mammoth from "mammoth";
 import { POST } from "../app/api/tp/docx/route.ts";
 import { EMPTY_PROFILE, identityValues, type Profile } from "./profile.ts";
 import { PLAIN_FORM } from "./tp.ts";
-import { buildTpDocx, partsOf, type TpDocx } from "./tp-docx.ts";
+import { buildTpDocx, type TpDocx } from "./tp-docx.ts";
+import { partsOf } from "./tp-parts.ts";
 
 const PROFILE: Profile = {
   ...EMPTY_PROFILE,

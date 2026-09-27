@@ -6,7 +6,7 @@ import { partInstructions, PartDocSchema } from "@/lib/part-doc";
 import { EMPTY_PROFILE, PROFILE_KEYS, type Profile } from "@/lib/profile";
 import { formatRubles, rublesInWords } from "@/lib/rub-words";
 import { SAMPLES_LIMIT } from "@/lib/tp";
-import { PART_TITLES } from "@/lib/tp-docx";
+import { PART_TITLES } from "@/lib/tp-parts";
 import { badRequest, readJson, sentDocuments } from "@/lib/read-json";
 
 export const maxDuration = 300;

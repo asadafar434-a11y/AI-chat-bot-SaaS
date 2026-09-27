@@ -22,7 +22,7 @@ import { formatRubles, parseRubles, rublesInWords } from "@/lib/rub-words";
 import { saveFile } from "@/lib/save-file";
 import { sampleTp } from "@/lib/sample-purchase";
 import { itemsFill, needsFill, type TpResult } from "@/lib/tp";
-import { PART_TITLES, partsOf, type TpPart } from "@/lib/tp-docx";
+import { PART_TITLES, partsOf, type TpPart } from "@/lib/tp-parts";
 import { SAMPLE_CAST_HISTORY, SAMPLE_CAST_LIST } from "@/lib/tp-sample";
 import { usePurchases } from "@/lib/use-purchases";
 
