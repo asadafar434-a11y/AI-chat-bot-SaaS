@@ -4,6 +4,7 @@ import { PDFParse } from "pdf-parse";
 import { claudeErrorText } from "@/lib/claude-errors";
 import { docText, DocTextError, isOle, rtfText } from "@/lib/doc-text";
 import { MAX_SCAN_PAGES, renderPages, transcribe } from "@/lib/ocr";
+import { plural } from "@/lib/plural";
 import { createLimiter, OCR_PAGES_TOTAL } from "@/lib/rate-limit";
 
 // scan — текст распознан со скана или фото: в цифрах возможны ошибки.
@@ -46,7 +47,10 @@ async function pdfText(data: Uint8Array, ocr: boolean): Promise<ExtractResult> {
     }
     if (scanned.length > MAX_SCAN_PAGES) {
       return allScanned
-        ? { ok: false, reason: `скан на ${scanned.length} страниц — распознаю не больше ${MAX_SCAN_PAGES}; разделите файл на части` }
+        ? {
+            ok: false,
+            reason: `скан на ${scanned.length} ${plural(scanned.length, "страницу", "страницы", "страниц")} — распознаю не больше ${MAX_SCAN_PAGES}; разделите файл на части`,
+          }
         : { ok: true, text: result.text };
     }
     if (ocrPages("all", scanned.length)) return allScanned ? { ok: false, reason: OCR_LIMIT } : { ok: true, text: result.text };
