@@ -78,6 +78,8 @@
   --warn: #9a590b;
   --warn-tint: #fbeeda;
   --danger: #cf2f24;
+  /* 8 %: красный текст на ней — 4,5:1 и в светлой, и в тёмной теме; при 12 % в светлой только 4,3:1 */
+  --danger-tint: color-mix(in srgb, var(--danger) 8%, var(--paper));
 
   --r-island: 16px;
   --r-surface: 12px;
