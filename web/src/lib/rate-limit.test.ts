@@ -1,7 +1,7 @@
 // Лимиты частоты запросов — npm test.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { clientIp, createLimiter, waitText } from "./rate-limit.ts";
+import { clientIp, createLimiter, SWEEP_MS, waitText } from "./rate-limit.ts";
 
 const clock = (start = 0) => {
   let t = start;
@@ -62,4 +62,24 @@ test("сколько ждать — по-русски", () => {
   assert.equal(waitText(5), "через минуту");
   assert.equal(waitText(61), "через 2 мин");
   assert.equal(waitText(7200), "через 2 ч");
+});
+
+test("адрес помнится не дольше самого длинного окна и часа после последнего запроса (политика, раздел «Сроки»)", (t) => {
+  t.mock.timers.enable({ apis: ["setInterval"] });
+  const c = clock();
+  const day = 24 * 60 * 60_000;
+  const take = createLimiter([{ max: 5, ms: 10 * 60_000 }, { max: 50, ms: day }], c.now);
+  take("198.51.100.1");
+  take("198.51.100.2");
+  // Через сутки и час без запросов адрес стёрт; кто заходил позже — ещё помнится.
+  c.pass(day - SWEEP_MS);
+  t.mock.timers.tick(day - SWEEP_MS);
+  take("198.51.100.2");
+  assert.equal(take.size(), 2);
+  c.pass(2 * SWEEP_MS);
+  t.mock.timers.tick(2 * SWEEP_MS);
+  assert.equal(take.size(), 1);
+  c.pass(day + SWEEP_MS);
+  t.mock.timers.tick(day + SWEEP_MS);
+  assert.equal(take.size(), 0);
 });

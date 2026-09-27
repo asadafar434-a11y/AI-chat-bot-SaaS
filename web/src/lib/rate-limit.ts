@@ -28,19 +28,27 @@ export const LOGIN_PER_IP: Window[] = [
   { max: 30, ms: DAY },
 ];
 
+// Раз в час лимитер забывает адреса, с которых не заходили дольше самого длинного окна. Поэтому IP-адрес хранится
+// в памяти сервера не дольше окна и часа после последнего запроса — в политике это «не дольше 25 часов».
+export const SWEEP_MS = 60 * MINUTE;
+
 // 0 — можно; иначе — через сколько секунд освободится место. cost — сколько единиц берёт запрос (например, страниц).
-export type Take = (key: string, cost?: number) => number;
+// size — сколько адресов (ключей) лимитер сейчас помнит.
+export type Take = ((key: string, cost?: number) => number) & { size: () => number };
 
 export function createLimiter(windows: Window[], now: () => number = Date.now): Take {
   const hits = new Map<string, number[]>();
   const longest = Math.max(...windows.map((w) => w.ms));
-  let calls = 0;
-  return (key, cost = 1) => {
+  const sweep = () => {
     const t = now();
-    // Изредка забываем адреса, с которых давно не заходили, — чтобы память не росла.
-    if (++calls % 1000 === 0) {
-      for (const [k, list] of hits) if (list[list.length - 1] <= t - longest) hits.delete(k);
-    }
+    for (const [k, list] of hits) if (!list.length || list[list.length - 1] <= t - longest) hits.delete(k);
+  };
+  // Таймер не держит процесс: сервер и тесты завершаются, как без него.
+  const timer = setInterval(sweep, SWEEP_MS);
+  (timer as { unref?: () => void }).unref?.();
+
+  const take = (key: string, cost = 1) => {
+    const t = now();
     const list = (hits.get(key) ?? []).filter((x) => x > t - longest);
     hits.set(key, list);
     for (const w of windows) {
@@ -55,6 +63,7 @@ export function createLimiter(windows: Window[], now: () => number = Date.now): 
     for (let i = 0; i < cost; i++) list.push(t);
     return 0;
   };
+  return Object.assign(take, { size: () => hits.size });
 }
 
 // Адрес клиента. Обратный прокси хостинга дописывает адрес, с которого к нему пришли, в конец X-Forwarded-For —

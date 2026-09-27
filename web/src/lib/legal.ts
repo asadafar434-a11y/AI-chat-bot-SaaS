@@ -12,7 +12,7 @@ export const LEGAL_PAGES = [
 export const isLegalPath = (pathname: string) => LEGAL_PAGES.some((page) => page.href === pathname);
 
 // Дата текущей редакции текстов. Поменяли текст — поменяйте и дату: согласие спросят заново (lib/consent.ts).
-export const LEGAL_EDITION = "26 сентября 2026 г.";
+export const LEGAL_EDITION = "27 сентября 2026 г.";
 
 // Тексты — шаблоны: пока юрист их не проверил, на каждой странице стоит пометка «ТРЕБУЕТ ПРОВЕРКИ ЮРИСТОМ».
 // Проверил — поставьте true.
