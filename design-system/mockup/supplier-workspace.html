@@ -561,6 +561,20 @@
   .unver { display: flex; align-items: center; gap: 8px; margin: 0; font: 500 12px/16px var(--ui); color: var(--warn); }
   .unver > svg { flex: none; }
   .empty-group { margin: 0; padding: 4px var(--pad) 12px; font: var(--t-body); color: var(--ink-3); }
+  /* Как оценят заявку: критерии и строки, за которые дают баллы (web/src/components/criteria-island.tsx) */
+  .list > li.crit-group { gap: 0; padding: 12px 0 0; }
+  .crit-cap { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+  .crit-cap .panel-sub { white-space: nowrap; }
+  .crit-rows { list-style: none; margin: 0; padding: 0; }
+  .crit-rows > li { display: grid; gap: 4px; padding: 10px 0; font: var(--t-read); }
+  .crit-rows > li + li { border-top: 1px solid var(--line); }
+  .crit-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .crit-name { display: grid; flex: 1; gap: 2px; min-width: 0; }
+  .crit-title { font: var(--t-strong); }
+  .crit-sub { font: var(--t-caption); color: var(--ink-3); }
+  .crit-fact { margin: 0; }
+  .crit-fact > span { color: var(--ink-3); }
+  .crit-warn { padding: 0 var(--pad) 12px; }
 
   /* ---------- техническое предложение ---------- */
   .items { list-style: none; margin: 0; padding: 0 var(--pad) 4px; }
@@ -1553,8 +1567,6 @@
       who: [R("Только для малого бизнеса и социально ориентированных НКО", "Извещение, раздел 6", "Закупка осуществляется у субъектов малого предпринимательства, социально ориентированных некоммерческих организаций.")],
       submit: [
         R("Программа мероприятия с таймингом и описание, как будете оказывать услуги", "Извещение, п. 5.1.3", "Предложение участника закупки в отношении объекта закупки должно содержать проект программы мероприятия с указанием тайминга, а также описание порядка оказания услуг."),
-        R("Чем подробнее программа и описание услуг, тем больше баллов", "Порядок оценки, п. 2", "Критерий «Качественные характеристики объекта закупки»: оценивается детальность программы мероприятия и описания порядка оказания услуг."),
-        R("Опыт тоже даёт баллы: исполненные контракты на организацию мероприятий с актами о приёмке", "Порядок оценки, п. 3", "Критерий «Квалификация участника закупки»: наличие опыта по успешному исполнению контрактов на организацию мероприятий, подтверждённого исполненными контрактами и актами о приёмке."),
         R("Декларацию о соответствии требованиям формирует площадка", "Извещение, раздел 8", "Декларация о соответствии участника закупки единым требованиям формируется с использованием программно-аппаратных средств электронной площадки."),
       ],
       scope: [
@@ -1607,6 +1619,32 @@
         replace: { text: "По проекту контракта заменить исполнителя из заявки можно только по письменному согласованию с заказчиком и на исполнителя со званием не ниже требований ТЗ.", src: "k-4.5" },
       },
     },
+    // Как оценят заявку — как в web/src/lib/requirements-sample.ts: цена 60 из 100, качество программы 10, опыт и специалисты — по 15.
+    criteria: {
+      howWins: "points",
+      rows: [
+        { criterion: "Цена контракта", criterionWeight: "60 %", indicator: "", indicatorWeight: "", detail: "", detailWeight: "",
+          scoring: "Наименьшая цена — 100 баллов, остальные — пропорционально: наименьшая цена, делённая на цену участника, × 100.",
+          proof: "", form: "", source: "Порядок оценки, п. 1.1 и 2", quote: "Наименьшему предложению о цене контракта присваивается 100 баллов, остальным — пропорционально: наименьшее предложение, делённое на предложение участника, умноженное на 100.", verified: true },
+        { criterion: "Качественные характеристики объекта закупки", criterionWeight: "10 %",
+          indicator: "Качество проекта программы мероприятия и описания порядка оказания услуг", indicatorWeight: "100 %", detail: "", detailWeight: "",
+          scoring: "Программа с таймингом каждого блока и описание всех услуг по ТЗ — 100 баллов; программа без описания услуг — 50; нет программы — 0.",
+          proof: "Проект программы мероприятия с таймингом и описание порядка оказания услуг — в предложении участника.",
+          form: "", source: "Порядок оценки, п. 3.1", quote: "Программа с таймингом каждого блока церемонии и описание порядка оказания всех услуг по техническому заданию — 100 баллов; программа с таймингом без описания порядка оказания услуг — 50 баллов; программа не представлена — 0 баллов.", verified: true },
+        { criterion: "Квалификация участников закупки", criterionWeight: "30 %",
+          indicator: "Наличие у участников закупки опыта оказания услуги, связанного с предметом контракта", indicatorWeight: "50 %",
+          detail: "Общая цена исполненных договоров", detailWeight: "100 %",
+          scoring: "Договоры на организацию мероприятий за последние 5 лет, каждый — от 20 % начальной цены, то есть от 137 000 ₽. Общая цена от 3 000 000 ₽ — 100 баллов, меньше — пропорционально.",
+          proof: "Исполненные договоры (контракты) и акты о приёмке оказанных услуг.",
+          form: "Приложение 1 к порядку оценки — сведения об опыте", source: "Порядок оценки, п. 4.1", quote: "Подтверждается исполненными договорами (контрактами) и актами о приёмке оказанных услуг.", verified: true },
+        { criterion: "Квалификация участников закупки", criterionWeight: "30 %",
+          indicator: "Наличие у участников закупки специалистов и иных работников определённого уровня квалификации", indicatorWeight: "50 %",
+          detail: "Общее количество специалистов", detailWeight: "100 %",
+          scoring: "Засчитывают режиссёра-постановщика с высшим образованием в области культуры и искусства, звукорежиссёра, электромонтёра с группой по электробезопасности не ниже IV и специалиста по охране труда. Четыре и больше — 100 баллов, три — 75, два — 50, один — 25.",
+          proof: "Копии трудовых или гражданско-правовых договоров, дипломов и удостоверений.",
+          form: "Приложение 2 к порядку оценки — сведения о специалистах", source: "Порядок оценки, п. 4.2", quote: "Четыре специалиста и более — 100 баллов, три — 75 баллов, два — 50 баллов, один — 25 баллов, нет специалистов — 0 баллов.", verified: true },
+      ],
+    },
     sources: {
       "izv-5.1.1": D("Извещение, п. 5.1.1", "Извещение.pdf", "5.1.1. Заявка подаётся в форме электронного документа через электронную площадку."),
       "izv-5.1.2": D("Извещение, п. 5.1.2", "Извещение.pdf", "5.1.2. Предложение о цене контракта указывается участником с использованием электронной площадки."),
@@ -1615,7 +1653,7 @@
       "izv-7": D("Извещение, раздел 7", "Извещение.pdf", "7. Размер обеспечения заявки: 1% от начальной (максимальной) цены контракта — 6 850,00 руб. Обеспечение предоставляется путём блокирования денежных средств на специальном счёте участника или независимой гарантией."),
       "izv-8": D("Извещение, раздел 8", "Извещение.pdf", "8. Декларация о соответствии участника закупки единым требованиям формируется с использованием программно-аппаратных средств электронной площадки."),
       "izv-11": D("Извещение, раздел 11", "Извещение.pdf", "11. Размер обеспечения исполнения контракта: 5% от цены контракта."),
-      "oc-3": D("Порядок оценки, п. 3", "Порядок оценки.pdf", "3. Критерий «Квалификация участника закупки»: наличие опыта по успешному исполнению контрактов на организацию мероприятий, подтверждённого исполненными контрактами и актами о приёмке."),
+      "oc-4.1": D("Порядок оценки, п. 4.1", "Порядок оценки.pdf", "Подтверждается исполненными договорами (контрактами) и актами о приёмке оказанных услуг. Сведения об опыте представляются по форме приложения 1 к настоящему порядку."),
       "k-2.1": D("Проект контракта, п. 2.1", "Проект контракта.pdf", "2.1. Цена контракта определяется по итогам электронного конкурса и не может превышать начальную (максимальную) цену контракта."),
       "k-2.5": D("Проект контракта, п. 2.5", "Проект контракта.pdf", "2.5. Оплата производится в течение 7 рабочих дней с даты подписания Заказчиком документа о приёмке."),
       "k-4.3": D("Проект контракта, п. 4.3", "Проект контракта.pdf", "4.3. Заказчик в течение 3 рабочих дней с даты получения проекта программы согласовывает его либо направляет мотивированные замечания."),
@@ -1632,8 +1670,8 @@
         note: NOTE_44 + ONE_QUOTE,
       },
       "Какие документы нужны для заявки?": {
-        text: "**Заявку подают на электронной площадке, цену указывают там же** (извещение, п. 5.1.1 и 5.1.2).\n\nВ предложение по этой закупке входит «проект программы мероприятия с указанием тайминга» и описание, как будете оказывать услуги (п. 5.1.3). От подробности программы зависят баллы.\n\nЕщё баллы даёт опыт: исполненные контракты на организацию мероприятий с актами о приёмке (порядок оценки, п. 3). Декларацию о соответствии единым требованиям формирует площадка (извещение, раздел 8).\n\nУчаствовать могут только субъекты малого предпринимательства и социально ориентированные НКО (раздел 6). Общий состав заявки задаёт ч. 1 ст. 43 44-ФЗ: сведения об участнике, предложение по объекту закупки и предложение о цене.",
-        src: [{ doc: "izv-5.1.1" }, { doc: "izv-5.1.2" }, { doc: "izv-5.1.3" }, { doc: "oc-3" }, { doc: "izv-8" }, { doc: "izv-6" }, { law: "44-43-1" }],
+        text: "**Заявку подают на электронной площадке, цену указывают там же** (извещение, п. 5.1.1 и 5.1.2).\n\nВ предложение по этой закупке входит «проект программы мероприятия с указанием тайминга» и описание, как будете оказывать услуги (п. 5.1.3). От подробности программы зависят баллы.\n\nЕщё баллы даёт опыт: исполненные договоры на организацию мероприятий с актами о приёмке — до 15 баллов из 100 (порядок оценки, п. 4.1). Декларацию о соответствии единым требованиям формирует площадка (извещение, раздел 8).\n\nУчаствовать могут только субъекты малого предпринимательства и социально ориентированные НКО (раздел 6). Общий состав заявки задаёт ч. 1 ст. 43 44-ФЗ: сведения об участнике, предложение по объекту закупки и предложение о цене.",
+        src: [{ doc: "izv-5.1.1" }, { doc: "izv-5.1.2" }, { doc: "izv-5.1.3" }, { doc: "oc-4.1" }, { doc: "izv-8" }, { doc: "izv-6" }, { law: "44-43-1" }],
         note: NOTE_44 + ONE_QUOTE,
       },
       "Что проверить в проекте контракта перед подачей?": {
@@ -2520,9 +2558,87 @@
     return { bad: p.check.findings.filter((f) => f.kind === "bad").length, warn: p.check.findings.filter((f) => f.kind === "warn").length };
   }
 
+  /* ---------- как оценят заявку ---------- */
+  // Как в web/src/lib/criteria.ts: модель переписывает значимости, долю строки в итоговой сотне баллов считает код.
+  function percentOf(text) {
+    const m = /(\d+(?:[.,]\d+)?)\s*(%|процент)?/i.exec(text || "");
+    if (!m) return null;
+    let value = Number(m[1].replace(",", "."));
+    if (!m[2] && value > 0 && value <= 1 && /[.,]/.test(m[1])) value *= 100;
+    return value >= 0 && value <= 100 ? value : null;
+  }
+  const critKey = (t) => t.trim().toLowerCase();
+  // Не указана значимость — у единственного пункта уровня весь уровень, у нескольких — неизвестно: делить поровну — догадка.
+  const levelWeight = (text, alone) => percentOf(text) ?? (alone ? 100 : null);
+  function groupCriteria(rows) {
+    const groups = [];
+    for (const row of rows) {
+      const name = row.criterion.trim() || "Критерий без названия";
+      let g = groups.find((x) => critKey(x.name) === critKey(name));
+      if (!g) { g = { name, weight: null, raw: [] }; groups.push(g); }
+      if (g.weight === null && row.criterionWeight.trim()) g.weight = percentOf(row.criterionWeight);
+      g.raw.push(row);
+    }
+    return groups.map((g) => {
+      const indicators = new Set(g.raw.filter((r) => r.indicator.trim()).map((r) => critKey(r.indicator)));
+      const rows = g.raw.map((row) => {
+        const siblings = g.raw.filter((r) => critKey(r.indicator) === critKey(row.indicator) && r.detail.trim());
+        const ind = row.indicator.trim() ? levelWeight(row.indicatorWeight, indicators.size === 1) : 100;
+        const det = row.detail.trim() ? levelWeight(row.detailWeight, siblings.length === 1) : 100;
+        return { ...row, share: g.weight === null || ind === null || det === null ? null : (g.weight * ind * det) / 10000 };
+      });
+      return { name: g.name, weight: g.weight, rows };
+    });
+  }
+  const weightsAddUp = (groups) => groups.length > 0 && groups.every((g) => g.weight !== null) && Math.abs(groups.reduce((s, g) => s + g.weight, 0) - 100) < 0.5;
+  function pointsText(share) {
+    const r = Math.round(share * 10) / 10;
+    return `${r.toLocaleString("ru-RU")} ${Number.isInteger(r) ? plural(r, "балл", "балла", "баллов") : "балла"}`;
+  }
+  const isPriceCrit = (name) => /цен/i.test(name) && !/квалификац|характеристик|качеств/i.test(name);
+  // Число и его единица — на одной строке: «20 %», «3 000 000 ₽», «5 лет».
+  const glue = (t) => t.replace(/(\d) (?=\d{3}(?!\d))/g, "$1\u00a0").replace(/(\d) (?=%|₽|руб|балл|лет|год|дн|раз|специалист|договор|контракт)/g, "$1\u00a0");
+
+  function critSummary(c, groups) {
+    if (c.howWins === "price") return "Побеждает наименьшая цена — баллов нет.";
+    if (!weightsAddUp(groups)) return "Побеждает больше баллов. Значимости критериев — в строках ниже.";
+    const price = groups.filter((g) => isPriceCrit(g.name)).reduce((s, g) => s + g.weight, 0);
+    if (price === 0) return "Побеждает больше баллов из 100. Цена баллов не даёт — решают критерии ниже.";
+    if (price === 100) return "Побеждает больше баллов из 100 — и все они за цену.";
+    return `Побеждает больше баллов из 100: цена — до ${pointsText(price)}, остальное — до ${pointsText(100 - price)}.`;
+  }
+  function critRowHTML(id, title, sub, row) {
+    const points = row.share !== null ? `до ${pointsText(row.share)}` : [row.indicatorWeight, row.detailWeight].filter((w) => w.trim()).join(" · ") || "значимость не указана";
+    const fact = (label, text) => (text.trim() ? `<p class="crit-fact"><span>${label}: </span>${esc(glue(text))}</p>` : "");
+    return `<li>
+      <div class="crit-head"><div class="crit-name"><span class="crit-title">${esc(title)}</span>${sub ? `<span class="crit-sub">${esc(sub)}</span>` : ""}</div><span class="badge brand">${esc(points)}</span></div>
+      ${fact("Как считают", row.scoring)}${fact("Что приложить", row.proof)}${fact("Форма", row.form)}
+      ${sourceHTML(id, row.source, row.quote, row.verified, "строку")}
+    </li>`;
+  }
+  // Шаг 1: сколько из 100 баллов решает цена и за что дают остальные — с цитатами из порядка оценки.
+  function criteriaHTML(p) {
+    const c = p.criteria;
+    if (!c || (c.howWins === "unknown" && !c.rows.length)) return "";
+    const groups = groupCriteria(c.rows);
+    const body = groups.map((g, gi) => {
+      const single = g.rows.length === 1 && !g.rows[0].indicator.trim();
+      if (single) return critRowHTML(`crit-${gi}-0`, g.name, "", { ...g.rows[0], share: g.weight });
+      return `<li class="crit-group">
+        <div class="crit-cap"><span class="eyebrow">${esc(g.name)}</span>${g.weight !== null ? `<span class="panel-sub">всего до ${pointsText(g.weight)}</span>` : ""}</div>
+        <ul class="crit-rows">${g.rows.map((row, ri) => critRowHTML(`crit-${gi}-${ri}`, row.detail.trim() || row.indicator.trim(), row.detail.trim() ? row.indicator : "", row)).join("")}</ul>
+      </li>`;
+    }).join("");
+    return `<section class="panel" aria-labelledby="req-criteria"><div class="panel-head"><div><h3 class="panel-title" id="req-criteria">Как оценят заявку</h3><p class="panel-sub">${critSummary(c, groups)}</p></div></div>
+      ${c.howWins === "points" && !groups.length ? `<p class="empty-group">Порядок оценки заявок не нашёл. Обычно он отдельным файлом к извещению — добавьте его, и я выпишу, за что дают баллы.</p>` : ""}
+      ${groups.length ? `<ul class="list">${body}</ul>` : ""}
+      ${c.howWins === "points" && groups.length && !weightsAddUp(groups) ? `<p class="unver crit-warn">${ic("alert", 16)}Значимости критериев в сумме не 100 % — сверьте с порядком оценки: что-то могло не выписаться.</p>` : ""}
+    </section>`;
+  }
+
   /* ---------- требования ---------- */
   function reqHTML(p) {
-    const unverified = REQ_KEYS.reduce((n, k) => n + p.requirements[k].filter((it) => !it.verified).length, 0);
+    const unverified = REQ_KEYS.reduce((n, k) => n + p.requirements[k].filter((it) => !it.verified).length, 0) + (p.criteria ? p.criteria.rows.filter((r) => !r.verified).length : 0);
     const notes = warnsHTML([
       p.unreadable.length ? `Не получилось прочитать: ${p.unreadable.map((f) => `${esc(f.name)} — ${esc(f.reason)}`).join("; ")}. Требования выписаны по остальным файлам.` : "",
       scanWarning(p),
@@ -2534,7 +2650,7 @@
       ${priceTeaserHTML(p)}
       ${REQ_KEYS.map((key) => {
         const items = p.requirements[key];
-        return `<section class="panel" aria-labelledby="req-${key}"><div class="panel-head"><h3 class="panel-title" id="req-${key}">${GROUPS[key].title}${items.length ? ` <span class="count">${items.length}</span>` : ""}</h3></div>
+        return `${key === "submit" ? criteriaHTML(p) : ""}<section class="panel" aria-labelledby="req-${key}"><div class="panel-head"><h3 class="panel-title" id="req-${key}">${GROUPS[key].title}${items.length ? ` <span class="count">${items.length}</span>` : ""}</h3></div>
           ${items.length ? `<ul class="list">${items.map((it, i) => `<li><span>${esc(it.text)}</span>${sourceHTML(`${key}-${i}`, it.source, it.quote, it.verified, "пункт")}</li>`).join("")}</ul>` : `<p class="empty-group">${GROUPS[key].empty}</p>`}
         </section>`;
       }).join("")}
@@ -3281,7 +3397,7 @@
   function helpHTML() {
     const path = [
       ["+", "Новая закупка", "кнопка «Новая закупка»", "Загрузите извещение, ТЗ и проект контракта — PDF, Word, сканы или фото. Через 1–2 минуты закупка появится в разделе «Закупки»."],
-      ["1", "Требования", "в закупке, шаг 1", "Кто может участвовать, что подать в заявке, что требует ТЗ, сроки и деньги. Под каждым пунктом — ссылка на точную цитату из документа."],
+      ["1", "Требования", "в закупке, шаг 1", "Кто может участвовать, как оценят заявку и за что дают баллы, что подать, что требует ТЗ, сроки и деньги. Под каждым пунктом — ссылка на точную цитату из документа."],
       ["2", "Техническое предложение", "в закупке, шаг 2", "Черновик по форме заказчика. Впишите свои данные в пункты, выделенные жёлтым, и скачайте файл Word. Там же — анкета, декларация и предложение о цене."],
       ["3", "Проверка заявки", "в закупке, шаг 3", "Загрузите заявку, которую собираетесь подавать. Покажу ошибки, за которые могут отклонить, и замечания — с цитатами из документов."],
       ["✓", "Подача", "на электронной площадке", "Заявку подаёте вы сами на площадке, до срока подачи. Срок и сколько дней осталось видны в шапке закупки."],
