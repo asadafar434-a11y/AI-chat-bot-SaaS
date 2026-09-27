@@ -11,7 +11,7 @@ import { stepsOf, type Tone } from "@/lib/steps";
 export type BadgeIcon = "check" | "pen" | "alert" | "clock";
 export type BadgeInfo = { tone: Tone; text: string; icon?: BadgeIcon };
 
-// Дело — куда оно ведёт: шаг закупки или файлы заявки. Пока нет окна «Документы заявки», файлы — на шаге ТП.
+// Дело — куда оно ведёт: шаг закупки или окно «Документы заявки» (…#files открывает его в закупке).
 export type TaskGo = "req" | "tp" | "check" | "files";
 export type Task = { key: string; purchase: Purchase; go: TaskGo; href: string; text: string; tone: Tone };
 
@@ -39,7 +39,7 @@ export function tasksOf(purchases: Purchase[], scans: Record<string, string[]>):
       if (tp.state === "todo") add("tp", tp.href, "Составить техническое предложение", urgent);
       else if (tp.state === "fix") add("tp", tp.href, `Вписать свои данные в ТП — ${tp.status.replace(/^впишите /, "")}`, urgent);
       else add("check", check.href, "Проверить заявку перед подачей", urgent);
-    } else if (check.state === "done") add("files", tp.href, "Скачать документы и подать заявку на площадке", urgent);
+    } else if (check.state === "done") add("files", `${req.href}#files`, "Скачать документы и подать заявку на площадке", urgent);
     const scanned = scans[p.id] ?? [];
     if (scanned.length) add("req", req.href, `Сверить цифры в ${scanned.length === 1 ? "файле со скана" : "файлах со скана"}`, "warn");
     for (const f of p.unreadable) add("req", req.href, `Пересохранить «${f.name}» — файл не прочитан`, "warn");

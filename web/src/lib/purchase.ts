@@ -33,6 +33,8 @@ export type Purchase = PurchaseSummary & {
   parts?: Partial<Record<PartKey, PurchasePart>>;
   // Последняя проверка заявки перед подачей.
   check?: CheckResult;
+  // Какие документы из «Что подать» участник отметил готовыми — по тексту пункта (lib/application-files.ts).
+  submitReady?: string[];
   chat?: ChatMessage[];
 };
 

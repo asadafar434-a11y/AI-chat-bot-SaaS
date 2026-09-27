@@ -16,6 +16,7 @@ import {
   ClockIcon,
   CrossIcon,
   DocumentIcon,
+  DownloadIcon,
   PanelRightIcon,
   RubleIcon,
   ScalesIcon,
@@ -23,6 +24,7 @@ import {
   WarningIcon,
   type IconComponent,
 } from "@/components/icons";
+import { useOpenApplicationFiles } from "@/components/application-files";
 import { Note } from "@/components/note";
 import { DueChip, LawBadge } from "@/components/purchase-bits";
 import { usePurchase } from "@/components/purchase-provider";
@@ -149,6 +151,7 @@ function useStepsFit(nav: RefObject<HTMLElement | null>, content: string) {
 // Что делать дальше — в конце шага, чтобы путь по закупке был виден без подсказок.
 export function NextStep({ from }: { from: StepKey }) {
   const { purchase } = usePurchase();
+  const openFiles = useOpenApplicationFiles();
   const [, tp, check] = stepsOf(purchase);
   const due = dueLine(purchase.deadline, true);
 
@@ -176,7 +179,8 @@ export function NextStep({ from }: { from: StepKey }) {
     next = {
       label: "Готово к подаче",
       title: "Подайте заявку на электронной площадке",
-      text: due ? `${due.head}${due.left ? ` — ${due.left}` : ""}.` : "Срок подачи — в извещении о закупке.",
+      text: `${due ? `${due.head}${due.left ? ` — ${due.left}` : ""}.` : "Срок подачи — в извещении о закупке."} Файлы заявки — одним архивом.`,
+      action: "Скачать документы заявки",
     };
   }
   if (!next) return null;
@@ -188,11 +192,18 @@ export function NextStep({ from }: { from: StepKey }) {
         <p className="t-section">{next.title}</p>
         <p className="text-[var(--ink-2)]">{next.text}</p>
       </div>
-      {next.href && (
+      {next.href ? (
         <Link href={next.href} className="btn">
           {next.action}
           <ArrowRightIcon />
         </Link>
+      ) : (
+        next.action && (
+          <button type="button" onClick={openFiles} className="btn">
+            <DownloadIcon />
+            {next.action}
+          </button>
+        )
       )}
     </section>
   );
@@ -367,6 +378,7 @@ function InfoPane({ purchase, documents, onAdd, onClose, closeButton }: {
 // Открытая закупка: остров-шапка со сроком и шагами подготовки заявки, под ним острова шага, справа сведения.
 // От 1560 px сведения — третьим столбиком, уже — листом поверх закупки по кнопке «Сведения».
 export function PurchaseView({ children }: { children: ReactNode }) {
+  const openFiles = useOpenApplicationFiles();
   const { purchase, documents, replaceDocuments } = usePurchase();
   const pathname = usePathname();
   const [infoOpen, setInfoOpen] = useState(false);
@@ -473,6 +485,16 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                 </p>
               </div>
               <div className="flex flex-none items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={openFiles}
+                  aria-label="Скачать заявку: документы Word"
+                  title="Документы заявки — все файлы Word"
+                  className="btn btn-line btn-xs"
+                >
+                  <DownloadIcon />
+                  <span className="@max-[720px]:hidden">Скачать заявку</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => input.current?.click()}
