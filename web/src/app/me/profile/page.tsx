@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { BackupIsland } from "@/components/backup-island";
+import { Hint } from "@/components/hint";
 import { CheckIcon, UploadIcon, WarningIcon } from "@/components/icons";
 import { Island } from "@/components/island";
 import { Note } from "@/components/note";
@@ -267,9 +268,12 @@ export default function ProfilePage() {
                         key={field.key}
                         className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-center gap-x-4 gap-y-1 py-1.5 max-sm:grid-cols-1"
                       >
-                        <label htmlFor={`pf-${field.key}`} className="text-[var(--ink-2)]">
-                          {field.label}
-                        </label>
+                        <div className="flex items-center gap-0.5">
+                          <label htmlFor={`pf-${field.key}`} className="text-[var(--ink-2)]">
+                            {field.label}
+                          </label>
+                          {field.help && <Hint label={field.label}>{field.help}</Hint>}
+                        </div>
                         <input
                           id={`pf-${field.key}`}
                           value={profile[field.key]}

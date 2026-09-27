@@ -337,7 +337,7 @@ export default function PricePage() {
 
         <Island id="price-costs" level={3} title="Ваши цифры" sub={purchase.sample ? "В примере — вымышленные расходы" : undefined}>
           <div className="@container px-[var(--pad)] pb-4 pt-1">
-            <div className="grid gap-4 @min-[520px]:grid-cols-3">
+            <div className="grid gap-4 @min-[600px]:grid-cols-3">
               <NumberField
                 id="price-nmck"
                 label="Начальная цена"
