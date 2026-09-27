@@ -242,7 +242,7 @@ function Result({ calc, floor, atFloor, unpriced }: { calc: PriceCalc; floor: Fl
       <>
         <p className="t-caption text-[var(--ink-3)]">Можно снижаться до</p>
         <p className="flex flex-wrap items-baseline gap-x-2">
-          <span className="[font:600_16px/24px_var(--mono)] tabular-nums">{rub(floor.price)}</span>
+          <span className="text-primary [font:600_16px/24px_var(--mono)] tabular-nums">{rub(floor.price)}</span>
           <span className="text-[var(--ink-2)]">— на {dropText(atFloor.drop)} % ниже начальной</span>
         </p>
         <p className="t-caption text-[var(--ink-3)]">

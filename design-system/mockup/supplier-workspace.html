@@ -739,6 +739,8 @@
   .res-label { font: var(--t-caption); color: var(--ink-3); }
   .res-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; }
   .res-num { font: 600 16px/24px var(--mono); font-variant-numeric: tabular-nums; }
+  /* Ответ экрана — нижняя цена — акцентом бренда */
+  .res-num.accent { color: var(--brand); }
   .res-text { font: var(--t-body); color: var(--ink-2); }
   .res-warn { font: var(--t-strong); color: var(--warn); }
   .hint, .cell-sub, .res-label, .calc-table thead th { letter-spacing: 0; }
@@ -3286,7 +3288,7 @@
     if (floor.aboveNmck || !atFloor) return `<p class="res-warn">Даже по начальной цене контракт в убытке</p><p class="res-text">Без убытка — только от ${rub(floor.price)}, а начальная цена — ${rub(c.nmck || 0)}.</p>`;
     const unpriced = secured(c) && !rated(c) ? " Стоимость обеспечения не учтена — впишите ставку и срок." : "";
     return `<p class="res-label">Можно снижаться до</p>
-      <p class="res-line"><span class="res-num">${rub(floor.price)}</span><span class="res-text">— на ${dropText(atFloor.drop)} % ниже начальной</span></p>
+      <p class="res-line"><span class="res-num accent">${rub(floor.price)}</span><span class="res-text">— на ${dropText(atFloor.drop)} % ниже начальной</span></p>
       <p class="res-label">${why[floor.kind]}${unpriced}</p>`;
   }
 
