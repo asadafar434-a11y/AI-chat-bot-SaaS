@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Badge } from "@/components/badge";
+import { Badge, DOT } from "@/components/badge";
 import { CaretRightIcon, FolderIcon, PlusIcon, UserIcon, WarningIcon, type IconComponent } from "@/components/icons";
 import { Island } from "@/components/island";
 import { Note } from "@/components/note";
@@ -20,15 +20,6 @@ import { scanNames } from "@/lib/purchase-store";
 import { openSamplePurchase } from "@/lib/sample-purchase";
 import type { Tone } from "@/lib/steps";
 import { STORAGE_ERROR, usePurchases } from "@/lib/use-purchases";
-
-// Цветная точка дела: индиго — ваш шаг, янтарь — данные, скан или близкий срок, красный — ошибка.
-const DOT: Record<Tone, string> = {
-  bad: "bg-[var(--danger)] shadow-[0_0_0_3px_var(--danger-tint)]",
-  warn: "bg-[var(--warn)] shadow-[0_0_0_3px_var(--warn-tint)]",
-  brand: "bg-primary shadow-[0_0_0_3px_var(--brand-tint)]",
-  ok: "bg-[var(--ok)] shadow-[0_0_0_3px_var(--ok-tint)]",
-  calm: "bg-[var(--edge-2)] shadow-[0_0_0_3px_var(--paper-2)]",
-};
 
 const NOTE: Record<Tone, string> = {
   bad: "text-[var(--danger)]",

@@ -14,6 +14,16 @@ const TONES: Record<Tone, string> = {
 
 const ICONS: Record<BadgeIcon, typeof CheckIcon> = { check: CheckIcon, pen: EditIcon, alert: WarningIcon, clock: ClockIcon };
 
+// Цветная точка статуса — у дел на главной и уведомлений в колокольчике: индиго — ваш шаг,
+// янтарь — данные, скан или близкий срок, красный — ошибка, серый — справка.
+export const DOT: Record<Tone, string> = {
+  bad: "bg-[var(--danger)] shadow-[0_0_0_3px_var(--danger-tint)]",
+  warn: "bg-[var(--warn)] shadow-[0_0_0_3px_var(--warn-tint)]",
+  brand: "bg-primary shadow-[0_0_0_3px_var(--brand-tint)]",
+  ok: "bg-[var(--ok)] shadow-[0_0_0_3px_var(--ok-tint)]",
+  calm: "bg-[var(--edge-2)] shadow-[0_0_0_3px_var(--paper-2)]",
+};
+
 // onPaper — бейдж на серой поверхности («Сейчас важно»): серому бейджу там нужна белая заливка, иначе он пропадает.
 export function Badge({ tone, text, icon, onPaper = false, className = "" }: BadgeInfo & { onPaper?: boolean; className?: string }) {
   const Icon = icon && ICONS[icon];
