@@ -2,6 +2,7 @@ import { buildPartDocx, buildTpDocx, PART_TITLES, type CastLine, type TpPart } f
 import { PartDocSchema, type PartDoc } from "@/lib/part-doc";
 import { EMPTY_PROFILE, PROFILE_KEYS, type Profile } from "@/lib/profile";
 import { PLAIN_FORM, type TpForm } from "@/lib/tp";
+import { badRequest, readJson } from "@/lib/read-json";
 
 type Loose<T> = { [K in keyof T]?: unknown };
 type DocxRequest = {
@@ -40,7 +41,8 @@ const cleanPartDoc = (doc: PartDoc): PartDoc => ({
 
 // Документ собирается из того, что прислал браузер, поэтому всё приводим к ожидаемому виду и длине.
 export async function POST(request: Request) {
-  const body: DocxRequest = await request.json();
+  const body = (await readJson(request)) as DocxRequest | null;
+  if (!body) return badRequest();
   const part: TpPart = typeof body.part === "string" && body.part in PART_TITLES ? (body.part as TpPart) : "tp";
 
   // Техническое предложение так не собирается никогда: в нём не должно быть ничего об участнике.

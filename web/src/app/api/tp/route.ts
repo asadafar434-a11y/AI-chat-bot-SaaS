@@ -3,19 +3,19 @@ import { claudeErrorText, NO_KEY_TEXT } from "@/lib/claude-errors";
 import { askJson, cleanSamples, ModelStop, sampleBlocks } from "@/lib/claude-request";
 import { MAX_CONTEXT_CHARS } from "@/lib/chat-types";
 import { quoteFound } from "@/lib/quotes";
-import type { SentDocument } from "@/lib/read-documents";
 import { SAMPLES_LIMIT, TpDraftSchema, type TpResponse } from "@/lib/tp";
 import { SAMPLES_NOTE, TP_INSTRUCTIONS } from "@/lib/tp-prompt";
+import { badRequest, readJson, sentDocuments } from "@/lib/read-json";
 
 export const maxDuration = 300;
-
-type TpRequest = { documents?: SentDocument[]; samples?: unknown };
 
 const fail = (message: string, status: number) => new Response(message, { status });
 
 export async function POST(request: Request) {
-  const { documents = [], samples: rawSamples }: TpRequest = await request.json();
-  const samples = cleanSamples(rawSamples);
+  const body = await readJson(request);
+  if (!body) return badRequest();
+  const documents = sentDocuments(body.documents);
+  const samples = cleanSamples(body.samples);
   if (samples.reduce((sum, s) => sum + s.text.length, 0) > SAMPLES_LIMIT * 1.1) {
     return fail("Образцов слишком много — удалите в «Образцах и реквизитах» лишние технические предложения.", 413);
   }

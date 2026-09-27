@@ -2,18 +2,18 @@ import { claudeErrorText, NO_KEY_TEXT } from "@/lib/claude-errors";
 import { askJson, ModelStop } from "@/lib/claude-request";
 import { MAX_CONTEXT_CHARS } from "@/lib/chat-types";
 import { quoteFound } from "@/lib/quotes";
-import type { SentDocument } from "@/lib/read-documents";
 import { RequirementsSchema, type ReqItem, type RequirementsResponse } from "@/lib/requirements";
 import { REQ_INSTRUCTIONS } from "@/lib/requirements-prompt";
+import { badRequest, readJson, sentDocuments } from "@/lib/read-json";
 
 export const maxDuration = 300;
-
-type RequirementsRequest = { documents?: SentDocument[] };
 
 const fail = (message: string, status: number) => new Response(message, { status });
 
 export async function POST(request: Request) {
-  const { documents = [] }: RequirementsRequest = await request.json();
+  const body = await readJson(request);
+  if (!body) return badRequest();
+  const documents = sentDocuments(body.documents);
   if (!process.env.ANTHROPIC_API_KEY) return fail(NO_KEY_TEXT, 503);
 
   if (documents.length === 0) return fail("Загрузите документы закупки.", 400);

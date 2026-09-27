@@ -4,14 +4,12 @@ import { MAX_CONTEXT_CHARS } from "@/lib/chat-types";
 import type { PartKey } from "@/lib/my-docs";
 import { partInstructions, PartDocSchema } from "@/lib/part-doc";
 import { EMPTY_PROFILE, PROFILE_KEYS, type Profile } from "@/lib/profile";
-import type { SentDocument } from "@/lib/read-documents";
 import { formatRubles, rublesInWords } from "@/lib/rub-words";
 import { SAMPLES_LIMIT } from "@/lib/tp";
 import { PART_TITLES } from "@/lib/tp-docx";
+import { badRequest, readJson, sentDocuments } from "@/lib/read-json";
 
 export const maxDuration = 300;
-
-type PartRequest = { part?: unknown; documents?: SentDocument[]; samples?: unknown; profile?: Record<string, unknown>; price?: unknown };
 
 const PARTS: PartKey[] = ["participant", "declaration", "price"];
 
@@ -20,10 +18,11 @@ const fail = (message: string, status: number) => new Response(message, { status
 // Анкета, декларация или предложение о цене — по форме заказчика и образцам участника того же вида.
 // Документы закупки идут первыми, как в требованиях и ТП, поэтому читаются из общего кеша.
 export async function POST(request: Request) {
-  const body: PartRequest = await request.json();
+  const body = await readJson(request);
+  if (!body) return badRequest();
   const part = PARTS.find((p) => p === body.part);
   if (!part) return fail("Неизвестная часть заявки.", 400);
-  const documents = Array.isArray(body.documents) ? body.documents : [];
+  const documents = sentDocuments(body.documents);
   if (documents.length === 0) return fail("В закупке нет документов.", 400);
   if (documents.reduce((sum, d) => sum + d.text.length, 0) > MAX_CONTEXT_CHARS) {
     return fail("Документы закупки слишком большие — уберите лишние файлы.", 413);
@@ -32,8 +31,9 @@ export async function POST(request: Request) {
   if (samples.reduce((sum, s) => sum + s.text.length, 0) > SAMPLES_LIMIT * 1.1) {
     return fail("Образцов слишком много — удалите в «Образцах и реквизитах» лишние.", 413);
   }
-  const profile: Profile | null = body.profile
-    ? { ...EMPTY_PROFILE, ...Object.fromEntries(PROFILE_KEYS.map((key) => [key, String(body.profile?.[key] ?? "").slice(0, 500)])) }
+  const raw = body.profile && typeof body.profile === "object" ? (body.profile as Record<string, unknown>) : null;
+  const profile: Profile | null = raw
+    ? { ...EMPTY_PROFILE, ...Object.fromEntries(PROFILE_KEYS.map((key) => [key, String(raw[key] ?? "").slice(0, 500)])) }
     : null;
   const price = Number(body.price);
   const amount = Number.isFinite(price) && price > 0 ? `${formatRubles(price)} руб. (${rublesInWords(price)})` : null;

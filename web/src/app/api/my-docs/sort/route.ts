@@ -1,16 +1,16 @@
 import { claudeErrorText, NO_KEY_TEXT } from "@/lib/claude-errors";
 import { askJson, ModelStop } from "@/lib/claude-request";
 import { clipForSort, SORT_BATCH, SORT_INSTRUCTIONS, SORT_SYSTEM, SortSchema, type SortedDoc } from "@/lib/my-docs";
+import { badRequest, readJson } from "@/lib/read-json";
 
 export const maxDuration = 300;
-
-type SortRequest = { documents?: { name?: unknown; text?: unknown }[] };
 
 const fail = (message: string, status: number) => new Response(message, { status });
 
 // Раскладка документов участника по видам. Нужно только начало и конец документа, поэтому это дёшево.
 export async function POST(request: Request) {
-  const body: SortRequest = await request.json();
+  const body = await readJson(request);
+  if (!body) return badRequest();
   const documents = (Array.isArray(body.documents) ? body.documents : []).slice(0, SORT_BATCH).map((doc, i) => ({
     name: `Документ ${i + 1}: ${String(doc?.name ?? "").slice(0, 300)}`,
     text: clipForSort(String(doc?.text ?? "")),
