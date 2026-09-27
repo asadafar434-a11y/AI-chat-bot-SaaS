@@ -4,6 +4,7 @@ import type { PartKey } from "@/lib/my-docs";
 import type { PartDoc } from "@/lib/part-doc";
 import type { PriceCalc } from "@/lib/price-floor";
 import type { FailedFile, SentDocument } from "@/lib/read-documents";
+import type { Criteria } from "@/lib/criteria";
 import type { PurchaseSummary, ReqGroups, RequirementsResponse } from "@/lib/requirements";
 import { NO_ANTI_DUMPING, PLAIN_FORM, type TpItem, type TpResult } from "@/lib/tp";
 
@@ -22,6 +23,8 @@ export type Purchase = PurchaseSummary & {
   scans?: string[];
   unreadable: FailedFile[];
   requirements: ReqGroups;
+  // Критерии оценки заявок. Закупки, выписанные до них, критериев не имеют — их покажет повторный разбор.
+  criteria?: Criteria;
   tp?: TpResult;
   // Цена, которую участник вписал в заявку, в рублях.
   tpPrice?: number;
@@ -44,7 +47,7 @@ export async function extractRequirements(documents: SentDocument[]): Promise<Re
   return res.json();
 }
 
-export const fromRequirements = ({ groups, ...summary }: RequirementsResponse) => ({ ...summary, requirements: groups });
+export const fromRequirements = ({ groups, criteria, ...summary }: RequirementsResponse) => ({ ...summary, requirements: groups, criteria });
 
 export const titleOf = (p: Purchase) => p.short || p.subject || p.files[0] || "Закупка без названия";
 

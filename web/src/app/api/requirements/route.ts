@@ -2,7 +2,7 @@ import { claudeErrorText, NO_KEY_TEXT } from "@/lib/claude-errors";
 import { askJson, ModelStop } from "@/lib/claude-request";
 import { MAX_CONTEXT_CHARS } from "@/lib/chat-types";
 import { quoteFound } from "@/lib/quotes";
-import { RequirementsSchema, type ReqItem, type RequirementsResponse } from "@/lib/requirements";
+import { RequirementsSchema, type RequirementsResponse } from "@/lib/requirements";
 import { REQ_INSTRUCTIONS } from "@/lib/requirements-prompt";
 import { badRequest, readJson, sentDocuments } from "@/lib/read-json";
 
@@ -35,12 +35,13 @@ export async function POST(request: Request) {
     });
 
     const texts = documents.map((d) => d.text);
-    const check = (items: Omit<ReqItem, "verified">[]) =>
+    const check = <T extends { quote: string }>(items: T[]) =>
       items.map((item) => ({ ...item, verified: quoteFound(item.quote, texts) }));
-    const { who, submit, scope, terms, ...summary } = draft;
+    const { who, submit, scope, terms, criteria, ...summary } = draft;
     const body: RequirementsResponse = {
       ...summary,
       groups: { who: check(who), submit: check(submit), scope: check(scope), terms: check(terms) },
+      criteria: { howWins: criteria.howWins, rows: check(criteria.rows) },
     };
     return Response.json(body);
   } catch (error) {
