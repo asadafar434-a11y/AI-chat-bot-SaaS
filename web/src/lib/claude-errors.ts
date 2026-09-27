@@ -7,9 +7,13 @@ const DEV = process.env.NODE_ENV === "development";
 export const WRITE_OWNER = "Напишите владельцу сервиса: контакты на странице «Контакты».";
 const unavailable = (why: string, fix: string) => `ИИ временно недоступен: ${why}. ${DEV ? fix : WRITE_OWNER}`;
 
-export const NO_KEY_TEXT = DEV
-  ? "ИИ не подключён: добавьте ANTHROPIC_API_KEY в web/.env.local и перезапустите сервер. Пока можно посмотреть, как всё работает, на примере закупки."
-  : `ИИ пока не подключён. ${WRITE_OWNER} Пока можно посмотреть, как всё работает, на примере закупки.`;
+const NO_KEY = DEV
+  ? "ИИ не подключён: добавьте ANTHROPIC_API_KEY в web/.env.local и перезапустите сервер."
+  : `ИИ пока не подключён. ${WRITE_OWNER}`;
+
+export const NO_KEY_TEXT = `${NO_KEY} Пока можно посмотреть, как всё работает, на примере закупки.`;
+// Документы участника — не закупка: подсказка про пример закупки там не к месту.
+export const MY_DOCS_NO_KEY_TEXT = NO_KEY;
 
 export function claudeErrorText(error: unknown): string {
   if (error instanceof Anthropic.AuthenticationError) {

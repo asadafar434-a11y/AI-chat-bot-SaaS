@@ -112,17 +112,26 @@ export function evidenceOf(docs: MyDocument[], kind: DocKind): MyDocument[] {
   return picked;
 }
 
+// Обрыв связи браузер описывает по-английски («Failed to fetch») — пользователю говорим по-русски.
+export const OFFLINE_TEXT = "Нет связи с сервером — проверьте интернет.";
+
+async function postJson(url: string, body: unknown): Promise<Response> {
+  try {
+    return await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  } catch {
+    throw new Error(OFFLINE_TEXT);
+  }
+}
+
 // Раскладка по видам. Если ИИ недоступен, раскладываем по названиям файлов и говорим почему.
 export async function sortDocuments(docs: SentDocument[]): Promise<{ sorted: SortedDoc[]; error?: string }> {
   try {
     const sorted: SortedDoc[] = [];
     for (let i = 0; i < docs.length; i += SORT_BATCH) {
-      const res = await fetch("/api/my-docs/sort", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documents: docs.slice(i, i + SORT_BATCH).map((d) => ({ name: d.name, text: clipForSort(d.text) })) }),
+      const res = await postJson("/api/my-docs/sort", {
+        documents: docs.slice(i, i + SORT_BATCH).map((d) => ({ name: d.name, text: clipForSort(d.text) })),
       });
-      if (!res.ok) throw new Error((await res.text()) || "Не удалось разложить документы.");
+      if (!res.ok) throw new Error((await res.text()).trim() || "Не удалось разложить документы.");
       sorted.push(...((await res.json()) as { documents: SortedDoc[] }).documents);
     }
     return { sorted };
@@ -167,12 +176,8 @@ export function mergeFound(profile: Profile, meta: ProfileMeta, found: ProfileFo
 export async function fillProfileFromDocuments(docs: MyDocument[]): Promise<{ filled: ProfileKey[]; suggestions: number }> {
   const sources = docs.filter((d) => d.kinds.some((k) => REQUISITE_KINDS.includes(k)));
   if (sources.length === 0) return { filled: [], suggestions: 0 };
-  const res = await fetch("/api/my-docs/profile", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ documents: sources.map(({ name, text }) => ({ name, text })) }),
-  });
-  if (!res.ok) throw new Error((await res.text()) || "Не удалось заполнить реквизиты.");
+  const res = await postJson("/api/my-docs/profile", { documents: sources.map(({ name, text }) => ({ name, text })) });
+  if (!res.ok) throw new Error((await res.text()).trim() || "Не удалось заполнить реквизиты.");
   const found: ProfileFound = await res.json();
   const [profile, meta] = await Promise.all([getProfile(), getProfileMeta()]);
   const merged = mergeFound(profile, meta, found);

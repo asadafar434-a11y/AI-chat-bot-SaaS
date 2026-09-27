@@ -221,7 +221,7 @@ export default function MyDocumentsPage() {
               )}
               {report.sortError && (
                 <Note tone="warn" icon={WarningIcon}>
-                  {`Разложить по видам с помощью ИИ не получилось (${report.sortError.replace(/\.$/, "")}), поэтому разложил по названиям файлов. Проверьте виды и поправьте, где нужно.`}
+                  {`Разложил по названиям файлов, без\u00a0ИИ. Проверьте виды и поправьте, где нужно. ${report.sortError}`}
                 </Note>
               )}
               {report.filled !== undefined && (

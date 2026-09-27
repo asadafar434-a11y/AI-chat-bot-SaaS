@@ -1,4 +1,4 @@
-import { claudeErrorText, NO_KEY_TEXT } from "@/lib/claude-errors";
+import { claudeErrorText, MY_DOCS_NO_KEY_TEXT } from "@/lib/claude-errors";
 import { askJson, ModelStop } from "@/lib/claude-request";
 import { clipForSort, SORT_BATCH, SORT_INSTRUCTIONS, SORT_SYSTEM, SortSchema, type SortedDoc } from "@/lib/my-docs";
 import { badRequest, readJson } from "@/lib/read-json";
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     text: clipForSort(String(doc?.text ?? "")),
   }));
   if (documents.length === 0) return fail("Нет документов.", 400);
-  if (!process.env.ANTHROPIC_API_KEY) return fail(NO_KEY_TEXT, 503);
+  if (!process.env.ANTHROPIC_API_KEY) return fail(MY_DOCS_NO_KEY_TEXT, 503);
 
   try {
     const result = await askJson({

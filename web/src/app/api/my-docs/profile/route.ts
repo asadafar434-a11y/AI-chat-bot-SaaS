@@ -1,4 +1,4 @@
-import { claudeErrorText, NO_KEY_TEXT } from "@/lib/claude-errors";
+import { claudeErrorText, MY_DOCS_NO_KEY_TEXT } from "@/lib/claude-errors";
 import { askJson, ModelStop } from "@/lib/claude-request";
 import { PROFILE_INSTRUCTIONS, ProfileFoundSchema, SORT_SYSTEM, type FoundField, type ProfileFound } from "@/lib/my-docs";
 import type { ProfileKey } from "@/lib/profile";
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     total += text.length;
   }
   if (documents.length === 0) return fail("Нет документов с реквизитами.", 400);
-  if (!process.env.ANTHROPIC_API_KEY) return fail(NO_KEY_TEXT, 503);
+  if (!process.env.ANTHROPIC_API_KEY) return fail(MY_DOCS_NO_KEY_TEXT, 503);
 
   try {
     const found = await askJson({
