@@ -656,11 +656,33 @@
   .calc-grid, .calc-more { display: grid; gap: 16px; }
   @container (width >= 520px) { .calc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .num-field { display: grid; align-content: start; gap: 4px; }
-  .num-field > label { font: var(--t-strong); }
+  .num-field label { font: var(--t-strong); }
+  @container (width >= 600px) { .calc-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .calc-group { display: grid; gap: 12px; }
+  .more-body { gap: 20px; padding-top: 2px; }
+  .more-head { min-height: 56px; }
+  .more-text { display: grid; gap: 2px; min-width: 0; }
+  .more-sum { font: var(--t-caption); color: var(--ink-3); }
+  .more-sum.warn { color: var(--warn); }
+  .disclosure { display: grid; gap: 12px; }
+  .disc-btn { display: inline-flex; align-items: center; gap: 4px; justify-self: start; }
+  .disc-btn > svg { transition: transform .15s ease; }
+  .disc-btn[aria-expanded="false"] > svg { transform: rotate(-90deg); }
+  .check-row .label-row { align-items: flex-start; }
   .input.calc { max-width: 176px; font: 500 14px/20px var(--mono); font-variant-numeric: tabular-nums; }
   /* На телефоне поле 16 px, иначе браузер увеличивает страницу при вводе */
   @media (pointer: coarse) { .input.calc { font-size: 16px; } }
   .hint { margin: 0; font: var(--t-caption); color: var(--ink-3); }
+  /* Подсказка «?»: кнопка рядом с подписью, по нажатию — карточка поверх. Нажатием, а не наведением: на телефоне наведения нет */
+  .label-row { display: flex; align-items: center; gap: 2px; min-width: 0; }
+  .hint-btn { appearance: none; border: 0; background: none; flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; margin: -6px 0; padding: 0; border-radius: var(--r-ctl); color: var(--ink-3); cursor: pointer; }
+  .hint-btn:hover { background: var(--hover); color: var(--ink); }
+  .hint-btn[aria-expanded="true"] { color: var(--brand); }
+  .hint-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+  .hint-pop { position: fixed; z-index: 60; display: grid; gap: 4px; width: max-content; max-width: min(320px, calc(100vw - 16px)); margin: 0; padding: 10px 12px; border-radius: var(--r-surface); background: var(--card); box-shadow: var(--float); font: var(--t-body); color: var(--ink-2); }
+  .hint-pop[hidden] { display: none; }
+  .hint-pop p { margin: 0; }
+  .hint-pop-title { font: var(--t-strong); color: var(--ink); }
   .check-row { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 2px 10px; }
   .check-row input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--brand); }
   .check-row label { font: var(--t-body); color: var(--ink); }
@@ -850,6 +872,22 @@
   .field { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 4px 16px; align-items: center; padding: 6px 0; cursor: default; }
   .field-label { font: var(--t-label); color: var(--ink-2); }
   .field-src { grid-column: 2; font: var(--t-caption); color: var(--ink-3); }
+  .field-err { grid-column: 2; font: var(--t-caption); color: var(--warn); }
+  .wipe-ask { display: grid; gap: 10px; }
+  .wipe-ask p { margin: 0; font: var(--t-strong); }
+  /* Выключатель распознавания сканов — под кнопкой загрузки */
+  .ocr-row { display: flex; align-items: flex-start; gap: 10px; max-width: 52ch; text-align: left; font: var(--t-caption); color: var(--ink-2); }
+  .ocr-row input { flex: none; width: 16px; height: 16px; margin: 0; accent-color: var(--brand); }
+  /* Перед началом: два согласия, без них в сервис не попасть */
+  .consent-scrim { position: fixed; inset: 0; z-index: 55; display: grid; place-items: center; overflow-y: auto; padding: 16px; background: var(--canvas); }
+  .consent-scrim[hidden] { display: none; }
+  .consent-card { display: grid; gap: 16px; width: min(400px, 100%); padding: 24px; border-radius: var(--r-island); background: var(--card); box-shadow: var(--island-shadow); }
+  .consent-card h1 { margin: 0; font: var(--t-page); letter-spacing: -.02em; }
+  .consent-card p { margin: 0; }
+  .consent-check { display: flex; align-items: flex-start; gap: 10px; font: var(--t-body); color: var(--ink-2); }
+  .consent-check input { flex: none; width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--brand); }
+  .consent-brand { display: flex; align-items: center; gap: 10px; font: 700 14px/20px var(--ui); letter-spacing: -.01em; }
+  .consent-brand .brand-ic { width: 28px; height: 28px; border-radius: var(--r-ctl); display: grid; place-items: center; background: var(--brand); color: var(--on-brand); }
   .suggest { display: grid; gap: 12px; padding: 16px var(--pad); border-radius: var(--r-island); background: var(--warn-tint); }
   .suggest-head { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--warn); font: var(--t-strong); }
   .suggest-head > svg { flex: none; }
@@ -936,13 +974,15 @@
     .head-acts .btn { width: 40px; padding: 0; }
     .sticky-actions .btn { width: 100%; }
     .field { grid-template-columns: minmax(0, 1fr); }
-    .field-src { grid-column: 1; }
+    .field-src, .field-err { grid-column: 1; }
     .parts > li { grid-template-columns: minmax(0, 1fr); }
     .parts .btn { grid-column: 1; grid-row: auto; justify-self: start; margin-top: 8px; }
     .prow.wide { grid-template-columns: auto minmax(0, 1fr); row-gap: 8px; }
     .prow.wide .prow-side { grid-column: 2; justify-items: start; }
     .doc-acts, .kinds { padding-left: 0; }
     .due-chip { display: none; }
+    /* Пример подписан в сведениях и в списке — в шапке закупки на телефоне место под срок */
+    .pd-sample { display: none; }
     .list-head, .pd-head { min-height: 56px; }
     .head-text { flex-direction: column; align-items: stretch; gap: 0; }
     .pd-head { gap: 8px; padding-left: 8px; }
@@ -963,6 +1003,8 @@
 
 <div class="modal-scrim" id="modal" hidden></div>
 <div class="notif-pop" id="notif" role="dialog" aria-labelledby="notif-title" hidden></div>
+<div class="consent-scrim" id="consent" hidden></div>
+<div class="hint-pop" id="hint-pop" role="dialog" aria-labelledby="hint-pop-title" hidden><p class="hint-pop-title" id="hint-pop-title"></p><p id="hint-pop-text"></p></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -1264,27 +1306,27 @@
       { key: "fullName", label: "Полное наименование (для ИП — фамилия, имя, отчество)" },
       { key: "shortName", label: "Сокращённое наименование" },
       { key: "inn", label: "ИНН" },
-      { key: "kpp", label: "КПП (для юридического лица)" },
-      { key: "ogrn", label: "ОГРН / ОГРНИП" },
-      { key: "okved", label: "Основной вид деятельности по ОКВЭД", example: "например, 90.01" },
-      { key: "smeCategory", label: "Категория субъекта МСП", example: "микропредприятие, малое или среднее предприятие" },
+      { key: "kpp", label: "КПП (для юридического лица)", help: "Код причины постановки на учёт — 9 знаков, есть в выписке из ЕГРЮЛ. Бывает только у организаций, у ИП его нет." },
+      { key: "ogrn", label: "ОГРН / ОГРНИП", help: "Основной государственный регистрационный номер: у организации — ОГРН из 13 цифр, у ИП — ОГРНИП из 15. Есть в выписке из ЕГРЮЛ или ЕГРИП." },
+      { key: "okved", label: "Основной вид деятельности по ОКВЭД", example: "например, 90.01", help: "Код основного вида деятельности из выписки ЕГРЮЛ или ЕГРИП. Например, 90.01 — деятельность в области исполнительских искусств." },
+      { key: "smeCategory", label: "Категория субъекта МСП", example: "микропредприятие, малое или среднее предприятие", help: "Микропредприятие, малое или среднее предприятие — как в едином реестре субъектов МСП на сайте ФНС (rmsp.nalog.ru). Нужна для декларации о принадлежности к МСП." },
     ] },
     { title: "Налоги", fields: [
-      { key: "taxSystem", label: "Система налогообложения", example: "например, УСН" },
-      { key: "vatNote", label: "Как писать НДС в цене", example: "например, «НДС не облагается в связи с применением УСН»" },
+      { key: "taxSystem", label: "Система налогообложения", example: "например, УСН", help: "Например, УСН или ОСН — от неё зависит, как писать НДС в цене." },
+      { key: "vatNote", label: "Как писать НДС в цене", example: "например, «НДС не облагается в связи с применением УСН»", help: "Фраза для предложения о цене. На УСН — «НДС не облагается в связи с применением УСН»; если платите НДС — «в том числе НДС» и сумма." },
     ] },
     { title: "Адреса", fields: [
       { key: "legalAddress", label: "Юридический адрес (для ИП — адрес регистрации)" },
       { key: "postalAddress", label: "Почтовый адрес" },
     ] },
     { title: "Банк", fields: [
-      { key: "account", label: "Расчётный счёт" },
+      { key: "account", label: "Расчётный счёт", help: "Ваш счёт в банке — 20 цифр. У организаций обычно начинается с 407, у ИП — с 408." },
       { key: "bankName", label: "Наименование банка" },
-      { key: "bik", label: "БИК" },
-      { key: "corrAccount", label: "Корреспондентский счёт" },
+      { key: "bik", label: "БИК", help: "Банковский идентификационный код — 9 цифр, есть в реквизитах банка." },
+      { key: "corrAccount", label: "Корреспондентский счёт", help: "Счёт вашего банка в Банке России — 20 цифр, начинается с 301. Есть в реквизитах банка." },
     ] },
     { title: "Руководитель и контакты", fields: [
-      { key: "head", label: "Руководитель: должность, ФИО, на каком основании действует" },
+      { key: "head", label: "Руководитель: должность, ФИО, на каком основании действует", help: "Как в анкете: должность, фамилия, имя, отчество и основание полномочий. Например: «Генеральный директор Иванова Анна Петровна, действует на основании Устава»." },
       { key: "signer", label: "Расшифровка подписи", example: "например, «Иванова А. П.»" },
       { key: "contactPerson", label: "Контактное лицо" },
       { key: "phone", label: "Телефон" },
@@ -1294,6 +1336,70 @@
   const PROFILE_KEYS = PROFILE_GROUPS.flatMap((g) => g.fields.map((f) => f.key));
   const LABELS = Object.fromEntries(PROFILE_GROUPS.flatMap((g) => g.fields.map((f) => [f.key, f.label])));
   const BANK_KEYS = ["account", "bankName", "bik", "corrAccount"];
+
+  // Проверка реквизитов — как в приложении (web/src/lib/requisites-check.ts): длина и контрольные цифры.
+  // Подсказка, а не запрет: сохраняется всё, что вписано.
+  const reqClean = (v) => String(v).replace(/[\s-]/g, "");
+  const onlyDigits = (v, n) => new RegExp(`^\\d{${n}}$`).test(v);
+  const innDigit = (d, w) => (w.reduce((a, x, i) => a + x * Number(d[i]), 0) % 11) % 10;
+  const digitsMod = (d, m) => [...d].reduce((r, x) => (r * 10 + Number(x)) % m, 0);
+  const keyOk = (d23) => [...d23].reduce((sum, x, i) => sum + ((Number(x) * [7, 1, 3][i % 3]) % 10), 0) % 10 === 0;
+  function innProblem(value) {
+    const v = reqClean(value);
+    if (!onlyDigits(v, 10) && !onlyDigits(v, 12)) return "ИНН — 10 цифр у организации или 12 у ИП";
+    const ok = v.length === 10
+      ? innDigit(v, [2, 4, 10, 3, 5, 9, 4, 6, 8]) === Number(v[9])
+      : innDigit(v, [7, 2, 4, 10, 3, 5, 9, 4, 6, 8]) === Number(v[10]) && innDigit(v, [3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8]) === Number(v[11]);
+    return ok ? "" : "Контрольная цифра ИНН не сходится — проверьте, нет ли опечатки";
+  }
+  const kppProblem = (value) => (/^\d{4}[\dA-Z]{2}\d{3}$/.test(reqClean(value)) ? "" : "КПП — 9 знаков, например 773601001");
+  function ogrnProblem(value) {
+    const v = reqClean(value);
+    if (onlyDigits(v, 13)) return digitsMod(v.slice(0, 12), 11) % 10 === Number(v[12]) ? "" : "Контрольная цифра ОГРН не сходится — проверьте, нет ли опечатки";
+    if (onlyDigits(v, 15)) return digitsMod(v.slice(0, 14), 13) % 10 === Number(v[14]) ? "" : "Контрольная цифра ОГРНИП не сходится — проверьте, нет ли опечатки";
+    return "ОГРН — 13 цифр, ОГРНИП — 15";
+  }
+  const bikProblem = (value) => (onlyDigits(reqClean(value), 9) ? "" : "БИК — 9 цифр");
+  function accountProblem(value, bik) {
+    const v = reqClean(value), b = reqClean(bik);
+    if (!onlyDigits(v, 20)) return "Расчётный счёт — 20 цифр";
+    if (!onlyDigits(b, 9) || !/^40[78]/.test(v)) return "";
+    return keyOk(b.slice(6) + v) ? "" : "Счёт не сходится с БИК по контрольной цифре — проверьте счёт и БИК";
+  }
+  function corrAccountProblem(value, bik) {
+    const v = reqClean(value), b = reqClean(bik);
+    if (!onlyDigits(v, 20) || !v.startsWith("301")) return "Корреспондентский счёт — 20 цифр, начинается с 301";
+    if (!onlyDigits(b, 9)) return "";
+    return keyOk(`0${b.slice(4, 6)}${v}`) ? "" : "Корреспондентский счёт не сходится с БИК — проверьте оба";
+  }
+  function profileProblems(p) {
+    const out = {};
+    const has = (k) => String(p[k] || "").trim() !== "";
+    if (has("inn")) out.inn = innProblem(p.inn);
+    if (has("kpp")) out.kpp = kppProblem(p.kpp);
+    if (has("ogrn")) out.ogrn = ogrnProblem(p.ogrn);
+    if (has("bik")) out.bik = bikProblem(p.bik);
+    if (has("account")) out.account = accountProblem(p.account, p.bik);
+    if (has("corrAccount")) out.corrAccount = corrAccountProblem(p.corrAccount, p.bik);
+    const inn = reqClean(p.inn || ""), ogrn = reqClean(p.ogrn || "");
+    if (!out.inn && inn.length === 12 && has("kpp") && !out.kpp) out.kpp = "КПП бывает только у организации, а ИНН из 12 цифр — у ИП";
+    if (!out.inn && !out.ogrn && inn.length === 10 && ogrn.length === 15) out.ogrn = "У организации (ИНН из 10 цифр) — ОГРН из 13 цифр, а здесь ОГРНИП";
+    if (!out.inn && !out.ogrn && inn.length === 12 && ogrn.length === 13) out.ogrn = "У ИП (ИНН из 12 цифр) — ОГРНИП из 15 цифр, а здесь ОГРН";
+    return out;
+  }
+  // Подсказка о формате — когда из поля ушли: пока поле в фокусе, недописанный номер — ещё не ошибка.
+  function showProfileProblems() {
+    const problems = profileProblems(S.profile);
+    document.querySelectorAll("[data-pf]").forEach((input) => {
+      const err = document.getElementById(`pf-${input.dataset.pf}-err`);
+      if (!err) return;
+      const text = input === document.activeElement ? "" : problems[input.dataset.pf] || "";
+      err.textContent = text;
+      err.hidden = !text;
+      if (text) { input.setAttribute("aria-invalid", "true"); input.setAttribute("aria-describedby", err.id); }
+      else { input.removeAttribute("aria-invalid"); input.removeAttribute("aria-describedby"); }
+    });
+  }
 
   // Строки анкеты участника по порядку; каждая берёт значение из реквизитов.
   const ANKETA = [
@@ -1386,13 +1492,13 @@
   const PROFILE0 = {
     fullName: "Общество с ограниченной ответственностью «Праздник-Энск»",
     shortName: "ООО «Праздник-Энск»",
-    inn: "6612345678", kpp: "661201001", ogrn: "1146612000123",
+    inn: "6612345676", kpp: "661201001", ogrn: "1146612000127",
     okved: "", smeCategory: "микропредприятие",
     taxSystem: "УСН «доходы минус расходы»",
     vatNote: "НДС не облагается в связи с применением упрощённой системы налогообложения",
     legalAddress: "624000, г. Энск, ул. Садовая, д. 12, офис 4",
     postalAddress: "",
-    account: "40702810716540001234", bankName: "АО «Энскбанк»", bik: "046599001", corrAccount: "30101810500000000901",
+    account: "40702810916540001234", bankName: "АО «Энскбанк»", bik: "046599001", corrAccount: "30101810900000000001",
     head: "Директор Иванова Анна Петровна, действует на основании Устава",
     signer: "Иванова А. П.",
     contactPerson: "", phone: "+7 900 000-12-34", email: "",
@@ -1406,10 +1512,10 @@
   };
   // Другие значения из документов: старый счёт в анкете позапрошлого года и другой телефон.
   const SUGGEST0 = [
-    { key: "account", value: "40702810400000005678", source: "Анкета участника 2024.pdf" },
+    { key: "account", value: "40702810700000005678", source: "Анкета участника 2024.pdf" },
     { key: "bankName", value: "АО «Первый Энский банк»", source: "Анкета участника 2024.pdf" },
     { key: "bik", value: "046599777", source: "Анкета участника 2024.pdf" },
-    { key: "corrAccount", value: "30101810100000000777", source: "Анкета участника 2024.pdf" },
+    { key: "corrAccount", value: "30101810700000000777", source: "Анкета участника 2024.pdf" },
     { key: "phone", value: "+7 900 000-98-76", source: "Заявка День города 2024.pdf" },
   ];
   // Что найдётся по кнопке «Заполнить из моих документов».
@@ -1786,6 +1892,8 @@
     info: false, fold: {}, q: "", tabs: {}, lane: null,
     law: { open: null, want: null, threads: clone(THREADS0) },
     notes: [], notifOpen: false,
+    // Распознавание сканов через ИИ — выключатель под каждой загрузкой, как в приложении.
+    ocr: true,
   };
   const PURCHASE_SCREENS = ["req", "tp", "check", "chat", "price"];
   const WORK = ["list", ...PURCHASE_SCREENS];
@@ -1859,6 +1967,34 @@
   }
 
   /* ---------- кусочки разметки ---------- */
+  // Подсказка «?»: заголовок и текст — в атрибутах кнопки, карточка одна на всю страницу (#hint-pop).
+  function hintBtn(title, text, id = "") {
+    return `<button class="hint-btn" type="button"${id ? ` id="${id}"` : ""} data-act="hint" data-hint-title="${esc(title)}" data-hint="${esc(text)}" aria-label="Подсказка: ${esc(title)}" aria-expanded="false" aria-controls="hint-pop">${ic("help", 16)}</button>`;
+  }
+  let hintFrom = null;
+  function closeHint(refocus) {
+    if (!hintFrom) return;
+    $("#hint-pop").hidden = true;
+    hintFrom.setAttribute("aria-expanded", "false");
+    if (refocus && hintFrom.isConnected) hintFrom.focus();
+    hintFrom = null;
+  }
+  // Карточка — над кнопкой, а если сверху нет места — под ней; по ширине не выходит за экран.
+  function openHint(btn) {
+    if (hintFrom === btn) { closeHint(false); return; }
+    closeHint(false);
+    const pop = $("#hint-pop");
+    $("#hint-pop-title").textContent = btn.dataset.hintTitle;
+    $("#hint-pop-text").textContent = btn.dataset.hint;
+    pop.hidden = false;
+    const r = btn.getBoundingClientRect();
+    const left = Math.min(Math.max(8, r.left), window.innerWidth - pop.offsetWidth - 8);
+    const top = r.top - pop.offsetHeight - 6 >= 8 ? r.top - pop.offsetHeight - 6 : r.bottom + 6;
+    pop.style.left = `${left}px`;
+    pop.style.top = `${top}px`;
+    btn.setAttribute("aria-expanded", "true");
+    hintFrom = btn;
+  }
   const noteHTML = (tone, text, cls = "", icon = "") => `<div class="note ${tone} ${cls}">${icon ? ic(icon, 18) : ""}<div>${text}</div></div>`;
   // Одно предупреждение — плашкой, несколько — одной плашкой со списком.
   const warnsHTML = (items) => !items.length ? "" : items.length === 1
@@ -1870,6 +2006,7 @@
       <p>${hint}</p>
       <label class="btn lg" for="file-${id}">${button}<input id="file-${id}" type="file" multiple class="sr-only"></label>
       ${sample ? `<span class="or">или <button class="link" type="button" data-act="${sample.act}">${sample.text}</button></span>` : ""}
+      <label class="ocr-row"><input type="checkbox" data-ocr${S.ocr ? " checked" : ""}><span>Распознавать сканы и фото через ИИ. Картинка уходит в США как есть: персональные данные на ней не скрываются — паспорта и анкеты со скана лучше не загружать.</span></label>
     </div>`;
 
   function md(text) {
@@ -2272,14 +2409,15 @@
   function pdDue(p) {
     const due = dueLine(p.deadline, true);
     if (!due) return "Срок подачи не найден в документах";
-    return `${esc(due.head)}${due.left ? ` · <span class="${due.tone === "soon" ? "warn-t" : ""}">${esc(due.left)}</span>` : ""}`;
+    // Точка-разделитель держится за словом перед ней: строка не начинается с неё.
+    return `${esc(due.head)}${due.left ? `\u00a0· <span class="${due.tone === "soon" ? "warn-t" : ""}">${esc(due.left)}</span>` : ""}`;
   }
 
   function detailHTML(p) {
     return `<div class="pd-wrap"><div class="pd-island"><div class="pd-head">
         <button class="icon-btn pd-back" type="button" data-go="list" aria-label="Все закупки">${ic("back", 18)}</button>
         ${lawBadge(p)}
-        <div class="pd-text"><h2 class="pd-title" id="pd-title" tabindex="-1">${esc(p.short)}</h2><p class="pd-sub">${pdDue(p)}${p.sample ? " · пример" : ""}</p></div>
+        <div class="pd-text"><h2 class="pd-title" id="pd-title" tabindex="-1">${esc(p.short)}</h2><p class="pd-sub">${pdDue(p)}${p.sample ? '<span class="pd-sample">\u00a0· пример</span>' : ""}</p></div>
         <div class="pd-acts">
           <button class="btn line xs" type="button" data-act="files" data-id="${p.id}" aria-label="Скачать заявку" title="Документы заявки — файлы Word">${ic("download", 16)}<span class="pd-lbl">Скачать заявку</span></button>
           <label class="btn line xs opt" for="add-doc" title="Добавить документы закупки">${ic("clip", 16)}<span class="pd-lbl opt">Добавить документы</span><input id="add-doc" type="file" multiple class="sr-only" aria-label="Добавить документы закупки"></label>
@@ -2809,19 +2947,42 @@
     ? "Вы освобождены от обеспечения, в том числе от повышенного (ч. 8.1 ст. 96), — на цену эти меры не влияют."
     : "Обеспечения исполнения нет — повышать нечего, на цену эти меры не влияют.");
 
-  function numField(key, id, label, unit, value, hint) {
+  // Поле калькулятора: note — короткая строка под полем, help — подсказка «?» у подписи.
+  function numField(key, id, label, unit, value, note, help) {
     return `<div class="num-field">
-      <label for="${id}">${label}</label>
-      <div class="price-row"><input class="input calc" id="${id}" data-calc="${key}" inputmode="decimal" autocomplete="off" value="${esc(showNum(value))}"${hint ? ` aria-describedby="${id}-hint"` : ""}><span class="muted">${unit}</span></div>
-      ${hint ? `<p class="hint" id="${id}-hint">${hint}</p>` : ""}
+      <div class="label-row"><label for="${id}">${label}</label>${help ? hintBtn(label, help) : ""}</div>
+      <div class="price-row"><input class="input calc" id="${id}" data-calc="${key}" inputmode="decimal" autocomplete="off" value="${esc(showNum(value))}"${note ? ` aria-describedby="${id}-note"` : ""}><span class="muted">${unit}</span></div>
+      ${note ? `<p class="hint" id="${id}-note">${note}</p>` : ""}
     </div>`;
   }
-  function checkRow(key, id, label, checked, hint, shown = true) {
+  // Галочка с короткой подписью; условия и статьи — в подсказке «?».
+  function checkRow(key, id, label, checked, help, shown = true, helpId = "") {
     return `<div class="check-row" id="${id}-row"${shown ? "" : " hidden"}>
-      <input type="checkbox" id="${id}" data-calc="${key}"${checked ? " checked" : ""}${hint ? ` aria-describedby="${id}-hint"` : ""}>
-      <label for="${id}">${label}</label>
-      ${hint ? `<p class="hint" id="${id}-hint">${hint}</p>` : ""}
+      <input type="checkbox" id="${id}" data-calc="${key}"${checked ? " checked" : ""}>
+      <div class="label-row"><label for="${id}">${label}</label>${help ? hintBtn(label, help, helpId) : ""}</div>
     </div>`;
+  }
+  const CALC_HELP = {
+    nmck: "Начальная (максимальная) цена контракта — из извещения. Предложить больше нельзя: такую заявку отклонят.",
+    costs: "Всё, что потратите на исполнение контракта: товар, работа, зарплата, аренда, доставка.",
+    tax: "Например, 6 на УСН «доходы». Налог с прибыли не вписывайте: на нижней цене прибыли нет.",
+    extra: "Обеспечение заявки, плата площадке, дорога — всё, что заплатите за участие.",
+    security: "Залог на время исполнения контракта: деньги на счёте заказчика или банковская гарантия. Это тоже расход: гарантия стоит комиссию банка, а свои деньги на это время выключены из оборота. Если обеспечения нет, оставьте поле пустым.",
+    sme: "Закупка только у малого бизнеса и социально ориентированных НКО. Тогда обеспечение считается от цены контракта, а не от начальной (ч. 6.2 ст. 96 44-ФЗ).",
+    exempt: "Если за три года исполнили три контракта без неустоек на сумму не меньше начальной цены. Сведения из реестра контрактов подаёте до заключения контракта (ч. 8.1 ст. 96 44-ФЗ).",
+    method: "Независимая гарантия — её обычно выдаёт банк: он обязуется заплатить заказчику, если вы не исполните контракт, и берёт за это комиссию. Свои деньги — переводите на счёт заказчика, их вернут после исполнения контракта.",
+    goodFaith: "За три года — три контракта без неустоек, один из них — не меньше 20 % начальной цены. Тогда хватит обычного обеспечения. Сведения из реестра контрактов подаёте вместе с подписанным проектом контракта (ч. 2, 3 и 5 ст. 37).",
+  };
+  // Что учтено во второстепенном — одной строкой, чтобы было видно и в свёрнутом виде.
+  function moreSummary(c) {
+    const sec = secured(c);
+    const parts = [
+      (c.extra || 0) > 0 && `расходы на участие ${rubShort(c.extra)}`,
+      sec ? `обеспечение ${pctText(c.securityPct || 0)} %${rated(c) ? ` — ${c.method === "guarantee" ? "гарантия" : "свои деньги"}` : " — впишите ставку и срок"}`
+        : c.smeOnly && c.exempt ? "освобождены от обеспечения" : "без обеспечения исполнения",
+      c.antiDumping && "антидемпинговые меры",
+    ].filter(Boolean).join(" · ");
+    return parts.charAt(0).toUpperCase() + parts.slice(1);
   }
 
   // Шкала цены: где убыток, где прибыль и докуда обеспечение повышенное. С ползунком — на экране «Цена»,
@@ -2982,57 +3143,62 @@
     const sec = secured(c);
     const rule = p.tp && p.tp.antiDumping && p.tp.antiDumping.rule;
     const methods = [["guarantee", "Независимая гарантия"], ["money", "Свои деньги"]];
+    // Второстепенное свёрнуто. Открыто сразу, если без вас расчёт неполный: обеспечение есть, а ставки или срока нет.
+    const moreKey = `calc-more-${p.id}`;
+    if (S.fold[moreKey] === undefined) S.fold[moreKey] = sec && !rated(c);
+    const moreOpen = S.fold[moreKey];
+    const tableOpen = !!S.fold["calc-table"];
+    const table = calcTableHTML(c);
     return `<div class="tab-body">
-      <p class="tab-lead">До какой цены можно снижаться на торгах, чтобы контракт не ушёл в убыток. Учитываю расходы, налог, стоимость обеспечения исполнения и антидемпинговые меры 44-ФЗ. Считается прямо в браузере — цифры никуда не отправляются.</p>
+      <p class="tab-lead">До какой цены можно снижаться на торгах, чтобы контракт не ушёл в убыток. Впишите себестоимость — остальное подставлено из документов закупки. Считается прямо в браузере, цифры никуда не отправляются.</p>
+      <section class="panel" aria-labelledby="calc-costs-title">
+        <div class="panel-head"><div><h3 class="panel-title" id="calc-costs-title">Ваши цифры</h3>${p.sample ? '<p class="panel-sub">В примере — вымышленные расходы</p>' : ""}</div></div>
+        <div class="calc-body"><div class="calc-grid three">
+          ${numField("nmck", "calc-nmck", "Начальная цена", "₽", c.nmck, parseRub(p.price) ? "Из сведений о закупке" : "Не нашлась — впишите из извещения", CALC_HELP.nmck)}
+          ${numField("costs", "calc-costs", "Себестоимость", "₽", c.costs, "", CALC_HELP.costs)}
+          ${numField("taxPct", "calc-tax", "Налог с выручки", "%", c.taxPct, "", CALC_HELP.tax)}
+        </div></div>
+      </section>
       <section class="panel" aria-labelledby="calc-scale-title">
-        <div class="panel-head"><div><h3 class="panel-title" id="calc-scale-title">Где убыток, где прибыль</h3><p class="panel-sub">Двигайте ползунок или впишите цену — покажу, что останется</p></div></div>
+        <div class="panel-head"><div><h3 class="panel-title" id="calc-scale-title">Проверить свою цену</h3><p class="panel-sub">Двигайте ползунок или впишите цену — покажу, что останется</p></div></div>
         <div class="calc-body">
           <div class="scale-head">
             ${numField("price", "calc-price", "Ваша цена", "₽", c.price, priceHint(c))}
             <div class="profit" id="calc-profit" aria-live="polite">${profitHTML(c)}</div>
           </div>
           <div id="calc-scale">${c.nmck ? scaleHTML(c, true) : '<p class="hint">Впишите начальную цену — нарисую шкалу.</p>'}</div>
-        </div>
-      </section>
-      <section class="panel" aria-labelledby="calc-costs-title">
-        <div class="panel-head"><div><h3 class="panel-title" id="calc-costs-title">Цена и расходы</h3>${p.sample ? '<p class="panel-sub">В примере — вымышленные расходы</p>' : ""}</div></div>
-        <div class="calc-body"><div class="calc-grid">
-          ${numField("nmck", "calc-nmck", "Начальная цена", "₽", c.nmck, parseRub(p.price) ? "Из сведений о закупке" : "В документах не нашлась — впишите из извещения")}
-          ${numField("costs", "calc-costs", "Себестоимость исполнения", "₽", c.costs, "Всё, что потратите на исполнение: товар, работа, аренда, доставка")}
-          ${numField("extra", "calc-extra", "Расходы на участие", "₽", c.extra, "Обеспечение заявки, плата площадке, дорога — всё, что заплатите за участие")}
-          ${numField("taxPct", "calc-tax", "Налог с выручки", "%", c.taxPct, "Например, 6 на УСН «доходы». Налог с прибыли не вписывайте: на нижней цене прибыли нет")}
-        </div></div>
-      </section>
-      <section class="panel" aria-labelledby="calc-sec-title">
-        <div class="panel-head"><div><h3 class="panel-title" id="calc-sec-title">Обеспечение исполнения</h3><p class="panel-sub">Гарантия банка или замороженные деньги тоже стоят денег — учту это в цене</p></div></div>
-        <div class="calc-body">
-          ${numField("securityPct", "calc-sec-pct", "Размер", "%", c.securityPct, found.securityLine ? `В требованиях: ${esc(found.securityLine)}` : "В требованиях не нашёл — посмотрите в извещении. Если обеспечения нет, оставьте пустым")}
-          ${checkRow("smeOnly", "calc-sme", "Закупка только у малого бизнеса и социально ориентированных НКО", c.smeOnly, "Тогда обеспечение считается от цены контракта, а не от начальной (ч. 6.2 ст. 96 44-ФЗ)")}
-          ${checkRow("exempt", "calc-exempt", "Освобождены от обеспечения: за три года — три контракта без неустоек на сумму не меньше начальной цены", c.exempt, "Сведения из реестра контрактов подаёте до заключения контракта (ч. 8.1 ст. 96 44-ФЗ)", c.smeOnly)}
-          <div class="calc-more" id="calc-cost-block"${sec ? "" : " hidden"}>
-            <fieldset class="pills-set"><legend>Чем обеспечите</legend><div class="pills">
-              ${methods.map(([key, label]) => `<label class="pill"><input class="sr-only" type="radio" name="calc-method" id="calc-method-${key}" data-calc="method" value="${key}"${c.method === key ? " checked" : ""}>${label}</label>`).join("")}
-            </div></fieldset>
-            <div class="calc-grid">
-              ${numField(guarantee ? "guaranteeRatePct" : "moneyRatePct", "calc-rate", guarantee ? "Комиссия банка" : "Сколько стоят ваши деньги", "% годовых", rateOf(c), guarantee ? "Процент в год от суммы гарантии — по тарифу банка" : "Ставка кредита, если берёте в долг, или вклада, если деньги свои")}
-              ${numField("days", "calc-days", guarantee ? "Срок гарантии" : "Сколько дней деньги у заказчика", "дней", c.days, guarantee ? "Срок исполнения контракта и ещё не меньше месяца (ч. 3 ст. 96 44-ФЗ)" : "Срок исполнения и до 30 дней на возврат, в закупке у малого бизнеса — до 15 (ч. 27 ст. 34 44-ФЗ)")}
-            </div>
+          <div class="disclosure" id="calc-table-panel"${table ? "" : " hidden"}>
+            <button class="link disc-btn" type="button" data-act="fold" data-fold="calc-table" aria-expanded="${tableOpen}" aria-controls="calc-out">Из чего складывается цена${ic("down", 16)}</button>
+            <div class="calc-out" id="calc-out"${tableOpen ? "" : " hidden"}>${table}</div>
           </div>
         </div>
       </section>
-      <section class="panel" aria-labelledby="calc-ad-title">
-        <div class="panel-head"><div><h3 class="panel-title" id="calc-ad-title">Антидемпинговые меры</h3><p class="panel-sub">Статья 37 44-ФЗ — на конкурсе и аукционе</p></div></div>
-        <div class="calc-body">
-          ${checkRow("antiDumping", "calc-ad-on", "Учитывать антидемпинговые меры", c.antiDumping, esc(adHint(p, c)))}
-          ${checkRow("goodFaith", "calc-good", "Подтвержу добросовестность: за три года — три контракта без неустоек, один из них — не меньше 20 % начальной цены", c.goodFaith, "Тогда хватит обычного обеспечения. Сведения из реестра контрактов подаёте вместе с подписанным проектом контракта (ч. 2, 3 и 5 ст. 37)", c.antiDumping && small && sec)}
-          <p class="hint" id="calc-ad-big"${c.antiDumping && big && sec ? "" : " hidden"}>Начальная цена больше 15 млн ₽ — заменить повышенное обеспечение подтверждением добросовестности нельзя (ч. 1 ст. 37).</p>
-          <p class="hint" id="calc-ad-none"${c.antiDumping && !sec ? "" : " hidden"}>${esc(adNone(c))}</p>
-          ${rule ? noteHTML("info", `В документах закупки: ${esc(rule)}`) : ""}
+      <section class="panel" aria-labelledby="calc-more-title">
+        <h3 class="m0" id="calc-more-title"><button class="fold-head more-head" type="button" data-act="fold" data-fold="${moreKey}" aria-expanded="${moreOpen}" aria-controls="calc-more"><span class="more-text"><span>Что ещё влияет на цену</span><span class="more-sum${sec && !rated(c) ? " warn" : ""}" id="calc-more-sum">${esc(moreSummary(c))}</span></span>${ic("down", 18)}</button></h3>
+        <div class="calc-body more-body" id="calc-more"${moreOpen ? "" : " hidden"}>
+          ${numField("extra", "calc-extra", "Расходы на участие", "₽", c.extra, "", CALC_HELP.extra)}
+          <div class="calc-group">
+            ${numField("securityPct", "calc-sec-pct", "Обеспечение исполнения", "%", c.securityPct, found.securityLine ? `В требованиях: ${esc(found.securityLine)}` : "В требованиях не нашёл — посмотрите в извещении", CALC_HELP.security)}
+            ${checkRow("smeOnly", "calc-sme", "Закупка только для малого бизнеса", c.smeOnly, CALC_HELP.sme)}
+            ${checkRow("exempt", "calc-exempt", "Освобождены от обеспечения", c.exempt, CALC_HELP.exempt, c.smeOnly)}
+            <div class="calc-more" id="calc-cost-block"${sec ? "" : " hidden"}>
+              <fieldset class="pills-set"><legend><span class="label-row">Чем обеспечите${hintBtn("Чем обеспечить", CALC_HELP.method)}</span></legend><div class="pills">
+                ${methods.map(([key, label]) => `<label class="pill"><input class="sr-only" type="radio" name="calc-method" id="calc-method-${key}" data-calc="method" value="${key}"${c.method === key ? " checked" : ""}>${label}</label>`).join("")}
+              </div></fieldset>
+              <div class="calc-grid">
+                ${numField(guarantee ? "guaranteeRatePct" : "moneyRatePct", "calc-rate", guarantee ? "Комиссия банка" : "Сколько стоят ваши деньги", "% годовых", rateOf(c), "", guarantee ? "Процент в год от суммы гарантии — по тарифу банка." : "Ставка кредита, если берёте в долг, или вклада, если деньги свои.")}
+                ${numField("days", "calc-days", guarantee ? "Срок гарантии" : "Сколько дней деньги у заказчика", "дней", c.days, "", guarantee ? "Срок исполнения контракта и ещё не меньше месяца (ч. 3 ст. 96 44-ФЗ)." : "Срок исполнения и до 30 дней на возврат, в закупке у малого бизнеса — до 15 (ч. 27 ст. 34 44-ФЗ).")}
+              </div>
+            </div>
+          </div>
+          <div class="calc-group">
+            ${checkRow("antiDumping", "calc-ad-on", "Учитывать антидемпинговые меры", c.antiDumping, adHint(p, c), true, "calc-ad-help")}
+            ${checkRow("goodFaith", "calc-good", "Подтвержу добросовестность", c.goodFaith, CALC_HELP.goodFaith, c.antiDumping && small && sec)}
+            <p class="hint" id="calc-ad-big"${c.antiDumping && big && sec ? "" : " hidden"}>Начальная цена больше 15 млн ₽ — заменить повышенное обеспечение подтверждением добросовестности нельзя (ч. 1 ст. 37).</p>
+            <p class="hint" id="calc-ad-none"${c.antiDumping && !sec ? "" : " hidden"}>${esc(adNone(c))}</p>
+            ${rule ? noteHTML("info", `В документах закупки: ${esc(rule)}`) : ""}
+          </div>
         </div>
-      </section>
-      <section class="panel" aria-labelledby="calc-table-title" id="calc-table-panel"${calcTableHTML(c) ? "" : " hidden"}>
-        <div class="panel-head"><div><h3 class="panel-title" id="calc-table-title">Из чего складывается цена</h3><p class="panel-sub">Нижняя цена и ваша — рядом, чтобы видеть разницу</p></div></div>
-        <div class="calc-body"><div class="calc-out" id="calc-out">${calcTableHTML(c)}</div></div>
       </section>
     </div>
     <div class="sticky-actions"><div class="result-bar" id="calc-result" aria-live="polite">${calcResultHTML(c)}</div></div>`;
@@ -3051,14 +3217,16 @@
     show("calc-ad-none", c.antiDumping && !sec);
     const none = $("#calc-ad-none");
     if (none) none.textContent = adNone(c);
-    const hint = $("#calc-ad-on-hint");
-    if (hint) hint.textContent = adHint(p, c);
+    const adBtn = $("#calc-ad-help");
+    if (adBtn) adBtn.dataset.hint = adHint(p, c);
+    const sum = $("#calc-more-sum");
+    if (sum) { sum.textContent = moreSummary(c); sum.classList.toggle("warn", sec && !rated(c)); }
     const table = calcTableHTML(c);
     $("#calc-out").innerHTML = table;
     show("calc-table-panel", !!table);
     $("#calc-result").innerHTML = calcResultHTML(c);
     $("#calc-profit").innerHTML = profitHTML(c);
-    $("#calc-price-hint").innerHTML = priceHint(c);
+    $("#calc-price-note").innerHTML = priceHint(c);
     if (source !== "price") $("#calc-price").value = showNum(c.price);
     const range = $("#calc-range");
     if (source === "range" && range) {
@@ -3144,6 +3312,7 @@
 
   function profileHTML() {
     const sourceDocs = S.docs.filter((d) => d.kinds.some((k) => REQUISITE_KINDS.includes(k)));
+    const problems = profileProblems(S.profile);
     const groups = groupSuggestions(S.suggestions);
     return `<div class="page-col">
       <p class="intro">Впишите один раз — дальше они сами попадут в анкету, декларацию, предложение о цене и подпись. В техническое предложение реквизиты не попадают никогда: его подают анонимно.</p>
@@ -3159,12 +3328,124 @@
       ${PROFILE_GROUPS.map((g, gi) => `<section class="panel" aria-labelledby="pg-${gi}">
         <div class="panel-head"><h2 class="panel-title" id="pg-${gi}">${g.title}</h2></div>
         <div class="form-rows">${g.fields.map((f) => `<div class="field">
-          <label class="field-label" for="pf-${f.key}">${esc(f.label)}</label>
-          <input class="input" id="pf-${f.key}" data-pf="${f.key}" value="${esc(S.profile[f.key])}" placeholder="${esc(f.example || "")}" autocomplete="off">
+          <div class="label-row"><label class="field-label" for="pf-${f.key}">${esc(f.label)}</label>${f.help ? hintBtn(f.label, f.help) : ""}</div>
+          <input class="input" id="pf-${f.key}" data-pf="${f.key}" value="${esc(S.profile[f.key])}" placeholder="${esc(f.example || "")}" autocomplete="off"${problems[f.key] ? ` aria-invalid="true" aria-describedby="pf-${f.key}-err"` : ""}>
+          <span class="field-err" id="pf-${f.key}-err"${problems[f.key] ? "" : " hidden"}>${esc(problems[f.key] || "")}</span>
           ${S.sources[f.key] ? `<span class="field-src" data-src-of="${f.key}">из «${esc(S.sources[f.key])}»</span>` : ""}
         </div>`).join("")}</div>
       </section>`).join("")}
+      ${dataPanelsHTML()}
     </div>`;
+  }
+
+  // Копия данных и удаление всего — внизу «Реквизитов», как в приложении. В прототипе файл копии не скачивается и не читается.
+  function dataPanelsHTML() {
+    const note = S.ui.backupNote;
+    return `<section class="panel" aria-labelledby="backup-title" id="backup">
+        <div class="panel-head"><div><h2 class="panel-title" id="backup-title">Копия данных</h2><p class="panel-sub">Закупки, документы, реквизиты и образцы</p></div></div>
+        <div class="panel-body">
+          <p class="intro">Всё это хранится только в этом браузере. Если очистить браузер — пропадёт, а Safari может стереть данные сам, если сервис не открывать неделю. Сохраняйте копию файлом: из неё всё вернётся, и так же данные переносятся на другой компьютер. В файле реквизиты и тексты документов — храните его так же бережно, как сами документы.</p>
+          <div class="btn-row"><button class="btn soft" type="button" data-act="backup-save">${ic("download")}Сохранить копию</button><label class="btn soft" for="backup-file">${ic("upload")}Загрузить копию<input id="backup-file" type="file" accept=".json,application/json" class="sr-only"></label></div>
+          <div aria-live="polite">${note ? noteHTML(note.tone, esc(note.text), "", note.tone === "ok" ? "check" : "info") : ""}</div>
+        </div>
+      </section>
+      <section class="panel" aria-labelledby="wipe-title" id="wipe">
+        <div class="panel-head"><div><h2 class="panel-title" id="wipe-title">Удалить все данные</h2><p class="panel-sub">Из этого браузера — всё сразу</p></div></div>
+        <div class="panel-body">
+          <p class="intro">Удалятся все закупки с документами и черновиками, реквизиты, образцы, настройки и отметка о согласии. Вернуть их можно будет только из копии — сохраните её выше. На сервере данные не хранятся; то, что уже отправлено ИИ, хранится у Anthropic по её условиям.</p>
+          ${S.ui.wipeAsk
+            ? `<div class="wipe-ask"><p>Удалить всё? Вернуть данные можно будет только из копии.</p><div class="btn-row"><button class="btn xs danger" type="button" data-act="wipe-yes">Удалить всё</button><button class="btn xs soft" type="button" data-act="wipe-no" id="wipe-no">Отмена</button></div></div>`
+            : `<button class="link quiet del" type="button" data-act="wipe-ask" id="wipe-ask">Удалить все мои данные</button>`}
+        </div>
+      </section>`;
+  }
+  // «1 закупка, 2 образца и реквизиты» — только то, что есть.
+  function dataContents() {
+    const filled = PROFILE_KEYS.some((k) => String(S.profile[k] || "").trim());
+    const parts = [
+      S.purchases.length && `${S.purchases.length} ${plural(S.purchases.length, "закупка", "закупки", "закупок")}`,
+      S.docs.length && `${S.docs.length} ${plural(S.docs.length, "образец", "образца", "образцов")}`,
+      filled && "реквизиты",
+    ].filter(Boolean);
+    return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} и ${parts[parts.length - 1]}` : parts[0] || "";
+  }
+  /* ---------- перед началом: два согласия ---------- */
+  // Как в приложении (components/consent-gate.tsx): галочки не отмечены заранее, без обеих дальше не пройти.
+  const CONSENT_KEY = "tj-consent";
+  function consentGiven() {
+    try { return localStorage.getItem(CONSENT_KEY) === "1"; } catch (e) { return false; }
+  }
+  // Ссылкой, а не кнопкой: текст ссылки переносится внутри строки, как в приложении.
+  const legalBtn = (doc, text) => `<a class="link" href="#${doc}" data-act="legal" data-doc="${doc}">${text}</a>`;
+  function showConsent() {
+    const el = $("#consent");
+    el.innerHTML = `<form class="consent-card" id="consent-form" role="dialog" aria-modal="true" aria-labelledby="consent-title">
+        <div class="consent-brand"><span class="brand-ic">${ic("scale", 16)}</span>Тендерный юрист</div>
+        <div style="display:grid;gap:4px"><h1 id="consent-title">Перед началом</h1>
+        <p class="small ink2">Сервис читает документы закупки с помощью ИИ. В документах и реквизитах бывают персональные данные, поэтому нужны два согласия.</p></div>
+        <label class="consent-check"><input type="checkbox" id="consent-processing"><span>Даю ${legalBtn("consent", "согласие на обработку персональных данных")}</span></label>
+        <label class="consent-check"><input type="checkbox" id="consent-transfer"><span>Даю ${legalBtn("transfer", "согласие на передачу данных за рубеж")} — модели ИИ в США, без этого сервис не прочитает документы</span></label>
+        <button class="btn lg" type="button" id="consent-ok" data-act="consent-ok" disabled>Продолжить</button>
+        <p class="small muted">Продолжая, вы принимаете ${legalBtn("terms", "условия использования")}. Как сервис обращается с данными — в ${legalBtn("privacy", "политике")}.</p>
+      </form>`;
+    el.hidden = false;
+    $("#app").inert = true;
+    $("#consent-processing").focus();
+  }
+  function acceptConsent() {
+    if (!($("#consent-processing").checked && $("#consent-transfer").checked)) return;
+    try { localStorage.setItem(CONSENT_KEY, "1"); } catch (e) { /* не запомнится — спросим при следующем открытии */ }
+    const el = $("#consent");
+    el.hidden = true;
+    el.innerHTML = "";
+    $("#app").inert = false;
+    const main = $("#view");
+    if (main) main.focus({ preventScroll: true });
+  }
+  // Правовые документы в прототипе — короткой выжимкой; полные шаблоны — в приложении.
+  const LEGAL_DOCS = {
+    consent: ["Согласие на обработку персональных данных", "/consent", [
+      "Какие данные: документы закупок, реквизиты, вопросы в сервисе — и персональные данные в них.",
+      "Зачем: прочитать документы, выписать требования, подготовить документы заявки и ответить на вопросы.",
+      "Срок — до отзыва. Отозвать — письмом владельцу сервиса; данные в браузере удаляются кнопкой «Удалить все мои данные» на странице «Реквизиты».",
+    ]],
+    transfer: ["Согласие на трансграничную передачу персональных данных", "/consent-transfer", [
+      "Кому: Anthropic PBC, США — модель ИИ Claude. США нет в перечне стран с адекватной защитой данных (приказ Роскомнадзора № 128 от 05.08.2022).",
+      "Что уходит: тексты документов и вопросы — персональные данные в них заменяются метками; сканы и фото — картинкой, как есть.",
+      "Без этого согласия сервис не может прочитать документы.",
+    ]],
+    privacy: ["Политика обработки персональных данных", "/privacy", [
+      "Закупки, документы и реквизиты хранятся в вашем браузере, на вашем устройстве. Сервер их не сохраняет — получает на время запроса и передаёт ИИ.",
+      "Перед отправкой ИИ ФИО, телефоны, почта, паспорт и другие данные заменяются метками.",
+      "Ваши права: узнать, какие данные обрабатываются, уточнить, заблокировать или уничтожить их, отозвать согласие.",
+    ]],
+    terms: ["Условия использования", "/terms", [
+      "Ответы готовит искусственный интеллект: это не юридическая консультация — проверяйте нормы по первоисточнику.",
+      "Результаты хранятся в вашем браузере: сохраните файл Word или копию данных.",
+      "Сейчас сервис работает в тестовом режиме, по закрытой ссылке и бесплатно.",
+    ]],
+  };
+  function openLegal(doc) {
+    const [title, path, points] = LEGAL_DOCS[doc];
+    openModal(`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
+      <button class="icon-btn x-close" type="button" data-act="close" aria-label="Закрыть">${ic("x", 20)}</button>
+      <span class="eyebrow">Правовой документ · шаблон</span>
+      <h2 id="m-title">${title}</h2>
+      ${noteHTML("warn", "<b>ТРЕБУЕТ ПРОВЕРКИ ЮРИСТОМ.</b> Это шаблон: формулировки, основания и сроки проверьте с юристом до того, как открыть сервис другим людям.", "", "alert")}
+      <ul class="small ink2" style="margin:0;padding-left:18px;display:grid;gap:6px">${points.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
+      <p class="small muted m0">В прототипе — выжимка. Полный текст — в приложении, страница ${path}.</p>
+    </div>`);
+  }
+
+  // Удалить всё: прототип возвращается к первому запуску — пустые закупки и реквизиты, снова вопрос о согласии.
+  function wipeAll() {
+    S.purchases = []; S.docs = []; S.id = null;
+    S.profile = Object.fromEntries(PROFILE_KEYS.map((k) => [k, ""])); S.sources = {}; S.suggestions = [];
+    S.general = { messages: [], docs: [], pending: [], thinking: false }; S.drafts = {}; S.ui = {}; S.fold = {};
+    S.law = { open: null, want: null, threads: [] }; S.notes = []; S.ocr = true;
+    try { localStorage.removeItem(CONSENT_KEY); } catch (e) { /* хранилище недоступно — согласие и так не запомнено */ }
+    go("home");
+    showConsent();
   }
 
   /* ---------- мои документы ---------- */
@@ -3615,10 +3896,14 @@
     else if (c.left < r.left) row.scrollLeft -= r.left - c.left + 8;
   }
   window.addEventListener("resize", fitTabs);
+  // Подсказка привязана к месту на экране: при прокрутке и смене размера окна закрываем её.
+  window.addEventListener("resize", () => closeHint(false));
+  document.addEventListener("scroll", () => closeHint(false), true);
   if (document.fonts) document.fonts.ready.then(fitTabs);
   const renderSide = () => { $("#side").innerHTML = sideHTML(); };
   const renderHead = () => { $("#head").innerHTML = headHTML(); };
   function render() {
+    closeHint(false);
     renderSide();
     renderHead();
     const view = $("#view");
@@ -3952,6 +4237,20 @@
       case "info": setInfo(!S.info); break;
       case "info-close": setInfo(false); break;
       case "fold": S.fold[el.dataset.fold] = !S.fold[el.dataset.fold]; rerender(); break;
+      case "hint": openHint(el); break;
+      case "backup-save": {
+        const inside = dataContents();
+        S.ui.backupNote = inside
+          ? { tone: "ok", text: `В приложении здесь скачается файл «Тендерный юрист — копия ${new Date().toLocaleDateString("ru-RU")}.json»: ${inside}. В прототипе файл не сохраняется.` }
+          : { tone: "info", text: "Сохранять пока нечего: в этом браузере нет ни закупок, ни образцов, ни реквизитов." };
+        rerender();
+        break;
+      }
+      case "wipe-ask": S.ui.wipeAsk = true; rerender(); { const no = $("#wipe-no"); if (no) no.focus(); } break;
+      case "wipe-no": S.ui.wipeAsk = false; rerender(); { const ask = $("#wipe-ask"); if (ask) ask.focus(); } break;
+      case "wipe-yes": wipeAll(); break;
+      case "legal": openLegal(el.dataset.doc); break;
+      case "consent-ok": acceptConsent(); break;
       case "drawer-close": setDrawer(false); break;
       case "close": closeModal(); break;
       case "sample": openSample(); break;
@@ -4131,6 +4430,7 @@
   document.addEventListener("mousedown", (e) => { if (e.target.closest && e.target.closest("#cast-sug")) e.preventDefault(); });
   document.addEventListener("click", (e) => {
     const t = e.target;
+    if (hintFrom && !t.closest("#hint-pop") && t.closest(".hint-btn") !== hintFrom) closeHint(false);
     const opt = t.closest && t.closest("#cast-sug [data-sug]");
     if (opt) { pickSug(Number(opt.dataset.sug)); return; }
     if (t.id === "modal") { closeModal(); return; }
@@ -4141,6 +4441,7 @@
     // Во вкладках и в списке закупок фокус остаётся там, где нажали.
     if (nav) { go(nav.dataset.go, nav.dataset.id, nav.closest(".tabs, .ws-list") ? focusKey(nav) : null); return; }
     const act = t.closest("[data-act]");
+    if (act && act.tagName === "A") e.preventDefault();
     if (act && !act.disabled) handleAct(act.dataset.act, act);
   });
 
@@ -4217,6 +4518,8 @@
     if (g && g.rank) showSug(p, t);
   });
   document.addEventListener("focusout", (e) => { if (sug && e.target === sug.input) hideSug(); });
+  document.addEventListener("focusin", (e) => { if (e.target.dataset && e.target.dataset.pf) showProfileProblems(); });
+  document.addEventListener("focusout", (e) => { if (e.target.dataset && e.target.dataset.pf) setTimeout(showProfileProblems); });
 
   // Правка закончилась — поле снова становится текстом. Заменяем только его, чтобы не сорвать нажатие рядом.
   document.addEventListener("focusout", (e) => {
@@ -4233,10 +4536,20 @@
   document.addEventListener("change", (e) => {
     const input = e.target;
     if (input.dataset && input.dataset.calc && (input.type === "checkbox" || input.type === "radio")) { onCalcInput(input); return; }
+    if (input.dataset && input.dataset.ocr !== undefined) { S.ocr = input.checked; return; }
+    if (input.id === "consent-processing" || input.id === "consent-transfer") {
+      $("#consent-ok").disabled = !($("#consent-processing").checked && $("#consent-transfer").checked);
+      return;
+    }
     if (input.type !== "file") return;
     const files = [...input.files];
     input.value = "";
     if (!files.length) return;
+    if (input.id === "backup-file") {
+      S.ui.backupNote = { tone: "info", text: `Выбран файл «${files[0].name}». В приложении из копии добавится то, чего нет в этом браузере, — сделанное здесь не затрётся. В прототипе файл не читается.` };
+      rerender();
+      return;
+    }
     const names = files.map((f) => f.name);
     if (input.id === "g-file") { S.general.docs = [...new Set([...S.general.docs, ...names])]; S.general.pending = [...new Set([...S.general.pending, ...names])]; rerender(); }
     else if (input.id === "file-new") createPurchase();
@@ -4256,6 +4569,7 @@
       if (sug && sug.input === e.target && e.key === "Escape") { e.preventDefault(); hideSug(); return; }
     }
     if (e.key === "Escape") {
+      if (hintFrom) { closeHint(true); return; }
       if (closeModal()) return;
       if (S.notifOpen) { setNotif(false); return; }
       if (S.drawer && narrow.matches) { setDrawer(false); return; }
@@ -4303,5 +4617,6 @@
   S.notes = initNotes();
   render();
   applyDrawer();
+  if (!consentGiven()) showConsent();
 })();
 </script>
