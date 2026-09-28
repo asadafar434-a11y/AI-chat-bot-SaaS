@@ -478,8 +478,17 @@
   .pd-head { container-type: inline-size; }
   .btn.info-toggle { display: none; }
   @media (max-width: 1559px) { .btn.info-toggle { display: inline-flex; } }
-  /* Подписи кнопок шапки сокращаются по месту: сначала у «Добавить документы» и «Сведений», потом у всех */
-  @container (width < 820px) { .pd-acts .pd-lbl.opt { display: none; } .pd-acts .btn.opt { width: 32px; padding: 0; } }
+  /* Число документов закупки на кнопке «Сведения» — плашкой, как счётчик у «Вопросов»; не прочитан файл — янтарём */
+  .doc-count { display: inline-flex; align-items: center; gap: 2px; height: 20px; margin-right: -6px; padding-inline: 4px 6px; border-radius: 6px; background: var(--paper-2); color: var(--ink-2); font: var(--t-num); font-variant-numeric: tabular-nums; }
+  .doc-count > svg { flex: none; }
+  .doc-count.warn { background: var(--warn-tint); color: var(--warn); }
+  /* Подписи кнопок шапки сокращаются по месту: сначала у «Добавить документы» и «Сведений», потом у всех.
+     У «Сведений» без подписи остаётся число документов — вместо значка панели */
+  @container (width < 820px) {
+    .pd-acts .pd-lbl.opt { display: none; } .pd-acts .btn.opt { width: 32px; padding: 0; }
+    .pd-acts .btn.info-toggle:has(.doc-count) { width: auto; padding-inline: 8px; } .info-toggle:has(.doc-count) > svg { display: none; }
+    .doc-count, .doc-count.warn { margin: 0; padding: 0; background: none; }
+  }
   @container (width < 560px) { .pd-acts .pd-lbl { display: none; } .pd-acts .btn { width: 32px; padding: 0; } }
   .start-steps { display: grid; gap: 16px 24px; margin: 0; padding: 8px var(--pad) 16px; list-style: none; }
   @media (min-width: 768px) { .start-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
@@ -2531,6 +2540,11 @@
   }
 
   function detailHTML(p) {
+    // Документы закупки лежат в «Сведениях»: на кнопке — значок файла и их число, а если файл не прочитан —
+    // янтарный значок внимания и число таких файлов. Словами — во всплывающей подсказке и для диктора.
+    const docs = p.files.length + p.unreadable.length;
+    const unread = p.unreadable.length;
+    const infoLabel = `Сведения о закупке: ${docs} ${plural(docs, "документ", "документа", "документов")}${unread ? `, ${unread} ${plural(unread, "не прочитан", "не прочитаны", "не прочитаны")}` : ""}`;
     return `<div class="pd-wrap"><div class="pd-island"><div class="pd-head">
         <button class="icon-btn pd-back" type="button" data-go="list" aria-label="Все закупки">${ic("back", 18)}</button>
         ${lawBadge(p)}
@@ -2538,7 +2552,7 @@
         <div class="pd-acts">
           <button class="btn line xs" type="button" data-act="files" data-id="${p.id}" aria-label="Скачать заявку" title="Документы заявки — файлы Word">${ic("download", 16)}<span class="pd-lbl">Скачать заявку</span></button>
           <label class="btn line xs opt" for="add-doc" title="Добавить документы закупки">${ic("clip", 16)}<span class="pd-lbl opt">Добавить документы</span><input id="add-doc" type="file" multiple class="sr-only" aria-label="Добавить документы закупки"></label>
-          <button class="btn line xs info-toggle opt" id="info-toggle" type="button" data-act="info" aria-controls="ws-info" aria-expanded="${S.info}" aria-label="Сведения о закупке" title="Сведения о закупке">${ic("panel", 16)}<span class="pd-lbl opt">Сведения</span><span class="sr-only"> о закупке</span></button>
+          <button class="btn line xs info-toggle opt" id="info-toggle" type="button" data-act="info" aria-controls="ws-info" aria-expanded="${S.info}" aria-label="${infoLabel}" title="${infoLabel}">${ic("panel", 16)}<span class="pd-lbl opt">Сведения</span>${docs ? `<span class="doc-count${unread ? " warn" : ""}">${ic(unread ? "alert" : "file", 14)}${unread || docs}</span>` : ""}</button>
         </div>
       </div>
       ${tabsHTML(p)}</div></div>

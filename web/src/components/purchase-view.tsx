@@ -30,6 +30,7 @@ import { DueChip, LawBadge } from "@/components/purchase-bits";
 import { usePurchase } from "@/components/purchase-provider";
 import { WorkingSteps } from "@/components/working-steps";
 import { dueLine } from "@/lib/deadline";
+import { plural } from "@/lib/plural";
 import { extractRequirements, fromRequirements, titleOf, type Purchase } from "@/lib/purchase";
 import { ACCEPTED_FILES, readDocuments, type SentDocument } from "@/lib/read-documents";
 import { stepsOf, TONE_TEXT, type Step, type StepKey } from "@/lib/steps";
@@ -445,6 +446,13 @@ export function PurchaseView({ children }: { children: ReactNode }) {
   const onPrice = pathname === `${base}/price`;
   const stepsNav = useRef<HTMLElement>(null);
   const fit = useStepsFit(stepsNav, [pathname, asked, ...steps.map((s) => s.status)].join("|"));
+  // Документы закупки лежат в «Сведениях»: на кнопке — значок файла и их число, а если файл не прочитан —
+  // янтарный значок внимания и число таких файлов. Словами — во всплывающей подсказке и для диктора.
+  const docs = purchase.files.length + purchase.unreadable.length;
+  const unread = purchase.unreadable.length;
+  const infoLabel = `Сведения о закупке: ${docs} ${plural(docs, "документ", "документа", "документов")}${
+    unread ? `, ${unread} ${plural(unread, "не прочитан", "не прочитаны", "не прочитаны")}` : ""
+  }`;
 
   return (
     <div className="relative flex min-h-0 flex-1 gap-2">
@@ -512,12 +520,23 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                   onClick={() => toggleInfo(!infoOpen)}
                   aria-controls="ws-info"
                   aria-expanded={infoOpen}
-                  aria-label="Сведения о закупке"
-                  title="Сведения о закупке"
+                  aria-label={infoLabel}
+                  title={infoLabel}
                   className="btn btn-line btn-xs wide:hidden"
                 >
-                  <PanelRightIcon />
+                  <PanelRightIcon className={docs ? "@max-[460px]:hidden" : ""} />
                   <span className="@max-[460px]:hidden">Сведения</span>
+                  {/* Число документов — плашкой, как счётчик у «Вопросов»; без подписи остаётся вместо значка панели */}
+                  {docs > 0 && (
+                    <span
+                      className={`t-num -mr-1.5 inline-flex h-5 items-center gap-0.5 rounded-md pl-1 pr-1.5 @max-[460px]:m-0 @max-[460px]:bg-transparent @max-[460px]:p-0 ${
+                        unread ? "bg-[var(--warn-tint)] text-[var(--warn)]" : "bg-[var(--paper-2)] text-[var(--ink-2)]"
+                      }`}
+                    >
+                      {unread ? <WarningIcon className="size-3.5 flex-none" /> : <DocumentIcon className="size-3.5 flex-none" />}
+                      {unread || docs}
+                    </span>
+                  )}
                 </button>
               </div>
             </div>
