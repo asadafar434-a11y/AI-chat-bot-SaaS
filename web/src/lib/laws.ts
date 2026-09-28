@@ -1,3 +1,4 @@
+import "server-only";
 import law44 from "@/data/laws/44-fz.json";
 import law223 from "@/data/laws/223-fz.json";
 import { quoteFound } from "@/lib/quotes";

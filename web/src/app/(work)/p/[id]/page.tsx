@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CriteriaIsland } from "@/components/criteria-island";
 import { Island } from "@/components/island";
 import { Warnings } from "@/components/note";
 import { PriceTeaser } from "@/components/price-teaser";
@@ -30,12 +31,46 @@ const GROUPS: Record<ReqGroupKey, { title: string; empty: string }> = {
   },
 };
 
-// Шаг 1 «Требования»: каждая группа требований — свой остров, в конце — остров «Дальше».
+// Шаг 1 «Требования»: первым — вход в «Цену» («Перед торгами»), дальше каждая группа требований — свой остров,
+// после «Кто может участвовать» — как оценят заявку, в конце — остров «Дальше».
 export default function RequirementsPage() {
   const { purchase, documents } = usePurchase();
   const [open, setOpen] = useState<string | null>(null);
-  const { requirements, unreadable } = purchase;
-  const unverified = REQ_GROUP_KEYS.reduce((n, key) => n + requirements[key].filter((it) => !it.verified).length, 0);
+  const { requirements, criteria, unreadable } = purchase;
+  const unverified =
+    REQ_GROUP_KEYS.reduce((n, key) => n + requirements[key].filter((it) => !it.verified).length, 0) +
+    (criteria?.rows.filter((row) => !row.verified).length ?? 0);
+  const toggle = (id: string) => setOpen(open === id ? null : id);
+
+  const group = (key: ReqGroupKey) => {
+    const items = requirements[key];
+    return (
+      <Island key={key} id={`req-${key}`} level={3} title={GROUPS[key].title} count={items.length || undefined}>
+        {items.length === 0 ? (
+          <p className="px-[var(--pad)] pb-3 pt-1 text-[var(--ink-3)]">{GROUPS[key].empty}</p>
+        ) : (
+          <ul className="divide-y divide-[var(--line)] px-[var(--pad)] pb-1">
+            {items.map((it, i) => {
+              const id = `${key}-${i}`;
+              return (
+                <li key={id} className="grid gap-1 py-2.5">
+                  <span className="t-read">{it.text}</span>
+                  <SourceQuote
+                    source={it.source || "цитата"}
+                    quote={it.quote}
+                    verified={it.verified}
+                    what="пункт"
+                    open={open === id}
+                    onToggle={() => toggle(id)}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Island>
+    );
+  };
 
   return (
     <TabBody>
@@ -53,37 +88,11 @@ export default function RequirementsPage() {
         ]}
       />
 
-      {REQ_GROUP_KEYS.map((key) => {
-        const items = requirements[key];
-        return (
-          <Island key={key} id={`req-${key}`} level={3} title={GROUPS[key].title} count={items.length || undefined}>
-            {items.length === 0 ? (
-              <p className="px-[var(--pad)] pb-3 pt-1 text-[var(--ink-3)]">{GROUPS[key].empty}</p>
-            ) : (
-              <ul className="divide-y divide-[var(--line)] px-[var(--pad)] pb-1">
-                {items.map((it, i) => {
-                  const id = `${key}-${i}`;
-                  return (
-                    <li key={id} className="grid gap-1 py-2.5">
-                      <span className="t-read">{it.text}</span>
-                      <SourceQuote
-                        source={it.source || "цитата"}
-                        quote={it.quote}
-                        verified={it.verified}
-                        what="пункт"
-                        open={open === id}
-                        onToggle={() => setOpen(open === id ? null : id)}
-                      />
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </Island>
-        );
-      })}
-
       <PriceTeaser purchase={purchase} />
+
+      {group("who")}
+      <CriteriaIsland criteria={criteria} open={open} onToggle={toggle} />
+      {REQ_GROUP_KEYS.filter((key) => key !== "who").map(group)}
 
       <NextStep from="req" />
     </TabBody>

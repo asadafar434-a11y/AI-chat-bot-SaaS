@@ -1,3 +1,4 @@
+import "server-only";
 import {
   AlignmentType,
   Document,
@@ -13,17 +14,7 @@ import type { PartBlock, PartDoc } from "@/lib/part-doc";
 import { ANKETA, fillFromProfile, type Profile } from "@/lib/profile";
 import { formatRubles, rublesInWords } from "@/lib/rub-words";
 import type { TpForm } from "@/lib/tp";
-
-// Части заявки собираются отдельными файлами: техническое предложение подают в первую часть,
-// и в нём не должно быть ничего, что раскрывает участника, — ни названия, ни ИНН, ни подписи.
-export type TpPart = "tp" | "participant" | "declaration" | "price";
-
-export const PART_TITLES: Record<TpPart, string> = {
-  tp: "Техническое предложение",
-  participant: "Анкета участника закупки",
-  declaration: "Декларация о принадлежности к субъектам малого и среднего предпринимательства",
-  price: "Предложение о цене договора",
-};
+import { PART_TITLES, type TpPart } from "@/lib/tp-parts";
 
 // Строка состава исполнителей: кто по ТЗ, ФИО и звание; titled — звание требует ТЗ, пустое — жёлтым.
 export type CastLine = { who: string; name: string; title: string; titled: boolean };
@@ -38,14 +29,6 @@ export type TpDocx = {
   // Реквизиты участника; в техническое предложение не передаются.
   profile: Profile | null;
 };
-
-// Техническое предложение и анкета нужны всегда; декларация и цена — если их требует форма заказчика.
-export const partsOf = (form: TpForm): TpPart[] => [
-  "tp",
-  "participant",
-  ...(form.smeDeclaration ? (["declaration"] as const) : []),
-  ...(form.hasPrice ? (["price"] as const) : []),
-];
 
 // Строки формы заказчика, которые уже есть в анкете под другим названием, не повторяем.
 const COVERED = [/^наименование$/i, /^(фамилия|имя|отчество)/i, /место нахождения|место жительства/i, /банковские реквизиты/i, /^инн участника/i];
@@ -208,11 +191,53 @@ function priceBody({ form, price, profile }: TpDocx) {
   ];
 }
 
+// Сведения об опыте и о специалистах без ИИ — в примере и когда ИИ не подключён: таблица с полями для заполнения.
+// С ИИ они составляются по форме заказчика из договоров и документов сотрудников (part-doc.ts).
+const blankTable = (columns: [string, number][], rows: number) =>
+  table([
+    headerRow(columns),
+    ...Array.from({ length: rows }, (_, i) =>
+      new TableRow({
+        children: columns.map(([title, width], c) =>
+          c === 0 ? textCell(String(i + 1), width) : cell([new Paragraph({ children: withFields(`[${title.toLowerCase()}]`) })], width)
+        ),
+      })
+    ),
+  ]);
+
+const participantLine = (profile: Profile | null) =>
+  new Paragraph({
+    spacing: { after: 120 },
+    children: [run("Участник закупки: "), ...(profile?.fullName.trim() ? [run(profile.fullName.trim())] : withFields("[наименование участника]"))],
+  });
+
+const experienceBody = ({ profile }: TpDocx) => [
+  participantLine(profile),
+  blankTable(
+    [["№", 6], ["Заказчик", 20], ["Предмет договора", 26], ["Номер и дата договора", 16], ["Цена договора, руб.", 14], ["Дата акта о приёмке", 18]],
+    3
+  ),
+  ...paragraphs("Общая цена исполненных договоров: [сумма] руб.\nПриложения: копии исполненных договоров и актов о приёмке — [количество] шт."),
+  ...signature(profile),
+];
+
+const staffBody = ({ profile }: TpDocx) => [
+  participantLine(profile),
+  blankTable(
+    [["№", 6], ["Фамилия, имя, отчество", 20], ["Должность, роль", 16], ["Образование, квалификация", 20], ["Документ о квалификации, срок действия", 22], ["Основание работы", 16]],
+    3
+  ),
+  ...paragraphs("Приложения: копии документов о квалификации и договоров с работниками — [количество] шт."),
+  ...signature(profile),
+];
+
 const BODIES: Record<TpPart, (data: TpDocx) => (Paragraph | Table)[]> = {
   tp: tpBody,
   participant: participantBody,
   declaration: declarationBody,
   price: priceBody,
+  experience: experienceBody,
+  staff: staffBody,
 };
 
 const docTitle = (text: string) =>

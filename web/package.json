@@ -7,21 +7,18 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test src/lib/pd-mask.test.ts src/lib/price-floor.test.ts src/lib/price-scale.test.ts src/lib/cast.test.ts"
+    "test": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@ai-sdk/react": "^4.0.115",
     "@anthropic-ai/sdk": "^0.128.0",
     "@base-ui/react": "^1.8.0",
-    "@streamdown/cjk": "^1.0.3",
-    "@streamdown/code": "^1.1.1",
-    "@streamdown/math": "^1.0.2",
-    "@streamdown/mermaid": "^1.0.2",
     "ai": "^7.0.111",
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
     "cn": "^0.4.0",
     "docx": "^9.7.2",
+    "jszip": "^3.10.2",
     "mammoth": "^1.12.3",
     "nanoid": "^6.0.1",
     "next": "16.3.6",

@@ -1,4 +1,5 @@
 import * as z from "zod/v4";
+import { CriteriaSchema, type Criteria } from "@/lib/criteria";
 
 const ItemSchema = z.object({
   text: z.string().describe("Пункт одной строкой простыми словами — с числами, датами и суммами из документа"),
@@ -18,9 +19,10 @@ export const RequirementsSchema = z.object({
     zone: z.string().describe("Часовой пояс, как в документе, например «МСК» или «МСК+4»; пустая строка, если не указан"),
   }),
   who: z.array(ItemSchema).describe("Кто может участвовать: ограничения и особые требования к участникам"),
-  submit: z.array(ItemSchema).describe("Что подать в заявке и за что дают баллы"),
+  submit: z.array(ItemSchema).describe("Что подать в заявке: документы и сведения, которые требует заказчик"),
   scope: z.array(ItemSchema).describe("Что требует ТЗ: требования к товару, работе или услуге"),
   terms: z.array(ItemSchema).describe("Сроки и деньги"),
+  criteria: CriteriaSchema.describe("Как оценивают заявки: критерии, показатели, баллы"),
 });
 
 export type RequirementsDraft = z.infer<typeof RequirementsSchema>;
@@ -29,6 +31,6 @@ export type ReqGroupKey = "who" | "submit" | "scope" | "terms";
 export type ReqGroups = Record<ReqGroupKey, ReqItem[]>;
 export type Deadline = RequirementsDraft["deadline"];
 export type PurchaseSummary = Pick<RequirementsDraft, "short" | "subject" | "kind" | "customer" | "price" | "deadline">;
-export type RequirementsResponse = PurchaseSummary & { groups: ReqGroups };
+export type RequirementsResponse = PurchaseSummary & { groups: ReqGroups; criteria: Criteria };
 
 export const REQ_GROUP_KEYS: ReqGroupKey[] = ["who", "submit", "scope", "terms"];

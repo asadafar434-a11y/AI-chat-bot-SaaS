@@ -7,7 +7,7 @@ import type { Purchase } from "@/lib/purchase";
 import { calcFor, dropText, rub } from "@/lib/price-calc";
 import { priceFloor, raisedPct } from "@/lib/price-floor";
 
-// Вход в калькулятор с шага «Требования», рядом со сроками и деньгами: ответ, если уже посчитан, и шкала.
+// Вход в калькулятор — первым на шаге «Требования», над «Кто может участвовать»: ответ, если уже посчитан, и шкала.
 export function PriceTeaser({ purchase }: { purchase: Purchase }) {
   const calc = calcFor(purchase);
   const { floor, at, raisedBelow } = priceFloor(calc);

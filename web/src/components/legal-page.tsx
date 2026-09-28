@@ -2,12 +2,18 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { ScalesIcon, WarningIcon } from "@/components/icons";
 import { Note } from "@/components/note";
-import { LEGAL_EDITION, LEGAL_PAGES, type Operator, type OperatorValue } from "@/lib/legal";
+import { LEGAL_EDITION, LEGAL_PAGES, LEGAL_REVIEWED, type Operator, type OperatorValue } from "@/lib/legal";
 
 // Значение из реквизитов оператора; не задано на хостинге — жёлтое поле с подсказкой, как в черновиках.
 export function Val({ field }: { field: OperatorValue }) {
   if (field.value) return <>{field.value}</>;
   return <mark className="rounded-sm bg-[var(--warn-tint)] px-1 text-[var(--warn)]">[{field.empty}]</mark>;
+}
+
+// Место, которое юрист должен проверить особо. Видно, пока тексты не отмечены проверенными (LEGAL_REVIEWED в lib/legal.ts).
+export function Review({ children }: { children: ReactNode }) {
+  if (LEGAL_REVIEWED) return null;
+  return <mark className="rounded-sm bg-[var(--warn-tint)] px-1 text-[var(--warn)]">[ТРЕБУЕТ ПРОВЕРКИ ЮРИСТОМ: {children}]</mark>;
 }
 
 export function Mail({ field }: { field: OperatorValue }) {
@@ -52,10 +58,16 @@ export function LegalPage({ title, operator, children }: { title: string; operat
             <h1 className="t-page">{title}</h1>
             <p className="t-caption text-[var(--ink-3)]">Редакция от {LEGAL_EDITION}</p>
           </header>
+          {!LEGAL_REVIEWED && (
+            <Note tone="warn" icon={WarningIcon}>
+              <b>ТРЕБУЕТ ПРОВЕРКИ ЮРИСТОМ.</b> Это шаблон: формулировки, основания и сроки проверьте с юристом до того, как открыть
+              сервис другим людям.
+            </Note>
+          )}
           {operator.missing.length > 0 && (
             <Note tone="warn" icon={WarningIcon}>
-              Черновик: не заданы реквизиты владельца сервиса — {operator.missing.join(", ")}. Задайте их в настройках хостинга и
-              проверьте текст с юристом до того, как открыть сервис другим людям.
+              Не заданы реквизиты владельца сервиса — {operator.missing.join(", ")}. Пока их нет, в тексте стоят поля в квадратных
+              скобках. Задайте их в настройках хостинга.
             </Note>
           )}
           <div className="t-read grid gap-6 text-[var(--ink-2)] [&_b]:font-semibold [&_b]:text-foreground">{children}</div>

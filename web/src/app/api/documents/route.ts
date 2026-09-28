@@ -1,23 +1,42 @@
 import type { ChatDocument } from "@/lib/chat-types";
 import { extractText } from "@/lib/extract-text";
+import { fileProblem, MAX_FILE_MB, MAX_FILES, MAX_REQUEST_BYTES } from "@/lib/read-documents";
 
 type Failed = { name: string; reason: string };
 
 // Сканы распознаёт ИИ, постранично: 60-страничный скан читается пару минут.
 export const maxDuration = 300;
 
+const fail = (message: string, status: number) =>
+  new Response(message, { status, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+
 export async function POST(request: Request) {
-  const form = await request.formData();
-  const files = form.getAll("files").filter((f): f is File => f instanceof File);
-  if (files.length === 0) {
-    return Response.json({ error: "Нет файлов" }, { status: 400 });
+  // Браузер шлёт файлы по одному. Тело больше предела прокси (next.config.ts) приходит обрезанным и не разбирается.
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    const size = Number(request.headers.get("content-length") ?? 0);
+    return size > MAX_REQUEST_BYTES
+      ? fail(`Файл не дошёл до сервера целиком: он больше ${MAX_FILE_MB} МБ. Разделите его на части или сохраните сканы с меньшим разрешением.`, 413)
+      : fail("Запрос пришёл повреждённым — выберите файлы ещё раз.", 400);
   }
+  const files = form.getAll("files").filter((f): f is File => f instanceof File);
+  // Распознавание сканов выключено в браузере — картинки в ИИ не уходят.
+  const ocr = form.get("ocr") !== "off";
+  if (files.length === 0) return fail("Нет файлов", 400);
+  if (files.length > MAX_FILES) return fail(`За один раз — не больше ${MAX_FILES} файлов.`, 413);
 
   const documents: ChatDocument[] = [];
   const failed: Failed[] = [];
 
   for (const file of files) {
-    const result = await extractText(file);
+    const problem = fileProblem(file);
+    if (problem) {
+      failed.push({ name: file.name, reason: problem });
+      continue;
+    }
+    const result = await extractText(file, { ocr });
     if (!result.ok) {
       failed.push({ name: file.name, reason: result.reason });
     } else if (!result.text.trim()) {

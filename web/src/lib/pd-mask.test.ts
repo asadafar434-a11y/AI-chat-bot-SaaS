@@ -1,7 +1,7 @@
 // Проверка маскировки персональных данных: npm test.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { PdMasker } from "./pd-mask.ts";
+import { PdMasker, pdMaskOn } from "./pd-mask.ts";
 
 const mask = (text: string) => new PdMasker(true).mask(text);
 const hidden = (text: string, value: string) => !mask(text).includes(value);
@@ -125,4 +125,12 @@ test("выключено — текст не меняется", () => {
   const masker = new PdMasker(false);
   const text = "Иванов Иван Иванович, +7 (495) 123-45-67";
   assert.equal(masker.mask(text), text);
+});
+
+test("PD_MASK=off выключает замену только не на хостинге (аудит, п. 30)", () => {
+  assert.equal(pdMaskOn({ NODE_ENV: "production", PD_MASK: "off" }), true);
+  assert.equal(pdMaskOn({ NODE_ENV: "production" }), true);
+  assert.equal(pdMaskOn({ NODE_ENV: "development", PD_MASK: "off" }), false);
+  assert.equal(pdMaskOn({ NODE_ENV: "development" }), true);
+  assert.equal(pdMaskOn({ PD_MASK: "off" }), false);
 });

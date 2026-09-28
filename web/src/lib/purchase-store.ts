@@ -1,24 +1,32 @@
+import { fromStore, toStore } from "@/lib/data-format";
 import { STORES, transaction } from "@/lib/db";
 import type { Purchase } from "@/lib/purchase";
 import type { SentDocument } from "@/lib/read-documents";
 
 // Закупки живут в IndexedDB этого браузера: документы не уходят никуда, кроме запросов к модели.
 // Тексты документов лежат отдельно, чтобы список закупок не тянул их целиком.
+// Записи читаются и пишутся через data-format.ts: старые догоняют текущий формат при чтении.
 const PURCHASES = STORES.purchases;
 const DOCUMENTS = STORES.documents;
 
-export const listPurchases = () =>
-  transaction<Purchase[]>([PURCHASES], "readonly", (tx) => tx.objectStore(PURCHASES).getAll());
+export const listPurchases = async () =>
+  (await transaction<unknown[]>([PURCHASES], "readonly", (tx) => tx.objectStore(PURCHASES).getAll())).map((raw) =>
+    fromStore<Purchase>("purchase", raw)
+  );
 
-export const getPurchase = (id: string) =>
-  transaction<Purchase | undefined>([PURCHASES], "readonly", (tx) => tx.objectStore(PURCHASES).get(id));
+export async function getPurchase(id: string): Promise<Purchase | undefined> {
+  const raw = await transaction<unknown>([PURCHASES], "readonly", (tx) => tx.objectStore(PURCHASES).get(id));
+  return raw === undefined ? undefined : fromStore<Purchase>("purchase", raw);
+}
 
 export const getDocuments = async (id: string) =>
-  (await transaction<SentDocument[] | undefined>([DOCUMENTS], "readonly", (tx) => tx.objectStore(DOCUMENTS).get(id))) ?? [];
+  ((await transaction<unknown[] | undefined>([DOCUMENTS], "readonly", (tx) => tx.objectStore(DOCUMENTS).get(id))) ?? []).map(
+    (raw) => fromStore<SentDocument>("document", raw)
+  );
 
 export const savePurchase = (purchase: Purchase) =>
   transaction<void>([PURCHASES], "readwrite", (tx) => {
-    tx.objectStore(PURCHASES).put(purchase);
+    tx.objectStore(PURCHASES).put(toStore("purchase", purchase));
   });
 
 export const scansOf = (documents: SentDocument[]) => documents.filter((d) => d.scan).map((d) => d.name);
@@ -27,8 +35,8 @@ export const scansOf = (documents: SentDocument[]) => documents.filter((d) => d.
 export async function savePurchaseWithDocuments(purchase: Purchase, documents: SentDocument[]): Promise<Purchase> {
   const stored = { ...purchase, scans: scansOf(documents) };
   await transaction<void>([PURCHASES, DOCUMENTS], "readwrite", (tx) => {
-    tx.objectStore(PURCHASES).put(stored);
-    tx.objectStore(DOCUMENTS).put(documents, purchase.id);
+    tx.objectStore(PURCHASES).put(toStore("purchase", stored));
+    tx.objectStore(DOCUMENTS).put(documents.map((doc) => toStore("document", doc)), purchase.id);
   });
   return stored;
 }

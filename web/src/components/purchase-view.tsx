@@ -16,6 +16,7 @@ import {
   ClockIcon,
   CrossIcon,
   DocumentIcon,
+  DownloadIcon,
   PanelRightIcon,
   RubleIcon,
   ScalesIcon,
@@ -23,11 +24,13 @@ import {
   WarningIcon,
   type IconComponent,
 } from "@/components/icons";
+import { useOpenApplicationFiles } from "@/components/application-files";
 import { Note } from "@/components/note";
 import { DueChip, LawBadge } from "@/components/purchase-bits";
 import { usePurchase } from "@/components/purchase-provider";
 import { WorkingSteps } from "@/components/working-steps";
 import { dueLine } from "@/lib/deadline";
+import { plural } from "@/lib/plural";
 import { extractRequirements, fromRequirements, titleOf, type Purchase } from "@/lib/purchase";
 import { ACCEPTED_FILES, readDocuments, type SentDocument } from "@/lib/read-documents";
 import { stepsOf, TONE_TEXT, type Step, type StepKey } from "@/lib/steps";
@@ -149,6 +152,7 @@ function useStepsFit(nav: RefObject<HTMLElement | null>, content: string) {
 // Что делать дальше — в конце шага, чтобы путь по закупке был виден без подсказок.
 export function NextStep({ from }: { from: StepKey }) {
   const { purchase } = usePurchase();
+  const openFiles = useOpenApplicationFiles();
   const [, tp, check] = stepsOf(purchase);
   const due = dueLine(purchase.deadline, true);
 
@@ -176,7 +180,8 @@ export function NextStep({ from }: { from: StepKey }) {
     next = {
       label: "Готово к подаче",
       title: "Подайте заявку на электронной площадке",
-      text: due ? `${due.head}${due.left ? ` — ${due.left}` : ""}.` : "Срок подачи — в извещении о закупке.",
+      text: `${due ? `${due.head}${due.left ? ` — ${due.left}` : ""}.` : "Срок подачи — в извещении о закупке."} Файлы заявки — одним архивом.`,
+      action: "Скачать документы заявки",
     };
   }
   if (!next) return null;
@@ -188,11 +193,18 @@ export function NextStep({ from }: { from: StepKey }) {
         <p className="t-section">{next.title}</p>
         <p className="text-[var(--ink-2)]">{next.text}</p>
       </div>
-      {next.href && (
+      {next.href ? (
         <Link href={next.href} className="btn">
           {next.action}
           <ArrowRightIcon />
         </Link>
+      ) : (
+        next.action && (
+          <button type="button" onClick={openFiles} className="btn">
+            <DownloadIcon />
+            {next.action}
+          </button>
+        )
       )}
     </section>
   );
@@ -367,6 +379,7 @@ function InfoPane({ purchase, documents, onAdd, onClose, closeButton }: {
 // Открытая закупка: остров-шапка со сроком и шагами подготовки заявки, под ним острова шага, справа сведения.
 // От 1560 px сведения — третьим столбиком, уже — листом поверх закупки по кнопке «Сведения».
 export function PurchaseView({ children }: { children: ReactNode }) {
+  const openFiles = useOpenApplicationFiles();
   const { purchase, documents, replaceDocuments } = usePurchase();
   const pathname = usePathname();
   const [infoOpen, setInfoOpen] = useState(false);
@@ -433,6 +446,13 @@ export function PurchaseView({ children }: { children: ReactNode }) {
   const onPrice = pathname === `${base}/price`;
   const stepsNav = useRef<HTMLElement>(null);
   const fit = useStepsFit(stepsNav, [pathname, asked, ...steps.map((s) => s.status)].join("|"));
+  // Документы закупки лежат в «Сведениях»: на кнопке — значок файла и их число, а если файл не прочитан —
+  // янтарный значок внимания и число таких файлов. Словами — во всплывающей подсказке и для диктора.
+  const docs = purchase.files.length + purchase.unreadable.length;
+  const unread = purchase.unreadable.length;
+  const infoLabel = `Сведения о закупке: ${docs} ${plural(docs, "документ", "документа", "документов")}${
+    unread ? `, ${unread} ${plural(unread, "не прочитан", "не прочитаны", "не прочитаны")}` : ""
+  }`;
 
   return (
     <div className="relative flex min-h-0 flex-1 gap-2">
@@ -452,13 +472,15 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                 <h2 id="pd-title" className="t-title truncate max-sm:line-clamp-2 max-sm:whitespace-normal">
                   {titleOf(purchase)}
                 </h2>
-                <p className="t-caption truncate text-[var(--ink-3)]">
+                {/* Срок — главная цифра экрана: на узком экране переносится на вторую строку, а не обрезается.
+                    Точка-разделитель держится за словом перед ней, чтобы строка не начиналась с неё. */}
+                <p className="t-caption text-pretty text-[var(--ink-3)]">
                   {due ? (
                     <>
                       {due.head}
                       {due.left && (
                         <>
-                          {" · "}
+                          {"\u00a0· "}
                           <span className={due.tone === "soon" ? "t-tag text-[var(--warn)]" : ""}>{due.left}</span>
                         </>
                       )}
@@ -466,10 +488,21 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                   ) : (
                     "Срок подачи не найден в документах"
                   )}
-                  {purchase.sample && " · пример"}
+                  {/* На телефоне пометка лишняя: пример подписан в сведениях и в списке закупок. */}
+                  {purchase.sample && <span className="max-sm:hidden">{"\u00a0· пример"}</span>}
                 </p>
               </div>
               <div className="flex flex-none items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={openFiles}
+                  aria-label="Скачать заявку: документы Word"
+                  title="Документы заявки — все файлы Word"
+                  className="btn btn-line btn-xs"
+                >
+                  <DownloadIcon />
+                  <span className="@max-[720px]:hidden">Скачать заявку</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => input.current?.click()}
@@ -487,12 +520,23 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                   onClick={() => toggleInfo(!infoOpen)}
                   aria-controls="ws-info"
                   aria-expanded={infoOpen}
-                  aria-label="Сведения о закупке"
-                  title="Сведения о закупке"
+                  aria-label={infoLabel}
+                  title={infoLabel}
                   className="btn btn-line btn-xs wide:hidden"
                 >
-                  <PanelRightIcon />
+                  <PanelRightIcon className={docs ? "@max-[460px]:hidden" : ""} />
                   <span className="@max-[460px]:hidden">Сведения</span>
+                  {/* Число документов — плашкой, как счётчик у «Вопросов»; без подписи остаётся вместо значка панели */}
+                  {docs > 0 && (
+                    <span
+                      className={`t-num -mr-1.5 inline-flex h-5 items-center gap-0.5 rounded-md pl-1 pr-1.5 @max-[460px]:m-0 @max-[460px]:bg-transparent @max-[460px]:p-0 ${
+                        unread ? "bg-[var(--warn-tint)] text-[var(--warn)]" : "bg-[var(--paper-2)] text-[var(--ink-2)]"
+                      }`}
+                    >
+                      {unread ? <WarningIcon className="size-3.5 flex-none" /> : <DocumentIcon className="size-3.5 flex-none" />}
+                      {unread || docs}
+                    </span>
+                  )}
                 </button>
               </div>
             </div>

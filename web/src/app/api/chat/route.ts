@@ -1,21 +1,27 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import { MAX_CONTEXT_CHARS, type ChatDocument, type ChatMessage } from "@/lib/chat-types";
-import { claudeErrorText } from "@/lib/claude-errors";
+import { claudeErrorText, WRITE_OWNER } from "@/lib/claude-errors";
 import { baseRequest, documentBlocks, maskDocuments, usageLine } from "@/lib/claude-request";
 import { pickLawArticles } from "@/lib/law-pick";
 import { checkQuotes, lawExcerpts, quotesNote } from "@/lib/laws";
 import { CHAT_INSTRUCTIONS, GENERAL_CHAT_INSTRUCTIONS } from "@/lib/legal-prompt";
 import { PdMasker } from "@/lib/pd-mask";
+import { badRequest, readJson, sentDocuments } from "@/lib/read-json";
 
 export const maxDuration = 300;
 
-type ChatRequest = {
-  messages: ChatMessage[];
-  documents?: Pick<ChatDocument, "name" | "text" | "scan">[];
-  // Общий чат с главной: вопросы не об одной закупке.
-  general?: boolean;
-};
+// Сообщения из запроса: роль и текстовые части. Непохожее на сообщение отбрасываем, а не падаем на нём.
+function chatMessages(value: unknown): ChatMessage[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((message: unknown) => {
+    if (!message || typeof message !== "object") return [];
+    const { role, parts } = message as Partial<ChatMessage>;
+    if ((role !== "user" && role !== "assistant") || !Array.isArray(parts)) return [];
+    const texts = parts.filter((part) => part && part.type === "text" && typeof part.text === "string");
+    return [{ ...(message as ChatMessage), parts: texts }];
+  });
+}
 
 const textOf = (message: ChatMessage) =>
   message.parts
@@ -76,6 +82,11 @@ async function* stubAnswer(
     : general
       ? "- нет"
       : "- нет — добавьте их на странице закупки";
+  // На хостинге пользователю — только что делать; ключ и файл настроек — разработчику на своём компьютере.
+  if (process.env.NODE_ENV !== "development") {
+    yield `**ИИ пока не подключён.** ${WRITE_OWNER}`;
+    return;
+  }
   const text = [
     "**Тестовый режим: модель не подключена.** Чтобы ассистент отвечал по-настоящему, получите ключ в [console.anthropic.com](https://console.anthropic.com), добавьте строку `ANTHROPIC_API_KEY=...` в файл `web/.env.local` и перезапустите сервер.",
     "",
@@ -93,7 +104,12 @@ async function* stubAnswer(
 }
 
 export async function POST(request: Request) {
-  const { messages, documents = [], general = false }: ChatRequest = await request.json();
+  const body = await readJson(request);
+  if (!body) return badRequest();
+  const messages = chatMessages(body.messages);
+  const documents = sentDocuments(body.documents);
+  // Общий чат с главной: вопросы не об одной закупке.
+  const general = body.general === true;
 
   const total = documents.reduce((sum, d) => sum + d.text.length, 0);
   if (total > MAX_CONTEXT_CHARS) {
@@ -138,8 +154,10 @@ export async function POST(request: Request) {
         }
 
         const client = new Anthropic();
+        // Потолок ответа вместе с размышлениями модели: хватает на развёрнутый ответ, а случайный бесконечный ответ
+        // стоит вдвое меньше. Упёрся — пользователь увидит «Попросите продолжить».
         const response = client.beta.messages.stream(
-          { ...baseRequest, max_tokens: 64000, cache_control: { type: "ephemeral" }, messages: claudeMessages },
+          { ...baseRequest, max_tokens: 32000, cache_control: { type: "ephemeral" }, messages: claudeMessages },
           { signal: request.signal }
         );
 

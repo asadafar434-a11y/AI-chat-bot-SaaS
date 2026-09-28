@@ -6,10 +6,9 @@ import { APPLICATION_LIMIT, CheckSchema, type CheckResponse } from "@/lib/check"
 import { CHECK_INSTRUCTIONS } from "@/lib/check-prompt";
 import { quoteFound } from "@/lib/quotes";
 import type { SentDocument } from "@/lib/read-documents";
+import { badRequest, readJson, sentDocuments } from "@/lib/read-json";
 
 export const maxDuration = 300;
-
-type CheckRequest = { documents?: SentDocument[]; application?: SentDocument[] };
 
 const fail = (message: string, status: number) => new Response(message, { status });
 
@@ -24,7 +23,10 @@ const applicationBlocks = (application: SentDocument[]): Anthropic.Beta.BetaRequ
   }));
 
 export async function POST(request: Request) {
-  const { documents = [], application = [] }: CheckRequest = await request.json();
+  const body = await readJson(request);
+  if (!body) return badRequest();
+  const documents = sentDocuments(body.documents);
+  const application = sentDocuments(body.application);
   if (!process.env.ANTHROPIC_API_KEY) return fail(NO_KEY_TEXT, 503);
 
   if (documents.length === 0) return fail("В закупке нет документов — добавьте извещение и ТЗ.", 400);

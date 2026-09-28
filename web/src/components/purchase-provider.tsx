@@ -4,7 +4,8 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import Link from "next/link";
 import { ArrowLeftIcon, WarningIcon } from "@/components/icons";
 import { Note } from "@/components/note";
-import { upgradePurchase, type Purchase } from "@/lib/purchase";
+import { NewerDataError } from "@/lib/data-format";
+import type { Purchase } from "@/lib/purchase";
 import { deletePurchase, getDocuments, getPurchase, savePurchase, savePurchaseWithDocuments, scansOf } from "@/lib/purchase-store";
 import type { SentDocument } from "@/lib/read-documents";
 import { isStaleSample, SAMPLE_DOCUMENTS, upgradeSample } from "@/lib/sample-purchase";
@@ -29,7 +30,7 @@ export function usePurchase() {
 type Loaded =
   | { status: "loading" }
   | { status: "missing" }
-  | { status: "failed" }
+  | { status: "failed"; newer: boolean }
   | { status: "ready"; purchase: Purchase; documents: SentDocument[] };
 
 const SAVE_DELAY = 400;
@@ -51,11 +52,11 @@ export function PurchaseProvider({ id, children }: { id: string; children: React
         const documents = upgraded ? SAMPLE_DOCUMENTS : savedDocuments;
         if (cancelled) return;
         // Список сканов у старой закупки появится с первым же сохранением.
-        const purchase = stored && { ...upgradePurchase(stored), scans: stored.scans ?? scansOf(documents) };
+        const purchase = stored && { ...stored, scans: stored.scans ?? scansOf(documents) };
         latest.current = purchase ?? null;
         setLoaded(purchase ? { status: "ready", purchase, documents } : { status: "missing" });
       },
-      () => !cancelled && setLoaded({ status: "failed" })
+      (error) => !cancelled && setLoaded({ status: "failed", newer: error instanceof NewerDataError })
     );
     return () => {
       cancelled = true;
@@ -122,7 +123,9 @@ export function PurchaseProvider({ id, children }: { id: string; children: React
         <p className="t-body text-[var(--ink-2)]">
           {loaded.status === "missing"
             ? "Возможно, её удалили. Закупки хранятся в браузере — в другом браузере или на другом компьютере их не видно."
-            : "Браузер не дал открыть хранилище закупок. Обновите страницу; если не поможет — проверьте, что сайту разрешено хранить данные."}
+            : loaded.newer
+              ? "Её сохранила более новая версия приложения — обновите страницу, и закупка откроется."
+              : "Браузер не дал открыть хранилище закупок. Обновите страницу; если не поможет — проверьте, что сайту разрешено хранить данные."}
         </p>
       </div>
     );

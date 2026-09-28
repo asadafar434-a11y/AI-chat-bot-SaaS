@@ -1,7 +1,10 @@
+import { fromStore, toStore } from "@/lib/data-format";
 import { STORES, transaction } from "@/lib/db";
 import {
+  clipEvidence,
   clipForSort,
   DOC_KINDS,
+  EVIDENCE_LIMIT,
   guessKinds,
   REQUISITE_KINDS,
   SORT_BATCH,
@@ -37,46 +40,63 @@ const PROFILE_KEY = "profile";
 const META_KEY = "profile-meta";
 const EMPTY_META: ProfileMeta = { sources: {}, suggestions: [] };
 
+// Настройки читаются и пишутся через data-format.ts: старые записи догоняют текущий формат при чтении.
+const readSetting = async (key: string) =>
+  transaction<unknown>([STORES.settings], "readonly", (tx) => tx.objectStore(STORES.settings).get(key));
+
 export async function getProfile(): Promise<Profile> {
-  const stored = await transaction<Partial<Profile> | undefined>([STORES.settings], "readonly", (tx) =>
-    tx.objectStore(STORES.settings).get(PROFILE_KEY)
-  );
-  return { ...EMPTY_PROFILE, ...stored };
+  const stored = await readSetting(PROFILE_KEY);
+  return { ...EMPTY_PROFILE, ...(stored === undefined ? {} : fromStore<Partial<Profile>>("profile", stored)) };
 }
 
 export async function getProfileMeta(): Promise<ProfileMeta> {
-  const stored = await transaction<Partial<ProfileMeta> | undefined>([STORES.settings], "readonly", (tx) =>
-    tx.objectStore(STORES.settings).get(META_KEY)
-  );
-  return { ...EMPTY_META, ...stored };
+  const stored = await readSetting(META_KEY);
+  return { ...EMPTY_META, ...(stored === undefined ? {} : fromStore<Partial<ProfileMeta>>("profileMeta", stored)) };
 }
 
 export const saveProfile = (profile: Profile, meta?: ProfileMeta) =>
   transaction<void>([STORES.settings], "readwrite", (tx) => {
-    tx.objectStore(STORES.settings).put(profile, PROFILE_KEY);
-    if (meta) tx.objectStore(STORES.settings).put(meta, META_KEY);
+    tx.objectStore(STORES.settings).put(toStore("profile", profile), PROFILE_KEY);
+    if (meta) tx.objectStore(STORES.settings).put(toStore("profileMeta", meta), META_KEY);
   });
 
-// Сначала здесь лежали только образцы ТП — без видов. Виды, которые потом убрали («опыт», «протоколы»),
-// превращаются в «Другое»: файл не пропадает из раздела.
-function upgrade(doc: Omit<MyDocument, "kinds" | "about"> & Partial<MyDocument>): MyDocument {
-  if (!doc.kinds?.length) return { ...doc, kinds: ["tp"], about: doc.about ?? "" };
-  const kinds = [...new Set(doc.kinds.map((kind) => (kind in DOC_KINDS ? kind : "other")))];
-  return { ...doc, kinds, about: doc.about ?? "" };
+// Документ участника в текущем формате. Вид, которого в приложении уже нет, — «Другое»: файл не пропадает из раздела.
+export function readMyDocument(raw: unknown): MyDocument {
+  const doc = fromStore<MyDocument>("myDocument", raw);
+  return { ...doc, kinds: [...new Set(doc.kinds.map((kind) => (kind in DOC_KINDS ? kind : "other")))] };
 }
 
 export const listMyDocuments = async () =>
-  (await transaction<MyDocument[]>([STORES.samples], "readonly", (tx) => tx.objectStore(STORES.samples).getAll()))
-    .map(upgrade)
+  (await transaction<unknown[]>([STORES.samples], "readonly", (tx) => tx.objectStore(STORES.samples).getAll()))
+    .map(readMyDocument)
     .sort((a, b) => b.addedAt.localeCompare(a.addedAt));
 
-// Главной нужно только число: тексты документов, иногда многостраничные сканы, она не читает.
-export const countMyDocuments = () =>
-  transaction<number>([STORES.samples], "readonly", (tx) => tx.objectStore(STORES.samples).count());
+// Сколько документов каждого вида — для острова «Данные компании» на главной. Тексты документов, иногда
+// многостраничные сканы, главная в памяти не держит: документы идут по одному и сразу отбрасываются.
+// Запись новее приложения считается без вида.
+export async function countMyDocumentKinds(): Promise<{ total: number; kinds: Partial<Record<DocKind, number>> }> {
+  const kinds: Partial<Record<DocKind, number>> = {};
+  let total = 0;
+  await transaction<void>([STORES.samples], "readonly", (tx) => {
+    const cursor = tx.objectStore(STORES.samples).openCursor();
+    cursor.onsuccess = () => {
+      const current = cursor.result;
+      if (!current) return;
+      total++;
+      try {
+        for (const kind of readMyDocument(current.value).kinds) kinds[kind] = (kinds[kind] ?? 0) + 1;
+      } catch {
+        // Новее приложения — вид не знаем, но документ есть.
+      }
+      current.continue();
+    };
+  });
+  return { total, kinds };
+}
 
 export const saveMyDocuments = (docs: MyDocument[]) =>
   transaction<void>([STORES.samples], "readwrite", (tx) => {
-    for (const doc of docs) tx.objectStore(STORES.samples).put(doc);
+    for (const doc of docs) tx.objectStore(STORES.samples).put(toStore("myDocument", doc));
   });
 
 export const deleteMyDocument = (id: string) =>
@@ -96,17 +116,40 @@ export function samplesOf(docs: MyDocument[], kind: DocKind, limit = SAMPLES_LIM
   return picked;
 }
 
+// Сведения для перечня опыта или специалистов: документы нужного вида, каждый — началом и концом, пока хватает места.
+export function evidenceOf(docs: MyDocument[], kind: DocKind): MyDocument[] {
+  const picked: MyDocument[] = [];
+  let total = 0;
+  for (const doc of docs) {
+    if (!doc.kinds.includes(kind)) continue;
+    const text = clipEvidence(doc.text);
+    if (total + text.length > EVIDENCE_LIMIT) continue;
+    picked.push({ ...doc, text });
+    total += text.length;
+  }
+  return picked;
+}
+
+// Обрыв связи браузер описывает по-английски («Failed to fetch») — пользователю говорим по-русски.
+export const OFFLINE_TEXT = "Нет связи с сервером — проверьте интернет.";
+
+async function postJson(url: string, body: unknown): Promise<Response> {
+  try {
+    return await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  } catch {
+    throw new Error(OFFLINE_TEXT);
+  }
+}
+
 // Раскладка по видам. Если ИИ недоступен, раскладываем по названиям файлов и говорим почему.
 export async function sortDocuments(docs: SentDocument[]): Promise<{ sorted: SortedDoc[]; error?: string }> {
   try {
     const sorted: SortedDoc[] = [];
     for (let i = 0; i < docs.length; i += SORT_BATCH) {
-      const res = await fetch("/api/my-docs/sort", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documents: docs.slice(i, i + SORT_BATCH).map((d) => ({ name: d.name, text: clipForSort(d.text) })) }),
+      const res = await postJson("/api/my-docs/sort", {
+        documents: docs.slice(i, i + SORT_BATCH).map((d) => ({ name: d.name, text: clipForSort(d.text) })),
       });
-      if (!res.ok) throw new Error((await res.text()) || "Не удалось разложить документы.");
+      if (!res.ok) throw new Error((await res.text()).trim() || "Не удалось разложить документы.");
       sorted.push(...((await res.json()) as { documents: SortedDoc[] }).documents);
     }
     return { sorted };
@@ -151,12 +194,8 @@ export function mergeFound(profile: Profile, meta: ProfileMeta, found: ProfileFo
 export async function fillProfileFromDocuments(docs: MyDocument[]): Promise<{ filled: ProfileKey[]; suggestions: number }> {
   const sources = docs.filter((d) => d.kinds.some((k) => REQUISITE_KINDS.includes(k)));
   if (sources.length === 0) return { filled: [], suggestions: 0 };
-  const res = await fetch("/api/my-docs/profile", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ documents: sources.map(({ name, text }) => ({ name, text })) }),
-  });
-  if (!res.ok) throw new Error((await res.text()) || "Не удалось заполнить реквизиты.");
+  const res = await postJson("/api/my-docs/profile", { documents: sources.map(({ name, text }) => ({ name, text })) });
+  if (!res.ok) throw new Error((await res.text()).trim() || "Не удалось заполнить реквизиты.");
   const found: ProfileFound = await res.json();
   const [profile, meta] = await Promise.all([getProfile(), getProfileMeta()]);
   const merged = mergeFound(profile, meta, found);

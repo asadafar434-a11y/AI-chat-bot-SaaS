@@ -2,7 +2,9 @@
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { usePathname } from "next/navigation";
+import { ConsentGate } from "@/components/consent-gate";
 import { SideNav } from "@/components/side-nav";
+import { askPersistentStorage } from "@/lib/backup";
 import { isLegalPath } from "@/lib/legal";
 
 type Shell = { menuOpen: boolean; openMenu: () => void; menuButton: RefObject<HTMLButtonElement | null> };
@@ -33,6 +35,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     setOpenAt(null);
   };
 
+  // Просим браузер не стирать данные сайта при нехватке места. Не разрешит — остаётся копия файлом на странице «Реквизиты».
+  useEffect(() => {
+    void askPersistentStorage();
+  }, []);
+
   useEffect(() => {
     const wide = window.matchMedia("(min-width: 64rem)");
     const onChange = () => wide.matches && setOpenAt(null);
@@ -61,6 +68,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (pathname === "/login" || isLegalPath(pathname)) return children;
 
   return (
+    <ConsentGate>
     <ShellContext value={{ menuOpen: open, openMenu: () => setOpenAt(pathname), menuButton }}>
       <div className="grid h-full grid-cols-[var(--side-w)_minmax(0,1fr)] max-lg:grid-cols-1 lg:pl-2">
         <aside
@@ -81,5 +89,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </div>
     </ShellContext>
+    </ConsentGate>
   );
 }

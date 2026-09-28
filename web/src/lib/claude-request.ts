@@ -1,3 +1,4 @@
+import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import * as z from "zod/v4";
 import { CLAUDE_MODEL } from "@/lib/claude";
@@ -57,11 +58,12 @@ export const documentBlocks = (documents: SentDocument[], cache = true): Anthrop
 
 // Образцы участника идут после документов закупки, со своей меткой кеша на пять минут:
 // при «Составить заново» они не читаются второй раз по полной цене.
-export const sampleBlocks = (samples: SentDocument[]): Anthropic.Beta.BetaRequestDocumentBlock[] =>
+// label — «Образец участника» для образцов оформления, «Документ участника» для сведений об опыте и специалистах.
+export const sampleBlocks = (samples: SentDocument[], label = "Образец участника"): Anthropic.Beta.BetaRequestDocumentBlock[] =>
   samples.map((sample, i) => ({
     type: "document",
     source: { type: "text", media_type: "text/plain", data: sample.text },
-    title: `Образец участника: ${sample.name}`,
+    title: `${label}: ${sample.name}`,
     ...(i === samples.length - 1 && { cache_control: { type: "ephemeral" } }),
   }));
 

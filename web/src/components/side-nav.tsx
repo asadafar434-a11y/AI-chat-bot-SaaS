@@ -24,7 +24,7 @@ import { listPurchases } from "@/lib/purchase-store";
 type SideData = { purchases: number; profile: Profile };
 
 // Выбранный раздел — заливка брендом; иконка и счётчик на ней — от --on-brand, а не белые.
-const ON_BRAND_SOFT = "text-[color-mix(in_srgb,var(--on-brand)_78%,transparent)]";
+const ON_BRAND_SOFT = "text-[color-mix(in_srgb,var(--on-brand)_88%,transparent)]";
 
 function NavItem({ href, icon: Icon, current, count, first, children }: {
   href: string;

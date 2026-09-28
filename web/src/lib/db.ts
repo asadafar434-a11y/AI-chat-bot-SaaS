@@ -1,6 +1,7 @@
 // Данные приложения лежат в IndexedDB этого браузера, в двух базах: закупки с текстами документов —
 // в одной, реквизиты и образцы участника — в другой. Новые хранилища заводятся новой базой, а не
 // повышением версии: обновление версии ждёт, пока закроются все старые вкладки, и может зависнуть.
+// Формат самих записей — номер в каждой записи и миграции при чтении — в data-format.ts.
 const DATABASES = {
   "tender-lawyer": [
     ["purchases", { keyPath: "id" }],
@@ -74,4 +75,29 @@ export async function transaction<T>(
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error);
   });
+}
+
+// Удаляет обе базы целиком — «Удалить все мои данные». Свои соединения закрываем сразу; открытые в других вкладках
+// закроются сами (onversionchange), а если вкладка не отпускает базу — удаление дождётся её закрытия.
+export async function deleteDatabases(): Promise<"done" | "blocked"> {
+  for (const promise of opening.values()) {
+    try {
+      (await promise).close();
+    } catch {
+      // Не открылась — закрывать нечего.
+    }
+  }
+  opening.clear();
+  const results = await Promise.all(
+    (Object.keys(DATABASES) as DbName[]).map(
+      (name) =>
+        new Promise<"done" | "blocked">((resolve, reject) => {
+          const request = indexedDB.deleteDatabase(name);
+          request.onsuccess = () => resolve("done");
+          request.onerror = () => reject(request.error);
+          request.onblocked = () => resolve("blocked");
+        })
+    )
+  );
+  return results.includes("blocked") ? "blocked" : "done";
 }

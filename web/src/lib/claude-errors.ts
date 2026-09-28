@@ -1,23 +1,42 @@
+import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 
-export const NO_KEY_TEXT =
-  "ИИ пока не подключён: нужен ключ Anthropic в web/.env.local. Пока можно посмотреть, как всё работает, на примере закупки.";
+// Пользователь на хостинге не поправит ни ключ, ни баланс — ему «напишите владельцу». Что чинить, видно разработчику
+// на своём компьютере (next dev) и в журнале сервера: маршруты пишут туда саму ошибку.
+const DEV = process.env.NODE_ENV === "development";
+export const WRITE_OWNER = "Напишите владельцу сервиса: контакты на странице «Контакты».";
+const unavailable = (why: string, fix: string) => `ИИ временно недоступен: ${why}. ${DEV ? fix : WRITE_OWNER}`;
+
+const NO_KEY = DEV
+  ? "ИИ не подключён: добавьте ANTHROPIC_API_KEY в web/.env.local и перезапустите сервер."
+  : `ИИ пока не подключён. ${WRITE_OWNER}`;
+
+export const NO_KEY_TEXT = `${NO_KEY} Пока можно посмотреть, как всё работает, на примере закупки.`;
+// Документы участника — не закупка: подсказка про пример закупки там не к месту.
+export const MY_DOCS_NO_KEY_TEXT = NO_KEY;
 
 export function claudeErrorText(error: unknown): string {
   if (error instanceof Anthropic.AuthenticationError) {
-    return "Ключ Anthropic не подошёл — проверьте ANTHROPIC_API_KEY в web/.env.local.";
+    return unavailable("ключ доступа к модели не подошёл", "Проверьте ANTHROPIC_API_KEY в web/.env.local.");
   }
   if (error instanceof Anthropic.PermissionDeniedError) {
-    return "Anthropic отклонил запрос: у ключа нет доступа к модели или API недоступен из этого региона.";
+    return unavailable("модель отклонила запрос", "У ключа нет доступа к модели, или API недоступен из этого региона.");
+  }
+  // Лимиты расходов: https://platform.claude.com/docs/en/api/rate-limits#spend-limits
+  if (error instanceof Anthropic.RateLimitError && /enforced_spend_limit_reached/.test(error.message)) {
+    return "Исчерпан месячный лимит расходов на ИИ по тарифу Anthropic — ИИ заработает с 1-го числа следующего месяца. Напишите владельцу сервиса: контакты на странице «Контакты».";
   }
   if (error instanceof Anthropic.RateLimitError) {
     return "Слишком много запросов к модели — повторите через минуту.";
   }
+  if (error instanceof Anthropic.BadRequestError && /specified (workspace )?API usage limits/i.test(error.message)) {
+    return "Исчерпан месячный лимит расходов на ИИ, который задал владелец сервиса. Напишите ему: контакты на странице «Контакты».";
+  }
   if (error instanceof Anthropic.BadRequestError && /credit balance/i.test(error.message)) {
-    return "На счёте Anthropic нет денег — пополните баланс в консоли, раздел Billing.";
+    return unavailable("закончился оплаченный баланс", "Пополните баланс в Claude Console, раздел Billing.");
   }
   if (error instanceof Anthropic.NotFoundError) {
-    return "Модель не найдена — возможно, она недоступна для этого ключа.";
+    return unavailable("модель не найдена", "Проверьте CLAUDE_MODEL в src/lib/claude.ts: модель может быть недоступна для этого ключа.");
   }
   if (error instanceof Anthropic.APIConnectionError) {
     return "Нет связи с Anthropic — проверьте интернет и повторите.";

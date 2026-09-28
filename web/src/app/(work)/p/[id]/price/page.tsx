@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { CheckIcon, WarningIcon } from "@/components/icons";
+import { CaretDownIcon, CheckIcon, WarningIcon } from "@/components/icons";
+import { Hint } from "@/components/hint";
 import { Island } from "@/components/island";
 import { Note } from "@/components/note";
 import { PriceScale } from "@/components/price-scale";
@@ -30,15 +31,16 @@ function parseNumber(text: string): number | null {
 }
 
 const showNumber = (value: number | null | undefined) =>
-  value === null || value === undefined ? "" : value.toLocaleString("ru-RU", { maximumFractionDigits: 2 }).replace(/[\u00a0\u202f]/g, " ");
+  value === null || value === undefined ? "" : value.toLocaleString("ru-RU", { maximumFractionDigits: 2 }).replace(/[  ]/g, " ");
 
 // Поле для числа: набранный текст остаётся как есть, наружу уходит число или null, если поле пустое.
-// Число, поменявшееся снаружи (ползунком), — переписывает поле.
-function NumberField({ id, label, unit, hint, value, onChange }: {
+// Число, поменявшееся снаружи (ползунком), — переписывает поле. note — короткая строка под полем, help — подсказка «?».
+function NumberField({ id, label, unit, note, help, value, onChange }: {
   id: string;
   label: string;
   unit: string;
-  hint?: ReactNode;
+  note?: ReactNode;
+  help?: ReactNode;
   value: number | null;
   onChange: (value: number | null) => void;
 }) {
@@ -50,9 +52,12 @@ function NumberField({ id, label, unit, hint, value, onChange }: {
   }
   return (
     <div className="grid content-start gap-1">
-      <label htmlFor={id} className="t-strong">
-        {label}
-      </label>
+      <div className="flex items-center gap-0.5">
+        <label htmlFor={id} className="t-strong">
+          {label}
+        </label>
+        {help && <Hint label={label}>{help}</Hint>}
+      </div>
       <div className="flex items-center gap-2">
         <input
           id={id}
@@ -64,45 +69,41 @@ function NumberField({ id, label, unit, hint, value, onChange }: {
             onChange(parseNumber(e.target.value));
           }}
           onBlur={() => setText(showNumber(parseNumber(text)))}
-          aria-describedby={hint ? `${id}-hint` : undefined}
+          aria-describedby={note ? `${id}-note` : undefined}
           className="field max-w-44 font-mono tabular-nums"
         />
         <span className="text-[var(--ink-3)]">{unit}</span>
       </div>
-      {hint && (
-        <p id={`${id}-hint`} className="t-caption text-[var(--ink-3)]">
-          {hint}
+      {note && (
+        <p id={`${id}-note`} className="t-caption text-[var(--ink-3)]">
+          {note}
         </p>
       )}
     </div>
   );
 }
 
-function Check({ id, checked, onChange, label, hint }: {
+// Галочка с короткой подписью; условия и статьи — в подсказке «?».
+function Check({ id, checked, onChange, label, help }: {
   id: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
   label: string;
-  hint?: ReactNode;
+  help?: ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2.5 gap-y-0.5">
+    <div className="flex items-start gap-2.5">
       <input
         id={id}
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.currentTarget.checked)}
-        aria-describedby={hint ? `${id}-hint` : undefined}
-        className="mt-0.5 size-4 accent-[var(--brand)]"
+        className="mt-0.5 size-4 flex-none accent-[var(--brand)]"
       />
       <label htmlFor={id} className="cursor-pointer text-foreground">
         {label}
       </label>
-      {hint && (
-        <p id={`${id}-hint`} className="t-caption col-start-2 text-[var(--ink-3)]">
-          {hint}
-        </p>
-      )}
+      {help && <Hint label={label}>{help}</Hint>}
     </div>
   );
 }
@@ -115,7 +116,13 @@ const METHODS: { key: SecurityMethod; label: string }[] = [
 function MethodPicker({ method, onChange }: { method: SecurityMethod; onChange: (method: SecurityMethod) => void }) {
   return (
     <fieldset>
-      <legend className="t-strong mb-1.5">Чем обеспечите</legend>
+      <legend className="t-strong mb-1.5 flex items-center gap-0.5">
+        Чем обеспечите
+        <Hint label="Чем обеспечить">
+          Независимая гарантия — её обычно выдаёт банк: он обязуется заплатить заказчику, если вы не исполните контракт, и берёт
+          за это комиссию. Свои деньги — переводите на счёт заказчика, их вернут после исполнения контракта.
+        </Hint>
+      </legend>
       <div className="flex flex-wrap gap-1.5">
         {METHODS.map(({ key, label }) => (
           <label
@@ -188,7 +195,20 @@ function PriceTable({ cols, rows }: { cols: { title: string; b: Breakdown }[]; r
   );
 }
 
-// Ответ экрана — плавающим островом внизу, как «Скачать ТП»: виден, пока правите расходы и обеспечение.
+// Раскрывающийся блок внутри острова: название ссылкой со стрелкой, содержимое — по нажатию.
+function Disclosure({ id, title, open, onToggle, children }: { id: string; title: string; open: boolean; onToggle: () => void; children: ReactNode }) {
+  return (
+    <div className="grid gap-3">
+      <button type="button" aria-expanded={open} aria-controls={id} onClick={onToggle} className="link inline-flex items-center gap-1 justify-self-start">
+        {title}
+        <CaretDownIcon className={`size-4 transition-transform motion-reduce:transition-none ${open ? "" : "-rotate-90"}`} />
+      </button>
+      {open && <div id={id}>{children}</div>}
+    </div>
+  );
+}
+
+// Ответ экрана — плавающим островом внизу, как «Скачать ТП»: виден, пока правите цифры.
 // unpriced — обеспечение есть, но ставка или срок не вписаны: его стоимость в цену не вошла.
 function Result({ calc, floor, atFloor, unpriced }: { calc: PriceCalc; floor: Floor; atFloor: Breakdown | null; unpriced: boolean }) {
   const raised = raisedPct(calc.securityPct ?? 0);
@@ -222,7 +242,7 @@ function Result({ calc, floor, atFloor, unpriced }: { calc: PriceCalc; floor: Fl
       <>
         <p className="t-caption text-[var(--ink-3)]">Можно снижаться до</p>
         <p className="flex flex-wrap items-baseline gap-x-2">
-          <span className="[font:600_16px/24px_var(--mono)] tabular-nums">{rub(floor.price)}</span>
+          <span className="text-primary [font:600_16px/24px_var(--mono)] tabular-nums">{rub(floor.price)}</span>
           <span className="text-[var(--ink-2)]">— на {dropText(atFloor.drop)} % ниже начальной</span>
         </p>
         <p className="t-caption text-[var(--ink-3)]">
@@ -241,6 +261,8 @@ function Result({ calc, floor, atFloor, unpriced }: { calc: PriceCalc; floor: Fl
     </div>
   );
 }
+
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 export default function PricePage() {
   const { purchase, update } = usePurchase();
@@ -262,6 +284,10 @@ export default function PricePage() {
   const big = calc.nmck !== null && calc.nmck > GOOD_FAITH_LIMIT;
   const is223 = /223/.test(purchase.kind);
   const rule = purchase.tp?.antiDumping?.rule;
+
+  // Второстепенное свёрнуто. Открыто сразу, если без вас расчёт неполный: обеспечение есть, а ставки или срока нет.
+  const [moreOpen, setMoreOpen] = useState(() => secured && !rated);
+  const [tableOpen, setTableOpen] = useState(false);
 
   const rows: Row[] = [
     { label: "Цена", cell: (b) => rub(b.price), strong: true },
@@ -290,15 +316,58 @@ export default function PricePage() {
   ];
   const cols = [...(atFloor ? [{ title: "Нижняя", b: atFloor }] : []), ...(mine ? [{ title: "Ваша", b: mine }] : [])];
 
+  // Что учтено во второстепенном — одной строкой, чтобы было видно и в свёрнутом виде.
+  const more = [
+    (calc.extra ?? 0) > 0 && `расходы на участие ${rubShort(calc.extra ?? 0)}`,
+    secured
+      ? `обеспечение ${pctText(calc.securityPct ?? 0)} %${rated ? ` — ${guarantee ? "гарантия" : "свои деньги"}` : " — впишите ставку и срок"}`
+      : calc.smeOnly && calc.exempt
+        ? "освобождены от обеспечения"
+        : "без обеспечения исполнения",
+    calc.antiDumping && "антидемпинговые меры",
+  ].filter((part): part is string => Boolean(part));
+
   return (
     <>
       <TabBody>
         <StepIntro>
-          До какой цены можно снижаться на торгах, чтобы контракт не ушёл в убыток. Учитываю расходы, налог, стоимость обеспечения
-          исполнения и антидемпинговые меры 44-ФЗ. Считается прямо в браузере — цифры никуда не отправляются.
+          До какой цены можно снижаться на торгах, чтобы контракт не ушёл в убыток. Впишите себестоимость — остальное подставлено
+          из документов закупки. Считается прямо в браузере, цифры никуда не отправляются.
         </StepIntro>
 
-        <Island id="price-scale" level={3} title="Где убыток, где прибыль" sub="Двигайте ползунок или впишите цену — покажу, что останется">
+        <Island id="price-costs" level={3} title="Ваши цифры" sub={purchase.sample ? "В примере — вымышленные расходы" : undefined}>
+          <div className="@container px-[var(--pad)] pb-4 pt-1">
+            <div className="grid gap-4 @min-[600px]:grid-cols-3">
+              <NumberField
+                id="price-nmck"
+                label="Начальная цена"
+                unit="₽"
+                value={calc.nmck}
+                onChange={(nmck) => set({ nmck })}
+                note={nmckFound ? "Из сведений о закупке" : "Не нашлась — впишите из извещения"}
+                help="Начальная (максимальная) цена контракта — из извещения. Предложить больше нельзя: такую заявку отклонят."
+              />
+              <NumberField
+                id="price-own-costs"
+                label="Себестоимость"
+                unit="₽"
+                value={calc.costs}
+                onChange={(costs) => set({ costs })}
+                help="Всё, что потратите на исполнение контракта: товар, работа, зарплата, аренда, доставка."
+              />
+              <NumberField
+                id="price-tax"
+                label="Налог с выручки"
+                unit="%"
+                value={calc.taxPct}
+                onChange={(taxPct) => set({ taxPct })}
+                help="Например, 6 на УСН «доходы». Налог с прибыли не вписывайте: на нижней цене прибыли нет."
+              />
+            </div>
+          </div>
+        </Island>
+
+        <Island id="price-scale" level={3} title="Проверить свою цену" sub="Двигайте ползунок или впишите цену — покажу, что останется">
           <div className="grid gap-4 px-[var(--pad)] pb-4 pt-1">
             <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
               <NumberField
@@ -307,7 +376,7 @@ export default function PricePage() {
                 unit="₽"
                 value={calc.price}
                 onChange={(price) => set({ price })}
-                hint={
+                note={
                   above ? (
                     <span className="text-[var(--warn)]">Выше начальной — такую заявку отклонят</span>
                   ) : calc.price !== null && calc.nmck ? (
@@ -332,160 +401,139 @@ export default function PricePage() {
             ) : (
               <p className="text-[var(--ink-3)]">Впишите начальную цену — нарисую шкалу.</p>
             )}
+            {cols.length > 0 && (
+              <Disclosure id="price-table" title="Из чего складывается цена" open={tableOpen} onToggle={() => setTableOpen(!tableOpen)}>
+                <div className="grid gap-3">
+                  <PriceTable cols={cols} rows={rows} />
+                  <p className="t-caption text-[var(--ink-3)]">Прибыль — до налога с прибыли, если вы его платите.</p>
+                </div>
+              </Disclosure>
+            )}
           </div>
         </Island>
 
-        <Island id="price-costs" level={3} title="Цена и расходы" sub={purchase.sample ? "В примере — вымышленные расходы" : undefined}>
-          <div className="@container px-[var(--pad)] pb-4 pt-1">
-            <div className="grid gap-4 @min-[520px]:grid-cols-2">
-              <NumberField
-                id="price-nmck"
-                label="Начальная цена"
-                unit="₽"
-                value={calc.nmck}
-                onChange={(nmck) => set({ nmck })}
-                hint={nmckFound ? "Из сведений о закупке" : "В документах не нашлась — впишите из извещения"}
-              />
-              <NumberField
-                id="price-own-costs"
-                label="Себестоимость исполнения"
-                unit="₽"
-                value={calc.costs}
-                onChange={(costs) => set({ costs })}
-                hint="Всё, что потратите на исполнение: товар, работа, аренда, доставка"
-              />
+        {/* Расходы на участие, обеспечение и антидемпинг — свёрнуты: в сводке видно, что учтено, по нажатию — поля. */}
+        <section aria-labelledby="price-more-title" className="island">
+          <h3 id="price-more-title">
+            <button
+              type="button"
+              aria-expanded={moreOpen}
+              aria-controls="price-more"
+              onClick={() => setMoreOpen(!moreOpen)}
+              className="flex min-h-14 w-full items-center gap-3 rounded-[var(--r-island)] px-[var(--pad)] py-2.5 text-left"
+            >
+              <span className="grid min-w-0 gap-0.5">
+                <span className="t-section">Что ещё влияет на цену</span>
+                <span className={`t-caption ${secured && !rated ? "text-[var(--warn)]" : "text-[var(--ink-3)]"}`}>
+                  {capitalize(more.join(" · "))}
+                </span>
+              </span>
+              <CaretDownIcon className={`ml-auto size-4 flex-none text-[var(--ink-3)] transition-transform motion-reduce:transition-none ${moreOpen ? "" : "-rotate-90"}`} />
+            </button>
+          </h3>
+          {moreOpen && (
+            <div id="price-more" className="@container grid gap-5 px-[var(--pad)] pb-4 pt-1">
               <NumberField
                 id="price-extra"
                 label="Расходы на участие"
                 unit="₽"
                 value={calc.extra}
                 onChange={(extra) => set({ extra })}
-                hint="Обеспечение заявки, плата площадке, дорога — всё, что заплатите за участие"
+                help="Обеспечение заявки, плата площадке, дорога — всё, что заплатите за участие."
               />
-              <NumberField
-                id="price-tax"
-                label="Налог с выручки"
-                unit="%"
-                value={calc.taxPct}
-                onChange={(taxPct) => set({ taxPct })}
-                hint="Например, 6 на УСН «доходы». Налог с прибыли не вписывайте: на нижней цене прибыли нет"
-              />
-            </div>
-          </div>
-        </Island>
 
-        <Island
-          id="price-security"
-          level={3}
-          title="Обеспечение исполнения"
-          sub="Гарантия банка или замороженные деньги тоже стоят денег — учту это в цене"
-        >
-          <div className="@container grid gap-4 px-[var(--pad)] pb-4 pt-1">
-            <NumberField
-              id="price-security-pct"
-              label="Размер"
-              unit="%"
-              value={calc.securityPct}
-              onChange={(securityPct) => set({ securityPct })}
-              hint={
-                found.securityLine
-                  ? `В требованиях: ${found.securityLine}`
-                  : "В требованиях не нашёл — посмотрите в извещении. Если обеспечения нет, оставьте пустым"
-              }
-            />
-            <Check
-              id="price-sme"
-              checked={calc.smeOnly}
-              onChange={(smeOnly) => set({ smeOnly })}
-              label="Закупка только у малого бизнеса и социально ориентированных НКО"
-              hint="Тогда обеспечение считается от цены контракта, а не от начальной (ч. 6.2 ст. 96 44-ФЗ)"
-            />
-            {calc.smeOnly && (
-              <Check
-                id="price-exempt"
-                checked={calc.exempt}
-                onChange={(exempt) => set({ exempt })}
-                label="Освобождены от обеспечения: за три года — три контракта без неустоек на сумму не меньше начальной цены"
-                hint="Сведения из реестра контрактов подаёте до заключения контракта (ч. 8.1 ст. 96 44-ФЗ)"
-              />
-            )}
-            {secured && (
-              <>
-                <MethodPicker method={calc.method} onChange={(method) => set({ method })} />
-                <div className="grid gap-4 @min-[520px]:grid-cols-2">
-                  <NumberField
-                    key={calc.method}
-                    id="price-rate"
-                    label={guarantee ? "Комиссия банка" : "Сколько стоят ваши деньги"}
-                    unit="% годовых"
-                    value={ratePct}
-                    onChange={(value) => set(guarantee ? { guaranteeRatePct: value } : { moneyRatePct: value })}
-                    hint={guarantee ? "Процент в год от суммы гарантии — по тарифу банка" : "Ставка кредита, если берёте в долг, или вклада, если деньги свои"}
+              <div className="grid gap-3">
+                <NumberField
+                  id="price-security-pct"
+                  label="Обеспечение исполнения"
+                  unit="%"
+                  value={calc.securityPct}
+                  onChange={(securityPct) => set({ securityPct })}
+                  note={found.securityLine ? `В требованиях: ${found.securityLine}` : "В требованиях не нашёл — посмотрите в извещении"}
+                  help="Залог на время исполнения контракта: деньги на счёте заказчика или банковская гарантия. Это тоже расход: гарантия стоит комиссию банка, а свои деньги на это время выключены из оборота. Если обеспечения нет, оставьте поле пустым."
+                />
+                <Check
+                  id="price-sme"
+                  checked={calc.smeOnly}
+                  onChange={(smeOnly) => set({ smeOnly })}
+                  label="Закупка только для малого бизнеса"
+                  help="Закупка только у малого бизнеса и социально ориентированных НКО. Тогда обеспечение считается от цены контракта, а не от начальной (ч. 6.2 ст. 96 44-ФЗ)."
+                />
+                {calc.smeOnly && (
+                  <Check
+                    id="price-exempt"
+                    checked={calc.exempt}
+                    onChange={(exempt) => set({ exempt })}
+                    label="Освобождены от обеспечения"
+                    help="Если за три года исполнили три контракта без неустоек на сумму не меньше начальной цены. Сведения из реестра контрактов подаёте до заключения контракта (ч. 8.1 ст. 96 44-ФЗ)."
                   />
-                  <NumberField
-                    id="price-days"
-                    label={guarantee ? "Срок гарантии" : "Сколько дней деньги у заказчика"}
-                    unit="дней"
-                    value={calc.days}
-                    onChange={(days) => set({ days })}
-                    hint={
-                      guarantee
-                        ? "Срок исполнения контракта и ещё не меньше месяца (ч. 3 ст. 96 44-ФЗ)"
-                        : "Срок исполнения и до 30 дней на возврат, в закупке у малого бизнеса — до 15 (ч. 27 ст. 34 44-ФЗ)"
-                    }
+                )}
+                {secured && (
+                  <>
+                    <MethodPicker method={calc.method} onChange={(method) => set({ method })} />
+                    <div className="grid gap-4 @min-[520px]:grid-cols-2">
+                      <NumberField
+                        key={calc.method}
+                        id="price-rate"
+                        label={guarantee ? "Комиссия банка" : "Сколько стоят ваши деньги"}
+                        unit="% годовых"
+                        value={ratePct}
+                        onChange={(value) => set(guarantee ? { guaranteeRatePct: value } : { moneyRatePct: value })}
+                        help={guarantee ? "Процент в год от суммы гарантии — по тарифу банка." : "Ставка кредита, если берёте в долг, или вклада, если деньги свои."}
+                      />
+                      <NumberField
+                        id="price-days"
+                        label={guarantee ? "Срок гарантии" : "Сколько дней деньги у заказчика"}
+                        unit="дней"
+                        value={calc.days}
+                        onChange={(days) => set({ days })}
+                        help={
+                          guarantee
+                            ? "Срок исполнения контракта и ещё не меньше месяца (ч. 3 ст. 96 44-ФЗ)."
+                            : "Срок исполнения и до 30 дней на возврат, в закупке у малого бизнеса — до 15 (ч. 27 ст. 34 44-ФЗ)."
+                        }
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="grid gap-3">
+                <Check
+                  id="price-anti-dumping"
+                  checked={calc.antiDumping}
+                  onChange={(antiDumping) => set({ antiDumping })}
+                  label="Учитывать антидемпинговые меры"
+                  help={`Защита от слишком низких цен на конкурсе и аукционе (ст. 37 44-ФЗ). Снизите цену на 25 % и больше — обеспечение нужно в полтора раза больше обычного, но не меньше 10 % ${
+                    calc.smeOnly ? "цены контракта" : "начальной цены"
+                  } (ч. 1 ст. 37).${is223 ? " Закупка по 223-ФЗ: такие меры — в положении о закупке заказчика; включите, если правила там те же." : ""}`}
+                />
+                {calc.antiDumping && small && secured && (
+                  <Check
+                    id="price-good-faith"
+                    checked={calc.goodFaith}
+                    onChange={(goodFaith) => set({ goodFaith })}
+                    label="Подтвержу добросовестность"
+                    help="За три года — три контракта без неустоек, один из них — не меньше 20 % начальной цены. Тогда хватит обычного обеспечения. Сведения из реестра контрактов подаёте вместе с подписанным проектом контракта (ч. 2, 3 и 5 ст. 37)."
                   />
-                </div>
-              </>
-            )}
-          </div>
-        </Island>
-
-        <Island id="price-dumping" level={3} title="Антидемпинговые меры" sub="Статья 37 44-ФЗ — на конкурсе и аукционе">
-          <div className="grid gap-4 px-[var(--pad)] pb-4 pt-1">
-            <Check
-              id="price-anti-dumping"
-              checked={calc.antiDumping}
-              onChange={(antiDumping) => set({ antiDumping })}
-              label="Учитывать антидемпинговые меры"
-              hint={`Снизите цену на 25 % и больше — обеспечение нужно в полтора раза больше обычного, но не меньше 10 % ${
-                calc.smeOnly ? "цены контракта" : "начальной цены"
-              } (ч. 1 ст. 37).${
-                is223 ? " Закупка по 223-ФЗ: такие меры — в положении о закупке заказчика; включите, если правила там те же." : ""
-              }`}
-            />
-            {calc.antiDumping && small && secured && (
-              <Check
-                id="price-good-faith"
-                checked={calc.goodFaith}
-                onChange={(goodFaith) => set({ goodFaith })}
-                label="Подтвержу добросовестность: за три года — три контракта без неустоек, один из них — не меньше 20 % начальной цены"
-                hint="Тогда хватит обычного обеспечения. Сведения из реестра контрактов подаёте вместе с подписанным проектом контракта (ч. 2, 3 и 5 ст. 37)"
-              />
-            )}
-            {calc.antiDumping && big && secured && (
-              <p className="t-caption text-[var(--ink-3)]">
-                Начальная цена больше 15 млн ₽ — заменить повышенное обеспечение подтверждением добросовестности нельзя (ч. 1 ст. 37).
-              </p>
-            )}
-            {calc.antiDumping && !secured && (
-              <p className="t-caption text-[var(--ink-3)]">
-                {calc.smeOnly && calc.exempt
-                  ? "Вы освобождены от обеспечения, в том числе от повышенного (ч. 8.1 ст. 96), — на цену эти меры не влияют."
-                  : "Обеспечения исполнения нет — повышать нечего, на цену эти меры не влияют."}
-              </p>
-            )}
-            {rule && <Note tone="info">В документах закупки: {rule}</Note>}
-          </div>
-        </Island>
-
-        {cols.length > 0 && (
-          <Island id="price-table" level={3} title="Из чего складывается цена" sub="Нижняя цена и ваша — рядом, чтобы видеть разницу">
-            <div className="grid gap-3 px-[var(--pad)] pb-4 pt-1">
-              <PriceTable cols={cols} rows={rows} />
-              <p className="t-caption text-[var(--ink-3)]">Прибыль — до налога с прибыли, если вы его платите.</p>
+                )}
+                {calc.antiDumping && big && secured && (
+                  <p className="t-caption text-[var(--ink-3)]">
+                    Начальная цена больше 15 млн ₽ — заменить повышенное обеспечение подтверждением добросовестности нельзя (ч. 1 ст. 37).
+                  </p>
+                )}
+                {calc.antiDumping && !secured && (
+                  <p className="t-caption text-[var(--ink-3)]">
+                    {calc.smeOnly && calc.exempt
+                      ? "Вы освобождены от обеспечения, в том числе от повышенного (ч. 8.1 ст. 96), — на цену эти меры не влияют."
+                      : "Обеспечения исполнения нет — повышать нечего, на цену эти меры не влияют."}
+                  </p>
+                )}
+                {rule && <Note tone="info">В документах закупки: {rule}</Note>}
+              </div>
             </div>
-          </Island>
-        )}
+          )}
+        </section>
       </TabBody>
 
       <Result calc={calc} floor={floor} atFloor={atFloor} unpriced={secured && !rated} />

@@ -4,8 +4,9 @@ import type { PartKey } from "@/lib/my-docs";
 import type { PartDoc } from "@/lib/part-doc";
 import type { PriceCalc } from "@/lib/price-floor";
 import type { FailedFile, SentDocument } from "@/lib/read-documents";
+import type { Criteria } from "@/lib/criteria";
 import type { PurchaseSummary, ReqGroups, RequirementsResponse } from "@/lib/requirements";
-import { NO_ANTI_DUMPING, PLAIN_FORM, type TpItem, type TpResult } from "@/lib/tp";
+import type { TpResult } from "@/lib/tp";
 
 // Часть заявки, которую ИИ написал по образцам. basisKey — отпечаток того, из чего она составлена:
 // форма заказчика, реквизиты, цена, образцы. Изменилось что-то из этого — часть составляется заново.
@@ -22,6 +23,8 @@ export type Purchase = PurchaseSummary & {
   scans?: string[];
   unreadable: FailedFile[];
   requirements: ReqGroups;
+  // Критерии оценки заявок. Закупки, выписанные до них, критериев не имеют — их покажет повторный разбор.
+  criteria?: Criteria;
   tp?: TpResult;
   // Цена, которую участник вписал в заявку, в рублях.
   tpPrice?: number;
@@ -30,6 +33,8 @@ export type Purchase = PurchaseSummary & {
   parts?: Partial<Record<PartKey, PurchasePart>>;
   // Последняя проверка заявки перед подачей.
   check?: CheckResult;
+  // Какие документы из «Что подать» участник отметил готовыми — по тексту пункта (lib/application-files.ts).
+  submitReady?: string[];
   chat?: ChatMessage[];
 };
 
@@ -44,13 +49,6 @@ export async function extractRequirements(documents: SentDocument[]): Promise<Re
   return res.json();
 }
 
-export const fromRequirements = ({ groups, ...summary }: RequirementsResponse) => ({ ...summary, requirements: groups });
+export const fromRequirements = ({ groups, criteria, ...summary }: RequirementsResponse) => ({ ...summary, requirements: groups, criteria });
 
 export const titleOf = (p: Purchase) => p.short || p.subject || p.files[0] || "Закупка без названия";
-
-// Первые черновики ТП хранились списком пунктов — такие закупки открываем как ТП без формы заказчика.
-export function upgradePurchase(p: Purchase): Purchase {
-  const tp: unknown = p.tp;
-  if (!Array.isArray(tp)) return p;
-  return { ...p, tp: { form: PLAIN_FORM, goods: [], items: tp as TpItem[], antiDumping: NO_ANTI_DUMPING } };
-}

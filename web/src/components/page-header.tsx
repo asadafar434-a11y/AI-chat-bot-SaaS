@@ -2,9 +2,10 @@
 
 import type { ReactNode } from "react";
 import { MenuIcon } from "@/components/icons";
+import { Notifications } from "@/components/notifications";
 import { useShell } from "@/components/app-shell";
 
-// Шапка экрана на холсте: заголовок, рядом главная цифра экрана, справа — одно главное действие.
+// Шапка экрана на холсте: заголовок, рядом главная цифра экрана, справа — колокольчик и одно главное действие.
 // Заголовок стоит на одной линии со знаком в сайдбаре и по левому краю островов под ним. Справа шапка
 // оставляет место под полосу прокрутки, как острова под ней, — края кнопки и островов совпадают.
 export function PageHeader({ title, sub, actions }: { title: ReactNode; sub?: ReactNode; actions?: ReactNode }) {
@@ -26,6 +27,7 @@ export function PageHeader({ title, sub, actions }: { title: ReactNode; sub?: Re
         <h1 className="t-page flex-none">{title}</h1>
         {sub && <p className="t-caption min-w-0 truncate text-[var(--ink-3)] max-md:max-w-full">{sub}</p>}
       </div>
+      <Notifications />
       {actions && <div className="flex flex-none items-center gap-2">{actions}</div>}
     </header>
   );

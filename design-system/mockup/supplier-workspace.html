@@ -13,7 +13,7 @@
     --ok: #087a54; --ok-tint: #dcf5ea;
     --warn: #9a590b; --warn-tint: #fbeeda;
     --danger: #cf2f24;
-    --danger-tint: color-mix(in srgb, var(--danger) 12%, var(--paper));
+    --danger-tint: color-mix(in srgb, var(--danger) 8%, var(--paper)); /* 4.5:1 под --danger в обеих темах */
     --scrim: rgb(20 20 43 / .42);
     --r-island: 16px; --r-surface: 12px; --r-card: 10px; --r-bubble: 16px; --r-ctl: 8px; --r-pill: 999px;
     /* Острова: кольцо 1 px и мягкая тень, как карточка меню AI Elements в Figma (OpenInContent);
@@ -134,8 +134,11 @@
   .nav-item > span:first-of-type { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .nav-item:hover { background: var(--hover); color: var(--ink); }
   .nav-item[aria-current="page"] { background: var(--brand); color: var(--on-brand); font-weight: 600; box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 40%, transparent); }
-  .nav-item[aria-current="page"] > svg, .nav-item[aria-current="page"] .count { color: color-mix(in srgb, var(--on-brand) 78%, transparent); }
+  .nav-item[aria-current="page"] > svg, .nav-item[aria-current="page"] .count { color: color-mix(in srgb, var(--on-brand) 88%, transparent); }
   .count { margin-left: auto; font: var(--t-num); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  /* Новое в разделе — пилюлей бренда: «Вопросы юристу 1» */
+  .count.fresh { min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill); display: grid; place-items: center; background: var(--brand); color: var(--on-brand); font: 600 12px/16px var(--ui); }
+  .nav-item[aria-current="page"] .count.fresh { background: var(--on-brand); color: var(--brand); }
   .sec-label { margin: 0 10px 4px; font: var(--t-over); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
   .side-foot { display: grid; gap: 4px; padding: 8px; border-top: 1px solid var(--line); }
   .switch { position: relative; flex: none; width: 36px; height: 20px; margin-left: auto; border-radius: var(--r-pill); background: var(--edge-2); transition: background .15s ease; }
@@ -166,6 +169,23 @@
   .head h1:focus { outline: none; }
   .head-sub { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--t-caption); color: var(--ink-3); }
   .head-acts { flex: none; display: flex; align-items: center; gap: 12px; }
+  /* Колокольчик — в шапке каждого экрана; число новых — пилюлей бренда на углу */
+  .icon-btn.bell { position: relative; }
+  .bell-dot { position: absolute; top: 1px; right: 1px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--r-pill); display: grid; place-items: center; background: var(--brand); color: var(--on-brand); font: 600 12px/16px var(--ui); box-shadow: 0 0 0 2px var(--canvas); }
+  /* Уведомления — всплывающий остров под колокольчиком (тень --float): пункты без разделителей, новые — жирным и с точкой */
+  .notif-pop { position: fixed; top: 60px; right: 16px; z-index: 50; width: min(380px, calc(100vw - 16px)); max-height: min(560px, calc(100dvh - 76px)); overflow-y: auto; overscroll-behavior: contain; display: grid; align-content: start; gap: 4px; padding: 4px 0 12px; border-radius: var(--r-island); background: var(--card); box-shadow: var(--float); }
+  .notif-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; padding: 8px var(--pad) 0; }
+  .notif-list { list-style: none; margin: 0; padding: 0 8px; display: grid; gap: 2px; }
+  .notif-item { appearance: none; border: 0; background: none; width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) 8px; column-gap: 10px; align-items: start; padding: 8px; border-radius: var(--r-ctl); color: var(--ink); text-align: left; }
+  .notif-item:hover { background: var(--hover); }
+  .notif-item .todo-dot { margin: 5px 3px 0; }
+  .notif-item .prow-title { font: var(--t-body); color: var(--ink-2); }
+  .notif-item.unread .prow-title { font: var(--t-strong); color: var(--ink); }
+  .notif-text { font: var(--t-caption); color: var(--ink-2); }
+  .notif-item .prow-sub { white-space: normal; }
+  .notif-new { width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--brand); }
+  .notif-foot { margin: 4px var(--pad) 0; padding-top: 10px; border-top: 1px solid var(--line); font: var(--t-caption); color: var(--ink-3); }
+  .notif-empty { margin: 0; padding: 4px var(--pad) 8px; font: var(--t-body); color: var(--ink-3); }
   /* Холст под шапкой; поля по 8 px — место для кольца и тени островов, иначе край прокрутки их срежет */
   .view { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 8px 16px; scrollbar-gutter: stable; }
   .view.fill { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 8px; scrollbar-gutter: auto; }
@@ -186,8 +206,8 @@
   .btn.line:hover { background: var(--hover); }
   .btn.soft { background: var(--card); color: var(--ink); box-shadow: inset 0 0 0 1px var(--edge-2), var(--hairline); }
   .btn.soft:hover { background: var(--hover); }
-  .btn.danger { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); box-shadow: none; }
-  .btn.danger:hover { background: color-mix(in srgb, var(--danger) 22%, transparent); }
+  .btn.danger { background: var(--danger-tint); color: var(--danger); box-shadow: none; }
+  .btn.danger:hover { background: var(--danger); color: var(--on-brand); }
   .btn.lg { min-height: 40px; padding-inline: 16px; font: 600 14px/20px var(--ui); }
   .btn.xs { min-height: 28px; padding-inline: 10px; border-radius: 6px; font: 600 12px/16px var(--ui); letter-spacing: 0; }
   .icon-btn { appearance: none; border: 0; background: none; flex: none; width: 32px; height: 32px; border-radius: var(--r-ctl); display: grid; place-items: center; color: var(--ink-2); }
@@ -213,6 +233,8 @@
   .input { width: 100%; height: 32px; padding-inline: 10px; border: 1px solid var(--edge-2); border-radius: var(--r-ctl); outline: none; background: var(--card); font: var(--t-doc); box-shadow: var(--hairline); }
   .input:focus { border-color: var(--brand); box-shadow: var(--ring); }
   .input.num { max-width: 240px; font: 400 16px/24px var(--mono); font-variant-numeric: tabular-nums; }
+  .input.area { height: auto; min-height: 96px; padding-block: 6px; resize: vertical; }
+  .form-err { margin: 0; font: var(--t-caption); color: var(--danger); }
   textarea::placeholder, input::placeholder { color: var(--ink-3); }
 
   /* Плашка на холсте — отдельный блок со скруглением острова, внутри острова — мельче */
@@ -266,6 +288,8 @@
   .prow:hover { background: var(--hover); }
   .prow[aria-current] { background: var(--select); }
   .prow[aria-current] .law { background: var(--card); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 25%, transparent); }
+  /* Тинт выбранной строки совпадает с заливкой индиго-бейджа — ему и серому бейджу белая заливка */
+  .prow[aria-current] .badge.brand, .prow[aria-current] .badge.calm { background: var(--card); }
   .prow-text { display: grid; gap: 4px; min-width: 0; }
   .prow-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--t-caption); color: var(--ink-3); }
   .prow-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font: var(--t-strong); }
@@ -282,16 +306,83 @@
   .list-empty { margin: 0; padding: 4px var(--pad) 12px; font: var(--t-body); color: var(--ink-3); }
 
   /* ---------- главная ---------- */
-  .dash { display: grid; gap: 8px; align-items: start; }
-  @media (min-width: 1180px) { .dash { grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr); } }
-  .dash-side { display: grid; gap: 8px; min-width: 0; }
-  .ask-lead { margin: 0; font: var(--t-body); color: var(--ink-2); }
+  /* Главная — рабочий стол в одну колонку: самое срочное, закупки по этапам, данные компании */
+  .home { display: grid; gap: 8px; max-width: 1040px; }
+  .home .panel { container-type: inline-size; }
+  /* Название с подписью занимает строку, действие остаётся справа и на телефоне */
+  .home .panel-head > div:first-child { flex: 1 1 200px; min-width: 0; }
+  .home .meter { max-width: 240px; }
+  /* Бейдж статуса — пилюля: бледная заливка статуса, текст и иконка его цветом. Цвет всегда с подписью. */
+  .badge { display: inline-flex; align-items: center; gap: 4px; min-height: 22px; padding: 2px 8px; border-radius: var(--r-pill); font: var(--t-tag); letter-spacing: 0; white-space: nowrap; }
+  .badge > svg { flex: none; }
+  .badge.warn { background: var(--warn-tint); color: var(--warn); }
+  .badge.bad { background: var(--danger-tint); color: var(--danger); }
+  .badge.ok { background: var(--ok-tint); color: var(--ok); }
+  .badge.brand { background: var(--brand-tint); color: var(--brand); }
+  .badge.calm { background: var(--paper-2); color: var(--ink-2); }
+  .now .badge.calm { background: var(--card); }
+  /* Самое срочное дело — поверхностью внутри острова, с единственной главной кнопкой экрана */
+  .now { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; margin: 4px 8px 8px; padding: 12px; border-radius: var(--r-surface); background: var(--paper-2); }
+  .now-text { display: grid; gap: 6px; min-width: 0; flex: 1 1 320px; }
+  .now-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+  .now-title { margin: 0; font: var(--t-title); letter-spacing: -.01em; }
+  .now-sub { margin: 0; font: var(--t-body); color: var(--ink-2); }
+  .prow.task { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+  /* На узком острове бейдж уходит под название — название не обрезается */
+  @container (width < 520px) {
+    .prow.task { grid-template-columns: auto minmax(0, 1fr) auto; row-gap: 6px; }
+    .prow.task > .badge { grid-column: 2; grid-row: 2; justify-self: start; }
+    .prow.task > :first-child, .prow.task > .chev { grid-row: 1 / 3; }
+    .prow.task > .todo-dot { align-self: start; margin-top: 5px; }
+    .prow.task > .chev { grid-column: 3; }
+  }
+  .all-done { display: flex; align-items: center; gap: 8px; margin: 0; padding: 4px var(--pad) 14px; font: var(--t-body); color: var(--ink-2); }
+  /* Этапы — как колонки доски: сколько закупок и что на этапе ждёт вас. Нажатие оставляет в таблице только этап. */
+  .lanes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 4px var(--pad) 12px; }
+  .lane { appearance: none; border: 0; display: grid; align-content: start; justify-items: start; gap: 2px; min-width: 0; padding: 10px 12px; border-radius: var(--r-surface); background: var(--paper-2); color: var(--ink); text-align: left; }
+  .lane:hover:not(:disabled) { background: var(--paper-3); }
+  .lane:disabled { cursor: default; }
+  .lane:disabled .lane-count { color: var(--ink-3); }
+  .lane[aria-pressed="true"] { background: var(--select); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 35%, transparent); }
+  .lane-title { font: var(--t-caption); color: var(--ink-2); }
+  .lane-count { font: 600 20px/28px var(--mono); font-variant-numeric: tabular-nums; }
+  .lane-note { font: var(--t-tag); color: var(--ink-3); }
+  .lane-note.warn { color: var(--warn); }
+  .lane-note.bad { color: var(--danger); }
+  .lane-note.ok { color: var(--ok); }
+  .lane-note.brand { color: var(--brand); }
+  /* На узком острове этапы — строками по 44: название и что ждёт вас слева, число справа */
+  @container (width < 560px) {
+    .lanes { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .lane { grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 12px; min-height: 44px; padding: 6px 12px; border-radius: var(--r-card); }
+    .lane-title { grid-column: 1; grid-row: 1; font: var(--t-body); color: var(--ink); }
+    .lane-note { grid-column: 1; grid-row: 2; }
+    .lane-count { grid-column: 2; grid-row: 1 / 3; font-size: 16px; line-height: 24px; }
+  }
+  /* Закупки таблицей: название, что сейчас, срок. На узком острове бейджи уходят под название. */
+  .deals-head, .deal { display: grid; grid-template-columns: 32px minmax(0, 1fr) 184px 120px 16px; align-items: center; column-gap: 12px; }
+  .deals-head { margin: 0 var(--pad); padding: 0 0 6px; border-bottom: 1px solid var(--line); font: var(--t-caption); color: var(--ink-3); }
+  .deals-head span:first-child { grid-column: 2; }
+  .deals { list-style: none; margin: 0; padding: 4px 8px 8px; display: grid; gap: 2px; }
+  .deal { appearance: none; border: 0; background: none; width: 100%; row-gap: 6px; padding: 8px; border-radius: var(--r-ctl); color: var(--ink); text-align: left; }
+  .deal:hover { background: var(--hover); }
+  .deal-main { display: grid; gap: 2px; min-width: 0; }
+  .deal-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font: var(--t-strong); }
+  .deal-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--t-caption); color: var(--ink-3); }
+  .deal-tags { display: contents; }
+  .deal-tags .badge { justify-self: start; }
+  .deal > .chev { display: grid; color: var(--ink-3); }
+  @container (width < 640px) {
+    .deals-head { display: none; }
+    .deal { grid-template-columns: 32px minmax(0, 1fr) 16px; }
+    .deal > .chev { grid-column: 3; grid-row: 1; }
+    .deal-tags { display: flex; flex-wrap: wrap; gap: 6px; grid-column: 2; }
+  }
+  .home-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0; padding: 0 var(--pad) 12px; font: var(--t-caption); color: var(--ink-3); }
   .todo-dot { flex: none; width: 10px; height: 10px; margin: 0 11px; border-radius: 50%; background: var(--edge-2); box-shadow: 0 0 0 3px var(--paper-2); }
   .todo-dot.warn { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-tint); }
   .todo-dot.brand { background: var(--brand); box-shadow: 0 0 0 3px var(--brand-tint); }
-  .askbox { display: flex; align-items: flex-end; gap: 4px; padding: 4px; border: 1px solid var(--edge-2); border-radius: var(--r-card); background: var(--card); box-shadow: var(--hairline); }
-  .askbox:focus-within { border-color: var(--brand); box-shadow: var(--ring); }
-  .askbox textarea { flex: 1; min-width: 0; min-height: 32px; max-height: 140px; padding-block: 6px; border: 0; outline: none; resize: none; background: transparent; font: var(--t-doc); }
+  .todo-dot.bad { background: var(--danger); box-shadow: 0 0 0 3px var(--danger-tint); }
   .empty { display: grid; justify-items: start; gap: 12px; padding: var(--pad); }
   .empty p { margin: 0; max-width: 52ch; font: var(--t-body); color: var(--ink-2); }
   .or { font: var(--t-body); color: var(--ink-3); }
@@ -346,6 +437,8 @@
   .pd-title { margin: 0; font: var(--t-title); letter-spacing: -.01em; }
   .pd-title:focus { outline: none; }
   .pd-sub { margin: 0; font: var(--t-caption); color: var(--ink-3); }
+  /* Срок подачи в подзаголовке не обрезается: переносится на вторую строку */
+  .pd-text .pd-sub { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; }
   .pd-acts { flex: none; display: flex; align-items: center; gap: 4px; }
   .due-chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; margin-right: 8px; padding-inline: 10px; border-radius: var(--r-pill); background: var(--paper-2); color: var(--ink-2); font: 600 12px/16px var(--ui); white-space: nowrap; }
   .due-chip > svg { flex: none; }
@@ -385,6 +478,17 @@
   .pd-head { container-type: inline-size; }
   .btn.info-toggle { display: none; }
   @media (max-width: 1559px) { .btn.info-toggle { display: inline-flex; } }
+  /* Число документов закупки на кнопке «Сведения» — плашкой, как счётчик у «Вопросов»; не прочитан файл — янтарём */
+  .doc-count { display: inline-flex; align-items: center; gap: 2px; height: 20px; margin-right: -6px; padding-inline: 4px 6px; border-radius: 6px; background: var(--paper-2); color: var(--ink-2); font: var(--t-num); font-variant-numeric: tabular-nums; }
+  .doc-count > svg { flex: none; }
+  .doc-count.warn { background: var(--warn-tint); color: var(--warn); }
+  /* Подписи кнопок шапки сокращаются по месту: сначала у «Добавить документы» и «Сведений», потом у всех.
+     У «Сведений» без подписи остаётся число документов — вместо значка панели */
+  @container (width < 820px) {
+    .pd-acts .pd-lbl.opt { display: none; } .pd-acts .btn.opt { width: 32px; padding: 0; }
+    .pd-acts .btn.info-toggle:has(.doc-count) { width: auto; padding-inline: 8px; } .info-toggle:has(.doc-count) > svg { display: none; }
+    .doc-count, .doc-count.warn { margin: 0; padding: 0; background: none; }
+  }
   @container (width < 560px) { .pd-acts .pd-lbl { display: none; } .pd-acts .btn { width: 32px; padding: 0; } }
   .start-steps { display: grid; gap: 16px 24px; margin: 0; padding: 8px var(--pad) 16px; list-style: none; }
   @media (min-width: 768px) { .start-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
@@ -468,6 +572,20 @@
   .unver { display: flex; align-items: center; gap: 8px; margin: 0; font: 500 12px/16px var(--ui); color: var(--warn); }
   .unver > svg { flex: none; }
   .empty-group { margin: 0; padding: 4px var(--pad) 12px; font: var(--t-body); color: var(--ink-3); }
+  /* Как оценят заявку: критерии и строки, за которые дают баллы (web/src/components/criteria-island.tsx) */
+  .list > li.crit-group { gap: 0; padding: 12px 0 0; }
+  .crit-cap { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+  .crit-cap .panel-sub { white-space: nowrap; }
+  .crit-rows { list-style: none; margin: 0; padding: 0; }
+  .crit-rows > li { display: grid; gap: 4px; padding: 10px 0; font: var(--t-read); }
+  .crit-rows > li + li { border-top: 1px solid var(--line); }
+  .crit-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .crit-name { display: grid; flex: 1; gap: 2px; min-width: 0; }
+  .crit-title { font: var(--t-strong); }
+  .crit-sub { font: var(--t-caption); color: var(--ink-3); }
+  .crit-fact { margin: 0; }
+  .crit-fact > span { color: var(--ink-3); }
+  .crit-warn { padding: 0 var(--pad) 12px; }
 
   /* ---------- техническое предложение ---------- */
   .items { list-style: none; margin: 0; padding: 0 var(--pad) 4px; }
@@ -497,9 +615,34 @@
   .parts > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; row-gap: 4px; align-items: center; padding: 10px 0; }
   .parts > li + li { border-top: 1px solid var(--line); }
   .parts-foot { margin: 0 var(--pad); padding: 10px 0 12px; border-top: 1px solid var(--line); font: var(--t-body); color: var(--ink-3); }
+  .part-gaps { grid-column: 1 / -1; display: grid; gap: 4px; margin: 4px 0 0; padding: 0; list-style: none; font: var(--t-caption); color: var(--warn); }
+  .part-gaps > li { display: flex; align-items: flex-start; gap: 8px; }
+  .part-gaps svg { flex: none; }
   .part-name { font: var(--t-strong); }
   .part-status { grid-column: 1; font: var(--t-caption); color: var(--ink-3); }
   .parts .btn { grid-column: 2; grid-row: 1 / span 2; }
+  /* Документы заявки — все файлы в одном окне: название, статус бейджем, «Скачать»; строки с разделителями */
+  .files-list { list-style: none; margin: 0; padding: 0; display: grid; }
+  .file-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto auto; column-gap: 12px; row-gap: 6px; align-items: center; padding: 10px 0; }
+  .file-row + .file-row, .file-note { border-top: 1px solid var(--line); }
+  .file-title { font: var(--t-strong); }
+  .file-sub { font: var(--t-caption); color: var(--ink-3); }
+  .file-note { padding: 10px 0 0; font: var(--t-body); color: var(--ink-3); }
+  /* Что требует заказчик — пункты «Что подать» с галочкой «готово»; цитата — под пунктом */
+  .files-h { margin: 8px 0 0; font: var(--t-section); }
+  .ask-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 12px; }
+  .ask-row { display: grid; gap: 4px; padding: 10px 0; }
+  .ask-row + .ask-row { border-top: 1px solid var(--line); }
+  .ask-row label { display: flex; align-items: flex-start; gap: 10px; font: var(--t-doc); }
+  .ask-row input { flex: none; width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--brand); }
+  .ask-row.ready .ask-text { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--edge-2); }
+  .ask-row .src, .ask-row .quote { margin-left: 26px; }
+  @media (max-width: 559px) {
+    .file-row { grid-template-columns: 32px minmax(0, 1fr) auto; }
+    .file-row > .badge { grid-column: 2; grid-row: 2; justify-self: start; }
+    .file-row > .btn { grid-column: 3; grid-row: 1 / 3; }
+    .file-row > .law { grid-row: 1 / 3; align-self: start; }
+  }
   /* Главное действие шага — плавающим островом внизу; полоса холста под ним закрывает черновик до края */
   .sticky-actions {
     position: sticky; bottom: -8px; z-index: 5; margin: auto -8px -8px; padding: 8px;
@@ -550,11 +693,33 @@
   .calc-grid, .calc-more { display: grid; gap: 16px; }
   @container (width >= 520px) { .calc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .num-field { display: grid; align-content: start; gap: 4px; }
-  .num-field > label { font: var(--t-strong); }
+  .num-field label { font: var(--t-strong); }
+  @container (width >= 600px) { .calc-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .calc-group { display: grid; gap: 12px; }
+  .more-body { gap: 20px; padding-top: 2px; }
+  .more-head { min-height: 56px; }
+  .more-text { display: grid; gap: 2px; min-width: 0; }
+  .more-sum { font: var(--t-caption); color: var(--ink-3); }
+  .more-sum.warn { color: var(--warn); }
+  .disclosure { display: grid; gap: 12px; }
+  .disc-btn { display: inline-flex; align-items: center; gap: 4px; justify-self: start; }
+  .disc-btn > svg { transition: transform .15s ease; }
+  .disc-btn[aria-expanded="false"] > svg { transform: rotate(-90deg); }
+  .check-row .label-row { align-items: flex-start; }
   .input.calc { max-width: 176px; font: 500 14px/20px var(--mono); font-variant-numeric: tabular-nums; }
   /* На телефоне поле 16 px, иначе браузер увеличивает страницу при вводе */
   @media (pointer: coarse) { .input.calc { font-size: 16px; } }
   .hint { margin: 0; font: var(--t-caption); color: var(--ink-3); }
+  /* Подсказка «?»: кнопка рядом с подписью, по нажатию — карточка поверх. Нажатием, а не наведением: на телефоне наведения нет */
+  .label-row { display: flex; align-items: center; gap: 2px; min-width: 0; }
+  .hint-btn { appearance: none; border: 0; background: none; flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; margin: -6px 0; padding: 0; border-radius: var(--r-ctl); color: var(--ink-3); cursor: pointer; }
+  .hint-btn:hover { background: var(--hover); color: var(--ink); }
+  .hint-btn[aria-expanded="true"] { color: var(--brand); }
+  .hint-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+  .hint-pop { position: fixed; z-index: 60; display: grid; gap: 4px; width: max-content; max-width: min(320px, calc(100vw - 16px)); margin: 0; padding: 10px 12px; border-radius: var(--r-surface); background: var(--card); box-shadow: var(--float); font: var(--t-body); color: var(--ink-2); }
+  .hint-pop[hidden] { display: none; }
+  .hint-pop p { margin: 0; }
+  .hint-pop-title { font: var(--t-strong); color: var(--ink); }
   .check-row { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 2px 10px; }
   .check-row input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--brand); }
   .check-row label { font: var(--t-body); color: var(--ink); }
@@ -585,6 +750,8 @@
   .res-label { font: var(--t-caption); color: var(--ink-3); }
   .res-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; }
   .res-num { font: 600 16px/24px var(--mono); font-variant-numeric: tabular-nums; }
+  /* Ответ экрана — нижняя цена — акцентом бренда */
+  .res-num.accent { color: var(--brand); }
   .res-text { font: var(--t-body); color: var(--ink-2); }
   .res-warn { font: var(--t-strong); color: var(--warn); }
   .hint, .cell-sub, .res-label, .calc-table thead th { letter-spacing: 0; }
@@ -692,6 +859,37 @@
   .msg.bot > :last-child { margin-bottom: 0; }
   .msg .note-line { font-style: italic; color: var(--ink-3); }
   .msg-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin-top: 12px; font: var(--t-caption); color: var(--ink-3); }
+
+  /* ---------- вопросы юристу: список вопросов и разговор — как закупки ---------- */
+  .law-ws { display: grid; grid-template-columns: var(--list-w) minmax(0, 1fr); gap: 8px; align-items: start; max-width: 1040px; }
+  .law-ws > .panel { min-width: 0; }
+  .law-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .law-row .prow-text > span:last-child { margin-top: 2px; }
+  .icon-btn.law-back { display: none; }
+  @media (max-width: 1179px) {
+    .law-ws { grid-template-columns: minmax(0, 1fr); }
+    .law-ws[data-open] > .law-list, .law-ws:not([data-open]) > .law-thread { display: none; }
+    .icon-btn.law-back { display: grid; }
+  }
+  .law-head { display: flex; align-items: flex-start; gap: 8px; padding: 12px var(--pad) 4px; }
+  .law-head-text { flex: 1; min-width: 0; display: grid; gap: 6px; }
+  .law-title { margin: 0; font: var(--t-title); letter-spacing: -.01em; }
+  .law-title:focus { outline: none; }
+  .law-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font: var(--t-caption); color: var(--ink-3); }
+  .law-body { display: grid; gap: 16px; padding: 8px var(--pad) var(--pad); }
+  .law-ctx { display: grid; gap: 4px; padding: 10px 12px; border-radius: var(--r-card); background: var(--paper-2); }
+  .law-ctx-label { margin: 0; font: var(--t-caption); color: var(--ink-3); }
+  .law-ctx-text { margin: 0; font: var(--t-read); color: var(--ink-2); }
+  .law-feed { display: grid; gap: 16px; }
+  .msg.lawyer { display: grid; gap: 8px; font: var(--t-read); }
+  .msg.lawyer p { margin: 0; }
+  .msg.lawyer .who { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font: var(--t-caption); color: var(--ink-3); }
+  .msg.lawyer .who b { font: var(--t-strong); color: var(--ink); }
+  .law-wait { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; border-radius: var(--r-card); background: var(--paper-2); font: var(--t-body); color: var(--ink-2); }
+  .law-wait > svg { flex: none; margin-top: 2px; color: var(--ink-3); }
+  .law-compose { padding: 0 var(--pad) var(--pad); }
+  .law-form { display: grid; gap: 8px; }
+  .law-form .field-label { margin-top: 4px; }
   .refs { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
   .thinking { margin: 0; font: var(--t-body); color: var(--ink-3); animation: pulse 1.2s ease-in-out infinite; }
   .composer {
@@ -713,6 +911,22 @@
   .field { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 4px 16px; align-items: center; padding: 6px 0; cursor: default; }
   .field-label { font: var(--t-label); color: var(--ink-2); }
   .field-src { grid-column: 2; font: var(--t-caption); color: var(--ink-3); }
+  .field-err { grid-column: 2; font: var(--t-caption); color: var(--warn); }
+  .wipe-ask { display: grid; gap: 10px; }
+  .wipe-ask p { margin: 0; font: var(--t-strong); }
+  /* Выключатель распознавания сканов — под кнопкой загрузки */
+  .ocr-row { display: flex; align-items: flex-start; gap: 10px; max-width: 52ch; text-align: left; font: var(--t-caption); color: var(--ink-2); }
+  .ocr-row input { flex: none; width: 16px; height: 16px; margin: 0; accent-color: var(--brand); }
+  /* Перед началом: два согласия, без них в сервис не попасть */
+  .consent-scrim { position: fixed; inset: 0; z-index: 55; display: grid; place-items: center; overflow-y: auto; padding: 16px; background: var(--canvas); }
+  .consent-scrim[hidden] { display: none; }
+  .consent-card { display: grid; gap: 16px; width: min(400px, 100%); padding: 24px; border-radius: var(--r-island); background: var(--card); box-shadow: var(--island-shadow); }
+  .consent-card h1 { margin: 0; font: var(--t-page); letter-spacing: -.02em; }
+  .consent-card p { margin: 0; }
+  .consent-check { display: flex; align-items: flex-start; gap: 10px; font: var(--t-body); color: var(--ink-2); }
+  .consent-check input { flex: none; width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--brand); }
+  .consent-brand { display: flex; align-items: center; gap: 10px; font: 700 14px/20px var(--ui); letter-spacing: -.01em; }
+  .consent-brand .brand-ic { width: 28px; height: 28px; border-radius: var(--r-ctl); display: grid; place-items: center; background: var(--brand); color: var(--on-brand); }
   .suggest { display: grid; gap: 12px; padding: 16px var(--pad); border-radius: var(--r-island); background: var(--warn-tint); }
   .suggest-head { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--warn); font: var(--t-strong); }
   .suggest-head > svg { flex: none; }
@@ -799,13 +1013,15 @@
     .head-acts .btn { width: 40px; padding: 0; }
     .sticky-actions .btn { width: 100%; }
     .field { grid-template-columns: minmax(0, 1fr); }
-    .field-src { grid-column: 1; }
+    .field-src, .field-err { grid-column: 1; }
     .parts > li { grid-template-columns: minmax(0, 1fr); }
     .parts .btn { grid-column: 1; grid-row: auto; justify-self: start; margin-top: 8px; }
     .prow.wide { grid-template-columns: auto minmax(0, 1fr); row-gap: 8px; }
     .prow.wide .prow-side { grid-column: 2; justify-items: start; }
     .doc-acts, .kinds { padding-left: 0; }
     .due-chip { display: none; }
+    /* Пример подписан в сведениях и в списке — в шапке закупки на телефоне место под срок */
+    .pd-sample { display: none; }
     .list-head, .pd-head { min-height: 56px; }
     .head-text { flex-direction: column; align-items: stretch; gap: 0; }
     .pd-head { gap: 8px; padding-left: 8px; }
@@ -825,6 +1041,9 @@
 </div>
 
 <div class="modal-scrim" id="modal" hidden></div>
+<div class="notif-pop" id="notif" role="dialog" aria-labelledby="notif-title" hidden></div>
+<div class="consent-scrim" id="consent" hidden></div>
+<div class="hint-pop" id="hint-pop" role="dialog" aria-labelledby="hint-pop-title" hidden><p class="hint-pop-title" id="hint-pop-title"></p><p id="hint-pop-text"></p></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -879,6 +1098,9 @@
     info: ["fM12 10.75C12.41 10.75 12.75 11.09 12.75 11.5V16.5C12.75 16.91 12.41 17.25 12 17.25C11.59 17.25 11.25 16.91 11.25 16.5V11.5C11.25 11.09 11.59 10.75 12 10.75Z", "fM12 9C12.55 9 13 8.55 13 8C13 7.45 12.55 7 12 7C11.45 7 11 7.45 11 8C11 8.55 11.45 9 12 9Z", "eM3.25 12C3.25 7.17 7.17 3.25 12 3.25C16.83 3.25 20.75 7.17 20.75 12C20.75 16.83 16.83 20.75 12 20.75C7.17 20.75 3.25 16.83 3.25 12ZM12 4.75C8 4.75 4.75 8 4.75 12C4.75 16 8 19.25 12 19.25C16 19.25 19.25 16 19.25 12C19.25 8 16 4.75 12 4.75Z"],
     help: ["eM3.25 12C3.25 7.17 7.17 3.25 12 3.25C16.83 3.25 20.75 7.17 20.75 12C20.75 16.83 16.83 20.75 12 20.75C7.17 20.75 3.25 16.83 3.25 12ZM12 4.75C8 4.75 4.75 8 4.75 12C4.75 16 8 19.25 12 19.25C16 19.25 19.25 16 19.25 12C19.25 8 16 4.75 12 4.75Z", "eM12 8.12C11.05 8.12 10.25 8.93 10.25 9.95C10.25 10.37 9.91 10.7 9.5 10.7C9.09 10.7 8.75 10.37 8.75 9.95C8.75 8.13 10.19 6.62 12 6.62C13.81 6.62 15.25 8.13 15.25 9.95C15.25 11.38 14.36 12.61 13.1 13.07C12.97 13.12 12.87 13.19 12.81 13.26C12.75 13.32 12.75 13.36 12.75 13.38C12.75 13.79 12.41 14.12 12 14.12C11.59 14.12 11.25 13.79 11.25 13.38C11.25 12.46 11.99 11.88 12.58 11.66C13.25 11.41 13.75 10.74 13.75 9.95C13.75 8.93 12.95 8.12 12 8.12Z", "fM13 16.38C13 16.93 12.55 17.38 12 17.38C11.45 17.38 11 16.93 11 16.38C11 15.82 11.45 15.38 12 15.38C12.55 15.38 13 15.82 13 16.38Z"],
     calc: ["sM8.5 3.75C10.83 3.49 13.17 3.49 15.5 3.75C16.93 3.91 18.09 5.07 18.25 6.5C18.66 10.17 18.66 13.83 18.25 17.5C18.09 18.93 16.93 20.09 15.5 20.25C13.17 20.51 10.83 20.51 8.5 20.25C7.07 20.09 5.91 18.93 5.75 17.5C5.34 13.83 5.34 10.17 5.75 6.5C5.91 5.07 7.07 3.91 8.5 3.75Z", "sM9.6 6.5C11.2 6.32 12.8 6.32 14.4 6.5C14.97 6.56 15.44 7.03 15.5 7.6C15.53 7.87 15.53 8.13 15.5 8.4C15.44 8.97 14.97 9.44 14.4 9.5C12.8 9.68 11.2 9.68 9.6 9.5C9.03 9.44 8.56 8.97 8.5 8.4C8.47 8.13 8.47 7.87 8.5 7.6C8.56 7.03 9.03 6.56 9.6 6.5Z", "fM7.75 13.25A1 1 0 1 0 9.75 13.25A1 1 0 1 0 7.75 13.25Z", "fM11 13.25A1 1 0 1 0 13 13.25A1 1 0 1 0 11 13.25Z", "fM14.25 13.25A1 1 0 1 0 16.25 13.25A1 1 0 1 0 14.25 13.25Z", "fM7.75 16.5A1 1 0 1 0 9.75 16.5A1 1 0 1 0 7.75 16.5Z", "fM11 16.5A1 1 0 1 0 13 16.5A1 1 0 1 0 11 16.5Z", "fM14.25 16.5A1 1 0 1 0 16.25 16.5A1 1 0 1 0 14.25 16.5Z"],
+    // «Скачать» — Craftwork Files/Download; колокольчика в наборе нет — дорисован: обводка 1,5, скруглённые концы.
+    download: ["eM10.74 3.25C9.96 3.25 9.32 3.84 9.25 4.61C9.11 6.22 9.07 7.84 9.14 9.46C9.06 9.46 8.98 9.47 8.89 9.47L7.4 9.58C6.45 9.65 5.92 10.71 6.43 11.52C7.53 13.23 8.94 14.73 10.59 15.91L11.19 16.34C11.67 16.69 12.33 16.69 12.81 16.34L13.41 15.91C15.06 14.73 16.47 13.23 17.57 11.52C18.08 10.71 17.55 9.65 16.6 9.58L15.11 9.47C15.02 9.47 14.94 9.46 14.86 9.46C14.93 7.84 14.89 6.22 14.75 4.61C14.68 3.84 14.04 3.25 13.26 3.25H10.74ZM10.68 10.11C10.57 8.33 10.59 6.53 10.75 4.75H13.26C13.41 6.53 13.43 8.33 13.32 10.11C13.31 10.32 13.37 10.51 13.51 10.66C13.64 10.81 13.83 10.9 14.03 10.91C14.35 10.93 14.68 10.95 15 10.97L16.08 11.05C15.12 12.46 13.92 13.7 12.53 14.69L12 15.08L11.47 14.69C10.08 13.7 8.88 12.46 7.92 11.05L9 10.97C9.32 10.95 9.65 10.93 9.97 10.91C10.17 10.9 10.36 10.81 10.49 10.66C10.63 10.51 10.69 10.32 10.68 10.11Z", "fM5.75 17C5.75 16.59 5.41 16.25 5 16.25C4.59 16.25 4.25 16.59 4.25 17V19C4.25 19.97 5.03 20.75 6 20.75H18C18.97 20.75 19.75 19.97 19.75 19V17C19.75 16.59 19.41 16.25 19 16.25C18.59 16.25 18.25 16.59 18.25 17V19C18.25 19.14 18.14 19.25 18 19.25H6C5.86 19.25 5.75 19.14 5.75 19V17Z"],
+    bell: ["sM6.75 10.5C6.75 7.6 9.1 5.25 12 5.25C14.9 5.25 17.25 7.6 17.25 10.5V13.6C17.25 14.6 17.62 15.57 18.3 16.31L18.75 16.75H5.25L5.7 16.31C6.38 15.57 6.75 14.6 6.75 13.6V10.5Z", "sM10 19.25C10.4 20.03 11.15 20.5 12 20.5C12.85 20.5 13.6 20.03 14 19.25", "sM12 3.25V5.25"],
   };
   const ic = (name, size = 18, weight = 1.5) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="currentColor" aria-hidden="true">${ICONS[name].map((p) => {
     const d = p.slice(1);
@@ -1123,27 +1345,27 @@
       { key: "fullName", label: "Полное наименование (для ИП — фамилия, имя, отчество)" },
       { key: "shortName", label: "Сокращённое наименование" },
       { key: "inn", label: "ИНН" },
-      { key: "kpp", label: "КПП (для юридического лица)" },
-      { key: "ogrn", label: "ОГРН / ОГРНИП" },
-      { key: "okved", label: "Основной вид деятельности по ОКВЭД", example: "например, 90.01" },
-      { key: "smeCategory", label: "Категория субъекта МСП", example: "микропредприятие, малое или среднее предприятие" },
+      { key: "kpp", label: "КПП (для юридического лица)", help: "Код причины постановки на учёт — 9 знаков, есть в выписке из ЕГРЮЛ. Бывает только у организаций, у ИП его нет." },
+      { key: "ogrn", label: "ОГРН / ОГРНИП", help: "Основной государственный регистрационный номер: у организации — ОГРН из 13 цифр, у ИП — ОГРНИП из 15. Есть в выписке из ЕГРЮЛ или ЕГРИП." },
+      { key: "okved", label: "Основной вид деятельности по ОКВЭД", example: "например, 90.01", help: "Код основного вида деятельности из выписки ЕГРЮЛ или ЕГРИП. Например, 90.01 — деятельность в области исполнительских искусств." },
+      { key: "smeCategory", label: "Категория субъекта МСП", example: "микропредприятие, малое или среднее предприятие", help: "Микропредприятие, малое или среднее предприятие — как в едином реестре субъектов МСП на сайте ФНС (rmsp.nalog.ru). Нужна для декларации о принадлежности к МСП." },
     ] },
     { title: "Налоги", fields: [
-      { key: "taxSystem", label: "Система налогообложения", example: "например, УСН" },
-      { key: "vatNote", label: "Как писать НДС в цене", example: "например, «НДС не облагается в связи с применением УСН»" },
+      { key: "taxSystem", label: "Система налогообложения", example: "например, УСН", help: "Например, УСН или ОСН — от неё зависит, как писать НДС в цене." },
+      { key: "vatNote", label: "Как писать НДС в цене", example: "например, «НДС не облагается в связи с применением УСН»", help: "Фраза для предложения о цене. На УСН — «НДС не облагается в связи с применением УСН»; если платите НДС — «в том числе НДС» и сумма." },
     ] },
     { title: "Адреса", fields: [
       { key: "legalAddress", label: "Юридический адрес (для ИП — адрес регистрации)" },
       { key: "postalAddress", label: "Почтовый адрес" },
     ] },
     { title: "Банк", fields: [
-      { key: "account", label: "Расчётный счёт" },
+      { key: "account", label: "Расчётный счёт", help: "Ваш счёт в банке — 20 цифр. У организаций обычно начинается с 407, у ИП — с 408." },
       { key: "bankName", label: "Наименование банка" },
-      { key: "bik", label: "БИК" },
-      { key: "corrAccount", label: "Корреспондентский счёт" },
+      { key: "bik", label: "БИК", help: "Банковский идентификационный код — 9 цифр, есть в реквизитах банка." },
+      { key: "corrAccount", label: "Корреспондентский счёт", help: "Счёт вашего банка в Банке России — 20 цифр, начинается с 301. Есть в реквизитах банка." },
     ] },
     { title: "Руководитель и контакты", fields: [
-      { key: "head", label: "Руководитель: должность, ФИО, на каком основании действует" },
+      { key: "head", label: "Руководитель: должность, ФИО, на каком основании действует", help: "Как в анкете: должность, фамилия, имя, отчество и основание полномочий. Например: «Генеральный директор Иванова Анна Петровна, действует на основании Устава»." },
       { key: "signer", label: "Расшифровка подписи", example: "например, «Иванова А. П.»" },
       { key: "contactPerson", label: "Контактное лицо" },
       { key: "phone", label: "Телефон" },
@@ -1153,6 +1375,70 @@
   const PROFILE_KEYS = PROFILE_GROUPS.flatMap((g) => g.fields.map((f) => f.key));
   const LABELS = Object.fromEntries(PROFILE_GROUPS.flatMap((g) => g.fields.map((f) => [f.key, f.label])));
   const BANK_KEYS = ["account", "bankName", "bik", "corrAccount"];
+
+  // Проверка реквизитов — как в приложении (web/src/lib/requisites-check.ts): длина и контрольные цифры.
+  // Подсказка, а не запрет: сохраняется всё, что вписано.
+  const reqClean = (v) => String(v).replace(/[\s-]/g, "");
+  const onlyDigits = (v, n) => new RegExp(`^\\d{${n}}$`).test(v);
+  const innDigit = (d, w) => (w.reduce((a, x, i) => a + x * Number(d[i]), 0) % 11) % 10;
+  const digitsMod = (d, m) => [...d].reduce((r, x) => (r * 10 + Number(x)) % m, 0);
+  const keyOk = (d23) => [...d23].reduce((sum, x, i) => sum + ((Number(x) * [7, 1, 3][i % 3]) % 10), 0) % 10 === 0;
+  function innProblem(value) {
+    const v = reqClean(value);
+    if (!onlyDigits(v, 10) && !onlyDigits(v, 12)) return "ИНН — 10 цифр у организации или 12 у ИП";
+    const ok = v.length === 10
+      ? innDigit(v, [2, 4, 10, 3, 5, 9, 4, 6, 8]) === Number(v[9])
+      : innDigit(v, [7, 2, 4, 10, 3, 5, 9, 4, 6, 8]) === Number(v[10]) && innDigit(v, [3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8]) === Number(v[11]);
+    return ok ? "" : "Контрольная цифра ИНН не сходится — проверьте, нет ли опечатки";
+  }
+  const kppProblem = (value) => (/^\d{4}[\dA-Z]{2}\d{3}$/.test(reqClean(value)) ? "" : "КПП — 9 знаков, например 773601001");
+  function ogrnProblem(value) {
+    const v = reqClean(value);
+    if (onlyDigits(v, 13)) return digitsMod(v.slice(0, 12), 11) % 10 === Number(v[12]) ? "" : "Контрольная цифра ОГРН не сходится — проверьте, нет ли опечатки";
+    if (onlyDigits(v, 15)) return digitsMod(v.slice(0, 14), 13) % 10 === Number(v[14]) ? "" : "Контрольная цифра ОГРНИП не сходится — проверьте, нет ли опечатки";
+    return "ОГРН — 13 цифр, ОГРНИП — 15";
+  }
+  const bikProblem = (value) => (onlyDigits(reqClean(value), 9) ? "" : "БИК — 9 цифр");
+  function accountProblem(value, bik) {
+    const v = reqClean(value), b = reqClean(bik);
+    if (!onlyDigits(v, 20)) return "Расчётный счёт — 20 цифр";
+    if (!onlyDigits(b, 9) || !/^40[78]/.test(v)) return "";
+    return keyOk(b.slice(6) + v) ? "" : "Счёт не сходится с БИК по контрольной цифре — проверьте счёт и БИК";
+  }
+  function corrAccountProblem(value, bik) {
+    const v = reqClean(value), b = reqClean(bik);
+    if (!onlyDigits(v, 20) || !v.startsWith("301")) return "Корреспондентский счёт — 20 цифр, начинается с 301";
+    if (!onlyDigits(b, 9)) return "";
+    return keyOk(`0${b.slice(4, 6)}${v}`) ? "" : "Корреспондентский счёт не сходится с БИК — проверьте оба";
+  }
+  function profileProblems(p) {
+    const out = {};
+    const has = (k) => String(p[k] || "").trim() !== "";
+    if (has("inn")) out.inn = innProblem(p.inn);
+    if (has("kpp")) out.kpp = kppProblem(p.kpp);
+    if (has("ogrn")) out.ogrn = ogrnProblem(p.ogrn);
+    if (has("bik")) out.bik = bikProblem(p.bik);
+    if (has("account")) out.account = accountProblem(p.account, p.bik);
+    if (has("corrAccount")) out.corrAccount = corrAccountProblem(p.corrAccount, p.bik);
+    const inn = reqClean(p.inn || ""), ogrn = reqClean(p.ogrn || "");
+    if (!out.inn && inn.length === 12 && has("kpp") && !out.kpp) out.kpp = "КПП бывает только у организации, а ИНН из 12 цифр — у ИП";
+    if (!out.inn && !out.ogrn && inn.length === 10 && ogrn.length === 15) out.ogrn = "У организации (ИНН из 10 цифр) — ОГРН из 13 цифр, а здесь ОГРНИП";
+    if (!out.inn && !out.ogrn && inn.length === 12 && ogrn.length === 13) out.ogrn = "У ИП (ИНН из 12 цифр) — ОГРНИП из 15 цифр, а здесь ОГРН";
+    return out;
+  }
+  // Подсказка о формате — когда из поля ушли: пока поле в фокусе, недописанный номер — ещё не ошибка.
+  function showProfileProblems() {
+    const problems = profileProblems(S.profile);
+    document.querySelectorAll("[data-pf]").forEach((input) => {
+      const err = document.getElementById(`pf-${input.dataset.pf}-err`);
+      if (!err) return;
+      const text = input === document.activeElement ? "" : problems[input.dataset.pf] || "";
+      err.textContent = text;
+      err.hidden = !text;
+      if (text) { input.setAttribute("aria-invalid", "true"); input.setAttribute("aria-describedby", err.id); }
+      else { input.removeAttribute("aria-invalid"); input.removeAttribute("aria-describedby"); }
+    });
+  }
 
   // Строки анкеты участника по порядку; каждая берёт значение из реквизитов.
   const ANKETA = [
@@ -1187,7 +1473,9 @@
     price: { group: "Предложения о цене", few: "предложения о цене", use: "по ним пишутся предложения о цене" },
     letter: { group: "Письма-заявки и описи", few: "письма и описи", use: "из них заполняются реквизиты" },
     company: { group: "Документы компании", few: "документы компании", use: "карточка предприятия, выписка, устав, лицензии — из них заполняются реквизиты" },
-    other: { group: "Другое", few: "другое", use: "договоры, акты, протоколы и остальное — пока не используются" },
+    experience: { group: "Опыт: договоры и акты", few: "договоры и акты", use: "исполненные договоры и акты о приёмке — из них собирается опыт для баллов в конкурсах" },
+    staff: { group: "Сотрудники: квалификация", few: "документы сотрудников", use: "дипломы, удостоверения, допуски, трудовые договоры — из них собираются сведения о специалистах для баллов" },
+    other: { group: "Другое", few: "другое", use: "протоколы, документы заказчика и остальное — пока не используются" },
   };
   const DOC_KIND_KEYS = Object.keys(DOC_KINDS);
   const REQUISITE_KINDS = ["anketa", "company", "letter", "price", "declaration"];
@@ -1207,9 +1495,36 @@
     participant: "Анкета участника закупки",
     declaration: "Декларация о принадлежности к субъектам малого и среднего предпринимательства",
     price: "Предложение о цене договора",
+    experience: "Сведения об опыте участника закупки",
+    staff: "Сведения о специалистах и иных работниках участника закупки",
   };
-  const PART_SAMPLE_KIND = { participant: "anketa", declaration: "declaration", price: "price" };
-  const partsOf = (form) => ["tp", "participant", ...(form.smeDeclaration ? ["declaration"] : []), ...(form.hasPrice ? ["price"] : [])];
+  const PART_SAMPLE_KIND = { participant: "anketa", declaration: "declaration", price: "price", experience: "experience", staff: "staff" };
+  // Опыт и специалисты — части заявки, только если за них дают баллы (web/src/lib/tp-parts.ts).
+  const EVIDENCE_RULES = [["experience", /опыт/i], ["staff", /специалист|работник|трудов\S* ресурс|кадр|персонал/i]];
+  const isEvidence = (k) => k === "experience" || k === "staff";
+  const evidenceRows = (criteria, k) => (criteria && criteria.howWins === "points" ? criteria.rows.filter((r) => EVIDENCE_RULES.find(([x]) => x === k)[1].test(`${r.indicator} ${r.detail}`)) : []);
+  const partsOf = (form, criteria) => ["tp", "participant", ...(form.smeDeclaration ? ["declaration"] : []), ...(form.hasPrice ? ["price"] : []),
+    ...EVIDENCE_RULES.filter(([k]) => evidenceRows(criteria, k).length).map(([k]) => k)];
+  // Что в приложении напишет ИИ из договоров и документов сотрудников примера («Образцы и реквизиты», d6, d8, d9, d10):
+  // строки, ожидаемые баллы по шкале из порядка оценки и чего не хватает до максимума.
+  const EVIDENCE_DEMO = {
+    experience: {
+      score: "≈ 59 баллов показателя — 8,8 из 100 итоговых: 2 договора на 1 762 000 ₽ из 3 000 000 ₽",
+      gaps: ["До максимума не хватает исполненных договоров на 1 238 000 ₽ — с ними за опыт будет 15 из 100."],
+      rows: [
+        ["Управление образования администрации г. Энска", "Организация церемонии «Учитель года — 2025»", "№ 14-УГ от 12.03.2025", "612 000,00", "28.04.2025"],
+        ["Администрация г. Энска", "Организация праздника «День города — 2024»", "№ 7-ДГ от 20.07.2024", "1 150 000,00", "05.09.2024"],
+      ],
+    },
+    staff: {
+      score: "≈ 50 баллов показателя — 7,5 из 100 итоговых: засчитают режиссёра-постановщика и электромонтёра IV группы",
+      gaps: ["Нет звукорежиссёра и специалиста по охране труда — с ними будет 100 баллов показателя, ещё 7,5 итоговых."],
+      rows: [
+        ["Лебедева Анна Сергеевна", "Режиссёр-постановщик", "Высшее, «Режиссура театрализованных представлений и праздников»", "Диплом [серия и номер]", "Трудовой договор [номер и дата]"],
+        ["Кузнецов Олег Викторович", "Электромонтёр", "Группа по электробезопасности IV", "Удостоверение о проверке знаний, действует до 03.2027", "Трудовой договор [номер и дата]"],
+      ],
+    },
+  };
   const PLAIN_FORM = { title: "Техническое предложение", source: "", participantFields: [], consent: "", hasPrice: false, priceNote: "", smeDeclaration: "", partForms: {} };
 
   const REQ_KEYS = ["who", "submit", "scope", "terms"];
@@ -1245,13 +1560,13 @@
   const PROFILE0 = {
     fullName: "Общество с ограниченной ответственностью «Праздник-Энск»",
     shortName: "ООО «Праздник-Энск»",
-    inn: "6612345678", kpp: "661201001", ogrn: "1146612000123",
+    inn: "6612345676", kpp: "661201001", ogrn: "1146612000127",
     okved: "", smeCategory: "микропредприятие",
     taxSystem: "УСН «доходы минус расходы»",
     vatNote: "НДС не облагается в связи с применением упрощённой системы налогообложения",
     legalAddress: "624000, г. Энск, ул. Садовая, д. 12, офис 4",
     postalAddress: "",
-    account: "40702810716540001234", bankName: "АО «Энскбанк»", bik: "046599001", corrAccount: "30101810500000000901",
+    account: "40702810916540001234", bankName: "АО «Энскбанк»", bik: "046599001", corrAccount: "30101810900000000001",
     head: "Директор Иванова Анна Петровна, действует на основании Устава",
     signer: "Иванова А. П.",
     contactPerson: "", phone: "+7 900 000-12-34", email: "",
@@ -1265,10 +1580,10 @@
   };
   // Другие значения из документов: старый счёт в анкете позапрошлого года и другой телефон.
   const SUGGEST0 = [
-    { key: "account", value: "40702810400000005678", source: "Анкета участника 2024.pdf" },
+    { key: "account", value: "40702810700000005678", source: "Анкета участника 2024.pdf" },
     { key: "bankName", value: "АО «Первый Энский банк»", source: "Анкета участника 2024.pdf" },
     { key: "bik", value: "046599777", source: "Анкета участника 2024.pdf" },
-    { key: "corrAccount", value: "30101810100000000777", source: "Анкета участника 2024.pdf" },
+    { key: "corrAccount", value: "30101810700000000777", source: "Анкета участника 2024.pdf" },
     { key: "phone", value: "+7 900 000-98-76", source: "Заявка День города 2024.pdf" },
   ];
   // Что найдётся по кнопке «Заполнить из моих документов».
@@ -1282,7 +1597,10 @@
     { id: "d3", name: "Анкета участника 2024.pdf", kinds: ["anketa"], about: "Анкета участника, 2024", pages: 2, added: "24.09.2026", scan: true },
     { id: "d4", name: "Ценовое предложение Новый год 2025.docx", kinds: ["price"], about: "Предложение о цене: новогодний утренник, 2025", pages: 1, added: "24.09.2026" },
     { id: "d5", name: "Карточка предприятия.pdf", kinds: ["company"], about: "Карточка предприятия ООО «Праздник-Энск»", pages: 1, added: "24.09.2026" },
-    { id: "d6", name: "Контракт и акт — Учитель года 2025.pdf", kinds: ["other"], about: "Контракт и акт: церемония «Учитель года — 2025», 612 000 ₽", pages: 14, added: "24.09.2026" },
+    { id: "d6", name: "Контракт и акт — Учитель года 2025.pdf", kinds: ["experience"], about: "Контракт и акт: церемония «Учитель года — 2025», 612 000 ₽", pages: 14, added: "24.09.2026" },
+    { id: "d8", name: "Договор и акт — День города 2024.pdf", kinds: ["experience"], about: "Договор и акт: праздник «День города — 2024», 1 150 000 ₽", pages: 12, added: "24.09.2026" },
+    { id: "d9", name: "Режиссёр-постановщик — диплом и договор.pdf", kinds: ["staff"], about: "Режиссёр-постановщик: диплом «Режиссура театрализованных представлений и праздников», трудовой договор", pages: 5, added: "24.09.2026", scan: true },
+    { id: "d10", name: "Электромонтёр — удостоверение IV группы.pdf", kinds: ["staff"], about: "Электромонтёр: удостоверение о проверке знаний, группа по электробезопасности IV, до 03.2027", pages: 2, added: "24.09.2026", scan: true },
     { id: "d7", name: "Протокол итогов — выпускной 2024.pdf", kinds: ["other"], about: "Протокол: заявка отклонена — не указан срок передачи фотографий", pages: 4, added: "24.09.2026" },
   ];
 
@@ -1306,8 +1624,6 @@
       who: [R("Только для малого бизнеса и социально ориентированных НКО", "Извещение, раздел 6", "Закупка осуществляется у субъектов малого предпринимательства, социально ориентированных некоммерческих организаций.")],
       submit: [
         R("Программа мероприятия с таймингом и описание, как будете оказывать услуги", "Извещение, п. 5.1.3", "Предложение участника закупки в отношении объекта закупки должно содержать проект программы мероприятия с указанием тайминга, а также описание порядка оказания услуг."),
-        R("Чем подробнее программа и описание услуг, тем больше баллов", "Порядок оценки, п. 2", "Критерий «Качественные характеристики объекта закупки»: оценивается детальность программы мероприятия и описания порядка оказания услуг."),
-        R("Опыт тоже даёт баллы: исполненные контракты на организацию мероприятий с актами о приёмке", "Порядок оценки, п. 3", "Критерий «Квалификация участника закупки»: наличие опыта по успешному исполнению контрактов на организацию мероприятий, подтверждённого исполненными контрактами и актами о приёмке."),
         R("Декларацию о соответствии требованиям формирует площадка", "Извещение, раздел 8", "Декларация о соответствии участника закупки единым требованиям формируется с использованием программно-аппаратных средств электронной площадки."),
       ],
       scope: [
@@ -1360,6 +1676,32 @@
         replace: { text: "По проекту контракта заменить исполнителя из заявки можно только по письменному согласованию с заказчиком и на исполнителя со званием не ниже требований ТЗ.", src: "k-4.5" },
       },
     },
+    // Как оценят заявку — как в web/src/lib/requirements-sample.ts: цена 60 из 100, качество программы 10, опыт и специалисты — по 15.
+    criteria: {
+      howWins: "points",
+      rows: [
+        { criterion: "Цена контракта", criterionWeight: "60 %", indicator: "", indicatorWeight: "", detail: "", detailWeight: "",
+          scoring: "Наименьшая цена — 100 баллов, остальные — пропорционально: наименьшая цена, делённая на цену участника, × 100.",
+          proof: "", form: "", source: "Порядок оценки, п. 1.1 и 2", quote: "Наименьшему предложению о цене контракта присваивается 100 баллов, остальным — пропорционально: наименьшее предложение, делённое на предложение участника, умноженное на 100.", verified: true },
+        { criterion: "Качественные характеристики объекта закупки", criterionWeight: "10 %",
+          indicator: "Качество проекта программы мероприятия и описания порядка оказания услуг", indicatorWeight: "100 %", detail: "", detailWeight: "",
+          scoring: "Программа с таймингом каждого блока и описание всех услуг по ТЗ — 100 баллов; программа без описания услуг — 50; нет программы — 0.",
+          proof: "Проект программы мероприятия с таймингом и описание порядка оказания услуг — в предложении участника.",
+          form: "", source: "Порядок оценки, п. 3.1", quote: "Программа с таймингом каждого блока церемонии и описание порядка оказания всех услуг по техническому заданию — 100 баллов; программа с таймингом без описания порядка оказания услуг — 50 баллов; программа не представлена — 0 баллов.", verified: true },
+        { criterion: "Квалификация участников закупки", criterionWeight: "30 %",
+          indicator: "Наличие у участников закупки опыта оказания услуги, связанного с предметом контракта", indicatorWeight: "50 %",
+          detail: "Общая цена исполненных договоров", detailWeight: "100 %",
+          scoring: "Договоры на организацию мероприятий за последние 5 лет, каждый — от 20 % начальной цены, то есть от 137 000 ₽. Общая цена от 3 000 000 ₽ — 100 баллов, меньше — пропорционально.",
+          proof: "Исполненные договоры (контракты) и акты о приёмке оказанных услуг.",
+          form: "Приложение 1 к порядку оценки — сведения об опыте", source: "Порядок оценки, п. 4.1", quote: "Подтверждается исполненными договорами (контрактами) и актами о приёмке оказанных услуг.", verified: true },
+        { criterion: "Квалификация участников закупки", criterionWeight: "30 %",
+          indicator: "Наличие у участников закупки специалистов и иных работников определённого уровня квалификации", indicatorWeight: "50 %",
+          detail: "Общее количество специалистов", detailWeight: "100 %",
+          scoring: "Засчитывают режиссёра-постановщика с высшим образованием в области культуры и искусства, звукорежиссёра, электромонтёра с группой по электробезопасности не ниже IV и специалиста по охране труда. Четыре и больше — 100 баллов, три — 75, два — 50, один — 25.",
+          proof: "Копии трудовых или гражданско-правовых договоров, дипломов и удостоверений.",
+          form: "Приложение 2 к порядку оценки — сведения о специалистах", source: "Порядок оценки, п. 4.2", quote: "Четыре специалиста и более — 100 баллов, три — 75 баллов, два — 50 баллов, один — 25 баллов, нет специалистов — 0 баллов.", verified: true },
+      ],
+    },
     sources: {
       "izv-5.1.1": D("Извещение, п. 5.1.1", "Извещение.pdf", "5.1.1. Заявка подаётся в форме электронного документа через электронную площадку."),
       "izv-5.1.2": D("Извещение, п. 5.1.2", "Извещение.pdf", "5.1.2. Предложение о цене контракта указывается участником с использованием электронной площадки."),
@@ -1368,7 +1710,7 @@
       "izv-7": D("Извещение, раздел 7", "Извещение.pdf", "7. Размер обеспечения заявки: 1% от начальной (максимальной) цены контракта — 6 850,00 руб. Обеспечение предоставляется путём блокирования денежных средств на специальном счёте участника или независимой гарантией."),
       "izv-8": D("Извещение, раздел 8", "Извещение.pdf", "8. Декларация о соответствии участника закупки единым требованиям формируется с использованием программно-аппаратных средств электронной площадки."),
       "izv-11": D("Извещение, раздел 11", "Извещение.pdf", "11. Размер обеспечения исполнения контракта: 5% от цены контракта."),
-      "oc-3": D("Порядок оценки, п. 3", "Порядок оценки.pdf", "3. Критерий «Квалификация участника закупки»: наличие опыта по успешному исполнению контрактов на организацию мероприятий, подтверждённого исполненными контрактами и актами о приёмке."),
+      "oc-4.1": D("Порядок оценки, п. 4.1", "Порядок оценки.pdf", "Подтверждается исполненными договорами (контрактами) и актами о приёмке оказанных услуг. Сведения об опыте представляются по форме приложения 1 к настоящему порядку."),
       "k-2.1": D("Проект контракта, п. 2.1", "Проект контракта.pdf", "2.1. Цена контракта определяется по итогам электронного конкурса и не может превышать начальную (максимальную) цену контракта."),
       "k-2.5": D("Проект контракта, п. 2.5", "Проект контракта.pdf", "2.5. Оплата производится в течение 7 рабочих дней с даты подписания Заказчиком документа о приёмке."),
       "k-4.3": D("Проект контракта, п. 4.3", "Проект контракта.pdf", "4.3. Заказчик в течение 3 рабочих дней с даты получения проекта программы согласовывает его либо направляет мотивированные замечания."),
@@ -1385,8 +1727,8 @@
         note: NOTE_44 + ONE_QUOTE,
       },
       "Какие документы нужны для заявки?": {
-        text: "**Заявку подают на электронной площадке, цену указывают там же** (извещение, п. 5.1.1 и 5.1.2).\n\nВ предложение по этой закупке входит «проект программы мероприятия с указанием тайминга» и описание, как будете оказывать услуги (п. 5.1.3). От подробности программы зависят баллы.\n\nЕщё баллы даёт опыт: исполненные контракты на организацию мероприятий с актами о приёмке (порядок оценки, п. 3). Декларацию о соответствии единым требованиям формирует площадка (извещение, раздел 8).\n\nУчаствовать могут только субъекты малого предпринимательства и социально ориентированные НКО (раздел 6). Общий состав заявки задаёт ч. 1 ст. 43 44-ФЗ: сведения об участнике, предложение по объекту закупки и предложение о цене.",
-        src: [{ doc: "izv-5.1.1" }, { doc: "izv-5.1.2" }, { doc: "izv-5.1.3" }, { doc: "oc-3" }, { doc: "izv-8" }, { doc: "izv-6" }, { law: "44-43-1" }],
+        text: "**Заявку подают на электронной площадке, цену указывают там же** (извещение, п. 5.1.1 и 5.1.2).\n\nВ предложение по этой закупке входит «проект программы мероприятия с указанием тайминга» и описание, как будете оказывать услуги (п. 5.1.3). От подробности программы зависят баллы.\n\nЕщё баллы даёт опыт: исполненные договоры на организацию мероприятий с актами о приёмке — до 15 баллов из 100 (порядок оценки, п. 4.1). Декларацию о соответствии единым требованиям формирует площадка (извещение, раздел 8).\n\nУчаствовать могут только субъекты малого предпринимательства и социально ориентированные НКО (раздел 6). Общий состав заявки задаёт ч. 1 ст. 43 44-ФЗ: сведения об участнике, предложение по объекту закупки и предложение о цене.",
+        src: [{ doc: "izv-5.1.1" }, { doc: "izv-5.1.2" }, { doc: "izv-5.1.3" }, { doc: "oc-4.1" }, { doc: "izv-8" }, { doc: "izv-6" }, { law: "44-43-1" }],
         note: NOTE_44 + ONE_QUOTE,
       },
       "Что проверить в проекте контракта перед подачей?": {
@@ -1616,17 +1958,37 @@
   }
 
   /* ---------- состояние ---------- */
+  // Вопросы юристу: отвечает живой юрист по закупкам, обычно в течение рабочего дня. В прототипе — пример переписки.
+  const LAWYER = { name: "Анна Кузнецова", role: "юрист по 44-ФЗ и 223-ФЗ", initials: "АК" };
+  const THREADS0 = [
+    {
+      id: "t1", pid: P1.id, title: "Можно ли заменить исполнителя после подачи заявки?", unread: true,
+      ctx: { label: "ответ ИИ из «Вопросов» закупки", text: "По проекту контракта (п. 4.5) замена исполнителей допускается только по согласованию с заказчиком. Как оформить согласование, в документах не сказано." },
+      messages: [
+        { role: "user", text: "Можно ли заменить исполнителя после подачи заявки? Вокалистка может заболеть к концу ноября.", when: "вчера, 18:12" },
+        { role: "lawyer", text: "Можно, но только с согласия заказчика: так сказано в п. 4.5 проекта контракта.\n\nНапишите заказчику письмо: кого меняете и на кого, ФИО и звание нового исполнителя, приложите подтверждение звания. Звание должно быть не ниже, чем требует ТЗ в п. 3.5, иначе заказчик вправе отказать. Меняйте исполнителя, только когда получите согласие письменно.", when: "сегодня, 10:40" },
+      ],
+    },
+    {
+      id: "t2", pid: "", title: "Когда вернут обеспечение заявки, если мы не победим?", unread: false, ctx: null,
+      messages: [{ role: "user", text: "Когда вернут обеспечение заявки, если мы не победим? И нужно ли для этого что-то писать?", when: "сегодня, 09:15" }],
+    },
+  ];
+
   const S = {
     screen: "home", id: null, drawer: false, visit: 0,
     purchases: [prepare(P1, true), prepare(P2, false), prepare(P3, true)],
     profile: clone(PROFILE0), sources: clone(SOURCES0), suggestions: clone(SUGGEST0),
     docs: clone(DOCS0),
     general: { messages: [], docs: [], pending: [], thinking: false },
-    home: { text: "", files: [] },
     drafts: {},
     ui: {},
     busy: null,
-    info: false, fold: {}, q: "", tabs: {},
+    info: false, fold: {}, q: "", tabs: {}, lane: null,
+    law: { open: null, want: null, threads: clone(THREADS0) },
+    notes: [], notifOpen: false,
+    // Распознавание сканов через ИИ — выключатель под каждой загрузкой, как в приложении.
+    ocr: true,
   };
   const PURCHASE_SCREENS = ["req", "tp", "check", "chat", "price"];
   const WORK = ["list", ...PURCHASE_SCREENS];
@@ -1655,17 +2017,27 @@
       { key: "check", n: 3, title: "Проверка заявки", short: "Проверка", ...(!done ? { state: "todo", status: "не проверена", tone: "calm" } : bad ? { state: "fix", status: countText(bad, "ошибка", "ошибки", "ошибок"), tone: "bad" } : warn ? { state: "fix", status: countText(warn, "замечание", "замечания", "замечаний"), tone: "warn" } : { state: "done", status: "ошибок нет", tone: "ok" }) },
     ];
   }
-  // Где закупка сейчас — одной строкой для списков.
-  function stageOf(p) {
+  // Бейдж статуса: пилюля с бледной заливкой статуса, текст и иконка — его цветом. Цвет всегда с подписью:
+  // янтарь — нужно ваше действие, красный — ошибка, зелёный — готово, индиго — следующий шаг, серый — справка.
+  const badge = (tone, text, icon) => `<span class="badge ${tone}">${icon ? ic(icon, 14, icon === "check" ? 2.5 : 1.5) : ""}${esc(text)}</span>`;
+  // Что с закупкой сейчас — коротко, бейджем: в таблице на главной и в списке закупок.
+  function stageBadge(p) {
     const [, tp, check] = stepsOf(p);
     const due = dueLine(p.deadline, false);
-    if (due && due.days < 0) return { text: "Приём заявок закончился", tone: "calm" };
-    if (p.check.state === "done") return check.state === "done" ? { text: "Готово к подаче на площадке", tone: "ok" } : { text: `Шаг 3 · проверка: ${check.status}`, tone: check.tone };
-    if (tp.state === "todo") return { text: "Шаг 2 · составить ТП", tone: "brand" };
-    if (tp.state === "fix") return { text: `Шаг 2 · ТП: ${tp.status}`, tone: "warn" };
-    return { text: "Шаг 3 · проверить заявку", tone: "brand" };
+    if (due && due.days < 0) return badge("calm", "приём закончился");
+    if (p.check.state === "done") return check.state === "done" ? badge("ok", "готово к подаче", "check") : badge(check.tone === "bad" ? "bad" : "warn", check.status, "alert");
+    if (tp.state === "todo") return badge("brand", "составить ТП");
+    if (tp.state === "fix") return badge("warn", `ТП: ${tp.status}`, "pen");
+    return badge("brand", "проверить заявку");
   }
-  const stageHTML = (p) => { const st = stageOf(p); return `<span class="stage ${st.tone}">${esc(st.text)}</span>`; };
+  // Срок подачи бейджем: янтарный — неделя и меньше, серый — дальше или уже прошёл.
+  function dueBadge(p, long) {
+    const due = dueLine(p.deadline, false);
+    if (!due) return badge("calm", "срок не найден");
+    if (due.days < 0) return badge("calm", due.head.replace(/^Приём заявок закончился /, ""));
+    const text = due.days === 0 ? "подать сегодня" : long ? `${daysText(due.days)} до подачи` : daysText(due.days);
+    return badge(due.tone === "soon" ? "warn" : "calm", text, "clock");
+  }
   const needsFill = (t) => /\[[^\]]+\]/.test(t || "");
   const itemsFill = (tp) => tp.goods.filter((g) => needsFill(g.characteristics)).length + tp.items.filter((it) => needsFill(it.offer)).length + (needsFill(tp.form.consent) ? 1 : 0);
   const fillCount = (tp) => itemsFill(tp) + (castTodo(tp) ? 1 : 0);
@@ -1690,6 +2062,65 @@
   }
 
   /* ---------- кусочки разметки ---------- */
+  // Подсказка «?»: заголовок и текст — в атрибутах кнопки, карточка одна на всю страницу (#hint-pop).
+  function hintBtn(title, text, id = "") {
+    return `<button class="hint-btn" type="button"${id ? ` id="${id}"` : ""} data-act="hint" data-hint-title="${esc(title)}" data-hint="${esc(text)}" aria-label="Подсказка: ${esc(title)}" aria-expanded="false" aria-controls="hint-pop">${ic("help", 16)}</button>`;
+  }
+  // Мышью подсказка открывается наведением и закрывается, когда мышь уходит с кнопки и карточки; нажатие её закрепляет.
+  // На телефоне и с клавиатуры — нажатием (Enter, пробел). hintPinned — открыта нажатием: уход мыши её не закрывает.
+  let hintFrom = null;
+  let hintPinned = false;
+  let hintTimer = 0;
+  const HINT_DELAY = 150;
+  const stopHintTimer = () => { clearTimeout(hintTimer); hintTimer = 0; };
+  function closeHint(refocus) {
+    stopHintTimer();
+    if (!hintFrom) return;
+    $("#hint-pop").hidden = true;
+    hintFrom.setAttribute("aria-expanded", "false");
+    if (refocus && hintFrom.isConnected) hintFrom.focus();
+    hintFrom = null;
+    hintPinned = false;
+  }
+  // Карточка — над кнопкой, а если сверху нет места — под ней; по ширине не выходит за экран.
+  // pin — открыта нажатием. Нажатие на кнопку открытой наведением подсказки закрепляет её, повторное — закрывает.
+  function openHint(btn, pin = true) {
+    stopHintTimer();
+    if (hintFrom === btn) {
+      if (pin && !hintPinned) hintPinned = true;
+      else if (pin) closeHint(false);
+      return;
+    }
+    closeHint(false);
+    const pop = $("#hint-pop");
+    $("#hint-pop-title").textContent = btn.dataset.hintTitle;
+    $("#hint-pop-text").textContent = btn.dataset.hint;
+    pop.hidden = false;
+    const r = btn.getBoundingClientRect();
+    const left = Math.min(Math.max(8, r.left), window.innerWidth - pop.offsetWidth - 8);
+    const top = r.top - pop.offsetHeight - 6 >= 8 ? r.top - pop.offsetHeight - 6 : r.bottom + 6;
+    pop.style.left = `${left}px`;
+    pop.style.top = `${top}px`;
+    btn.setAttribute("aria-expanded", "true");
+    hintFrom = btn;
+    hintPinned = pin;
+  }
+  // Наведение мыши: открыть с небольшой задержкой; уйти с кнопки на карточку и обратно — не значит уйти совсем.
+  document.addEventListener("pointerover", (e) => {
+    if (e.pointerType !== "mouse" || !e.target.closest) return;
+    const btn = e.target.closest(".hint-btn");
+    if (btn) {
+      stopHintTimer();
+      if (hintFrom !== btn) hintTimer = setTimeout(() => openHint(btn, false), HINT_DELAY);
+    } else if (e.target.closest("#hint-pop")) stopHintTimer();
+  });
+  document.addEventListener("pointerout", (e) => {
+    if (e.pointerType !== "mouse" || !e.target.closest || !e.target.closest(".hint-btn, #hint-pop")) return;
+    const to = e.relatedTarget;
+    if (to && to.closest && (to.closest("#hint-pop") || (hintFrom && to.closest(".hint-btn") === hintFrom))) return;
+    stopHintTimer();
+    if (hintFrom && !hintPinned) hintTimer = setTimeout(() => closeHint(false), HINT_DELAY);
+  });
   const noteHTML = (tone, text, cls = "", icon = "") => `<div class="note ${tone} ${cls}">${icon ? ic(icon, 18) : ""}<div>${text}</div></div>`;
   // Одно предупреждение — плашкой, несколько — одной плашкой со списком.
   const warnsHTML = (items) => !items.length ? "" : items.length === 1
@@ -1701,6 +2132,7 @@
       <p>${hint}</p>
       <label class="btn lg" for="file-${id}">${button}<input id="file-${id}" type="file" multiple class="sr-only"></label>
       ${sample ? `<span class="or">или <button class="link" type="button" data-act="${sample.act}">${sample.text}</button></span>` : ""}
+      <label class="ocr-row"><input type="checkbox" data-ocr${S.ocr ? " checked" : ""}><span>Распознавать сканы и фото через ИИ. Картинка уходит в США как есть: персональные данные на ней не скрываются — паспорта и анкеты со скана лучше не загружать.</span></label>
     </div>`;
 
   function md(text) {
@@ -1745,7 +2177,11 @@
 
   /* ---------- сайдбар: только разделы ---------- */
   function sideHTML() {
-    const nav = (screen, icon, label, count, current) => `<button class="nav-item" type="button" data-go="${screen}"${current ? ' aria-current="page"' : ""}>${ic(icon)}<span>${label}</span>${count !== undefined ? `<span class="count">${count}</span>` : ""}</button>`;
+    const countHTML = (count) => count === undefined ? ""
+      : count.fresh ? `<span class="count fresh">${count.fresh}<span class="sr-only"> ${plural(count.fresh, "новый ответ", "новых ответа", "новых ответов")}</span></span>`
+      : `<span class="count">${count}</span>`;
+    const nav = (screen, icon, label, count, current) => `<button class="nav-item" type="button" data-go="${screen}"${current ? ' aria-current="page"' : ""}>${ic(icon)}<span>${label}</span>${countHTML(count)}</button>`;
+    const lawFresh = S.law.threads.filter((t) => t.unread).length;
     const pr = S.profile;
     const name = pr.shortName.trim() || pr.fullName.trim() || "Участник закупок";
     const sub = pr.email.trim() || (pr.inn.trim() ? `ИНН ${pr.inn.trim()}` : "реквизиты не заполнены");
@@ -1759,6 +2195,7 @@
           ${nav("home", "home", "Главная", undefined, S.screen === "home")}
           ${nav("list", "list", "Закупки", S.purchases.length, WORK.includes(S.screen) || S.screen === "new")}
           ${nav("ask", "chat", "Спросить про тендер", undefined, S.screen === "ask")}
+          ${nav("lawyer", "scale", "Вопросы юристу", lawFresh ? { fresh: lawFresh } : undefined, S.screen === "lawyer")}
         </nav>
         <section aria-labelledby="side-me">
           <h2 class="sec-label" id="side-me">Данные компании</h2>
@@ -1780,16 +2217,19 @@
   }
 
   /* ---------- шапка экрана: заголовок, подзаголовок, главное действие ---------- */
-  const newBtn = () => `<button class="btn" type="button" data-go="new" aria-label="Новая закупка">${ic("plus")}<span class="lbl">Новая закупка</span></button>`;
+  // Главная кнопка на экране одна: на главной она у самого срочного дела или у «С чего начать», и «Новая закупка» — обводкой.
+  const newBtn = (quiet) => `<button class="btn${quiet ? " line" : ""}" type="button" data-go="new" aria-label="Новая закупка">${ic("plus")}<span class="lbl">Новая закупка</span></button>`;
   function headInfo() {
     const n = S.purchases.length;
     const next = nextDue();
     const when = next ? (next.d.days === 0 ? "сегодня" : `через ${daysText(next.d.days)}`) : "";
     switch (S.screen) {
       case "home":
-        return { title: "Главная", sub: next ? `Ближайший срок подачи ${when}: ${next.p.short}` : n ? "Сроков подачи впереди нет" : "Начните с документов первой закупки", acts: newBtn() };
+        return { title: "Главная", sub: next ? `Ближайший срок подачи ${when}: ${next.p.short}` : n ? "Сроков подачи впереди нет" : "Начните с документов первой закупки", acts: newBtn(!n || tasksOf().length > 0) };
       case "ask":
         return { title: "Спросить про тендер", sub: "Общие вопросы по 44-ФЗ и 223-ФЗ — ответ со ссылкой на статью" };
+      case "lawyer":
+        return { title: "Вопросы юристу", sub: "Живой юрист по 44-ФЗ и 223-ФЗ · ответ в течение рабочего дня", acts: `<button class="btn" type="button" data-act="lawyer-new">${ic("plus")}<span class="lbl">Новый вопрос</span></button>` };
       case "help":
         return { title: "Как это работает", sub: "Путь по закупке и где что лежит" };
       case "new":
@@ -1816,58 +2256,127 @@
     const h = headInfo();
     return `<button class="icon-btn menu-btn" type="button" id="menu-btn" data-act="drawer" aria-label="Открыть меню" aria-controls="side" aria-expanded="${S.drawer && narrow.matches}">${ic("menu", 22)}</button>
       <div class="head-text"><h1 id="page-title" tabindex="-1">${esc(h.title)}</h1>${h.sub ? `<p class="head-sub">${esc(h.sub)}</p>` : ""}</div>
+      ${bellHTML()}
       ${h.acts ? `<div class="head-acts">${h.acts}</div>` : ""}`;
   }
 
-  /* ---------- главная: дела, сроки, вопрос, свои данные ---------- */
-  // Что осталось сделать по закупкам, где ещё идёт приём, и по реквизитам. Порядок — по сроку подачи.
+  /* ---------- главная: самое срочное, закупки по этапам, данные компании ---------- */
+  // Главная — рабочий стол, а не всё сразу: сверху одно самое срочное дело с главной кнопкой экрана,
+  // ниже — закупки по этапам, в конце — данные компании. Вопросы — в разделе «Спросить про тендер».
+
+  // Что осталось сделать по закупкам, где ещё идёт приём. Порядок — по сроку подачи.
   function tasksOf() {
     const out = [];
     for (const p of [...S.purchases].sort(byUrgency)) {
       const due = dueLine(p.deadline, false);
       if (!due || due.days < 0) continue;
-      const when = due.days === 0 ? "подать сегодня" : `${daysText(due.days)} до подачи`;
       const urgent = due.tone === "soon" ? "warn" : "brand";
       const [, tp] = stepsOf(p);
       const bad = p.check.state === "done" ? checkCounts(p).bad : 0;
-      if (bad) out.push({ p, go: "check", text: bad === 1 ? "Исправить ошибку в заявке" : `Исправить ошибки в заявке — ${bad}`, when, tone: "bad" });
+      if (bad) out.push({ p, go: "check", text: bad === 1 ? "Исправить ошибку в заявке" : `Исправить ошибки в заявке — ${bad}`, tone: "bad" });
       else if (p.check.state !== "done") {
-        if (tp.state === "todo") out.push({ p, go: "tp", text: "Составить техническое предложение", when, tone: urgent });
-        else if (tp.state === "fix") out.push({ p, go: "tp", text: `Вписать свои данные в ТП — ${tp.status.replace(/^впишите /, "")}`, when, tone: urgent });
-        else out.push({ p, go: "check", text: "Проверить заявку перед подачей", when, tone: urgent });
-      }
-      if ((p.scans || []).length) out.push({ p, go: "req", text: `Сверить цифры в ${p.scans.length === 1 ? "файле со скана" : "файлах со скана"}`, when, tone: "warn" });
-      p.unreadable.forEach((f) => out.push({ p, go: "req", text: `Пересохранить «${f.name}» — файл не прочитан`, when, tone: "warn" }));
+        if (tp.state === "todo") out.push({ p, go: "tp", text: "Составить техническое предложение", tone: urgent });
+        else if (tp.state === "fix") out.push({ p, go: "tp", text: `Вписать свои данные в ТП — ${tp.status.replace(/^впишите /, "")}`, tone: urgent });
+        else out.push({ p, go: "check", text: "Проверить заявку перед подачей", tone: urgent });
+      } else if (stepsOf(p)[2].state === "done") out.push({ p, go: "files", text: "Скачать документы и подать заявку на площадке", tone: urgent });
+      if ((p.scans || []).length) out.push({ p, go: "req", text: `Сверить цифры в ${p.scans.length === 1 ? "файле со скана" : "файлах со скана"}`, tone: "warn" });
+      p.unreadable.forEach((f) => out.push({ p, go: "req", text: `Пересохранить «${f.name}» — файл не прочитан`, tone: "warn" }));
     }
-    const missing = PROFILE_KEYS.length - filledCount();
-    if (missing) out.push({ go: "profile", text: `${missing === PROFILE_KEYS.length ? "Заполнить" : "Дозаполнить"} реквизиты — ${missing} ${plural(missing, "поле", "поля", "полей")}`, when: "подставятся в анкету, декларацию и цену", tone: "" });
+    // Новый ответ юриста — сразу после самого срочного дела: его ждали, но срок подачи важнее.
+    const answers = S.law.threads.filter((t) => t.unread).map((t) => ({ p: lawPurchase(t), thread: t.id, text: `Прочитать ответ юриста: «${t.title}»`, tone: "brand" }));
+    out.splice(Math.min(1, out.length), 0, ...answers);
     return out;
   }
-  function tasksHTML() {
-    const tasks = tasksOf();
-    if (!tasks.length) return '<p class="list-empty">Всё сделано: по открытым закупкам делать нечего.</p>';
-    return `<ul class="plist">${tasks.map((t) => `<li><button class="prow" type="button" data-go="${t.go}"${t.p ? ` data-id="${t.p.id}"` : ""}>
+  const GO_LABEL = { tp: "Открыть ТП", check: "Открыть проверку", req: "Открыть требования", files: "Скачать документы" };
+  // Кнопка дела: шаг закупки, окно документов заявки или разговор с юристом.
+  const taskAttrs = (t) => t.thread ? `data-act="law-open" data-thread="${t.thread}"` : t.go === "files" ? `data-act="files" data-id="${t.p.id}"` : `data-go="${t.go}" data-id="${t.p.id}"`;
+  const taskBadge = (t, long) => (t.thread ? badge("brand", "новый ответ") : dueBadge(t.p, long));
+  const taskWhere = (t) => (t.p ? t.p.short : "Общий вопрос");
+
+  // Самое срочное — крупно, с главной кнопкой; остальное — строками ниже.
+  function nowHTML(tasks) {
+    if (!tasks.length) return `<p class="all-done">${badge("ok", "всё сделано", "check")}По открытым закупкам делать нечего.</p>`;
+    const [top, ...rest] = tasks;
+    return `<div class="now">
+        <div class="now-text">
+          <div class="now-badges">${taskBadge(top, true)}${top.p && top.p.sample ? badge("calm", "пример") : ""}</div>
+          <p class="now-title">${esc(top.text)}</p>
+          <p class="now-sub">${esc(taskWhere(top))}${top.p ? ` · ${esc(top.p.customer)}` : ""}</p>
+        </div>
+        <button class="btn" type="button" ${taskAttrs(top)}>${top.thread ? "Прочитать ответ" : GO_LABEL[top.go]}${ic("chev", 16)}</button>
+      </div>
+      ${rest.length ? `<ul class="plist">${rest.map((t) => `<li><button class="prow task" type="button" ${taskAttrs(t)}>
         <span class="todo-dot ${t.tone}" aria-hidden="true"></span>
-        <span class="prow-text"><span class="prow-title">${esc(t.text)}</span><span class="prow-sub">${esc([t.p ? t.p.short : "", t.when].filter(Boolean).join(" · "))}</span></span>
+        <span class="prow-text"><span class="prow-title">${esc(t.text)}</span><span class="prow-sub">${esc(taskWhere(t))}</span></span>
+        ${taskBadge(t)}
         <span class="chev">${ic("chev", 16)}</span>
-      </button></li>`).join("")}</ul>`;
+      </button></li>`).join("")}</ul>` : ""}`;
+  }
+
+  // Этапы — как колонки доски у Контур.Закупок и этапы у Тендерплана, но по нашему пути из трёх шагов.
+  const LANES = [
+    { key: "tp", title: "Техническое предложение" },
+    { key: "check", title: "Проверка заявки" },
+    { key: "ready", title: "Готово к подаче" },
+    { key: "closed", title: "Приём закончился" },
+  ];
+  function laneOf(p) {
+    const due = dueLine(p.deadline, false);
+    if (due && due.days < 0) return "closed";
+    const [, tp, check] = stepsOf(p);
+    if (check.state === "done") return "ready";
+    return p.check.state === "done" || tp.state === "done" ? "check" : "tp";
+  }
+  // Что на этапе ждёт вас — одной строкой под числом.
+  function laneNote(key, list) {
+    const steps = list.map((p) => stepsOf(p));
+    if (!list.length) return { tone: "", text: "нет закупок" };
+    if (key === "tp") {
+      const fix = steps.filter(([, tp]) => tp.state === "fix").length;
+      return fix ? { tone: "warn", text: `${fix} ${plural(fix, "ждёт", "ждут", "ждут")} ваших данных` } : { tone: "brand", text: "составить ТП" };
+    }
+    if (key === "check") {
+      const bad = list.filter((p) => p.check.state === "done" && checkCounts(p).bad).length;
+      return bad ? { tone: "bad", text: `${bad} с ошибками` } : { tone: "brand", text: "проверить перед подачей" };
+    }
+    if (key === "ready") return { tone: "ok", text: "можно подавать" };
+    return { tone: "", text: "срок прошёл" };
+  }
+  function dealsHTML(list) {
+    const lane = S.lane && list.some((p) => laneOf(p) === S.lane) ? S.lane : null;
+    const shown = lane ? list.filter((p) => laneOf(p) === lane) : list;
+    const lanes = LANES.map((l) => {
+      const inLane = list.filter((p) => laneOf(p) === l.key);
+      const note = laneNote(l.key, inLane);
+      return `<button class="lane" type="button" data-act="lane" data-lane="${l.key}" aria-pressed="${lane === l.key}"${inLane.length ? "" : " disabled"}>
+        <span class="lane-title">${l.title}</span>
+        <span class="lane-count">${inLane.length}</span>
+        <span class="lane-note ${note.tone}">${esc(note.text)}</span>
+      </button>`;
+    }).join("");
+    const rows = shown.map((p) => `<li><button class="deal" type="button" data-go="p" data-id="${p.id}">
+        ${lawBadge(p)}
+        <span class="deal-main"><span class="deal-title">${esc(p.short)}</span><span class="deal-sub">${esc([p.sample ? "пример" : "", p.customer].filter(Boolean).join(" · "))}</span></span>
+        <span class="deal-tags">${stageBadge(p)}${dueBadge(p)}</span>
+        <span class="chev">${ic("chev", 16)}</span>
+      </button></li>`).join("");
+    return `<div class="lanes" role="group" aria-label="Этапы: нажмите, чтобы оставить в таблице только этап">${lanes}</div>
+      <div class="deals-head" aria-hidden="true"><span>Закупка</span><span>Что сейчас</span><span>До подачи</span></div>
+      <ul class="deals">${rows}</ul>
+      ${lane ? `<p class="home-foot">Показан этап «${esc(LANES.find((l) => l.key === lane).title)}». <button class="link quiet" type="button" data-act="lane" data-lane="${lane}">Показать все закупки</button></p>` : ""}`;
   }
 
   function homeHTML() {
     const list = [...S.purchases].sort(byUrgency);
-    const files = S.home.files;
-    const filled = filledCount(), total = PROFILE_KEYS.length;
-    const rows = list.map((p) => `<li><button class="prow wide" type="button" data-go="p" data-id="${p.id}">
-        ${lawBadge(p)}
-        <span class="prow-text"><span class="prow-title">${esc(p.short)}${p.sample ? ' <span class="sample">пример</span>' : ""}</span><span class="prow-sub">${dueText(p)}</span>${stageHTML(p)}</span>
-        <span class="chev">${ic("chev", 16)}</span>
-      </button></li>`).join("");
-    const dataRow = (screen, icon, title, sub, extra = "") => `<li><button class="prow" type="button" data-go="${screen}">
+    const tasks = tasksOf();
+    const filled = filledCount(), total = PROFILE_KEYS.length, missing = total - filled;
+    const tpSamples = samplesOf("tp").length;
+    const dataRow = (screen, icon, title, sub, tag, extra = "") => `<li><button class="prow task" type="button" data-go="${screen}">
         <span class="law icon" aria-hidden="true">${ic(icon, 16)}</span>
         <span class="prow-text"><span class="prow-title">${title}</span><span class="prow-sub">${sub}</span>${extra}</span>
+        ${tag}
         <span class="chev">${ic("chev", 16)}</span>
       </button></li>`;
-    const tasks = tasksOf().length;
     const start = `<section class="panel" aria-labelledby="start-title">
         <div class="panel-head"><h2 class="panel-title" id="start-title">С чего начать</h2><button class="link quiet small" type="button" data-go="help">Как это работает</button></div>
         <ol class="start-steps">
@@ -1877,54 +2386,37 @@
         </ol>
         <div class="panel-foot"><button class="btn" type="button" data-go="new">${ic("plus")}Загрузить документы закупки</button><span class="or">или <button class="link" type="button" data-act="sample">посмотреть на примере</button></span></div>
       </section>`;
-    return `<div class="dash">
-      <div class="dash-side">
-      ${list.length ? `<section class="panel" aria-labelledby="todo-title">
-        <div class="panel-head"><h2 class="panel-title" id="todo-title">Что сделать сейчас <span class="count">${tasks}</span></h2></div>
-        ${tasksHTML()}
+    return `<div class="home">
+      ${list.length ? `<section class="panel" aria-labelledby="now-title">
+        <div class="panel-head"><h2 class="panel-title" id="now-title">Сейчас важно${tasks.length ? ` <span class="count">${tasks.length}</span>` : ""}</h2></div>
+        ${nowHTML(tasks)}
       </section>
       <section class="panel" aria-labelledby="deals-title">
-        <div class="panel-head"><h2 class="panel-title" id="deals-title">Мои закупки <span class="count">${list.length}</span></h2><button class="link small" type="button" data-go="list">Все закупки</button></div>
-        <ul class="plist">${rows}</ul>
+        <div class="panel-head"><div><h2 class="panel-title" id="deals-title">Закупки по этапам <span class="count">${list.length}</span></h2><p class="panel-sub">Нажмите на этап — останутся только его закупки</p></div><button class="link small" type="button" data-go="list">Все закупки</button></div>
+        ${dealsHTML(list)}
       </section>` : start}
-      </div>
-      <div class="dash-side">
-        <section class="panel" aria-labelledby="ask-title">
-          <div class="panel-head"><h2 class="panel-title" id="ask-title">Спросить про тендер</h2></div>
-          <div class="panel-body">
-            <p class="ask-lead">Отвечу по 44-ФЗ, 223-ФЗ и вашим документам — со ссылкой на статью и пункт.</p>
-            <form class="askbox" id="home-form">
-              <label class="circle" for="home-file" title="Приложить документ">${ic("clip", 18)}<span class="sr-only">Приложить документ</span><input id="home-file" type="file" multiple class="sr-only"></label>
-              <textarea id="home-q" rows="1" placeholder="Ваш вопрос…" aria-label="Вопрос" data-enter>${esc(S.home.text)}</textarea>
-              <button class="circle send" type="submit" aria-label="Спросить">${ic("send")}</button>
-            </form>
-            ${files.length ? `<div class="chips">${files.map((n, i) => `<span class="file-chip">${ic("file", 14)}<span class="fc-name">${esc(n)}</span><button class="x" type="button" data-act="home-file-x" data-i="${i}" aria-label="Убрать ${esc(n)}">${ic("x", 14)}</button></span>`).join("")}</div>` : ""}
-            <div class="chips">${GENERAL_SUGGEST.map((q) => `<button class="chip" type="button" data-act="home-q" data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div>
-          </div>
-        </section>
-        <section class="panel" aria-labelledby="mine-title">
-          <div class="panel-head"><h2 class="panel-title" id="mine-title">Данные компании</h2>${list.length ? "" : '<span class="small muted">можно заполнить заранее</span>'}</div>
-          <ul class="plist">
-            ${dataRow("profile", "user", "Реквизиты", `Заполнено ${filled} из ${total} · для анкеты и декларации`, `<span class="meter" aria-hidden="true"><i style="width:${Math.round((filled / total) * 100)}%"></i></span>`)}
-            ${dataRow("docs", "folder", "Образцы и реквизиты", S.docs.length ? `${S.docs.length} ${plural(S.docs.length, "документ", "документа", "документов")} · по ним пишутся новые` : "Прошлые заявки — чтобы писать в вашем стиле")}
-          </ul>
-        </section>
-      </div>
+      <section class="panel" aria-labelledby="mine-title">
+        <div class="panel-head"><div><h2 class="panel-title" id="mine-title">Данные компании</h2><p class="panel-sub">Вписываются один раз и сами подставляются в анкету, декларацию и цену</p></div></div>
+        <ul class="plist">
+          ${dataRow("profile", "user", "Реквизиты", `Заполнено ${filled} из ${total}`, missing ? badge("warn", `не хватает ${missing} ${plural(missing, "поля", "полей", "полей")}`, "pen") : badge("ok", "заполнены", "check"), `<span class="meter" aria-hidden="true"><i style="width:${Math.round((filled / total) * 100)}%"></i></span>`)}
+          ${dataRow("docs", "folder", "Образцы и реквизиты", S.docs.length ? `${S.docs.length} ${plural(S.docs.length, "документ", "документа", "документов")} · по ним пишутся новые` : "Прошлые заявки — чтобы писать в вашем стиле", tpSamples ? badge("ok", `ТП: ${tpSamples}`, "check") : badge("warn", "нет образцов ТП", "alert"))}
+        </ul>
+      </section>
     </div>
     <p class="foot">Прототип: закупки, документы и ответы вымышленные. Файлы не читаются, ничего не сохраняется и никуда не отправляется. Ответы ИИ не являются юридической консультацией — проверяйте нормы по первоисточнику.</p>`;
   }
 
   /* ---------- вопросы: общий чат и чат закупки ---------- */
-  function msgHTML(m, p) {
+  function msgHTML(m, p, i) {
     if (m.role === "user") {
       const files = (m.files || []).length ? `<div class="msg-files">${m.files.map((n) => `<span class="file-chip plain">${ic("file", 14)}<span class="fc-name">${esc(n)}</span></span>`).join("")}</div>` : "";
       return files + (m.text ? `<div class="msg user">${esc(m.text)}</div>` : "");
     }
     const done = m.done !== false;
     const refs = (m.src || []).map((r) => refBtn(r, p)).join("");
-    return `<div class="msg bot">${md(done ? m.text : m.shown)}${done && m.note ? `<p class="note-line">${esc(m.note)}</p>` : ""}${done ? `<div class="msg-meta">${refs ? `<span class="refs">Источники: ${refs}</span>` : ""}<button class="link quiet" type="button" data-act="lawyer">Спросить юриста</button></div>` : ""}</div>`;
+    return `<div class="msg bot">${md(done ? m.text : m.shown)}${done && m.note ? `<p class="note-line">${esc(m.note)}</p>` : ""}${done ? `<div class="msg-meta">${refs ? `<span class="refs">Источники: ${refs}</span>` : ""}<button class="link quiet" type="button" data-act="lawyer" data-i="${i}">Спросить юриста</button></div>` : ""}</div>`;
   }
-  const feedInner = (messages, thinking, p) => messages.map((m) => msgHTML(m, p)).join("") + (thinking ? '<p class="thinking">Изучаю документы и закон…</p>' : "");
+  const feedInner = (messages, thinking, p) => messages.map((m, i) => msgHTML(m, p, i)).join("") + (thinking ? '<p class="thinking">Изучаю документы и закон…</p>' : "");
 
   function chipsHTML(list, used) {
     const left = list.filter((q) => !used.includes(q));
@@ -1985,7 +2477,7 @@
       const days = !due ? "" : due.days < 0 ? '<span class="days">срок прошёл</span>' : `<span class="days${due.tone === "soon" ? " soon" : ""}">${due.days === 0 ? "сегодня" : daysText(due.days)}</span>`;
       return `<li><button class="prow" type="button" data-go="p" data-id="${p.id}"${sel === p ? ' aria-current="true"' : ""}>
         ${lawBadge(p)}
-        <span class="prow-text"><span class="prow-title">${esc(p.short)}</span><span class="prow-sub">${esc([p.sample ? "пример" : "", p.customer].filter(Boolean).join(" · "))}</span>${stageHTML(p)}</span>
+        <span class="prow-text"><span class="prow-title">${esc(p.short)}</span><span class="prow-sub">${esc([p.sample ? "пример" : "", p.customer].filter(Boolean).join(" · "))}</span><span>${stageBadge(p)}</span></span>
         <span class="prow-side">${days}</span>
       </button></li>`;
     }).join("")}</ul>`;
@@ -2014,11 +2506,12 @@
     let n = null;
     if (from === "req" && tp.state !== "done") n = { label: "Дальше — шаг 2 из 3", title: "Техническое предложение", text: tp.state === "todo" ? "Составлю черновик по ТЗ: товары с характеристиками и предложение по каждому пункту. Вам останется вписать своё." : `Черновик готов — осталось вписать свои данные: ${tp.status.replace(/^впишите /, "")}.`, go: "tp", action: tp.state === "todo" ? "Составить ТП" : "Открыть ТП" };
     else if (from !== "check" && check.state === "todo") n = { label: "Дальше — шаг 3 из 3", title: "Проверка заявки", text: "Соберите заявку и загрузите её перед подачей — сверю с извещением и ТЗ по каждому пункту.", go: "check", action: "Проверить заявку" };
-    else if (check.state === "done") n = { label: "Готово к подаче", title: "Подайте заявку на электронной площадке", text: due ? `${due.head}${due.left ? ` — ${due.left}` : ""}.` : "Срок подачи — в извещении о закупке." };
+    else if (check.state === "done") n = { label: "Готово к подаче", title: "Подайте заявку на электронной площадке", text: `${due ? `${due.head}${due.left ? ` — ${due.left}` : ""}.` : "Срок подачи — в извещении о закупке."} Файлы заявки — одним архивом.`, act: "files", action: "Скачать документы заявки" };
     if (!n) return "";
     return `<section class="next" aria-label="${esc(n.label)}">
       <div class="next-text"><p class="next-label${n.go ? "" : " ok"}">${esc(n.label)}</p><p class="next-title">${esc(n.title)}</p><p class="next-desc">${esc(n.text)}</p></div>
-      ${n.go ? `<button class="btn" type="button" data-go="${n.go}" data-id="${p.id}">${esc(n.action)}${ic("chev", 16)}</button>` : ""}
+      ${n.go ? `<button class="btn" type="button" data-go="${n.go}" data-id="${p.id}">${esc(n.action)}${ic("chev", 16)}</button>`
+        : n.act ? `<button class="btn" type="button" data-act="${n.act}" data-id="${p.id}">${ic("download", 16)}${esc(n.action)}</button>` : ""}
     </section>`;
   }
 
@@ -2042,17 +2535,24 @@
   function pdDue(p) {
     const due = dueLine(p.deadline, true);
     if (!due) return "Срок подачи не найден в документах";
-    return `${esc(due.head)}${due.left ? ` · <span class="${due.tone === "soon" ? "warn-t" : ""}">${esc(due.left)}</span>` : ""}`;
+    // Точка-разделитель держится за словом перед ней: строка не начинается с неё.
+    return `${esc(due.head)}${due.left ? `\u00a0· <span class="${due.tone === "soon" ? "warn-t" : ""}">${esc(due.left)}</span>` : ""}`;
   }
 
   function detailHTML(p) {
+    // Документы закупки лежат в «Сведениях»: на кнопке — значок файла и их число, а если файл не прочитан —
+    // янтарный значок внимания и число таких файлов. Словами — во всплывающей подсказке и для диктора.
+    const docs = p.files.length + p.unreadable.length;
+    const unread = p.unreadable.length;
+    const infoLabel = `Сведения о закупке: ${docs} ${plural(docs, "документ", "документа", "документов")}${unread ? `, ${unread} ${plural(unread, "не прочитан", "не прочитаны", "не прочитаны")}` : ""}`;
     return `<div class="pd-wrap"><div class="pd-island"><div class="pd-head">
         <button class="icon-btn pd-back" type="button" data-go="list" aria-label="Все закупки">${ic("back", 18)}</button>
         ${lawBadge(p)}
-        <div class="pd-text"><h2 class="pd-title" id="pd-title" tabindex="-1">${esc(p.short)}</h2><p class="pd-sub">${pdDue(p)}${p.sample ? " · пример" : ""}</p></div>
+        <div class="pd-text"><h2 class="pd-title" id="pd-title" tabindex="-1">${esc(p.short)}</h2><p class="pd-sub">${pdDue(p)}${p.sample ? '<span class="pd-sample">\u00a0· пример</span>' : ""}</p></div>
         <div class="pd-acts">
-          <label class="btn line xs" for="add-doc" title="Добавить документы закупки">${ic("clip", 16)}<span class="pd-lbl">Добавить документы</span><input id="add-doc" type="file" multiple class="sr-only" aria-label="Добавить документы закупки"></label>
-          <button class="btn line xs info-toggle" id="info-toggle" type="button" data-act="info" aria-controls="ws-info" aria-expanded="${S.info}" title="Сведения о закупке">${ic("panel", 16)}<span class="pd-lbl">Сведения</span><span class="sr-only"> о закупке</span></button>
+          <button class="btn line xs" type="button" data-act="files" data-id="${p.id}" aria-label="Скачать заявку" title="Документы заявки — файлы Word">${ic("download", 16)}<span class="pd-lbl">Скачать заявку</span></button>
+          <label class="btn line xs opt" for="add-doc" title="Добавить документы закупки">${ic("clip", 16)}<span class="pd-lbl opt">Добавить документы</span><input id="add-doc" type="file" multiple class="sr-only" aria-label="Добавить документы закупки"></label>
+          <button class="btn line xs info-toggle opt" id="info-toggle" type="button" data-act="info" aria-controls="ws-info" aria-expanded="${S.info}" aria-label="${infoLabel}" title="${infoLabel}">${ic("panel", 16)}<span class="pd-lbl opt">Сведения</span>${docs ? `<span class="doc-count${unread ? " warn" : ""}">${ic(unread ? "alert" : "file", 14)}${unread || docs}</span>` : ""}</button>
         </div>
       </div>
       ${tabsHTML(p)}</div></div>
@@ -2120,9 +2620,87 @@
     return { bad: p.check.findings.filter((f) => f.kind === "bad").length, warn: p.check.findings.filter((f) => f.kind === "warn").length };
   }
 
+  /* ---------- как оценят заявку ---------- */
+  // Как в web/src/lib/criteria.ts: модель переписывает значимости, долю строки в итоговой сотне баллов считает код.
+  function percentOf(text) {
+    const m = /(\d+(?:[.,]\d+)?)\s*(%|процент)?/i.exec(text || "");
+    if (!m) return null;
+    let value = Number(m[1].replace(",", "."));
+    if (!m[2] && value > 0 && value <= 1 && /[.,]/.test(m[1])) value *= 100;
+    return value >= 0 && value <= 100 ? value : null;
+  }
+  const critKey = (t) => t.trim().toLowerCase();
+  // Не указана значимость — у единственного пункта уровня весь уровень, у нескольких — неизвестно: делить поровну — догадка.
+  const levelWeight = (text, alone) => percentOf(text) ?? (alone ? 100 : null);
+  function groupCriteria(rows) {
+    const groups = [];
+    for (const row of rows) {
+      const name = row.criterion.trim() || "Критерий без названия";
+      let g = groups.find((x) => critKey(x.name) === critKey(name));
+      if (!g) { g = { name, weight: null, raw: [] }; groups.push(g); }
+      if (g.weight === null && row.criterionWeight.trim()) g.weight = percentOf(row.criterionWeight);
+      g.raw.push(row);
+    }
+    return groups.map((g) => {
+      const indicators = new Set(g.raw.filter((r) => r.indicator.trim()).map((r) => critKey(r.indicator)));
+      const rows = g.raw.map((row) => {
+        const siblings = g.raw.filter((r) => critKey(r.indicator) === critKey(row.indicator) && r.detail.trim());
+        const ind = row.indicator.trim() ? levelWeight(row.indicatorWeight, indicators.size === 1) : 100;
+        const det = row.detail.trim() ? levelWeight(row.detailWeight, siblings.length === 1) : 100;
+        return { ...row, share: g.weight === null || ind === null || det === null ? null : (g.weight * ind * det) / 10000 };
+      });
+      return { name: g.name, weight: g.weight, rows };
+    });
+  }
+  const weightsAddUp = (groups) => groups.length > 0 && groups.every((g) => g.weight !== null) && Math.abs(groups.reduce((s, g) => s + g.weight, 0) - 100) < 0.5;
+  function pointsText(share) {
+    const r = Math.round(share * 10) / 10;
+    return `${r.toLocaleString("ru-RU")} ${Number.isInteger(r) ? plural(r, "балл", "балла", "баллов") : "балла"}`;
+  }
+  const isPriceCrit = (name) => /цен/i.test(name) && !/квалификац|характеристик|качеств/i.test(name);
+  // Число и его единица — на одной строке: «20 %», «3 000 000 ₽», «5 лет».
+  const glue = (t) => t.replace(/(\d) (?=\d{3}(?!\d))/g, "$1\u00a0").replace(/(\d) (?=%|₽|руб|балл|лет|год|дн|раз|специалист|договор|контракт)/g, "$1\u00a0");
+
+  function critSummary(c, groups) {
+    if (c.howWins === "price") return "Побеждает наименьшая цена — баллов нет.";
+    if (!weightsAddUp(groups)) return "Побеждает больше баллов. Значимости критериев — в строках ниже.";
+    const price = groups.filter((g) => isPriceCrit(g.name)).reduce((s, g) => s + g.weight, 0);
+    if (price === 0) return "Побеждает больше баллов из 100. Цена баллов не даёт — решают критерии ниже.";
+    if (price === 100) return "Побеждает больше баллов из 100 — и все они за цену.";
+    return `Побеждает больше баллов из 100: цена — до ${pointsText(price)}, остальное — до ${pointsText(100 - price)}.`;
+  }
+  function critRowHTML(id, title, sub, row) {
+    const points = row.share !== null ? `до ${pointsText(row.share)}` : [row.indicatorWeight, row.detailWeight].filter((w) => w.trim()).join(" · ") || "значимость не указана";
+    const fact = (label, text) => (text.trim() ? `<p class="crit-fact"><span>${label}: </span>${esc(glue(text))}</p>` : "");
+    return `<li>
+      <div class="crit-head"><div class="crit-name"><span class="crit-title">${esc(title)}</span>${sub ? `<span class="crit-sub">${esc(sub)}</span>` : ""}</div><span class="badge brand">${esc(points)}</span></div>
+      ${fact("Как считают", row.scoring)}${fact("Что приложить", row.proof)}${fact("Форма", row.form)}
+      ${sourceHTML(id, row.source, row.quote, row.verified, "строку")}
+    </li>`;
+  }
+  // Шаг 1: сколько из 100 баллов решает цена и за что дают остальные — с цитатами из порядка оценки.
+  function criteriaHTML(p) {
+    const c = p.criteria;
+    if (!c || (c.howWins === "unknown" && !c.rows.length)) return "";
+    const groups = groupCriteria(c.rows);
+    const body = groups.map((g, gi) => {
+      const single = g.rows.length === 1 && !g.rows[0].indicator.trim();
+      if (single) return critRowHTML(`crit-${gi}-0`, g.name, "", { ...g.rows[0], share: g.weight });
+      return `<li class="crit-group">
+        <div class="crit-cap"><span class="eyebrow">${esc(g.name)}</span>${g.weight !== null ? `<span class="panel-sub">всего до ${pointsText(g.weight)}</span>` : ""}</div>
+        <ul class="crit-rows">${g.rows.map((row, ri) => critRowHTML(`crit-${gi}-${ri}`, row.detail.trim() || row.indicator.trim(), row.detail.trim() ? row.indicator : "", row)).join("")}</ul>
+      </li>`;
+    }).join("");
+    return `<section class="panel" aria-labelledby="req-criteria"><div class="panel-head"><div><h3 class="panel-title" id="req-criteria">Как оценят заявку</h3><p class="panel-sub">${critSummary(c, groups)}</p></div></div>
+      ${c.howWins === "points" && !groups.length ? `<p class="empty-group">Порядок оценки заявок не нашёл. Обычно он отдельным файлом к извещению — добавьте его, и я выпишу, за что дают баллы.</p>` : ""}
+      ${groups.length ? `<ul class="list">${body}</ul>` : ""}
+      ${c.howWins === "points" && groups.length && !weightsAddUp(groups) ? `<p class="unver crit-warn">${ic("alert", 16)}Значимости критериев в сумме не 100 % — сверьте с порядком оценки: что-то могло не выписаться.</p>` : ""}
+    </section>`;
+  }
+
   /* ---------- требования ---------- */
   function reqHTML(p) {
-    const unverified = REQ_KEYS.reduce((n, k) => n + p.requirements[k].filter((it) => !it.verified).length, 0);
+    const unverified = REQ_KEYS.reduce((n, k) => n + p.requirements[k].filter((it) => !it.verified).length, 0) + (p.criteria ? p.criteria.rows.filter((r) => !r.verified).length : 0);
     const notes = warnsHTML([
       p.unreadable.length ? `Не получилось прочитать: ${p.unreadable.map((f) => `${esc(f.name)} — ${esc(f.reason)}`).join("; ")}. Требования выписаны по остальным файлам.` : "",
       scanWarning(p),
@@ -2131,13 +2709,13 @@
     return `<div class="tab-body">
       <p class="tab-lead">Шаг 1 — разобраться, подходит ли вам закупка и что подать. Всё выписано из документов закупки; нажмите на ссылку под пунктом, чтобы увидеть точную цитату.</p>
       ${notes ? `<div class="notes">${notes}</div>` : ""}
+      ${priceTeaserHTML(p)}
       ${REQ_KEYS.map((key) => {
         const items = p.requirements[key];
-        return `<section class="panel" aria-labelledby="req-${key}"><div class="panel-head"><h3 class="panel-title" id="req-${key}">${GROUPS[key].title}${items.length ? ` <span class="count">${items.length}</span>` : ""}</h3></div>
+        return `${key === "submit" ? criteriaHTML(p) : ""}<section class="panel" aria-labelledby="req-${key}"><div class="panel-head"><h3 class="panel-title" id="req-${key}">${GROUPS[key].title}${items.length ? ` <span class="count">${items.length}</span>` : ""}</h3></div>
           ${items.length ? `<ul class="list">${items.map((it, i) => `<li><span>${esc(it.text)}</span>${sourceHTML(`${key}-${i}`, it.source, it.quote, it.verified, "пункт")}</li>`).join("")}</ul>` : `<p class="empty-group">${GROUPS[key].empty}</p>`}
         </section>`;
       }).join("")}
-      ${priceTeaserHTML(p)}
       ${nextHTML(p, "req")}
     </div>`;
   }
@@ -2207,7 +2785,7 @@
     const fresh = made && made.key === basisKey(p, k);
     const samples = samplesOf(PART_SAMPLE_KIND[k]);
     const writing = S.ui.writing === k;
-    const status = p.sample ? "в примере — по стандартному шаблону"
+    const status = p.sample ? (isEvidence(k) ? EVIDENCE_DEMO[k].score : "в примере — по стандартному шаблону")
       : writing ? "Пишу документ — это около минуты…"
       : fresh ? esc(made.basis)
       : made ? "реквизиты, цена или образцы изменились — составлю заново"
@@ -2217,9 +2795,10 @@
       <span class="part-name">${esc(PART_TITLES[k])}</span>
       <button class="btn soft xs" type="button" data-act="part" data-part="${k}"${S.ui.writing ? " disabled" : ""}>${writing ? "Пишу…" : "Скачать"}</button>
       <span class="part-status">${status}${fresh && !p.sample && !writing ? ` · <button class="link quiet" type="button" data-act="part-redo" data-part="${k}">составить заново</button>` : ""}</span>
+      ${p.sample && isEvidence(k) ? `<ul class="part-gaps">${EVIDENCE_DEMO[k].gaps.map((g) => `<li>${ic("alert", 16)}${esc(g)}</li>`).join("")}</ul>` : ""}
     </li>`;
   }
-  const partsRows = (p) => partsOf(p.tp.form).filter((k) => k !== "tp").map((k) => partRow(p, k)).join("");
+  const partsRows = (p) => partsOf(p.tp.form, p.criteria).filter((k) => k !== "tp").map((k) => partRow(p, k)).join("");
 
   /* ---------- состав исполнителей ---------- */
   // ТЗ требует назвать исполнителей. Кто нужен — выписано из ТЗ, людей участник вписывает под эту закупку:
@@ -2543,7 +3122,7 @@
       <section class="panel verdict" aria-labelledby="check-verdict">
         <h3 class="check-title" id="check-verdict">${title}</h3>
         <p class="small ink2 m0">${lead}</p>
-        <p class="under"><button class="link" type="button" data-act="recheck">${found ? "Проверить исправленный файл" : "Проверить другой файл"}</button><span>Сомневаетесь? <button class="link" type="button" data-act="lawyer">Спросить юриста</button></span></p>
+        <p class="under"><button class="link" type="button" data-act="recheck">${found ? "Проверить исправленный файл" : "Проверить другой файл"}</button><span>Сомневаетесь? <button class="link" type="button" data-act="lawyer" data-from="check">Спросить юриста</button></span></p>
       </section>
       <section class="panel" aria-labelledby="find-title">
         <div class="panel-head"><h3 class="panel-title" id="find-title">${found ? `Что исправить <span class="count">${found}</span>` : "Проверенные пункты"}</h3></div>
@@ -2578,19 +3157,42 @@
     ? "Вы освобождены от обеспечения, в том числе от повышенного (ч. 8.1 ст. 96), — на цену эти меры не влияют."
     : "Обеспечения исполнения нет — повышать нечего, на цену эти меры не влияют.");
 
-  function numField(key, id, label, unit, value, hint) {
+  // Поле калькулятора: note — короткая строка под полем, help — подсказка «?» у подписи.
+  function numField(key, id, label, unit, value, note, help) {
     return `<div class="num-field">
-      <label for="${id}">${label}</label>
-      <div class="price-row"><input class="input calc" id="${id}" data-calc="${key}" inputmode="decimal" autocomplete="off" value="${esc(showNum(value))}"${hint ? ` aria-describedby="${id}-hint"` : ""}><span class="muted">${unit}</span></div>
-      ${hint ? `<p class="hint" id="${id}-hint">${hint}</p>` : ""}
+      <div class="label-row"><label for="${id}">${label}</label>${help ? hintBtn(label, help) : ""}</div>
+      <div class="price-row"><input class="input calc" id="${id}" data-calc="${key}" inputmode="decimal" autocomplete="off" value="${esc(showNum(value))}"${note ? ` aria-describedby="${id}-note"` : ""}><span class="muted">${unit}</span></div>
+      ${note ? `<p class="hint" id="${id}-note">${note}</p>` : ""}
     </div>`;
   }
-  function checkRow(key, id, label, checked, hint, shown = true) {
+  // Галочка с короткой подписью; условия и статьи — в подсказке «?».
+  function checkRow(key, id, label, checked, help, shown = true, helpId = "") {
     return `<div class="check-row" id="${id}-row"${shown ? "" : " hidden"}>
-      <input type="checkbox" id="${id}" data-calc="${key}"${checked ? " checked" : ""}${hint ? ` aria-describedby="${id}-hint"` : ""}>
-      <label for="${id}">${label}</label>
-      ${hint ? `<p class="hint" id="${id}-hint">${hint}</p>` : ""}
+      <input type="checkbox" id="${id}" data-calc="${key}"${checked ? " checked" : ""}>
+      <div class="label-row"><label for="${id}">${label}</label>${help ? hintBtn(label, help, helpId) : ""}</div>
     </div>`;
+  }
+  const CALC_HELP = {
+    nmck: "Начальная (максимальная) цена контракта — из извещения. Предложить больше нельзя: такую заявку отклонят.",
+    costs: "Всё, что потратите на исполнение контракта: товар, работа, зарплата, аренда, доставка.",
+    tax: "Например, 6 на УСН «доходы». Налог с прибыли не вписывайте: на нижней цене прибыли нет.",
+    extra: "Обеспечение заявки, плата площадке, дорога — всё, что заплатите за участие.",
+    security: "Залог на время исполнения контракта: деньги на счёте заказчика или банковская гарантия. Это тоже расход: гарантия стоит комиссию банка, а свои деньги на это время выключены из оборота. Если обеспечения нет, оставьте поле пустым.",
+    sme: "Закупка только у малого бизнеса и социально ориентированных НКО. Тогда обеспечение считается от цены контракта, а не от начальной (ч. 6.2 ст. 96 44-ФЗ).",
+    exempt: "Если за три года исполнили три контракта без неустоек на сумму не меньше начальной цены. Сведения из реестра контрактов подаёте до заключения контракта (ч. 8.1 ст. 96 44-ФЗ).",
+    method: "Независимая гарантия — её обычно выдаёт банк: он обязуется заплатить заказчику, если вы не исполните контракт, и берёт за это комиссию. Свои деньги — переводите на счёт заказчика, их вернут после исполнения контракта.",
+    goodFaith: "За три года — три контракта без неустоек, один из них — не меньше 20 % начальной цены. Тогда хватит обычного обеспечения. Сведения из реестра контрактов подаёте вместе с подписанным проектом контракта (ч. 2, 3 и 5 ст. 37).",
+  };
+  // Что учтено во второстепенном — одной строкой, чтобы было видно и в свёрнутом виде.
+  function moreSummary(c) {
+    const sec = secured(c);
+    const parts = [
+      (c.extra || 0) > 0 && `расходы на участие ${rubShort(c.extra)}`,
+      sec ? `обеспечение ${pctText(c.securityPct || 0)} %${rated(c) ? ` — ${c.method === "guarantee" ? "гарантия" : "свои деньги"}` : " — впишите ставку и срок"}`
+        : c.smeOnly && c.exempt ? "освобождены от обеспечения" : "без обеспечения исполнения",
+      c.antiDumping && "антидемпинговые меры",
+    ].filter(Boolean).join(" · ");
+    return parts.charAt(0).toUpperCase() + parts.slice(1);
   }
 
   // Шкала цены: где убыток, где прибыль и докуда обеспечение повышенное. С ползунком — на экране «Цена»,
@@ -2665,7 +3267,7 @@
     ? '<span class="warn-t">Выше начальной — такую заявку отклонят</span>'
     : c.price !== null && c.nmck ? `На ${dropText(1 - c.price / c.nmck)} % ниже начальной` : "Сколько хотите предложить на торгах");
 
-  // Вход в калькулятор с шага «Требования», рядом со сроками и деньгами: ответ, если уже посчитан, и шкала.
+  // Вход в калькулятор — первым на шаге «Требования», над «Кто может участвовать»: ответ, если уже посчитан, и шкала.
   function priceTeaserHTML(p) {
     const c = calcOf(p);
     const { floor, at } = priceFloor(c);
@@ -2702,7 +3304,7 @@
     if (floor.aboveNmck || !atFloor) return `<p class="res-warn">Даже по начальной цене контракт в убытке</p><p class="res-text">Без убытка — только от ${rub(floor.price)}, а начальная цена — ${rub(c.nmck || 0)}.</p>`;
     const unpriced = secured(c) && !rated(c) ? " Стоимость обеспечения не учтена — впишите ставку и срок." : "";
     return `<p class="res-label">Можно снижаться до</p>
-      <p class="res-line"><span class="res-num">${rub(floor.price)}</span><span class="res-text">— на ${dropText(atFloor.drop)} % ниже начальной</span></p>
+      <p class="res-line"><span class="res-num accent">${rub(floor.price)}</span><span class="res-text">— на ${dropText(atFloor.drop)} % ниже начальной</span></p>
       <p class="res-label">${why[floor.kind]}${unpriced}</p>`;
   }
 
@@ -2751,57 +3353,62 @@
     const sec = secured(c);
     const rule = p.tp && p.tp.antiDumping && p.tp.antiDumping.rule;
     const methods = [["guarantee", "Независимая гарантия"], ["money", "Свои деньги"]];
+    // Второстепенное свёрнуто. Открыто сразу, если без вас расчёт неполный: обеспечение есть, а ставки или срока нет.
+    const moreKey = `calc-more-${p.id}`;
+    if (S.fold[moreKey] === undefined) S.fold[moreKey] = sec && !rated(c);
+    const moreOpen = S.fold[moreKey];
+    const tableOpen = !!S.fold["calc-table"];
+    const table = calcTableHTML(c);
     return `<div class="tab-body">
-      <p class="tab-lead">До какой цены можно снижаться на торгах, чтобы контракт не ушёл в убыток. Учитываю расходы, налог, стоимость обеспечения исполнения и антидемпинговые меры 44-ФЗ. Считается прямо в браузере — цифры никуда не отправляются.</p>
+      <p class="tab-lead">До какой цены можно снижаться на торгах, чтобы контракт не ушёл в убыток. Впишите себестоимость — остальное подставлено из документов закупки. Считается прямо в браузере, цифры никуда не отправляются.</p>
+      <section class="panel" aria-labelledby="calc-costs-title">
+        <div class="panel-head"><div><h3 class="panel-title" id="calc-costs-title">Ваши цифры</h3>${p.sample ? '<p class="panel-sub">В примере — вымышленные расходы</p>' : ""}</div></div>
+        <div class="calc-body"><div class="calc-grid three">
+          ${numField("nmck", "calc-nmck", "Начальная цена", "₽", c.nmck, parseRub(p.price) ? "Из сведений о закупке" : "Не нашлась — впишите из извещения", CALC_HELP.nmck)}
+          ${numField("costs", "calc-costs", "Себестоимость", "₽", c.costs, "", CALC_HELP.costs)}
+          ${numField("taxPct", "calc-tax", "Налог с выручки", "%", c.taxPct, "", CALC_HELP.tax)}
+        </div></div>
+      </section>
       <section class="panel" aria-labelledby="calc-scale-title">
-        <div class="panel-head"><div><h3 class="panel-title" id="calc-scale-title">Где убыток, где прибыль</h3><p class="panel-sub">Двигайте ползунок или впишите цену — покажу, что останется</p></div></div>
+        <div class="panel-head"><div><h3 class="panel-title" id="calc-scale-title">Проверить свою цену</h3><p class="panel-sub">Двигайте ползунок или впишите цену — покажу, что останется</p></div></div>
         <div class="calc-body">
           <div class="scale-head">
             ${numField("price", "calc-price", "Ваша цена", "₽", c.price, priceHint(c))}
             <div class="profit" id="calc-profit" aria-live="polite">${profitHTML(c)}</div>
           </div>
           <div id="calc-scale">${c.nmck ? scaleHTML(c, true) : '<p class="hint">Впишите начальную цену — нарисую шкалу.</p>'}</div>
-        </div>
-      </section>
-      <section class="panel" aria-labelledby="calc-costs-title">
-        <div class="panel-head"><div><h3 class="panel-title" id="calc-costs-title">Цена и расходы</h3>${p.sample ? '<p class="panel-sub">В примере — вымышленные расходы</p>' : ""}</div></div>
-        <div class="calc-body"><div class="calc-grid">
-          ${numField("nmck", "calc-nmck", "Начальная цена", "₽", c.nmck, parseRub(p.price) ? "Из сведений о закупке" : "В документах не нашлась — впишите из извещения")}
-          ${numField("costs", "calc-costs", "Себестоимость исполнения", "₽", c.costs, "Всё, что потратите на исполнение: товар, работа, аренда, доставка")}
-          ${numField("extra", "calc-extra", "Расходы на участие", "₽", c.extra, "Обеспечение заявки, плата площадке, дорога — всё, что заплатите за участие")}
-          ${numField("taxPct", "calc-tax", "Налог с выручки", "%", c.taxPct, "Например, 6 на УСН «доходы». Налог с прибыли не вписывайте: на нижней цене прибыли нет")}
-        </div></div>
-      </section>
-      <section class="panel" aria-labelledby="calc-sec-title">
-        <div class="panel-head"><div><h3 class="panel-title" id="calc-sec-title">Обеспечение исполнения</h3><p class="panel-sub">Гарантия банка или замороженные деньги тоже стоят денег — учту это в цене</p></div></div>
-        <div class="calc-body">
-          ${numField("securityPct", "calc-sec-pct", "Размер", "%", c.securityPct, found.securityLine ? `В требованиях: ${esc(found.securityLine)}` : "В требованиях не нашёл — посмотрите в извещении. Если обеспечения нет, оставьте пустым")}
-          ${checkRow("smeOnly", "calc-sme", "Закупка только у малого бизнеса и социально ориентированных НКО", c.smeOnly, "Тогда обеспечение считается от цены контракта, а не от начальной (ч. 6.2 ст. 96 44-ФЗ)")}
-          ${checkRow("exempt", "calc-exempt", "Освобождены от обеспечения: за три года — три контракта без неустоек на сумму не меньше начальной цены", c.exempt, "Сведения из реестра контрактов подаёте до заключения контракта (ч. 8.1 ст. 96 44-ФЗ)", c.smeOnly)}
-          <div class="calc-more" id="calc-cost-block"${sec ? "" : " hidden"}>
-            <fieldset class="pills-set"><legend>Чем обеспечите</legend><div class="pills">
-              ${methods.map(([key, label]) => `<label class="pill"><input class="sr-only" type="radio" name="calc-method" id="calc-method-${key}" data-calc="method" value="${key}"${c.method === key ? " checked" : ""}>${label}</label>`).join("")}
-            </div></fieldset>
-            <div class="calc-grid">
-              ${numField(guarantee ? "guaranteeRatePct" : "moneyRatePct", "calc-rate", guarantee ? "Комиссия банка" : "Сколько стоят ваши деньги", "% годовых", rateOf(c), guarantee ? "Процент в год от суммы гарантии — по тарифу банка" : "Ставка кредита, если берёте в долг, или вклада, если деньги свои")}
-              ${numField("days", "calc-days", guarantee ? "Срок гарантии" : "Сколько дней деньги у заказчика", "дней", c.days, guarantee ? "Срок исполнения контракта и ещё не меньше месяца (ч. 3 ст. 96 44-ФЗ)" : "Срок исполнения и до 30 дней на возврат, в закупке у малого бизнеса — до 15 (ч. 27 ст. 34 44-ФЗ)")}
-            </div>
+          <div class="disclosure" id="calc-table-panel"${table ? "" : " hidden"}>
+            <button class="link disc-btn" type="button" data-act="fold" data-fold="calc-table" aria-expanded="${tableOpen}" aria-controls="calc-out">Из чего складывается цена${ic("down", 16)}</button>
+            <div class="calc-out" id="calc-out"${tableOpen ? "" : " hidden"}>${table}</div>
           </div>
         </div>
       </section>
-      <section class="panel" aria-labelledby="calc-ad-title">
-        <div class="panel-head"><div><h3 class="panel-title" id="calc-ad-title">Антидемпинговые меры</h3><p class="panel-sub">Статья 37 44-ФЗ — на конкурсе и аукционе</p></div></div>
-        <div class="calc-body">
-          ${checkRow("antiDumping", "calc-ad-on", "Учитывать антидемпинговые меры", c.antiDumping, esc(adHint(p, c)))}
-          ${checkRow("goodFaith", "calc-good", "Подтвержу добросовестность: за три года — три контракта без неустоек, один из них — не меньше 20 % начальной цены", c.goodFaith, "Тогда хватит обычного обеспечения. Сведения из реестра контрактов подаёте вместе с подписанным проектом контракта (ч. 2, 3 и 5 ст. 37)", c.antiDumping && small && sec)}
-          <p class="hint" id="calc-ad-big"${c.antiDumping && big && sec ? "" : " hidden"}>Начальная цена больше 15 млн ₽ — заменить повышенное обеспечение подтверждением добросовестности нельзя (ч. 1 ст. 37).</p>
-          <p class="hint" id="calc-ad-none"${c.antiDumping && !sec ? "" : " hidden"}>${esc(adNone(c))}</p>
-          ${rule ? noteHTML("info", `В документах закупки: ${esc(rule)}`) : ""}
+      <section class="panel" aria-labelledby="calc-more-title">
+        <h3 class="m0" id="calc-more-title"><button class="fold-head more-head" type="button" data-act="fold" data-fold="${moreKey}" aria-expanded="${moreOpen}" aria-controls="calc-more"><span class="more-text"><span>Что ещё влияет на цену</span><span class="more-sum${sec && !rated(c) ? " warn" : ""}" id="calc-more-sum">${esc(moreSummary(c))}</span></span>${ic("down", 18)}</button></h3>
+        <div class="calc-body more-body" id="calc-more"${moreOpen ? "" : " hidden"}>
+          ${numField("extra", "calc-extra", "Расходы на участие", "₽", c.extra, "", CALC_HELP.extra)}
+          <div class="calc-group">
+            ${numField("securityPct", "calc-sec-pct", "Обеспечение исполнения", "%", c.securityPct, found.securityLine ? `В требованиях: ${esc(found.securityLine)}` : "В требованиях не нашёл — посмотрите в извещении", CALC_HELP.security)}
+            ${checkRow("smeOnly", "calc-sme", "Закупка только для малого бизнеса", c.smeOnly, CALC_HELP.sme)}
+            ${checkRow("exempt", "calc-exempt", "Освобождены от обеспечения", c.exempt, CALC_HELP.exempt, c.smeOnly)}
+            <div class="calc-more" id="calc-cost-block"${sec ? "" : " hidden"}>
+              <fieldset class="pills-set"><legend><span class="label-row">Чем обеспечите${hintBtn("Чем обеспечить", CALC_HELP.method)}</span></legend><div class="pills">
+                ${methods.map(([key, label]) => `<label class="pill"><input class="sr-only" type="radio" name="calc-method" id="calc-method-${key}" data-calc="method" value="${key}"${c.method === key ? " checked" : ""}>${label}</label>`).join("")}
+              </div></fieldset>
+              <div class="calc-grid">
+                ${numField(guarantee ? "guaranteeRatePct" : "moneyRatePct", "calc-rate", guarantee ? "Комиссия банка" : "Сколько стоят ваши деньги", "% годовых", rateOf(c), "", guarantee ? "Процент в год от суммы гарантии — по тарифу банка." : "Ставка кредита, если берёте в долг, или вклада, если деньги свои.")}
+                ${numField("days", "calc-days", guarantee ? "Срок гарантии" : "Сколько дней деньги у заказчика", "дней", c.days, "", guarantee ? "Срок исполнения контракта и ещё не меньше месяца (ч. 3 ст. 96 44-ФЗ)." : "Срок исполнения и до 30 дней на возврат, в закупке у малого бизнеса — до 15 (ч. 27 ст. 34 44-ФЗ).")}
+              </div>
+            </div>
+          </div>
+          <div class="calc-group">
+            ${checkRow("antiDumping", "calc-ad-on", "Учитывать антидемпинговые меры", c.antiDumping, adHint(p, c), true, "calc-ad-help")}
+            ${checkRow("goodFaith", "calc-good", "Подтвержу добросовестность", c.goodFaith, CALC_HELP.goodFaith, c.antiDumping && small && sec)}
+            <p class="hint" id="calc-ad-big"${c.antiDumping && big && sec ? "" : " hidden"}>Начальная цена больше 15 млн ₽ — заменить повышенное обеспечение подтверждением добросовестности нельзя (ч. 1 ст. 37).</p>
+            <p class="hint" id="calc-ad-none"${c.antiDumping && !sec ? "" : " hidden"}>${esc(adNone(c))}</p>
+            ${rule ? noteHTML("info", `В документах закупки: ${esc(rule)}`) : ""}
+          </div>
         </div>
-      </section>
-      <section class="panel" aria-labelledby="calc-table-title" id="calc-table-panel"${calcTableHTML(c) ? "" : " hidden"}>
-        <div class="panel-head"><div><h3 class="panel-title" id="calc-table-title">Из чего складывается цена</h3><p class="panel-sub">Нижняя цена и ваша — рядом, чтобы видеть разницу</p></div></div>
-        <div class="calc-body"><div class="calc-out" id="calc-out">${calcTableHTML(c)}</div></div>
       </section>
     </div>
     <div class="sticky-actions"><div class="result-bar" id="calc-result" aria-live="polite">${calcResultHTML(c)}</div></div>`;
@@ -2820,14 +3427,16 @@
     show("calc-ad-none", c.antiDumping && !sec);
     const none = $("#calc-ad-none");
     if (none) none.textContent = adNone(c);
-    const hint = $("#calc-ad-on-hint");
-    if (hint) hint.textContent = adHint(p, c);
+    const adBtn = $("#calc-ad-help");
+    if (adBtn) adBtn.dataset.hint = adHint(p, c);
+    const sum = $("#calc-more-sum");
+    if (sum) { sum.textContent = moreSummary(c); sum.classList.toggle("warn", sec && !rated(c)); }
     const table = calcTableHTML(c);
     $("#calc-out").innerHTML = table;
     show("calc-table-panel", !!table);
     $("#calc-result").innerHTML = calcResultHTML(c);
     $("#calc-profit").innerHTML = profitHTML(c);
-    $("#calc-price-hint").innerHTML = priceHint(c);
+    $("#calc-price-note").innerHTML = priceHint(c);
     if (source !== "price") $("#calc-price").value = showNum(c.price);
     const range = $("#calc-range");
     if (source === "range" && range) {
@@ -2851,14 +3460,15 @@
   function helpHTML() {
     const path = [
       ["+", "Новая закупка", "кнопка «Новая закупка»", "Загрузите извещение, ТЗ и проект контракта — PDF, Word, сканы или фото. Через 1–2 минуты закупка появится в разделе «Закупки»."],
-      ["1", "Требования", "в закупке, шаг 1", "Кто может участвовать, что подать в заявке, что требует ТЗ, сроки и деньги. Под каждым пунктом — ссылка на точную цитату из документа."],
+      ["1", "Требования", "в закупке, шаг 1", "Кто может участвовать, как оценят заявку и за что дают баллы, что подать, что требует ТЗ, сроки и деньги. Под каждым пунктом — ссылка на точную цитату из документа."],
       ["2", "Техническое предложение", "в закупке, шаг 2", "Черновик по форме заказчика. Впишите свои данные в пункты, выделенные жёлтым, и скачайте файл Word. Там же — анкета, декларация и предложение о цене."],
       ["3", "Проверка заявки", "в закупке, шаг 3", "Загрузите заявку, которую собираетесь подавать. Покажу ошибки, за которые могут отклонить, и замечания — с цитатами из документов."],
       ["✓", "Подача", "на электронной площадке", "Заявку подаёте вы сами на площадке, до срока подачи. Срок и сколько дней осталось видны в шапке закупки."],
     ];
     const sections = [
-      ["home", "home", "Главная", "Что сделать сейчас по всем закупкам и ближайший срок подачи."],
+      ["home", "home", "Главная", "Самое срочное дело, закупки по этапам и данные компании."],
       ["list", "list", "Закупки", "Все закупки: список слева, открытая закупка справа — с шагами, расчётом, до какой цены снижаться, и вопросами по ней."],
+      ["lawyer", "scale", "Вопросы юристу", "Живой юрист по закупкам: ответ обычно в течение рабочего дня. Ответил — число в меню, уведомление в колокольчике наверху и письмо на почту."],
       ["ask", "chat", "Спросить про тендер", "Общий вопрос по 44-ФЗ и 223-ФЗ. Вопрос про конкретную закупку задайте внутри неё — в «Вопросах»: отвечу по её документам."],
       ["profile", "user", "Реквизиты", "Данные компании. Сами попадают в анкету, декларацию и цену — но никогда в ТП: его подают анонимно."],
       ["docs", "folder", "Образцы и реквизиты", "Ваши прошлые заявки, анкеты, карточка предприятия. По ним заполняются реквизиты и пишутся новые документы — так же, как пишете вы."],
@@ -2877,10 +3487,11 @@
       <section class="panel" aria-labelledby="marks-title">
         <div class="panel-head"><h2 class="panel-title" id="marks-title">Что значат цвета</h2></div>
         <ul class="marks">
-          <li><span class="mark-dot" style="background:var(--warn)"></span><span>Янтарный — нужно ваше действие: вписать данные, сверить цифры.</span></li>
+          <li><span class="mark-dot" style="background:var(--brand)"></span><span>Индиго — ваш следующий шаг: составить ТП, проверить заявку.</span></li>
+          <li><span class="mark-dot" style="background:var(--warn)"></span><span>Янтарный — нужно ваше действие: вписать данные, сверить цифры; до подачи неделя и меньше.</span></li>
           <li><span class="mark-dot" style="background:var(--danger)"></span><span>Красный — ошибка в заявке, за неё могут отклонить.</span></li>
-          <li><span class="step-dot done" style="width:16px;height:16px;justify-self:center">${ic("check", 10, 3)}</span><span>Зелёный с галочкой — шаг сделан.</span></li>
-          <li><span class="mark-dot" style="background:var(--edge-2)"></span><span>Серый — ещё не начато.</span></li>
+          <li><span class="step-dot done" style="width:16px;height:16px;justify-self:center">${ic("check", 10, 3)}</span><span>Зелёный с галочкой — шаг сделан, заявка готова к подаче.</span></li>
+          <li><span class="mark-dot" style="background:var(--edge-2)"></span><span>Серый — справка или ещё не начато: дни до подачи, прошедший приём.</span></li>
         </ul>
       </section>
       <p class="foot m0">Прототип: закупки, документы и ответы вымышленные. Ответы ИИ не являются юридической консультацией — проверяйте нормы по первоисточнику.</p>
@@ -2911,6 +3522,7 @@
 
   function profileHTML() {
     const sourceDocs = S.docs.filter((d) => d.kinds.some((k) => REQUISITE_KINDS.includes(k)));
+    const problems = profileProblems(S.profile);
     const groups = groupSuggestions(S.suggestions);
     return `<div class="page-col">
       <p class="intro">Впишите один раз — дальше они сами попадут в анкету, декларацию, предложение о цене и подпись. В техническое предложение реквизиты не попадают никогда: его подают анонимно.</p>
@@ -2926,12 +3538,124 @@
       ${PROFILE_GROUPS.map((g, gi) => `<section class="panel" aria-labelledby="pg-${gi}">
         <div class="panel-head"><h2 class="panel-title" id="pg-${gi}">${g.title}</h2></div>
         <div class="form-rows">${g.fields.map((f) => `<div class="field">
-          <label class="field-label" for="pf-${f.key}">${esc(f.label)}</label>
-          <input class="input" id="pf-${f.key}" data-pf="${f.key}" value="${esc(S.profile[f.key])}" placeholder="${esc(f.example || "")}" autocomplete="off">
+          <div class="label-row"><label class="field-label" for="pf-${f.key}">${esc(f.label)}</label>${f.help ? hintBtn(f.label, f.help) : ""}</div>
+          <input class="input" id="pf-${f.key}" data-pf="${f.key}" value="${esc(S.profile[f.key])}" placeholder="${esc(f.example || "")}" autocomplete="off"${problems[f.key] ? ` aria-invalid="true" aria-describedby="pf-${f.key}-err"` : ""}>
+          <span class="field-err" id="pf-${f.key}-err"${problems[f.key] ? "" : " hidden"}>${esc(problems[f.key] || "")}</span>
           ${S.sources[f.key] ? `<span class="field-src" data-src-of="${f.key}">из «${esc(S.sources[f.key])}»</span>` : ""}
         </div>`).join("")}</div>
       </section>`).join("")}
+      ${dataPanelsHTML()}
     </div>`;
+  }
+
+  // Копия данных и удаление всего — внизу «Реквизитов», как в приложении. В прототипе файл копии не скачивается и не читается.
+  function dataPanelsHTML() {
+    const note = S.ui.backupNote;
+    return `<section class="panel" aria-labelledby="backup-title" id="backup">
+        <div class="panel-head"><div><h2 class="panel-title" id="backup-title">Копия данных</h2><p class="panel-sub">Закупки, документы, реквизиты и образцы</p></div></div>
+        <div class="panel-body">
+          <p class="intro">Всё это хранится только в этом браузере. Если очистить браузер — пропадёт, а Safari может стереть данные сам, если сервис не открывать неделю. Сохраняйте копию файлом: из неё всё вернётся, и так же данные переносятся на другой компьютер. В файле реквизиты и тексты документов — храните его так же бережно, как сами документы.</p>
+          <div class="btn-row"><button class="btn soft" type="button" data-act="backup-save">${ic("download")}Сохранить копию</button><label class="btn soft" for="backup-file">${ic("upload")}Загрузить копию<input id="backup-file" type="file" accept=".json,application/json" class="sr-only"></label></div>
+          <div aria-live="polite">${note ? noteHTML(note.tone, esc(note.text), "", note.tone === "ok" ? "check" : "info") : ""}</div>
+        </div>
+      </section>
+      <section class="panel" aria-labelledby="wipe-title" id="wipe">
+        <div class="panel-head"><div><h2 class="panel-title" id="wipe-title">Удалить все данные</h2><p class="panel-sub">Из этого браузера — всё сразу</p></div></div>
+        <div class="panel-body">
+          <p class="intro">Удалятся все закупки с документами и черновиками, реквизиты, образцы, настройки и отметка о согласии. Вернуть их можно будет только из копии — сохраните её выше. На сервере данные не хранятся; то, что уже отправлено ИИ, хранится у Anthropic по её условиям.</p>
+          ${S.ui.wipeAsk
+            ? `<div class="wipe-ask"><p>Удалить всё? Вернуть данные можно будет только из копии.</p><div class="btn-row"><button class="btn xs danger" type="button" data-act="wipe-yes">Удалить всё</button><button class="btn xs soft" type="button" data-act="wipe-no" id="wipe-no">Отмена</button></div></div>`
+            : `<button class="link quiet del" type="button" data-act="wipe-ask" id="wipe-ask">Удалить все мои данные</button>`}
+        </div>
+      </section>`;
+  }
+  // «1 закупка, 2 образца и реквизиты» — только то, что есть.
+  function dataContents() {
+    const filled = PROFILE_KEYS.some((k) => String(S.profile[k] || "").trim());
+    const parts = [
+      S.purchases.length && `${S.purchases.length} ${plural(S.purchases.length, "закупка", "закупки", "закупок")}`,
+      S.docs.length && `${S.docs.length} ${plural(S.docs.length, "образец", "образца", "образцов")}`,
+      filled && "реквизиты",
+    ].filter(Boolean);
+    return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} и ${parts[parts.length - 1]}` : parts[0] || "";
+  }
+  /* ---------- перед началом: два согласия ---------- */
+  // Как в приложении (components/consent-gate.tsx): галочки не отмечены заранее, без обеих дальше не пройти.
+  const CONSENT_KEY = "tj-consent";
+  function consentGiven() {
+    try { return localStorage.getItem(CONSENT_KEY) === "1"; } catch (e) { return false; }
+  }
+  // Ссылкой, а не кнопкой: текст ссылки переносится внутри строки, как в приложении.
+  const legalBtn = (doc, text) => `<a class="link" href="#${doc}" data-act="legal" data-doc="${doc}">${text}</a>`;
+  function showConsent() {
+    const el = $("#consent");
+    el.innerHTML = `<form class="consent-card" id="consent-form" role="dialog" aria-modal="true" aria-labelledby="consent-title">
+        <div class="consent-brand"><span class="brand-ic">${ic("scale", 16)}</span>Тендерный юрист</div>
+        <div style="display:grid;gap:4px"><h1 id="consent-title">Перед началом</h1>
+        <p class="small ink2">Сервис читает документы закупки с помощью ИИ. В документах и реквизитах бывают персональные данные, поэтому нужны два согласия.</p></div>
+        <label class="consent-check"><input type="checkbox" id="consent-processing"><span>Даю ${legalBtn("consent", "согласие на обработку персональных данных")}</span></label>
+        <label class="consent-check"><input type="checkbox" id="consent-transfer"><span>Даю ${legalBtn("transfer", "согласие на передачу данных за рубеж")} — модели ИИ в США, без этого сервис не прочитает документы</span></label>
+        <button class="btn lg" type="button" id="consent-ok" data-act="consent-ok" disabled>Продолжить</button>
+        <p class="small muted">Продолжая, вы принимаете ${legalBtn("terms", "условия использования")}. Как сервис обращается с данными — в ${legalBtn("privacy", "политике")}.</p>
+      </form>`;
+    el.hidden = false;
+    $("#app").inert = true;
+    $("#consent-processing").focus();
+  }
+  function acceptConsent() {
+    if (!($("#consent-processing").checked && $("#consent-transfer").checked)) return;
+    try { localStorage.setItem(CONSENT_KEY, "1"); } catch (e) { /* не запомнится — спросим при следующем открытии */ }
+    const el = $("#consent");
+    el.hidden = true;
+    el.innerHTML = "";
+    $("#app").inert = false;
+    const main = $("#view");
+    if (main) main.focus({ preventScroll: true });
+  }
+  // Правовые документы в прототипе — короткой выжимкой; полные шаблоны — в приложении.
+  const LEGAL_DOCS = {
+    consent: ["Согласие на обработку персональных данных", "/consent", [
+      "Какие данные: документы закупок, реквизиты, вопросы в сервисе — и персональные данные в них.",
+      "Зачем: прочитать документы, выписать требования, подготовить документы заявки и ответить на вопросы.",
+      "Срок — до отзыва. Отозвать — письмом владельцу сервиса; данные в браузере удаляются кнопкой «Удалить все мои данные» на странице «Реквизиты».",
+    ]],
+    transfer: ["Согласие на трансграничную передачу персональных данных", "/consent-transfer", [
+      "Кому: Anthropic PBC, США — модель ИИ Claude. США нет в перечне стран с адекватной защитой данных (приказ Роскомнадзора № 128 от 05.08.2022).",
+      "Что уходит: тексты документов и вопросы — персональные данные в них заменяются метками; сканы и фото — картинкой, как есть.",
+      "Без этого согласия сервис не может прочитать документы.",
+    ]],
+    privacy: ["Политика обработки персональных данных", "/privacy", [
+      "Закупки, документы и реквизиты хранятся в вашем браузере, на вашем устройстве. Сервер их не сохраняет — получает на время запроса и передаёт ИИ.",
+      "Перед отправкой ИИ ФИО, телефоны, почта, паспорт и другие данные заменяются метками.",
+      "Ваши права: узнать, какие данные обрабатываются, уточнить, заблокировать или уничтожить их, отозвать согласие.",
+    ]],
+    terms: ["Условия использования", "/terms", [
+      "Ответы готовит искусственный интеллект: это не юридическая консультация — проверяйте нормы по первоисточнику.",
+      "Результаты хранятся в вашем браузере: сохраните файл Word или копию данных.",
+      "Сейчас сервис работает в тестовом режиме, по закрытой ссылке и бесплатно.",
+    ]],
+  };
+  function openLegal(doc) {
+    const [title, path, points] = LEGAL_DOCS[doc];
+    openModal(`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
+      <button class="icon-btn x-close" type="button" data-act="close" aria-label="Закрыть">${ic("x", 20)}</button>
+      <span class="eyebrow">Правовой документ · шаблон</span>
+      <h2 id="m-title">${title}</h2>
+      ${noteHTML("warn", "<b>ТРЕБУЕТ ПРОВЕРКИ ЮРИСТОМ.</b> Это шаблон: формулировки, основания и сроки проверьте с юристом до того, как открыть сервис другим людям.", "", "alert")}
+      <ul class="small ink2" style="margin:0;padding-left:18px;display:grid;gap:6px">${points.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
+      <p class="small muted m0">В прототипе — выжимка. Полный текст — в приложении, страница ${path}.</p>
+    </div>`);
+  }
+
+  // Удалить всё: прототип возвращается к первому запуску — пустые закупки и реквизиты, снова вопрос о согласии.
+  function wipeAll() {
+    S.purchases = []; S.docs = []; S.id = null;
+    S.profile = Object.fromEntries(PROFILE_KEYS.map((k) => [k, ""])); S.sources = {}; S.suggestions = [];
+    S.general = { messages: [], docs: [], pending: [], thinking: false }; S.drafts = {}; S.ui = {}; S.fold = {};
+    S.law = { open: null, want: null, threads: [] }; S.notes = []; S.ocr = true;
+    try { localStorage.removeItem(CONSENT_KEY); } catch (e) { /* хранилище недоступно — согласие и так не запомнено */ }
+    go("home");
+    showConsent();
   }
 
   /* ---------- мои документы ---------- */
@@ -2977,7 +3701,7 @@
         ${rep.requisites ? noteHTML("info", 'Реквизиты: в приложении они заполнятся из новых анкет и карточек сами. В прототипе файлы не читаются, поэтому <button class="link" type="button" data-go="profile">реквизиты</button> не изменились.', "", "info") : ""}
       </div>` : "";
     return `<div class="page-col">
-      <p class="intro">Загрузите всё, что подавали раньше: заявки целиком или по частям, анкеты, декларации, ценовые предложения, а ещё карточку предприятия. Приложение разложит их по видам — и новые документы будет писать так же, как ваши.</p>
+      <p class="intro">Загрузите всё, что подавали раньше: заявки целиком или по частям, анкеты, декларации, ценовые предложения, а ещё карточку предприятия. Для конкурсов — исполненные договоры с актами и документы сотрудников: дипломы, удостоверения, допуски. Приложение разложит всё по видам — и новые документы будет писать так же, как ваши.</p>
       ${report}
       ${S.busy ? `<section class="panel"><div class="panel-body">${busyHTML()}</div></section>` : ""}
       ${groups.map(([k, list], gi) => `<section class="panel" aria-labelledby="dg-${gi}">
@@ -3024,6 +3748,20 @@
       ${signature()}`;
   }
   const declDoc = (p) => `<h3>${esc(PART_TITLES.declaration)}</h3>${paras(fillFromProfile(p.tp.form.smeDeclaration), true)}${signature()}`;
+  function evidenceDoc(p, k) {
+    const cols = k === "experience"
+      ? ["Заказчик", "Предмет договора", "Номер и дата договора", "Цена договора, руб.", "Дата акта о приёмке"]
+      : ["Фамилия, имя, отчество", "Должность, роль", "Образование, квалификация", "Документ о квалификации, срок действия", "Основание работы"];
+    const demo = EVIDENCE_DEMO[k];
+    const tail = k === "experience"
+      ? "Общая цена исполненных договоров: 1 762 000,00 руб.\nПриложения: копии исполненных договоров и актов о приёмке — 4 шт."
+      : "Приложения: копии дипломов, удостоверений и трудовых договоров — 4 шт.";
+    return `<h3>${esc(PART_TITLES[k])}</h3>
+      <p>Участник закупки: ${S.profile.fullName.trim() ? esc(S.profile.fullName.trim()) : "<mark>[наименование участника]</mark>"}</p>
+      <table><thead><tr><th style="width:6%">№</th>${cols.map((c) => `<th>${esc(c)}</th>`).join("")}</tr></thead>
+      <tbody>${demo.rows.map((r, i) => `<tr><td>${i + 1}</td>${r.map((v) => `<td>${docFields(v)}</td>`).join("")}</tr>`).join("")}</tbody></table>
+      ${paras(tail)}${signature()}`;
+  }
   function priceDoc(p) {
     const price = p.tpPrice;
     const amount = price ? `${fmtRub(price)} руб. (${rublesInWords(price)})` : "[цена договора цифрами] руб. ([цена прописью])";
@@ -3031,8 +3769,269 @@
     return `<h3>${esc(PART_TITLES.price)}</h3><p class="c">Предмет закупки: ${esc(p.subject)}</p>${paras(`Предлагаемая цена договора составляет ${amount}, ${vat}.`, true)}${paras(p.tp.form.priceNote, true)}${signature()}`;
   }
 
-  function openPreview(p, part) {
-    const body = part === "tp" ? tpDoc(p) : part === "participant" ? anketaDoc(p) : part === "declaration" ? declDoc(p) : priceDoc(p);
+  /* ---------- документы заявки: все готовые файлы в одном окне ---------- */
+  // Скачать заявку можно из шапки закупки, из «Готово к подаче» в конце шагов и из дела на главной.
+  // Каждая часть — отдельным файлом Word; жёлтые поля — то, что осталось вписать.
+  function filesRows(p) {
+    const [, tp] = stepsOf(p);
+    const missing = PROFILE_KEYS.length - filledCount();
+    const row = (name, sub, tag, action) => `<li class="file-row">
+        <span class="law icon" aria-hidden="true">${ic("file", 16)}</span>
+        <span class="prow-text"><span class="file-title">${esc(name)}</span><span class="file-sub">${sub}</span></span>
+        ${tag}${action}
+      </li>`;
+    const dl = (k) => `<button class="btn soft xs" type="button" data-act="file-dl" data-part="${k}" data-id="${p.id}"${S.ui.writing ? " disabled" : ""}>${S.ui.writing === k ? "Пишу…" : "Скачать"}</button>`;
+    const rows = [row(PART_TITLES.tp, "первая часть заявки — без названия и реквизитов участника",
+      tp.state === "todo" ? badge("calm", "не составлено") : tp.state === "fix" ? badge("warn", tp.status, "pen") : badge("ok", "готово", "check"),
+      tp.state === "todo" ? `<button class="btn soft xs" type="button" data-go="tp" data-id="${p.id}">Составить</button>` : dl("tp"))];
+    if (!p.tp) return rows.join("") + '<li class="file-note">Анкета, декларация и предложение о цене появятся, когда составите ТП: форму заявки беру из документов закупки.</li>';
+    for (const k of partsOf(p.tp.form, p.criteria).filter((x) => x !== "tp")) {
+      const writing = S.ui.writing === k;
+      if (isEvidence(k)) {
+        const n = S.docs.filter((d) => d.kinds.includes(k)).length;
+        rows.push(row(PART_TITLES[k], n ? `из ${n} ${plural(n, "документа", "документов", "документов")} в «Образцах и реквизитах» · за них дают баллы` : "загрузите документы в «Образцы и реквизиты» — без них баллов не будет",
+          writing ? badge("calm", "пишу документ…") : p.sample ? badge("warn", k === "experience" ? "8,8 из 15 баллов" : "7,5 из 15 баллов", "alert") : n ? badge("brand", "за них баллы") : badge("warn", "нет документов", "alert"),
+          dl(k)));
+        continue;
+      }
+      const price = k === "price";
+      const tag = writing ? badge("calm", "пишу документ…")
+        : price ? (p.tpPrice ? badge("ok", "цена вписана", "check") : badge("warn", "впишите цену", "pen"))
+        : missing ? badge("warn", "впишите реквизиты", "pen") : badge("ok", "готово", "check");
+      const sub = price ? (p.tpPrice ? "цена — из шага 2" : "цену вписывают на шаге 2, в ТП")
+        : missing ? `в «Реквизитах» не хватает ${missing} ${plural(missing, "поля", "полей", "полей")} — в файле они жёлтые` : "реквизиты — из «Реквизитов»";
+      rows.push(row(PART_TITLES[k], sub, tag, dl(k)));
+    }
+    return rows.join("");
+  }
+  // Что требует заказчик — все пункты «Что подать» из требований: выписки, лицензии, обеспечение и остальное,
+  // что участник собирает сам. Отметки «готово» — по тексту пункта. С файлами выше пункты не сопоставляем:
+  // ошибка спрятала бы нужный документ.
+  const readyOf = (p) => p.submitReady || [];
+  function askRows(p) {
+    return p.requirements.submit.map((it, i) => {
+      const ready = readyOf(p).includes(it.text);
+      return `<li class="ask-row${ready ? " ready" : ""}"><label><input type="checkbox" data-ready="${i}"${ready ? " checked" : ""}><span class="ask-text">${esc(it.text)}</span></label>${sourceHTML(`ask-${i}`, it.source, it.quote, it.verified, "пункт")}</li>`;
+    }).join("");
+  }
+  const askCount = (p) => `готово ${p.requirements.submit.filter((it) => readyOf(p).includes(it.text)).length} из ${p.requirements.submit.length}`;
+  function askHTML(p) {
+    const items = p.requirements.submit;
+    return `<div class="ask-head"><h3 class="files-h">Что требует заказчик</h3>${items.length ? `<span class="small muted" id="files-ask-count">${askCount(p)}</span>` : ""}</div>
+      ${items.length
+        ? `<p class="small muted m0">Всё, что заказчик просит приложить. Часть закрывают файлы выше — отметьте, что уже готово.</p><ul class="files-list" id="files-ask" data-id="${p.id}">${askRows(p)}</ul>`
+        : '<p class="small muted m0">Перечня документов в документах закупки не нашлось — сверьтесь с извещением: что подать, обычно сказано в требованиях к заявке.</p>'}`;
+  }
+  function openFiles(p) {
+    if (!p) return;
+    const [, , check] = stepsOf(p);
+    const n = p.tp ? partsOf(p.tp.form, p.criteria).length : 1;
+    openModal(`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
+      <button class="icon-btn x-close" type="button" data-act="close" aria-label="Закрыть">${ic("x", 20)}</button>
+      <span class="eyebrow">${esc(p.short)}</span>
+      <h2 id="m-title">Документы заявки</h2>
+      <p class="small ink2 m0">Состав заявки задаёт заказчик. Часть файлов пишу я — каждый отдельным файлом Word, что осталось вписать, выделено жёлтым. Остальное собираете вы.</p>
+      <h3 class="files-h">Файлы, которые пишу я</h3>
+      <ul class="files-list" id="files-list">${filesRows(p)}</ul>
+      <div class="btn-row"><button class="btn" type="button" data-act="files-zip" data-id="${p.id}"${p.tp ? "" : " disabled"}>${ic("download", 16)}Скачать всё архивом</button><span class="small muted">${n} ${plural(n, "файл", "файла", "файлов")} Word</span></div>
+      ${askHTML(p)}
+      ${check.state === "done" ? "" : `<p class="small ink2 m0">Перед подачей проверьте заявку: <button class="link" type="button" data-go="check" data-id="${p.id}">шаг 3, проверка заявки</button>.</p>`}
+    </div>`);
+  }
+
+  /* ---------- уведомления: колокольчик в шапке ---------- */
+  // Ответы юриста, сроки подачи и конец приёма заявок. Новые — жирным и с точкой бренда, число — на колокольчике.
+  // Копии уходят письмом на почту из «Реквизитов».
+  function initNotes() {
+    const notes = S.law.threads.filter((t) => t.unread).map((t) => ({ id: `n-${t.id}`, tone: "brand", title: "Юрист ответил на вопрос", text: `«${t.title}»`, sub: `${lawPurchase(t) ? lawPurchase(t).short : "Общий вопрос"} · ${t.messages[t.messages.length - 1].when}`, unread: true, thread: t.id }));
+    for (const p of [...S.purchases].sort(byUrgency)) {
+      const due = dueLine(p.deadline, false);
+      if (!due) continue;
+      const [, tp] = stepsOf(p);
+      if (due.days >= 0 && due.tone === "soon") {
+        notes.push({ id: `n-due-${p.id}`, tone: "warn", title: `До подачи ${daysText(due.days)}`, text: tp.state === "fix" ? `В ТП осталось: ${tp.status}` : tp.state === "todo" ? "ТП ещё не составлено" : "", sub: `${p.short} · сегодня, 09:00`, unread: false, go: "p", id: p.id });
+      } else if (due.days < 0) {
+        notes.push({ id: `n-end-${p.id}`, tone: "", title: "Приём заявок закончился", text: "", sub: `${p.short} · ${due.head.replace(/^Приём заявок закончился /, "")}`, unread: false, go: "p", id: p.id });
+      }
+    }
+    return notes;
+  }
+  function bellHTML() {
+    const fresh = S.notes.filter((n) => n.unread).length;
+    return `<button class="icon-btn bell" type="button" id="bell" data-act="notif" aria-haspopup="dialog" aria-controls="notif" aria-expanded="${S.notifOpen}" aria-label="Уведомления${fresh ? `, новых: ${fresh}` : ""}">${ic("bell", 20)}${fresh ? `<span class="bell-dot" aria-hidden="true">${fresh}</span>` : ""}</button>`;
+  }
+  function notifHTML() {
+    const fresh = S.notes.filter((n) => n.unread).length;
+    const email = S.profile.email.trim();
+    return `<div class="notif-head"><h2 class="panel-title" id="notif-title">Уведомления${fresh ? ` <span class="count">${fresh}</span>` : ""}</h2>${fresh ? '<button class="link quiet small" type="button" data-act="notif-read">Прочитать все</button>' : ""}</div>
+      ${S.notes.length ? `<ul class="notif-list">${S.notes.map((n) => `<li><button class="notif-item${n.unread ? " unread" : ""}" type="button" data-act="note" data-note="${n.id}">
+        <span class="todo-dot ${n.tone}" aria-hidden="true"></span>
+        <span class="prow-text"><span class="prow-title">${esc(n.title)}${n.unread ? '<span class="sr-only">, новое</span>' : ""}</span>${n.text ? `<span class="notif-text">${esc(n.text)}</span>` : ""}<span class="prow-sub">${esc(n.sub)}</span></span>
+        ${n.unread ? '<span class="notif-new" aria-hidden="true"></span>' : "<span></span>"}
+      </button></li>`).join("")}</ul>` : '<p class="notif-empty">Уведомлений пока нет.</p>'}
+      <p class="notif-foot">Копии приходят письмом на ${email ? esc(email) : "почту из «Реквизитов»"}. В прототипе письма не отправляются.</p>`;
+  }
+  function renderNotif() {
+    const box = $("#notif");
+    box.hidden = !S.notifOpen;
+    box.innerHTML = S.notifOpen ? notifHTML() : "";
+    const bell = $("#bell");
+    if (bell) bell.setAttribute("aria-expanded", String(S.notifOpen));
+  }
+  // focusBell — вернуть фокус на колокольчик (закрыли клавишей или кнопкой), а не при переходе по уведомлению.
+  function setNotif(open, focusBell = true) {
+    S.notifOpen = open;
+    renderNotif();
+    if (open) { const first = $("#notif .notif-item") || $("#notif .link"); if (first) first.focus(); }
+    else if (focusBell) { const bell = $("#bell"); if (bell) bell.focus(); }
+  }
+
+  /* ---------- вопросы юристу ---------- */
+  // Живой юрист по закупкам: вопрос уходит вместе с документами закупки, ответ — обычно в течение рабочего дня.
+  // Ответил — число в меню, уведомление в колокольчике, дело на главной и письмо на почту из «Реквизитов».
+  function lawPurchase(t) { return S.purchases.find((p) => p.id === t.pid); }
+  function lawStatus(t) {
+    const last = t.messages[t.messages.length - 1];
+    if (last.role === "user") return badge("calm", "ждёт ответа", "clock");
+    return t.unread ? badge("brand", "новый ответ") : badge("ok", "юрист ответил", "check");
+  }
+  function lawRowsHTML() {
+    return S.law.threads.map((t) => `<li><button class="prow law-row" type="button" data-act="law-open" data-thread="${t.id}"${S.law.open === t.id ? ' aria-current="true"' : ""}>
+        <span class="prow-text"><span class="prow-title">${esc(t.title)}</span><span class="prow-sub">${esc(lawPurchase(t) ? lawPurchase(t).short : "Общий вопрос")}</span><span>${lawStatus(t)}</span></span>
+        <span class="chev">${ic("chev", 16)}</span>
+      </button></li>`).join("");
+  }
+  const lawMetaHTML = (t) => `${lawPurchase(t) ? `<button class="link" type="button" data-go="p" data-id="${t.pid}">${esc(lawPurchase(t).short)}</button>` : "<span>Общий вопрос</span>"}${lawStatus(t)}`;
+  function lawBodyHTML(t) {
+    const p = lawPurchase(t);
+    const waiting = t.messages[t.messages.length - 1].role === "user";
+    const msgs = t.messages.map((m) => (m.role === "user"
+      ? `<div class="msg user">${esc(m.text)}</div>`
+      : `<div class="msg lawyer"><p class="who"><span class="avatar" aria-hidden="true">${LAWYER.initials}</span><b>${esc(LAWYER.name)}</b><span>${esc(LAWYER.role)} · ${esc(m.when)}</span></p>${m.text.split(/\n\n+/).map((x) => `<p>${esc(x)}</p>`).join("")}</div>`)).join("");
+    const ctx = t.ctx
+      ? `<div class="law-ctx"><p class="law-ctx-label">Приложено к вопросу: ${esc(t.ctx.label)}${p ? " и документы закупки" : ""}</p><p class="law-ctx-text">${esc(t.ctx.text)}</p></div>`
+      : p ? `<p class="law-ctx-label">Приложены документы закупки: ${p.files.length}</p>` : "";
+    return `${ctx}
+      <div class="law-feed" aria-live="polite">${msgs}</div>
+      ${waiting ? `<p class="law-wait">${ic("clock", 16)}<span>Юрист ответит в течение рабочего дня. Когда ответит — уведомление в колокольчике наверху и письмо на почту.</span></p>` : ""}`;
+  }
+  function threadHTML(t) {
+    return `<section class="panel law-thread" aria-labelledby="law-t-title">
+      <div class="law-head">
+        <button class="icon-btn law-back" type="button" data-act="law-back" aria-label="Все вопросы">${ic("back", 18)}</button>
+        <div class="law-head-text">
+          <h2 class="law-title" id="law-t-title" tabindex="-1">${esc(t.title)}</h2>
+          <div class="law-meta">${lawMetaHTML(t)}</div>
+        </div>
+      </div>
+      <div class="law-body">${lawBodyHTML(t)}</div>
+      <form class="law-compose" id="law-reply">
+        <div class="prompt">
+          <textarea id="law-reply-q" rows="1" placeholder="Уточнить у юриста…" aria-label="Сообщение юристу" data-enter>${esc(S.drafts.law || "")}</textarea>
+          <div class="prompt-foot"><span></span><button class="circle send" type="submit" aria-label="Отправить юристу">${ic("send")}</button></div>
+        </div>
+      </form>
+    </section>`;
+  }
+  function lawyerHTML() {
+    const threads = S.law.threads;
+    if (!threads.length) {
+      return `<div class="page-col"><section class="panel"><div class="empty"><p>Вопросов юристу пока нет. Задайте вопрос — ответит живой юрист по закупкам, обычно в течение рабочего дня.</p><button class="btn" type="button" data-act="lawyer-new">${ic("plus")}Задать вопрос</button></div></section></div>`;
+    }
+    const open = threads.find((t) => t.id === S.law.open);
+    return `<div class="law-ws"${open ? " data-open" : ""}>
+      <section class="panel law-list" aria-labelledby="law-list-title">
+        <div class="panel-head"><h2 class="panel-title" id="law-list-title">Вопросы <span class="count">${threads.length}</span></h2></div>
+        <ul class="plist">${lawRowsHTML()}</ul>
+      </section>
+      ${open ? threadHTML(open) : '<section class="panel law-thread"><p class="list-empty">Выберите вопрос в списке.</p></section>'}
+    </div>`;
+  }
+  function markThreadRead(t) {
+    t.unread = false;
+    S.notes.forEach((n) => { if (n.thread === t.id) n.unread = false; });
+  }
+  function openThread(id) {
+    const t = S.law.threads.find((x) => x.id === id);
+    if (!t) return;
+    if (S.screen !== "lawyer") { S.law.want = id; go("lawyer"); }
+    else { S.law.open = id; markThreadRead(t); rerender(); }
+    const h = $("#law-t-title");
+    if (h) h.focus({ preventScroll: true });
+  }
+  // Ответ пришёл, пока открыт раздел: список и разговор перерисовываются, а поле ответа — нет, если в нём печатают.
+  function refreshLaw() {
+    renderHead();
+    renderSide();
+    if (S.screen === "home") { rerender(); return; }
+    if (S.screen !== "lawyer") return;
+    const list = $(".law-list .plist");
+    if (list) list.innerHTML = lawRowsHTML();
+    const t = S.law.threads.find((x) => x.id === S.law.open);
+    const box = $(".law-thread");
+    if (!t || !box) return;
+    const typing = box.contains(document.activeElement) && document.activeElement.tagName === "TEXTAREA";
+    if (typing) { box.querySelector(".law-body").innerHTML = lawBodyHTML(t); box.querySelector(".law-meta").innerHTML = lawMetaHTML(t); }
+    else box.outerHTML = threadHTML(t);
+  }
+  // Окно вопроса: закупка, что приложить (ответ ИИ или итог проверки) и сам вопрос.
+  function openAskLawyer(ctx = {}) {
+    const pid = ctx.pid !== undefined ? ctx.pid : PURCHASE_SCREENS.includes(S.screen) && cur() ? cur().id : "";
+    S.ui.lawCtx = ctx;
+    const email = S.profile.email.trim();
+    const options = [`<option value="">Без закупки — общий вопрос</option>`, ...S.purchases.map((p) => `<option value="${p.id}"${p.id === pid ? " selected" : ""}>${esc(p.short)}</option>`)].join("");
+    openModal(`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
+      <button class="icon-btn x-close" type="button" data-act="close" aria-label="Закрыть">${ic("x", 20)}</button>
+      <span class="eyebrow">Вопрос юристу</span>
+      <h2 id="m-title">Спросить юриста по закупкам</h2>
+      <p class="small ink2 m0">Отвечает живой юрист по 44-ФЗ и 223-ФЗ, обычно в течение рабочего дня. Когда ответит — уведомление в колокольчике наверху${email ? ` и письмо на ${esc(email)}` : " и письмо на почту из «Реквизитов»"}.</p>
+      <form class="law-form" id="law-form" novalidate>
+        <label class="field-label" for="law-pid">Закупка</label>
+        <select class="input" id="law-pid">${options}</select>
+        ${ctx.text ? `<div class="law-ctx"><p class="law-ctx-label">Приложу к вопросу: ${esc(ctx.label)}</p><p class="law-ctx-text">${esc(ctx.text)}</p></div>` : ""}
+        <label class="field-label" for="law-q">Ваш вопрос</label>
+        <textarea class="input area" id="law-q" rows="4" placeholder="Например: можно ли заменить исполнителя после подачи заявки?" aria-describedby="law-q-err">${esc(ctx.question || "")}</textarea>
+        <p class="form-err" id="law-q-err" hidden>Напишите вопрос — так юрист поймёт, что уточнить.</p>
+        <p class="small muted m0">Юрист увидит вопрос${ctx.text ? ", приложенный фрагмент" : ""} и документы выбранной закупки.</p>
+        <div class="btn-row"><button class="btn" type="submit">${ic("send", 16)}Отправить юристу</button><button class="btn soft" type="button" data-act="close">Отмена</button></div>
+      </form>
+    </div>`);
+    const q = $("#law-q");
+    if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+  }
+  function sendLawQuestion() {
+    const area = $("#law-q"), err = $("#law-q-err");
+    const text = area.value.trim();
+    if (!text) { err.hidden = false; area.setAttribute("aria-invalid", "true"); area.focus(); return; }
+    const ctx = S.ui.lawCtx || {};
+    const title = text.split(/\n/)[0];
+    const t = {
+      id: uid(), pid: $("#law-pid").value, title: title.length > 90 ? `${title.slice(0, 88).trim()}…` : title, unread: false,
+      ctx: ctx.text ? { label: ctx.label, text: ctx.text } : null, messages: [{ role: "user", text, when: "только что" }],
+    };
+    S.law.threads.unshift(t);
+    S.ui.lawCtx = null;
+    closeModal();
+    if (S.screen === "lawyer") { S.law.open = t.id; rerender(); } else renderSide();
+    toast("Вопрос отправлен юристу. Ответ придёт в «Вопросы юристу» — пришлём уведомление.");
+    lawReplyLater(t);
+  }
+  // В прототипе юрист «отвечает» через 12 секунд, чтобы было видно уведомление. В жизни — в течение рабочего дня.
+  function lawReplyLater(t) {
+    setTimeout(() => {
+      if (!S.law.threads.includes(t)) return;
+      t.messages.push({ role: "lawyer", text: "Это пример ответа в прототипе. В рабочей версии здесь будет ответ юриста по вашему вопросу и документам закупки — обычно в течение рабочего дня.", when: "только что" });
+      const reading = S.screen === "lawyer" && S.law.open === t.id;
+      t.unread = !reading;
+      if (!reading) S.notes.unshift({ id: `n-${t.id}-${t.messages.length}`, tone: "brand", title: "Юрист ответил на вопрос", text: `«${t.title}»`, sub: `${lawPurchase(t) ? lawPurchase(t).short : "Общий вопрос"} · только что`, unread: true, thread: t.id });
+      refreshLaw();
+      if (S.notifOpen) renderNotif();
+      toast(reading ? "Юрист ответил." : "Юрист ответил на ваш вопрос — откройте колокольчик наверху.");
+    }, 12000);
+  }
+
+  function openPreview(p, part, back) {
+    const body = part === "tp" ? tpDoc(p) : part === "participant" ? anketaDoc(p) : part === "declaration" ? declDoc(p) : isEvidence(part) ? evidenceDoc(p, part) : priceDoc(p);
     const basis = part === "tp" ? "" : p.sample ? "По стандартному шаблону: в документах примера нет формы заказчика." : `Составлено ${p.parts[part] ? p.parts[part].basis : basisText(p, part)}. Реквизиты — из «Реквизитов».`;
     openModal(`<div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="m-title">
       <button class="icon-btn x-close" type="button" data-act="close" aria-label="Закрыть">${ic("x", 20)}</button>
@@ -3041,6 +4040,7 @@
       ${basis ? `<p class="small muted m0">${esc(basis)}</p>` : ""}
       <div class="sheet">${body}</div>
       <p class="small muted m0">В приложении этот файл скачивается на компьютер. Жёлтые поля остаются жёлтыми и в Word — сразу видно, что осталось вписать.</p>
+      ${back ? `<p class="m0"><button class="link" type="button" data-act="files" data-id="${p.id}">К документам заявки</button></p>` : ""}
     </div>`);
   }
 
@@ -3112,6 +4112,7 @@
     switch (S.screen) {
       case "home": return homeHTML();
       case "ask": return askHTML();
+      case "lawyer": return lawyerHTML();
       case "new": return newHTML();
       case "profile": return profileHTML();
       case "docs": return docsHTML();
@@ -3146,10 +4147,14 @@
     else if (c.left < r.left) row.scrollLeft -= r.left - c.left + 8;
   }
   window.addEventListener("resize", fitTabs);
+  // Подсказка привязана к месту на экране: при прокрутке и смене размера окна закрываем её.
+  window.addEventListener("resize", () => closeHint(false));
+  document.addEventListener("scroll", () => closeHint(false), true);
   if (document.fonts) document.fonts.ready.then(fitTabs);
   const renderSide = () => { $("#side").innerHTML = sideHTML(); };
   const renderHead = () => { $("#head").innerHTML = headHTML(); };
   function render() {
+    closeHint(false);
     renderSide();
     renderHead();
     const view = $("#view");
@@ -3167,7 +4172,7 @@
     const goTo = el.getAttribute("data-go");
     if (!act && !goTo) return null;
     let sel = scope + (act ? `[data-act="${act}"]` : `[data-go="${goTo}"]`);
-    for (const k of ["data-open", "data-q", "data-part", "data-edit", "data-key", "data-kind", "data-i", "data-id", "data-fold"]) {
+    for (const k of ["data-open", "data-q", "data-part", "data-edit", "data-key", "data-kind", "data-i", "data-id", "data-fold", "data-lane"]) {
       const v = el.getAttribute(k);
       if (v !== null) sel += `[${k}="${CSS.escape(v)}"]`;
     }
@@ -3197,6 +4202,8 @@
   let busyToken = 0;
   function go(screen, id, focusSel) {
     busyToken++;
+    S.notifOpen = false;
+    renderNotif();
     S.busy = null;
     if (screen === "p") screen = S.tabs[id || S.id] || "req";
     // На широком экране закупка открыта рядом со списком — как переписка в мессенджере.
@@ -3207,6 +4214,14 @@
     if (id && id !== S.id) S.info = false;
     if (id) S.id = id;
     S.screen = screen;
+    // Вопросы юристу: открыт нужный разговор; на широком экране без выбора — первый, на узком — список.
+    if (screen === "lawyer") {
+      const want = S.law.want;
+      S.law.want = null;
+      S.law.open = want || (single.matches ? null : S.law.open || (S.law.threads[0] && S.law.threads[0].id) || null);
+      const t = S.law.threads.find((x) => x.id === S.law.open);
+      if (t) markThreadRead(t);
+    }
     if (PURCHASE_SCREENS.includes(screen)) {
       if (cur()) S.tabs[S.id] = screen;
       else S.screen = "list";
@@ -3333,16 +4348,6 @@
     m.done = true;
     refreshFeed(p);
   }
-  function homeAsk(text) {
-    const q = text.trim();
-    const files = S.home.files;
-    if (!q && !files.length) { $("#home-q").focus(); return; }
-    S.general.docs = [...new Set([...S.general.docs, ...files])];
-    S.home = { text: "", files: [] };
-    go("ask");
-    if (q) ask(null, q, files);
-    else toast("Документы в разговоре — задайте вопрос по ним.");
-  }
 
   /* ---------- действия ---------- */
   async function createPurchase() {
@@ -3376,18 +4381,26 @@
     render();
     toTop();
   }
-  async function writePart(p, k) {
+  // Документ пишется около минуты; строка на шаге ТП и в окне документов заявки показывает, что идёт работа.
+  async function writePart(p, k, back) {
     const visit = S.visit;
+    const redraw = () => {
+      const parts = $("#parts-list"), files = $("#files-list");
+      if (parts) parts.innerHTML = partsRows(p);
+      if (files) files.innerHTML = filesRows(p);
+    };
     if (!p.sample) {
       S.ui.writing = k;
-      $("#parts-list").innerHTML = partsRows(p);
+      redraw();
       await wait(1600);
       if (S.visit !== visit) return;
       p.parts[k] = { key: basisKey(p, k), basis: basisText(p, k) };
       S.ui.writing = null;
-      $("#parts-list").innerHTML = partsRows(p);
+      redraw();
+      // Окно документов закрыли, пока документ писался, — не открываем его снова.
+      if (back && $("#modal").hidden) return;
     }
-    openPreview(p, k);
+    openPreview(p, k, back);
   }
   function onPartClick(p, k, redo) {
     const made = p.parts[k];
@@ -3475,11 +4488,24 @@
       case "info": setInfo(!S.info); break;
       case "info-close": setInfo(false); break;
       case "fold": S.fold[el.dataset.fold] = !S.fold[el.dataset.fold]; rerender(); break;
+      case "hint": openHint(el); break;
+      case "backup-save": {
+        const inside = dataContents();
+        S.ui.backupNote = inside
+          ? { tone: "ok", text: `В приложении здесь скачается файл «Тендерный юрист — копия ${new Date().toLocaleDateString("ru-RU")}.json»: ${inside}. В прототипе файл не сохраняется.` }
+          : { tone: "info", text: "Сохранять пока нечего: в этом браузере нет ни закупок, ни образцов, ни реквизитов." };
+        rerender();
+        break;
+      }
+      case "wipe-ask": S.ui.wipeAsk = true; rerender(); { const no = $("#wipe-no"); if (no) no.focus(); } break;
+      case "wipe-no": S.ui.wipeAsk = false; rerender(); { const ask = $("#wipe-ask"); if (ask) ask.focus(); } break;
+      case "wipe-yes": wipeAll(); break;
+      case "legal": openLegal(el.dataset.doc); break;
+      case "consent-ok": acceptConsent(); break;
       case "drawer-close": setDrawer(false); break;
       case "close": closeModal(); break;
       case "sample": openSample(); break;
-      case "home-q": homeAsk(el.dataset.q); break;
-      case "home-file-x": S.home.text = $("#home-q").value; S.home.files.splice(Number(el.dataset.i), 1); rerender(); break;
+      case "lane": S.lane = S.lane === el.dataset.lane ? null : el.dataset.lane; rerender(); break;
       case "gdoc-x": {
         const [name] = S.general.docs.splice(Number(el.dataset.i), 1);
         S.general.pending = S.general.pending.filter((n) => n !== name);
@@ -3491,9 +4517,75 @@
         else ask(p, el.dataset.q);
         break;
       }
-      case "toggle": S.ui.open = S.ui.open === el.dataset.open ? null : el.dataset.open; rerender(); break;
+      case "toggle": {
+        S.ui.open = S.ui.open === el.dataset.open ? null : el.dataset.open;
+        // Цитата под пунктом в окне «Документы заявки» — окно не перерисовывается вместе с экраном.
+        const ask = el.closest("#files-ask");
+        if (ask) {
+          ask.innerHTML = askRows(S.purchases.find((x) => x.id === ask.dataset.id));
+          const again = ask.querySelector(`[data-open="${el.dataset.open}"]`);
+          if (again) again.focus();
+        } else rerender();
+        break;
+      }
       case "ref": openRef(el.dataset.ref, el.dataset.hl); break;
-      case "lawyer": toast("В рабочей версии вопрос уйдёт юристу по закупкам, ответ — в течение дня. Сейчас ничего не отправляется."); break;
+      case "lawyer": {
+        // Что приложить: итог проверки заявки или ответ ИИ, после которого возник вопрос.
+        if (el.dataset.from === "check" && p) {
+          const found = p.check.findings.map((f) => f.what).join(" ");
+          openAskLawyer({ pid: p.id, label: "итог проверки заявки", text: found || "Проверка заявки: ошибок нет.", question: "" });
+          break;
+        }
+        const list = S.screen === "ask" ? S.general.messages : p ? p.chat : [];
+        const i = Number(el.dataset.i);
+        const m = list[i];
+        const before = list.slice(0, i).reverse().find((x) => x.role === "user");
+        const plain = m ? m.text.replace(/\*\*/g, "").replace(/\s+/g, " ").trim() : "";
+        openAskLawyer({ pid: S.screen === "ask" ? "" : p ? p.id : "", label: "ответ ИИ", text: plain.length > 240 ? `${plain.slice(0, 238).trim()}…` : plain, question: before ? before.text : "" });
+        break;
+      }
+      case "lawyer-new": openAskLawyer({ pid: "" }); break;
+      case "law-open": openThread(el.dataset.thread); break;
+      case "law-back": {
+        const was = S.law.open;
+        S.law.open = null;
+        rerender();
+        const row = $(`[data-act="law-open"][data-thread="${was}"]`);
+        if (row) row.focus();
+        break;
+      }
+      case "notif": setNotif(!S.notifOpen); break;
+      case "notif-read": {
+        S.notes.forEach((n) => { n.unread = false; });
+        renderHead();
+        renderNotif();
+        const first = $("#notif .notif-item");
+        if (first) first.focus();
+        break;
+      }
+      case "note": {
+        const n = S.notes.find((x) => x.id === el.dataset.note);
+        if (!n) break;
+        n.unread = false;
+        setNotif(false, false);
+        if (n.thread) openThread(n.thread);
+        else go(n.go, n.id);
+        break;
+      }
+      case "files": openFiles(S.purchases.find((x) => x.id === el.dataset.id) || p); break;
+      case "file-dl": {
+        const q = S.purchases.find((x) => x.id === el.dataset.id) || p;
+        const k = el.dataset.part;
+        const made = q.parts[k];
+        if (k === "tp" || q.sample || (made && made.key === basisKey(q, k))) openPreview(q, k, true);
+        else writePart(q, k, true);
+        break;
+      }
+      case "files-zip": {
+        const q = S.purchases.find((x) => x.id === el.dataset.id) || p;
+        toast(`В рабочей версии скачается архив «${q.short} — заявка.zip» со всеми файлами Word. В прототипе откройте файлы по одному.`);
+        break;
+      }
       case "ask-delete": S.ui.confirmDelete = true; rerender(); { const b = $('[data-act="cancel-delete"]'); if (b) b.focus(); } break;
       case "cancel-delete": S.ui.confirmDelete = false; rerender(); break;
       case "delete": S.purchases = S.purchases.filter((x) => x !== p); S.id = null; go("list"); toast("Закупка удалена."); break;
@@ -3599,21 +4691,25 @@
   document.addEventListener("mousedown", (e) => { if (e.target.closest && e.target.closest("#cast-sug")) e.preventDefault(); });
   document.addEventListener("click", (e) => {
     const t = e.target;
+    if (hintFrom && !t.closest("#hint-pop") && t.closest(".hint-btn") !== hintFrom) closeHint(false);
     const opt = t.closest && t.closest("#cast-sug [data-sug]");
     if (opt) { pickSug(Number(opt.dataset.sug)); return; }
     if (t.id === "modal") { closeModal(); return; }
     if (t.id === "scrim") { setDrawer(false); return; }
+    if (S.notifOpen && !t.closest("#notif") && !t.closest("#bell")) setNotif(false, false);
     const nav = t.closest("[data-go]");
+    if (nav && nav.closest("#modal")) closeModal();
     // Во вкладках и в списке закупок фокус остаётся там, где нажали.
     if (nav) { go(nav.dataset.go, nav.dataset.id, nav.closest(".tabs, .ws-list") ? focusKey(nav) : null); return; }
     const act = t.closest("[data-act]");
+    if (act && act.tagName === "A") e.preventDefault();
     if (act && !act.disabled) handleAct(act.dataset.act, act);
   });
 
   document.addEventListener("submit", (e) => {
     e.preventDefault();
     const f = e.target;
-    if (f.id === "home-form") { homeAsk($("#home-q").value); return; }
+    if (f.id === "law-form") { sendLawQuestion(); return; }
     const area = f.querySelector("textarea");
     const q = area ? area.value.trim() : "";
     if (!q) { if (area) area.focus(); return; }
@@ -3629,15 +4725,26 @@
       area.value = "";
       autosize(area);
       ask(cur(), q);
+    } else if (f.id === "law-reply") {
+      const t = S.law.threads.find((x) => x.id === S.law.open);
+      if (!t) return;
+      t.messages.push({ role: "user", text: q, when: "только что" });
+      S.drafts.law = "";
+      area.value = "";
+      autosize(area);
+      refreshLaw();
+      toast("Отправлено юристу. Ответ придёт сюда — пришлём уведомление.");
+      lawReplyLater(t);
     }
   });
 
   document.addEventListener("input", (e) => {
     const t = e.target;
     if (t.tagName === "TEXTAREA") autosize(t);
-    if (t.id === "home-q") S.home.text = t.value;
-    else if (t.id === "ask-q") S.drafts.ask = t.value;
+    if (t.id === "ask-q") S.drafts.ask = t.value;
     else if (t.id === "chat-q") S.drafts.chat = t.value;
+    else if (t.id === "law-reply-q") S.drafts.law = t.value;
+    else if (t.id === "law-q" && t.value.trim()) { const err = $("#law-q-err"); if (err) err.hidden = true; t.removeAttribute("aria-invalid"); }
     else if (t.dataset.edit) onEditInput(t);
     else if (t.dataset.cast) onCastInput(t);
     else if (t.id === "cast-paste-text") S.ui.castText = t.value;
@@ -3672,6 +4779,8 @@
     if (g && g.rank) showSug(p, t);
   });
   document.addEventListener("focusout", (e) => { if (sug && e.target === sug.input) hideSug(); });
+  document.addEventListener("focusin", (e) => { if (e.target.dataset && e.target.dataset.pf) showProfileProblems(); });
+  document.addEventListener("focusout", (e) => { if (e.target.dataset && e.target.dataset.pf) setTimeout(showProfileProblems); });
 
   // Правка закончилась — поле снова становится текстом. Заменяем только его, чтобы не сорвать нажатие рядом.
   document.addEventListener("focusout", (e) => {
@@ -3688,13 +4797,35 @@
   document.addEventListener("change", (e) => {
     const input = e.target;
     if (input.dataset && input.dataset.calc && (input.type === "checkbox" || input.type === "radio")) { onCalcInput(input); return; }
+    if (input.dataset && input.dataset.ocr !== undefined) { S.ocr = input.checked; return; }
+    if (input.dataset && input.dataset.ready !== undefined) {
+      const ask = input.closest("#files-ask");
+      const q = ask && S.purchases.find((x) => x.id === ask.dataset.id);
+      if (!q) return;
+      const text = q.requirements.submit[Number(input.dataset.ready)].text;
+      const ready = new Set(readyOf(q));
+      if (input.checked) ready.add(text); else ready.delete(text);
+      q.submitReady = q.requirements.submit.map((it) => it.text).filter((t) => ready.has(t));
+      input.closest(".ask-row").classList.toggle("ready", input.checked);
+      const count = $("#files-ask-count");
+      if (count) count.textContent = askCount(q);
+      return;
+    }
+    if (input.id === "consent-processing" || input.id === "consent-transfer") {
+      $("#consent-ok").disabled = !($("#consent-processing").checked && $("#consent-transfer").checked);
+      return;
+    }
     if (input.type !== "file") return;
     const files = [...input.files];
     input.value = "";
     if (!files.length) return;
+    if (input.id === "backup-file") {
+      S.ui.backupNote = { tone: "info", text: `Выбран файл «${files[0].name}». В приложении из копии добавится то, чего нет в этом браузере, — сделанное здесь не затрётся. В прототипе файл не читается.` };
+      rerender();
+      return;
+    }
     const names = files.map((f) => f.name);
-    if (input.id === "home-file") { S.home.text = $("#home-q").value; S.home.files = [...new Set([...S.home.files, ...names])]; rerender(); }
-    else if (input.id === "g-file") { S.general.docs = [...new Set([...S.general.docs, ...names])]; S.general.pending = [...new Set([...S.general.pending, ...names])]; rerender(); }
+    if (input.id === "g-file") { S.general.docs = [...new Set([...S.general.docs, ...names])]; S.general.pending = [...new Set([...S.general.pending, ...names])]; rerender(); }
     else if (input.id === "file-new") createPurchase();
     else if (input.id === "add-doc" || input.id === "add-doc-2") addToPurchase(cur(), names);
     else if (input.id === "file-app") runCheck(cur());
@@ -3712,7 +4843,9 @@
       if (sug && sug.input === e.target && e.key === "Escape") { e.preventDefault(); hideSug(); return; }
     }
     if (e.key === "Escape") {
+      if (hintFrom) { closeHint(hintPinned); return; }
       if (closeModal()) return;
+      if (S.notifOpen) { setNotif(false); return; }
       if (S.drawer && narrow.matches) { setDrawer(false); return; }
       if (S.info && !wide.matches && $("#ws-info")) { setInfo(false); return; }
       if (e.target.classList && e.target.classList.contains("edit-area")) e.target.blur();
@@ -3755,7 +4888,9 @@
     else if (kind === "mydocs") addMyDocs(files);
   });
 
+  S.notes = initNotes();
   render();
   applyDrawer();
+  if (!consentGiven()) showConsent();
 })();
 </script>

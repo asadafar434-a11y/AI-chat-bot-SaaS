@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import Link from "next/link";
+import { ConsentChecks, legalLink as doc } from "@/components/consent-checks";
 import { ScalesIcon, WarningIcon } from "@/components/icons";
 import { Note } from "@/components/note";
+import { saveConsent } from "@/lib/consent";
 
 // Куда вернуться после входа: только страница этого же сайта, чужой адрес в ?next= не пройдёт.
 function nextPath() {
@@ -13,19 +14,15 @@ function nextPath() {
   return url.origin === window.location.origin && url.pathname !== "/login" ? url.pathname + url.search + url.hash : "/";
 }
 
-// Документы открываются в новой вкладке: введённый пароль не пропадёт.
-const doc = (href: string, text: string) => (
-  <Link href={href} target="_blank" className="link">
-    {text}
-  </Link>
-);
-
-// Вход по закрытой ссылке: поле пароля, согласие на обработку персональных данных и кнопка.
-// Согласие — отдельной галочкой, не отмеченной заранее: с 1 сентября 2025 года его нельзя прятать в условия.
+// Вход по закрытой ссылке: поле пароля, согласие на обработку персональных данных, согласие на передачу за рубеж и кнопка.
+// Согласия — отдельными галочками, не отмеченными заранее: с 1 сентября 2025 года их нельзя прятать в условия.
 export function LoginForm() {
   const [password, setPassword] = useState("");
   const [agreed, setAgreed] = useState(false);
-  const [state, setState] = useState<"idle" | "busy" | "wrong" | "failed">("idle");
+  const [transfer, setTransfer] = useState(false);
+  const [state, setState] = useState<"idle" | "busy" | "wrong" | "limited" | "failed">("idle");
+  // Сколько ждать до следующей попытки — так, как написал сервер.
+  const [limit, setLimit] = useState("");
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -40,7 +37,14 @@ export function LoginForm() {
         setState("wrong");
         return;
       }
+      if (res.status === 429) {
+        setLimit((await res.text()).trim() || "Слишком много попыток входа — попробуйте позже.");
+        setState("limited");
+        return;
+      }
       if (!res.ok) throw new Error(res.statusText);
+      // Галочки отмечены — согласие на этом устройстве записано, второй раз его не спросят.
+      saveConsent();
       window.location.replace(nextPath());
     } catch {
       setState("failed");
@@ -67,7 +71,7 @@ export function LoginForm() {
             value={password}
             onChange={(e) => {
               setPassword(e.currentTarget.value);
-              if (state === "wrong" || state === "failed") setState("idle");
+              if (state === "wrong" || state === "limited" || state === "failed") setState("idle");
             }}
             autoComplete="current-password"
             autoFocus
@@ -80,27 +84,26 @@ export function LoginForm() {
             Неверный пароль. Проверьте раскладку клавиатуры и попробуйте ещё раз.
           </Note>
         )}
+        {state === "limited" && (
+          <Note tone="warn" icon={WarningIcon}>
+            {limit}
+          </Note>
+        )}
         {state === "failed" && (
           <Note tone="warn" icon={WarningIcon}>
             Не получилось войти — проверьте интернет и попробуйте ещё раз.
           </Note>
         )}
-        <label className="flex items-start gap-2.5">
-          <input
-            type="checkbox"
-            checked={agreed}
-            onChange={(e) => setAgreed(e.currentTarget.checked)}
-            required
-            className="mt-0.5 size-4 flex-none accent-[var(--brand)]"
-          />
-          <span className="text-[var(--ink-2)]">Даю {doc("/consent", "согласие на обработку персональных данных")}</span>
-        </label>
-        <button type="submit" disabled={state === "busy" || !password || !agreed} className="btn btn-lg">
+        <ConsentChecks processing={agreed} transfer={transfer} onProcessing={setAgreed} onTransfer={setTransfer} />
+        <button type="submit" disabled={state === "busy" || !password || !agreed || !transfer} className="btn btn-lg">
           {state === "busy" ? "Вхожу…" : "Войти"}
         </button>
         <p className="t-caption text-[var(--ink-3)]">
           Нажимая «Войти», вы принимаете {doc("/terms", "условия использования")}. Как сервис обращается с данными — в{" "}
           {doc("/privacy", "политике")}. Владелец сервиса — на странице {doc("/contacts", "«Контакты»")}.
+        </p>
+        <p className="t-caption text-[var(--ink-3)]">
+          Сайт сохраняет один технический файл cookie&nbsp;— метку входа, чтобы не спрашивать пароль каждый раз. Персональных данных в нём нет.
         </p>
       </form>
     </main>
