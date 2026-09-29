@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Briefcase, User, Plus, Sun, Moon, Search, History, Sparkles, Bell, Clock, ChevronRight, Menu, X, Wallet } from '../lib/icons';
+import { Briefcase, User, Plus, Sun, Moon, Search, History, Bell, Clock, ChevronRight, Menu, X, Wallet } from '../lib/icons';
 import { company } from '../lib/data';
 import { Button, Soon, Tooltip, IconButton, cx } from './ui';
 import { BrandMark } from './BrandMark';
+import { BotMark } from './BotMark';
 
 export type View = 'tenders' | 'search' | 'history' | 'profile' | 'tariffs' | 'workflow';
 
@@ -167,9 +168,7 @@ function Body({ view, onNavigate, onNewTender, onOpenChat, dark, setDark, notice
         onClick={onOpenChat}
         className="flex items-center gap-2.5 rounded-md border border-border bg-secondary/50 px-3 py-2.5 text-left transition-colors hover:bg-secondary"
       >
-        <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-          <Sparkles className="size-3.5" />
-        </div>
+        <BotMark className="size-8 shrink-0" />
         <div className="min-w-0 leading-tight">
           <p className="text-[13px] font-medium">Спросить ИИ</p>
           <p className="truncate font-mono text-[10px] text-muted-foreground">помощь по заявке</p>

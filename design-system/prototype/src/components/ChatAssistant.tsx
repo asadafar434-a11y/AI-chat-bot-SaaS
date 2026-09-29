@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { MessageCircle, X, Send, Paperclip, ImageIcon, FileText, UserCheck } from '../lib/icons';
-import { AIDisclaimer, IconButton } from './ui';
-import { BrandMark } from './BrandMark';
+import { X, Send, Paperclip, ImageIcon, FileText, UserCheck } from '../lib/icons';
+import { AIDisclaimer, IconButton, cx } from './ui';
+import { BotMark } from './BotMark';
 
 type Msg = { role: 'user' | 'ai'; text: string; file?: { name: string; kind: 'image' | 'doc' } };
 
@@ -93,26 +93,34 @@ export function ChatAssistant({
 
   return (
     <>
-      {/* Launcher FAB */}
-      <button
-        onClick={() => setOpen(!open)}
-        className={`bg-brand-gradient fixed bottom-5 right-5 z-40 flex size-12 items-center justify-center rounded-full text-white shadow-lg transition-all duration-500 ease-out hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 ${
-          open ? '' : 'animate-glow'
-        }`}
-        aria-label={open ? 'Закрыть чат' : 'Спросить ИИ'}
-      >
-        {open ? <X className="size-5" /> : <MessageCircle className="size-5" />}
-        {!open && notes.length > seen && (
-          <span className="absolute -right-0.5 -top-0.5 size-3 rounded-full bg-danger ring-2 ring-background" />
+      {/* Кнопка чата — робот ИИ-ассистента; при открытом чате — крестик */}
+      <div className="group/fab fixed bottom-5 right-5 z-40">
+        {!open && (
+          <span className="animate-tip pointer-events-none absolute right-full top-1/2 mr-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-1.5 text-[12px] font-medium text-foreground shadow-xl group-hover/fab:block">
+            Спросить ИИ
+          </span>
         )}
-      </button>
+        <button
+          onClick={() => setOpen(!open)}
+          className={cx(
+            'relative flex size-14 items-center justify-center outline-none transition-transform duration-300 ease-out hover:-translate-y-0.5 active:translate-y-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+            open ? 'bg-brand-gradient rounded-full text-white shadow-lg' : 'animate-bot-glow rounded-2xl',
+          )}
+          aria-label={open ? 'Закрыть чат' : 'Спросить ИИ'}
+        >
+          {open ? <X className="size-5" /> : <BotMark live className="size-14" />}
+          {!open && notes.length > seen && (
+            <span className="absolute right-0 top-1.5 size-3 rounded-full bg-danger ring-2 ring-background" />
+          )}
+        </button>
+      </div>
 
       {/* Panel — anchored top-right */}
       {open && (
         <div className="animate-fade-up fixed right-4 top-4 z-40 flex h-[560px] max-h-[calc(100vh-2rem)] w-[360px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
           {/* Header with explicit close */}
           <div className="flex items-center gap-2.5 border-b border-border px-4 py-3">
-            <BrandMark className="size-7 shrink-0" />
+            <BotMark className="size-8 shrink-0" />
             <div className="flex-1 leading-none">
               <p className="text-sm font-semibold">ИИ-ассистент</p>
               <p className="mt-0.5 flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
@@ -127,7 +135,8 @@ export function ChatAssistant({
           {/* Messages */}
           <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
             {msgs.map((m, i) => (
-              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div key={i} className={`flex items-end gap-2 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {m.role === 'ai' && <BotMark className="size-6 shrink-0" />}
                 <div
                   className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-[13px] leading-snug ${
                     m.role === 'user'
@@ -164,7 +173,8 @@ export function ChatAssistant({
               </div>
             ))}
             {typing && (
-              <div className="flex justify-start">
+              <div className="flex items-end justify-start gap-2">
+                <BotMark className="size-6 shrink-0" />
                 <div className="flex gap-1 rounded-2xl rounded-bl-sm bg-secondary px-3.5 py-3">
                   {[0, 1, 2].map((d) => (
                     <span
@@ -178,7 +188,7 @@ export function ChatAssistant({
             )}
 
             {msgs.length <= 1 && !typing && (
-              <div className="space-y-1.5 pt-1">
+              <div className="space-y-1.5 pl-8 pt-1">
                 {suggestions.map((s) => (
                   <button
                     key={s}
