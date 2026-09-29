@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { BrandMark } from "@/components/brand-mark";
 import {
   CaretRightIcon,
   ChatIcon,
@@ -11,7 +12,6 @@ import {
   FolderIcon,
   HelpCircleIcon,
   HomeIcon,
-  ScalesIcon,
   UserIcon,
   type IconComponent,
 } from "@/components/icons";
@@ -120,9 +120,7 @@ export function SideNav({ onClose }: { onClose: () => void }) {
     <>
       <div className="flex min-h-14 flex-none items-center gap-2 py-2.5 pl-3 pr-2">
         <Link href="/" aria-label="Тендерный юрист — на главную" className="inline-flex min-w-0 items-center gap-2.5">
-          <span className="grid size-7 flex-none place-items-center rounded-[var(--r-ctl)] bg-primary text-primary-foreground shadow-[inset_0_-2px_0_rgb(0_0_0/.12)]">
-            <ScalesIcon className="size-4" />
-          </span>
+          <BrandMark className="size-7" />
           <span className="font-heading text-sm leading-5 font-bold tracking-[-0.01em]">Тендерный юрист</span>
         </Link>
         <button type="button" onClick={onClose} aria-label="Закрыть меню" className="icon-btn ml-auto lg:hidden">

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { MessageCircle, X, Send, Sparkles, Paperclip, ImageIcon, FileText, UserCheck } from '../lib/icons';
+import { MessageCircle, X, Send, Paperclip, ImageIcon, FileText, UserCheck } from '../lib/icons';
 import { AIDisclaimer, IconButton } from './ui';
+import { BrandMark } from './BrandMark';
 
 type Msg = { role: 'user' | 'ai'; text: string; file?: { name: string; kind: 'image' | 'doc' } };
 
@@ -111,9 +112,7 @@ export function ChatAssistant({
         <div className="animate-fade-up fixed right-4 top-4 z-40 flex h-[560px] max-h-[calc(100vh-2rem)] w-[360px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
           {/* Header with explicit close */}
           <div className="flex items-center gap-2.5 border-b border-border px-4 py-3">
-            <div className="bg-brand-gradient flex size-7 items-center justify-center rounded-full text-white">
-              <Sparkles className="size-3.5" />
-            </div>
+            <BrandMark className="size-7 shrink-0" />
             <div className="flex-1 leading-none">
               <p className="text-sm font-semibold">ИИ-ассистент</p>
               <p className="mt-0.5 flex items-center gap-1 font-mono text-[10px] text-muted-foreground">

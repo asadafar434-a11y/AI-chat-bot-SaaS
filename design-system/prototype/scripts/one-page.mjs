@@ -11,10 +11,12 @@ const js = read('.js')
 if (/<\/script/i.test(js) || /<\/style/i.test(css)) throw new Error('В сборке есть закрывающий тег — встроить нельзя')
 
 const title = 'Тендерный юрист — прототип'
+// Значок вкладки — логотип (public/favicon.svg = design-system/logo.svg), встроенный в страницу.
+const favicon = `data:image/svg+xml,${encodeURIComponent(readFileSync(new URL('../public/favicon.svg', import.meta.url), 'utf8'))}`
 const body = `<style>\n${css}\n</style>\n<div id="root"></div>\n<script type="module">\n${js}\n</script>\n`
 writeFileSync(new URL('../dist/fragment.html', import.meta.url), `<title>${title}</title>\n${body}`)
 writeFileSync(
   new URL('../dist/prototype.html', import.meta.url),
-  `<!doctype html>\n<html lang="ru">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n<title>${title}</title>\n</head>\n<body>\n${body}</body>\n</html>\n`,
+  `<!doctype html>\n<html lang="ru">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n<title>${title}</title>\n<link rel="icon" type="image/svg+xml" href="${favicon}">\n</head>\n<body>\n${body}</body>\n</html>\n`,
 )
 console.log(`dist/prototype.html — ${Math.round((css.length + js.length) / 1024)} КБ`)

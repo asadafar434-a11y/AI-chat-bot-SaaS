@@ -61,7 +61,7 @@ export async function proxy(request: NextRequest) {
   return NextResponse.redirect(login);
 }
 
-// Статика Next.js и значок сайта — без проверки, иначе не загрузятся стили и шрифты страницы входа.
+// Статика Next.js и значки сайта — без проверки, иначе не загрузятся стили, шрифты и логотип страницы входа.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png).*)"],
 };

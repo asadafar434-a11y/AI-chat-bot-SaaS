@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Briefcase, User, Plus, Sun, Moon, Search, History, Sparkles, Bell, Clock, ChevronRight, Menu, X, Wallet } from '../lib/icons';
 import { company } from '../lib/data';
 import { Button, Soon, Tooltip, IconButton, cx } from './ui';
+import { BrandMark } from './BrandMark';
 
 export type View = 'tenders' | 'search' | 'history' | 'profile' | 'tariffs' | 'workflow';
 
@@ -112,27 +113,7 @@ export function Sidebar(props: Props) {
 function Logo() {
   return (
     <div className="flex items-center gap-3">
-      <div
-        style={{ background: 'linear-gradient(145deg, #312e81 0%, #4338ca 55%, #6366f1 100%)' }}
-        className="flex size-9 shrink-0 items-center justify-center rounded-xl shadow-md ring-1 ring-white/10"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="white"
-          strokeWidth={1.75}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="size-5"
-          aria-hidden="true"
-        >
-          <path d="M12 3v18" />
-          <path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2" />
-          <path d="m5 7-2.5 7c.83.6 1.75.93 2.5.93S6.67 14.6 7.5 14L5 7Z" />
-          <path d="m19 7-2.5 7c.83.6 1.75.93 2.5.93s1.67-.33 2.5-.93L19 7Z" />
-          <path d="M8 21h8" />
-        </svg>
-      </div>
+      <BrandMark className="size-9 shrink-0" />
       <div className="leading-none">
         <p className="text-sm font-semibold tracking-tight">Тендерный юрист</p>
         <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">AI · 44-ФЗ / 223-ФЗ</p>
