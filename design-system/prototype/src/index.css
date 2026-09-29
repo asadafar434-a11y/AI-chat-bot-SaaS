@@ -1,0 +1,224 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap');
+@import 'tailwindcss';
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-warn: var(--warn);
+  --color-warn-surface: var(--warn-surface);
+  --color-warn-foreground: var(--warn-foreground);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-info: var(--info);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 4px);
+  --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+}
+
+:root {
+  --background: #f2f3f5;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --primary: #0a0a0a;
+  --primary-foreground: #fafafa;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #0a0a0a;
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+  --accent: #f0f0f0;
+  --accent-foreground: #0a0a0a;
+  --border: #e6e6e6;
+  --ring: #0a0a0a;
+  --warn: #eab308;
+  --warn-surface: #fef9c3;
+  --warn-foreground: #713f12;
+  --danger: #dc2626;
+  --success: #16a34a;
+  --info: #4f46e5;
+  --radius: 8px;
+}
+
+.dark {
+  /* Тёмная тема — графитовая, не чёрная: холст, острова и поля различимы. */
+  --background: #17181b;
+  --foreground: #f4f4f5;
+  --card: #212226;
+  --card-foreground: #f4f4f5;
+  --primary: #f4f4f5;
+  --primary-foreground: #17181b;
+  --secondary: #2c2d32;
+  --secondary-foreground: #f4f4f5;
+  --muted: #2c2d32;
+  --muted-foreground: #aeb0b8;
+  --accent: #313238;
+  --accent-foreground: #f4f4f5;
+  --border: #3b3c43;
+  --ring: #f4f4f5;
+  --warn: #facc15;
+  --warn-surface: #4a3a0c;
+  --warn-foreground: #fde68a;
+  --danger: #f87171;
+  --success: #4ade80;
+  --info: #a5b4fc;
+  color-scheme: dark;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  /* Подсказки у края экрана не должны давать горизонтальную прокрутку. */
+  overflow-x: clip;
+}
+
+/* Градиент бренда: кнопка чата, проверка специалистом, уведомления. */
+.bg-brand-gradient {
+  background-image: linear-gradient(135deg, #4f46e5 0%, #6366f1 45%, #3b82f6 100%);
+}
+
+/* Ползунок цены: толстая дорожка с заливкой до значения и крупный бегунок.
+   --fill — доля до бегунка, --floor — где цена уходит в убыток (правее — красная зона). */
+.price-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 28px;
+  background: transparent;
+  cursor: pointer;
+}
+.price-range:focus-visible {
+  outline: none;
+}
+.price-range::-webkit-slider-runnable-track {
+  height: 10px;
+  border-radius: 999px;
+  background:
+    linear-gradient(to right, var(--foreground) 0 var(--fill), transparent var(--fill) 100%),
+    linear-gradient(to right, var(--secondary) 0 var(--floor), color-mix(in srgb, var(--danger) 22%, var(--secondary)) var(--floor) 100%);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.price-range::-moz-range-track {
+  height: 10px;
+  border-radius: 999px;
+  background:
+    linear-gradient(to right, var(--foreground) 0 var(--fill), transparent var(--fill) 100%),
+    linear-gradient(to right, var(--secondary) 0 var(--floor), color-mix(in srgb, var(--danger) 22%, var(--secondary)) var(--floor) 100%);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.price-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  margin-top: -7px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 3px solid var(--foreground);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.25);
+  transition: transform 0.15s;
+}
+.price-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 3px solid var(--foreground);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.25);
+}
+.price-range:hover::-webkit-slider-thumb,
+.price-range:focus-visible::-webkit-slider-thumb {
+  transform: scale(1.12);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--foreground) 15%, transparent), 0 2px 8px rgb(0 0 0 / 0.25);
+}
+
+::selection {
+  background-color: var(--foreground);
+  color: var(--background);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+*:hover {
+  scrollbar-color: var(--border) transparent;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 8px;
+}
+*:hover::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+}
+
+@keyframes tip-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-tip {
+  animation: tip-in 0.15s ease-out both;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up {
+  animation: fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes soft-glow {
+  0%, 100% {
+    box-shadow: 0 10px 30px -8px rgba(79, 70, 229, 0.55), 0 0 0 0 rgba(99, 102, 241, 0.35);
+  }
+  50% {
+    box-shadow: 0 16px 40px -8px rgba(59, 130, 246, 0.65), 0 0 0 10px rgba(99, 102, 241, 0);
+  }
+}
+.animate-glow {
+  animation: soft-glow 3.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes pulse-scan {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+.animate-scan {
+  animation: pulse-scan 1.4s ease-in-out infinite;
+}
+
+mark.highlight {
+  background-color: var(--warn-surface);
+  color: var(--warn-foreground);
+  border-bottom: 1.5px solid var(--warn);
+  padding: 0 2px;
+  border-radius: 2px;
+}
