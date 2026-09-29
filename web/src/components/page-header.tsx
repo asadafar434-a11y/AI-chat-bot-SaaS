@@ -1,28 +1,15 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { MenuIcon } from "@/components/icons";
 import { Notifications } from "@/components/notifications";
-import { useShell } from "@/components/app-shell";
 
 // Шапка экрана на холсте: заголовок, рядом главная цифра экрана, справа — колокольчик и одно главное действие.
 // Заголовок стоит на одной линии со знаком в сайдбаре и по левому краю островов под ним. Справа шапка
 // оставляет место под полосу прокрутки, как острова под ней, — края кнопки и островов совпадают.
+// Кнопка меню на телефоне — в шапке каркаса над заголовком (app-shell.tsx), как в прототипе.
 export function PageHeader({ title, sub, actions }: { title: ReactNode; sub?: ReactNode; actions?: ReactNode }) {
-  const { menuOpen, openMenu, menuButton } = useShell();
   return (
     <header className="flex min-h-16 flex-none items-center gap-x-3 gap-y-2 overflow-hidden px-2 pt-2 [scrollbar-gutter:stable] max-lg:min-h-14 max-lg:py-2">
-      <button
-        ref={menuButton}
-        type="button"
-        onClick={openMenu}
-        aria-label="Открыть меню"
-        aria-controls="side-nav"
-        aria-expanded={menuOpen}
-        className="icon-btn lg:hidden"
-      >
-        <MenuIcon className="size-5" />
-      </button>
       <div className="flex min-w-0 flex-1 items-baseline gap-x-3 max-md:flex-col">
         <h1 className="t-page flex-none">{title}</h1>
         {sub && <p className="t-caption min-w-0 truncate text-[var(--ink-3)] max-md:max-w-full">{sub}</p>}

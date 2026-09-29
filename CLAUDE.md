@@ -15,8 +15,9 @@ Support-chat SaaS (аналог Intercom) с ИИ-агентом. Прорабо
   изменения переносятся в `design-system/prototype/`
 - [design-system/legacy/brand-indigo.css](design-system/legacy/brand-indigo.css), `design-system/mockup/*`,
   [components.md](design-system/components.md), [patterns.md](design-system/patterns.md) — прежний стиль
-  «Индиго + мягкая», справочно. **Приложение `web/` пока в нём** — перевод на новый стиль отдельной задачей;
-  до перевода в `web/` действуют прежние правила: иконки Craftwork (`web/src/components/icons.tsx`), lucide запрещён линтером
+  «Индиго + мягкая», только справочно. Приложение `web/` переведено на стиль Figma Make 29.09.2026: цвета и шрифты —
+  `web/src/app/globals.css`, иконки — `web/src/components/icons.tsx`, каркас с меню — `app-shell.tsx`, `side-nav.tsx`.
+  Шаги заявки и тарифы в приложении — следующими частями переноса
 - [design-system/README.md](design-system/README.md) — обзор AI Elements, установка
 
 **Читать перед любой работой по UI.** Ключевое:
@@ -25,8 +26,9 @@ Support-chat SaaS (аналог Intercom) с ИИ-агентом. Прорабо
   фоном — [design-system/logo.png](design-system/logo.png). В прототипе — `BrandMark`, в приложении —
   `web/src/components/brand-mark.tsx`; значки сайта — `web/src/app/favicon.ico`, `icon.png`, `apple-icon.png`.
   Другим значком логотип не заменять.
-- ИИ-ассистент — робот с «AI» на экране (`BotMark`, `design-system/prototype/src/components/BotMark.tsx`): кнопка чата,
-  шапка чата, ответы ИИ, «Спросить ИИ» в меню. Логотип — про сервис, робот — про ассистента: одно другим не заменять.
+- ИИ-ассистент — робот с «AI» на экране (`BotMark`: в прототипе `src/components/BotMark.tsx`, в приложении
+  `web/src/components/bot-mark.tsx`): кнопка чата, шапка чата, ответы ИИ, «Спросить ИИ» в меню.
+  Логотип — про сервис, робот — про ассистента: одно другим не заменять.
 - Основное действие — почти чёрный `#0a0a0a` (в тёмной теме — светлый `#f4f4f5`). Холст `#f2f3f5`, карточки белые.
 - Индиго-градиент `#4f46e5 → #6366f1 → #3b82f6` (класс `bg-brand-gradient`) — только робот ИИ-ассистента
   (кнопка чата) и главное платное действие (проверка специалистом). Сплошной индиго `--info` — «ввести вручную»
@@ -38,7 +40,9 @@ Support-chat SaaS (аналог Intercom) с ИИ-агентом. Прорабо
 - Шрифты: Geist — интерфейс, Geist Mono — числа, номера, реквизиты.
   Кегли: 24 заголовок шага, 20 заголовок экрана, 14 текст, 13 плотный интерфейс, 12 подписи, 11 бейджи, 10 мелкие метки.
 - Высоты: кнопка и поле 36 (компактные 32), иконочная кнопка 28 с иконкой 16.
-- Иконки — пути Lucide в `design-system/prototype/src/lib/icons.tsx` (свой набор, без пакета lucide-react), линия 2.
+- Иконки — пути Lucide, линия 2, свой набор без пакета lucide-react (его запрещает линтер): в прототипе —
+  `design-system/prototype/src/lib/icons.tsx`, в приложении — `web/src/components/icons.tsx` (имя в Lucide — над каждой
+  иконкой, лицензия ISC — `icons-lucide-license.txt` рядом).
 - У каждой иконочной кнопки — подсказка (`IconButton`), у терминов (НМЦК, обеспечение) — `HelpTip`.
   Скрытая подсказка не занимает места (`display: none`), иначе на телефоне раздвигает страницу.
 - Чего система ещё не умеет, не прятать и не выдавать за работающее: помечать «скоро» (`Soon`) —

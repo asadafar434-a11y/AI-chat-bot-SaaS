@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import { BotMark } from "@/components/bot-mark";
 import { AttachIcon, CrossIcon, DocumentIcon } from "@/components/icons";
 import { ChatFeed, ComposerDock, fmtChars, PROMPT_CLASS, PROMPT_TEXTAREA_CLASS } from "@/components/chat-feed";
 import { PageBody, PageHeader } from "@/components/page-header";
@@ -133,6 +134,7 @@ export default function GeneralChatPage() {
               empty={
                 <>
                   <div className="grid gap-1">
+                    <BotMark className="mb-2 size-12" />
                     <h2 className="t-title">Общий вопрос по 44-ФЗ и 223-ФЗ</h2>
                     <p className="max-w-[62ch] text-[var(--ink-2)]">
                       Отвечу со ссылкой на статью закона. Приложите документ — отвечу и по нему.

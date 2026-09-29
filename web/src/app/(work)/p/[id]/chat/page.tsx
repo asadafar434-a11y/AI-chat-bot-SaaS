@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import { BotMark } from "@/components/bot-mark";
 import { ChatFeed, ComposerDock, fmtChars, PROMPT_CLASS, PROMPT_TEXTAREA_CLASS } from "@/components/chat-feed";
 import {
   PromptInput,
@@ -66,6 +67,7 @@ export default function ChatPage() {
         empty={
           <>
             <div className="grid gap-1">
+              <BotMark className="mb-2 size-12" />
               <h3 className="t-title">Вопросы по закупке</h3>
               <p className="max-w-[62ch] text-[var(--ink-2)]">
                 Спросите о чём угодно в этой закупке — отвечу по её документам со ссылкой на пункт и статью закона.

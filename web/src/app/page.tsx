@@ -298,9 +298,10 @@ export default function HomePage() {
         title="Главная"
         sub={sub}
         actions={
-          <Link href="/new" aria-label="Новая закупка" className={`btn ${quiet ? "btn-line" : ""} max-sm:w-8 max-sm:px-0`}>
+          // Уже 1024 px «Новая закупка» — плюсом в шапке каркаса, второй раз её не ставим
+          <Link href="/new" className={`btn ${quiet ? "btn-line" : ""} max-lg:hidden`}>
             <PlusIcon />
-            <span className="max-sm:hidden">Новая закупка</span>
+            Новая закупка
           </Link>
         }
       />

@@ -2,8 +2,8 @@
    Тендерный юрист — фирменные токены
    Стиль Figma Make (решение владельца 29.09.2026: «Всё как в Figma Make»).
    Живой образец — design-system/prototype (src/index.css — те же значения для Tailwind v4).
-   Прежний стиль «Индиго + мягкая» — design-system/legacy/brand-indigo.css:
-   приложение web/ пока в нём, перевод — отдельной задачей.
+   Приложение web/ — в этом же стиле (web/src/app/globals.css). Прежний стиль «Индиго + мягкая» —
+   design-system/legacy/brand-indigo.css, только справочно.
    ============================================================ */
 
 :root {

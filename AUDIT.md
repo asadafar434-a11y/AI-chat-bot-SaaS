@@ -33,11 +33,11 @@
 
 | Статус | Пункты | Сколько |
 |---|---|---|
-| Исправлено | 4, 5, 10, 11, 13, 14, 17, 19, 20, 21, 22, 23, 25, 28, 29, 30, 31 | 17 |
+| Исправлено | 4, 5, 10, 11, 13, 14, 17, 19, 20, 21, 22, 23, 25, 27, 28, 29, 30, 31 | 18 |
 | Исправлено, тексты — на проверку юристу | 7, 15, 24, 26 | 4 |
 | Исправлено частично, остальное — решение владельца | 9, 12, 16 | 3 |
 | Требует решения владельца | 3, 18, 32 | 3 |
-| Требует решения владельца и юриста | 1, 2, 6, 8, 27 | 5 |
+| Требует решения владельца и юриста | 1, 2, 6, 8 | 4 |
 
 | № | Статус | Что сделано или что нужно | Коммит |
 |---|---|---|---|
@@ -67,7 +67,7 @@
 | 24 | Исправлено, 168-ФЗ — юристу | Подписи для экранного диктора — по-русски | `e09a687` |
 | 25 | Исправлено | Пользователю — «ИИ временно недоступен… Напишите владельцу сервиса». Имена переменных и файлов настроек — только в `next dev` и в журнале сервера. Тест: `claude-errors` | `a907628` |
 | 26 | Исправлено, баннер — юристу | Под кнопкой входа — строка о техническом файле cookie | `6777328` |
-| 27 | Владелец и юрист | Лицензия набора Craftwork не найдена: найти её у Craftwork или заменить набор | — |
+| 27 | Исправлено | 29 сентября 2026 г. набор Craftwork заменён на иконки Lucide: лицензия ISC, её текст — `web/src/components/icons-lucide-license.txt` | перенос стиля Figma Make, часть 1 |
 | 28 | Исправлено | Кривой JSON и поля не того вида — 400 «Запрос пришёл повреждённым…» во всех маршрутах. Тест: `read-json` | `59b843c` |
 | 29 | Исправлено | `server-only` в 12 серверных модулях; библиотека Word больше не уходит в браузер | `8f87141` |
 | 30 | Исправлено | `PD_MASK=off` в production не действует. Тест: `pd-mask` | `8e1d825` |
@@ -200,7 +200,7 @@
 - Next.js, `proxyClientMaxBodySize` — [nextjs.org](https://nextjs.org/docs/app/api-reference/config/next-config-js/proxyClientMaxBodySize)
 - Next.js, шрифты — [nextjs.org](https://nextjs.org/docs/app/getting-started/fonts)
 - WCAG 2.1 — [w3.org](https://www.w3.org/TR/WCAG21/)
-- Иконки Craftwork — [Figma](https://www.figma.com/community/plugin/1047665302404244638/craftwork-icons)
+- Иконки Craftwork — [Figma](https://www.figma.com/community/plugin/1047665302404244638/craftwork-icons); заменены на Lucide — [lucide.dev](https://lucide.dev), лицензия ISC (пакет `lucide-static` 1.48.0)
 - Портал персональных данных Роскомнадзора: [уведомление об обработке](https://pd.rkn.gov.ru/operators-registry/notification/form/), [трансграничная передача](https://pd.rkn.gov.ru/cross-border-transmission/)
 - Лимит расходов Anthropic — [platform.claude.com](https://platform.claude.com/docs/en/api/rate-limits#setting-your-own-spend-limit)
 - Next.js, Content Security Policy — [nextjs.org](https://nextjs.org/docs/app/guides/content-security-policy)
