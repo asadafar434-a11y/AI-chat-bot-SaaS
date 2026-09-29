@@ -39,11 +39,18 @@ test("рубли — по курсу из настроек, до копеек; �
 
 test("пересчёт проверки — 3 раза на заявку, новая версия документов после третьей — с подтверждением", () => {
   assert.equal(AI_LIMITS.rechecks, 3);
-  assert.deepEqual(recheckState(0), { left: 3, allowed: true });
-  assert.deepEqual(recheckState(3), { left: 0, allowed: false });
-  assert.deepEqual(recheckState(7), { left: 0, allowed: false });
+  assert.deepEqual(recheckState(0), { left: 3, allowed: true, total: 3 });
+  assert.deepEqual(recheckState(3), { left: 0, allowed: false, total: 3 });
+  assert.deepEqual(recheckState(7), { left: 0, allowed: false, total: 3 });
   assert.equal(regenerationNeedsConfirm(2), false);
   assert.equal(regenerationNeedsConfirm(3), true);
+});
+
+test("пересчёты кончились — пакет «ещё 3 за 99 ₽» добавляет три", () => {
+  assert.deepEqual(recheckState(3, 1), { left: 3, allowed: true, total: 6 });
+  assert.deepEqual(recheckState(5, 1), { left: 1, allowed: true, total: 6 });
+  assert.deepEqual(recheckState(6, 1), { left: 0, allowed: false, total: 6 });
+  assert.deepEqual(recheckState(6, 2), { left: 3, allowed: true, total: 9 });
 });
 
 test("бюджет заявки: списывается по заявке, кончился — ноль, давнюю заявку счётчик забывает", () => {

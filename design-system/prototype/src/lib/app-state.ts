@@ -10,9 +10,13 @@ export type AppState = {
   // Что участник вписал, выбрал, приложил или подтвердил: id поля → значение.
   fixes: Fixes;
   paid: boolean;
+  // Оплачена заявкой из купленного пакета, а не отдельно.
+  fromPackage?: boolean;
   // Сколько раз запускали полный повторный разбор ИИ и по каким данным — последний раз.
   rechecks: number;
   checkedKey: string | null;
+  // Сколько пакетов «ещё 3 пересчёта за 99 ₽» куплено для этой заявки.
+  recheckPacks: number;
   // Версия документов: 1 — первая генерация.
   generation: number;
   specialist: Specialist | null;
@@ -25,6 +29,7 @@ export const freshApp = (): AppState => ({
   paid: false,
   rechecks: 0,
   checkedKey: null,
+  recheckPacks: 0,
   generation: 1,
   specialist: null,
   discount: 6.5,

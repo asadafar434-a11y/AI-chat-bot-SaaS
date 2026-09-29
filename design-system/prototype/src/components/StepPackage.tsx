@@ -14,6 +14,7 @@ import {
   RefreshCw,
   Archive,
   Loader2,
+  Wallet,
 } from '../lib/icons';
 import { Button, Card, Badge, Modal, AIDisclaimer, HelpTip, Soon, Tooltip, IconButton, cx } from './ui';
 import { GENERATIONS, PRICE_APP, PRICE_EXPERT, exportFormats, requiredDocs, tender, rub, company } from '../lib/data';
@@ -93,12 +94,19 @@ export function StepPackage({
   onBack,
   onFixGap,
   onSendToExpert,
+  credits,
+  onUseCredit,
+  onTariffs,
 }: {
   app: AppState;
   patch: Patch;
   onBack: () => void;
   onFixGap: (gapId: string) => void;
   onSendToExpert: () => void;
+  // Заявок на балансе из купленного пакета и переход к тарифам.
+  credits: number;
+  onUseCredit: () => void;
+  onTariffs: () => void;
 }) {
   const fixes = app.fixes;
   const [format, setFormat] = useState('DOCX');
@@ -173,13 +181,26 @@ export function StepPackage({
               </p>
             </div>
           </div>
-          <Button onClick={() => patch({ paid: true })}>
-            <CreditCard className="size-4" /> Оплатить {rub(PRICE_APP)}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {credits > 0 ? (
+              <Button onClick={onUseCredit}>
+                <Wallet className="size-4" /> Списать заявку из пакета · осталось {credits}
+              </Button>
+            ) : (
+              <>
+                <Button onClick={() => patch({ paid: true })}>
+                  <CreditCard className="size-4" /> Оплатить {rub(PRICE_APP)}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={onTariffs}>
+                  Пакет 5 или 10 заявок — дешевле
+                </Button>
+              </>
+            )}
+          </div>
         </Card>
       ) : (
         <p className="flex items-center gap-2 text-[13px] text-success">
-          <Check className="size-4" /> Заявка оплачена · {rub(PRICE_APP)}
+          <Check className="size-4" /> {app.fromPackage ? 'Заявка оплачена из пакета' : `Заявка оплачена · ${rub(PRICE_APP)}`}
           <span className="text-muted-foreground">· в прототипе без реальных денег</span>
         </p>
       )}
@@ -321,13 +342,27 @@ export function StepPackage({
               </div>
             ) : payBoth ? (
               <div className="space-y-2.5 rounded-md border border-border bg-secondary/40 p-3 text-[13px]">
-                <p>
-                  Проверка — к оплаченной заявке: {rub(PRICE_APP)} + {rub(PRICE_EXPERT)} ={' '}
-                  <b className="font-mono">{rub(PRICE_APP + PRICE_EXPERT)}</b>.
-                </p>
+                {credits > 0 ? (
+                  <p>
+                    Проверка — к оплаченной заявке: спишем 1 заявку из пакета (осталось {credits}) и{' '}
+                    <b className="font-mono">{rub(PRICE_EXPERT)}</b> за проверку.
+                  </p>
+                ) : (
+                  <p>
+                    Проверка — к оплаченной заявке: {rub(PRICE_APP)} + {rub(PRICE_EXPERT)} ={' '}
+                    <b className="font-mono">{rub(PRICE_APP + PRICE_EXPERT)}</b>.
+                  </p>
+                )}
                 <div className="flex gap-2">
-                  <Button variant="accent" size="sm" onClick={onSendToExpert}>
-                    Оплатить {rub(PRICE_APP + PRICE_EXPERT)}
+                  <Button
+                    variant="accent"
+                    size="sm"
+                    onClick={() => {
+                      if (credits > 0) onUseCredit();
+                      onSendToExpert();
+                    }}
+                  >
+                    Оплатить {rub(credits > 0 ? PRICE_EXPERT : PRICE_APP + PRICE_EXPERT)}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setPayBoth(false)}>
                     Отмена

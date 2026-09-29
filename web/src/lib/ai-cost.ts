@@ -1,6 +1,7 @@
 // Сколько стоит запрос к ИИ и сколько дорогих операций можно на одну заявку.
-// Модуль без зависимостей: его проверяют тесты без сборки (npm test), и он же нужен браузеру —
+// Модуль без зависимостей, кроме цен сервиса: его проверяют тесты без сборки (npm test), и он же нужен браузеру —
 // показать, сколько пересчётов осталось.
+import { RECHECK_PACK } from "@/lib/pricing";
 
 // Цены Anthropic за миллион токенов, в долларах: https://platform.claude.com/docs/en/about-claude/pricing
 // Запись в кеш — 1,25 цены входа на 5 минут и 2 цены входа на час. Чтение из кеша у Opus 5.5 и Sonnet 5.5 —
@@ -59,12 +60,14 @@ export const rubOf = (usd: number, usdRub: number) => Math.round(usd * usdRub * 
 export const usdText = (usd: number) => `$${usd.toFixed(usd < 0.01 ? 4 : 2)}`;
 
 // Дорогие операции ИИ на одну заявку. Пересчёт проверки — 3 раза: исправления в документах видны и без него.
+// Кончились — можно докупить пакет: ещё 3 за 99 ₽ (packs — сколько пакетов куплено для этой заявки).
 // Новая версия документов — 3 раза без вопросов, дальше — только если участник подтвердил, что она нужна.
 export const AI_LIMITS = { rechecks: 3, generations: 3 } as const;
 
-export function recheckState(used: number): { left: number; allowed: boolean } {
-  const left = Math.max(0, AI_LIMITS.rechecks - used);
-  return { left, allowed: left > 0 };
+export function recheckState(used: number, packs = 0): { left: number; allowed: boolean; total: number } {
+  const total = AI_LIMITS.rechecks + Math.max(0, packs) * RECHECK_PACK.count;
+  const left = Math.max(0, total - used);
+  return { left, allowed: left > 0, total };
 }
 
 export const regenerationNeedsConfirm = (done: number) => done >= AI_LIMITS.generations;

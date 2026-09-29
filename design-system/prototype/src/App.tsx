@@ -5,6 +5,7 @@ import { TendersDashboard } from './components/TendersDashboard';
 import { TenderSearch } from './components/TenderSearch';
 import { BidHistory } from './components/BidHistory';
 import { Profile } from './components/Profile';
+import { Tariffs } from './components/Tariffs';
 import { StepUpload } from './components/StepUpload';
 import { StepAnalysis } from './components/StepAnalysis';
 import { StepPricing } from './components/StepPricing';
@@ -67,6 +68,8 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null);
   // Слепая зона, к которой перейти на шаге «Проверка» — из замечания специалиста или из «Анализа».
   const [focusGap, setFocusGap] = useState<string | null>(null);
+  // Заявок на балансе из купленных пакетов (тарифы 5 и 10 заявок). Списываются по одной на шаге «Пакет».
+  const [credits, setCredits] = useState(0);
 
   const key = activeTender ?? 'new';
   const app = apps[key] ?? freshApp();
@@ -164,6 +167,7 @@ export default function App() {
           setDark={setDark}
           notices={notices}
           onOpenNotice={openReply}
+          credits={credits}
         />
 
         <main className="min-w-0 flex-1 lg:overflow-y-auto">
@@ -174,6 +178,7 @@ export default function App() {
             {view === 'search' && <TenderSearch onAdd={(id) => openTender(id)} />}
             {view === 'history' && <BidHistory />}
             {view === 'profile' && <Profile />}
+            {view === 'tariffs' && <Tariffs credits={credits} onBuy={(n) => setCredits((c) => c + n)} />}
             {view === 'workflow' && (
               <div className="space-y-6">
                 {/* Workflow header + stepper island */}
@@ -292,6 +297,12 @@ export default function App() {
                       onBack={() => go(3)}
                       onFixGap={goToGap}
                       onSendToExpert={sendToExpert}
+                      credits={credits}
+                      onUseCredit={() => {
+                        setCredits((c) => Math.max(0, c - 1));
+                        patch({ paid: true, fromPackage: true });
+                      }}
+                      onTariffs={() => setView('tariffs')}
                     />
                   )}
                 </div>

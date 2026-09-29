@@ -52,6 +52,16 @@ export const RECHECKS = 3;
 // Новая версия документов после третьей — только с подтверждением.
 export const GENERATIONS = 3;
 
+// Тарифы — решения владельца 29.09.2026, как в приложении (web/src/lib/pricing.ts):
+// пакеты заявок со скидкой за объём, пересчёты ИИ сверх трёх — пакетом «ещё 3 за 99 ₽».
+export const RECHECK_PACK = { count: 3, price: 99 };
+export type Plan = { count: number; discountPct: number; price: number; perApp: number; saving: number };
+const plan = (count: number, discountPct: number): Plan => {
+  const price = Math.round(PRICE_APP * count * (1 - discountPct / 100));
+  return { count, discountPct, price, perApp: Math.round(price / count), saving: PRICE_APP * count - price };
+};
+export const PLANS: Plan[] = [plan(1, 0), plan(5, 10), plan(10, 20)];
+
 // Реквизиты компании пользователя — используются для автозаполнения документов заявки.
 export type CompanyField = { key: string; label: string; value: string; group: 'org' | 'bank' | 'contact' };
 

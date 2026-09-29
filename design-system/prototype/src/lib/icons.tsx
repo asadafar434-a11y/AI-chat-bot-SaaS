@@ -467,3 +467,18 @@ export const Archive = (p: IconProps) => (
     <path d="M10 12h4" />
   </Svg>
 );
+
+export const Menu = (p: IconProps) => (
+  <Svg {...p}>
+    <line x1="4" x2="20" y1="12" y2="12" />
+    <line x1="4" x2="20" y1="6" y2="6" />
+    <line x1="4" x2="20" y1="18" y2="18" />
+  </Svg>
+);
+
+export const Wallet = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" />
+    <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" />
+  </Svg>
+);

@@ -179,6 +179,14 @@ body {
   background-color: var(--border);
 }
 
+@keyframes slide-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+.animate-slide-in {
+  animation: slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 @keyframes tip-in {
   from { opacity: 0; }
   to { opacity: 1; }

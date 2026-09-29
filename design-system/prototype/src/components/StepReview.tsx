@@ -20,7 +20,7 @@ import {
   Sparkles,
 } from '../lib/icons';
 import { Button, Card, Badge, Modal, Tooltip, HelpTip, cx, type Tone } from './ui';
-import { AUTO_TOTAL, RECHECKS, autoFields, gaps, kindMeta, tender, type FieldKind, type Gap } from '../lib/data';
+import { AUTO_TOTAL, RECHECKS, RECHECK_PACK, autoFields, gaps, kindMeta, rub, tender, type FieldKind, type Gap } from '../lib/data';
 import {
   checkKey,
   completeness,
@@ -104,7 +104,9 @@ export function StepReview({
       setRecheck('done');
     }, 1200);
   };
-  const left = Math.max(0, RECHECKS - app.rechecks);
+  // 3 пересчёта в заявке, дальше — пакетами «ещё 3 за 99 ₽».
+  const total = RECHECKS + app.recheckPacks * RECHECK_PACK.count;
+  const left = Math.max(0, total - app.rechecks);
 
   const shown = filter === 'all' ? gaps : gaps.filter((g) => g.field === filter);
 
@@ -187,7 +189,7 @@ export function StepReview({
             >
               <Button size="sm" variant="secondary" disabled={left === 0 || recheck === 'running'} onClick={runRecheck}>
                 {recheck === 'running' ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
-                Пересчитать с ИИ · {left} из {RECHECKS}
+                Пересчитать с ИИ · {left} из {total}
               </Button>
             </Tooltip>
           </div>
@@ -218,11 +220,23 @@ export function StepReview({
             {recheck === 'same' && (
               <p className="text-muted-foreground">Данные не менялись с прошлого пересчёта — показан сохранённый результат. Попытка не списана.</p>
             )}
-            {recheck === 'done' && <p className="text-muted-foreground">Пересчитано. Новых замечаний нет. Осталось пересчётов: {left} из {RECHECKS}.</p>}
+            {recheck === 'done' && <p className="text-muted-foreground">Пересчитано. Новых замечаний нет. Осталось пересчётов: {left} из {total}.</p>}
             {left === 0 && recheck !== 'running' && (
-              <p className="text-warn-foreground">
-                Вы использовали все повторные AI-проверки для этой заявки. Правки полей по-прежнему проверяются бесплатно и сразу.
-              </p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-warn-foreground">
+                  Вы использовали все повторные AI-проверки для этой заявки. Правки полей по-прежнему проверяются бесплатно и сразу.
+                </p>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    patch((a) => ({ recheckPacks: a.recheckPacks + 1 }));
+                    setRecheck('idle');
+                  }}
+                >
+                  <RefreshCw className="size-3.5" /> Ещё {RECHECK_PACK.count} пересчёта · {rub(RECHECK_PACK.price)}
+                </Button>
+              </div>
             )}
           </div>
         )}
