@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
+import { appIdOf, BUDGET_TEXT, budgetOver, chargeAi } from "@/lib/ai-guard";
 import { MAX_CONTEXT_CHARS, type ChatDocument, type ChatMessage } from "@/lib/chat-types";
 import { claudeErrorText, WRITE_OWNER } from "@/lib/claude-errors";
 import { baseRequest, documentBlocks, maskDocuments, usageLine } from "@/lib/claude-request";
@@ -104,6 +105,9 @@ async function* stubAnswer(
 }
 
 export async function POST(request: Request) {
+  // Вопрос по закупке считается в бюджет ИИ её заявки. Бюджет кончился — к модели не обращаемся.
+  const appId = appIdOf(request);
+  if (budgetOver(appId)) return new Response(BUDGET_TEXT, { status: 429 });
   const body = await readJson(request);
   if (!body) return badRequest();
   const messages = chatMessages(body.messages);
@@ -147,7 +151,7 @@ export async function POST(request: Request) {
         // Тексты нужных статей закона идут в последний вопрос — после документов, чтобы не сбить их кеш.
         const question = textOf(messages[messages.length - 1]);
         const context = previousExchange(messages);
-        const excerpt = lawExcerpts(await pickLawArticles(question, context, request.signal), `${question} ${context}`);
+        const excerpt = lawExcerpts(await pickLawArticles(question, context, request.signal, appId), `${question} ${context}`);
         const last = claudeMessages[claudeMessages.length - 1];
         if (excerpt.text && Array.isArray(last.content)) {
           last.content.splice(last.content.length - 1, 0, { type: "text", text: excerpt.text });
@@ -174,6 +178,7 @@ export async function POST(request: Request) {
 
         const final = await response.finalMessage();
         console.log(usageLine("chat", final));
+        chargeAi("chat", appId, final);
         if (final.stop_reason === "refusal") {
           say("\n\n_Модель отказалась отвечать на этот запрос. Переформулируйте вопрос._");
         } else {

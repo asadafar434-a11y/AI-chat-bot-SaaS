@@ -1,3 +1,4 @@
+import { appIdOf } from "@/lib/ai-guard";
 import type Anthropic from "@anthropic-ai/sdk";
 import { claudeErrorText, NO_KEY_TEXT } from "@/lib/claude-errors";
 import { askJson, ModelStop } from "@/lib/claude-request";
@@ -47,6 +48,7 @@ export async function POST(request: Request) {
   try {
     const draft = await askJson({
       label: "check",
+      appId: appIdOf(request),
       documents,
       extra: applicationBlocks(application),
       instructions: CHECK_INSTRUCTIONS,

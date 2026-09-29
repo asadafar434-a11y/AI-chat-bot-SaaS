@@ -1,3 +1,4 @@
+import { appIdOf } from "@/lib/ai-guard";
 import { claudeErrorText, NO_KEY_TEXT } from "@/lib/claude-errors";
 import { askJson, ModelStop } from "@/lib/claude-request";
 import { MAX_CONTEXT_CHARS } from "@/lib/chat-types";
@@ -28,6 +29,7 @@ export async function POST(request: Request) {
   try {
     const draft = await askJson({
       label: "requirements",
+      appId: appIdOf(request),
       documents,
       instructions: REQ_INSTRUCTIONS,
       schema: RequirementsSchema,

@@ -2,6 +2,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import * as z from "zod/v4";
+import { chargeAi } from "@/lib/ai-guard";
 import { baseRequest, usageLine } from "@/lib/claude-request";
 import { LAW_NAMES, lawContents, searchLaws, type LawPick } from "@/lib/laws";
 import { PdMasker } from "@/lib/pd-mask";
@@ -26,7 +27,7 @@ const MAX_PICKS = 5;
 
 // Выбор статей — отдельный короткий запрос, а не инструменты в чате: инструменты стоят в начале запроса
 // и сбросили бы общий кеш документов закупки, которым пользуются требования, ТП и вопросы.
-export async function pickLawArticles(question: string, context: string, signal?: AbortSignal): Promise<LawPick[]> {
+export async function pickLawArticles(question: string, context: string, signal?: AbortSignal, appId: string | null = null): Promise<LawPick[]> {
   const hits = searchLaws(`${context} ${question}`);
   const hints = hits.map((h) => `${h.law} ст. ${h.num}${h.part ? ` ч. ${h.part}` : ""} — ${h.title}`).join("\n");
   const fallback = hits.slice(0, 2).map((h): LawPick => ({ law: h.law as LawPick["law"], article: h.num }));
@@ -49,6 +50,7 @@ export async function pickLawArticles(question: string, context: string, signal?
       { signal }
     );
     console.log(usageLine("law-pick", response));
+    chargeAi("law-pick", appId, response);
     return response.parsed_output?.articles.slice(0, MAX_PICKS) ?? fallback;
   } catch (e) {
     if (signal?.aborted) throw e;

@@ -1,6 +1,8 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import * as z from "zod/v4";
+import { BUDGET_TEXT, budgetOver, chargeAi, dedup } from "@/lib/ai-guard";
+import { requestKey } from "@/lib/ai-meter";
 import { CLAUDE_MODEL } from "@/lib/claude";
 import { PD_MASK_NOTE, PD_MASK_ON, PdMasker } from "@/lib/pd-mask";
 import type { SentDocument } from "@/lib/read-documents";
@@ -79,6 +81,12 @@ export const usageLine = (label: string, message: Anthropic.Beta.BetaMessage) =>
 };
 
 export class ModelStop extends Error {}
+// Бюджет ИИ на заявку кончился — маршрут отвечает этим текстом, как на любую остановку модели.
+export class BudgetOver extends ModelStop {
+  constructor() {
+    super(BUDGET_TEXT);
+  }
+}
 
 function parseJson<T>(text: string, schema: z.ZodType<T>): { ok: true; data: T } | { ok: false; error: string } {
   const start = text.indexOf("{");
@@ -107,11 +115,26 @@ type AskJson<T> = {
   system?: string;
   cache?: boolean;
   effort?: "low" | "medium" | "high";
+  // Номер заявки (закупки) — для бюджета ИИ на заявку; без него — только общий журнал расходов.
+  appId?: string | null;
 };
 
 // Задание + схема ответа идут после документов. Если JSON не сошёлся со схемой, модель один раз
 // получает ошибку и присылает исправленный ответ — начало запроса то же, документы снова из кеша.
-export async function askJson<T>({
+// Расходы: бюджет заявки кончился — запрос не уходит; каждый ответ модели — строкой в журнал с ценой;
+// такой же запрос уже идёт (двойной клик, повтор) — ждём его ответ, а не платим второй раз.
+export async function askJson<T>(ask: AskJson<T>): Promise<T> {
+  if (budgetOver(ask.appId ?? null)) throw new BudgetOver();
+  // Отпечаток — по настоящим данным, а не по тексту с метками: у двух разных участников метки совпадут.
+  const { label, documents, extra, instructions, schema, system, cache, effort } = ask;
+  const task = typeof instructions === "function" ? instructions((text) => text) : instructions;
+  const key = requestKey({ label, documents, extra, task, schema: z.toJSONSchema(schema), system, cache, effort });
+  const { promise, shared } = dedup.run(key, () => askOnce(ask));
+  if (shared) console.log(`[ИИ] ${ask.label}: такой же запрос уже идёт — ждём его ответ, без второго обращения к модели`);
+  return (await promise) as T;
+}
+
+async function askOnce<T>({
   label,
   documents,
   extra = [],
@@ -121,6 +144,7 @@ export async function askJson<T>({
   system,
   cache = true,
   effort,
+  appId = null,
 }: AskJson<T>): Promise<T> {
   const client = new Anthropic();
   // Порядок важен: документы — первыми, как в любом запросе по закупке, потом всё остальное.
@@ -139,6 +163,7 @@ export async function askJson<T>({
   for (let attempt = 0; attempt < 2; attempt++) {
     const final = await client.beta.messages.stream({ ...request, messages }, { signal }).finalMessage();
     console.log(usageLine(attempt ? `${label} (исправление)` : label, final));
+    chargeAi(attempt ? `${label} (исправление)` : label, appId, final);
 
     if (final.stop_reason === "refusal") throw new ModelStop("Модель отказалась обрабатывать эти документы.");
     if (final.stop_reason === "max_tokens") {

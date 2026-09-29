@@ -17,6 +17,7 @@ import { samplesOf } from "@/lib/me-store";
 import { isEvidencePart, type PartKey } from "@/lib/my-docs";
 import { plural } from "@/lib/plural";
 import { identityValues } from "@/lib/profile";
+import { aiHeaders } from "@/lib/purchase";
 import { scanWarning } from "@/lib/read-documents";
 import { formatRubles, parseRubles, rublesInWords } from "@/lib/rub-words";
 import { sampleTp } from "@/lib/sample-purchase";
@@ -193,14 +194,15 @@ export default function TpPage() {
       } else {
         const res = await fetch("/api/tp", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: aiHeaders(purchase.id),
           body: JSON.stringify({ documents, samples: usedSamples.map(({ name, text }) => ({ name, text })) }),
         });
         if (!res.ok) throw new Error((await res.text()) || "Не удалось составить черновик.");
         next = await res.json();
       }
       setOpen(null);
-      update({ tp: next });
+      // Черновик ИИ сохраняется отдельно: по нему карта полей видит, какие жёлтые места участник уже вписал.
+      update({ tp: next, tpDraft: next });
       scrollToTop();
     } catch (e) {
       setError((e as Error).message);

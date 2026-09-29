@@ -1,3 +1,4 @@
+import { appIdOf } from "@/lib/ai-guard";
 import { claudeErrorText, NO_KEY_TEXT } from "@/lib/claude-errors";
 import { askJson, cleanSamples, ModelStop, sampleBlocks } from "@/lib/claude-request";
 import { MAX_CONTEXT_CHARS } from "@/lib/chat-types";
@@ -70,6 +71,7 @@ export async function POST(request: Request) {
   try {
     const doc = await askJson({
       label: `part ${part}`,
+      appId: appIdOf(request),
       documents,
       extra: sampleBlocks(samples, evidence ? "Документ участника" : "Образец участника"),
       instructions: (mask) =>

@@ -1,6 +1,7 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { PDFParse } from "pdf-parse";
+import { chargeAi } from "@/lib/ai-guard";
 import { CLAUDE_MODEL } from "@/lib/claude";
 
 // Сканы и фотографии документов читает Claude: страницу рисуем картинкой и просим переписать текст.
@@ -46,6 +47,7 @@ async function transcribePage(client: Anthropic, image: PageImage, label: string
     .finalMessage();
   const u = final.usage;
   console.log(`ocr ${label} ${final.model}: вход ${u.input_tokens}, выход ${u.output_tokens}, stop ${final.stop_reason}`);
+  chargeAi(`ocr ${label}`, null, final);
   if (final.stop_reason === "refusal") return "(страница не распознана)";
   return final.content.map((block) => (block.type === "text" ? block.text : "")).join("").trim();
 }

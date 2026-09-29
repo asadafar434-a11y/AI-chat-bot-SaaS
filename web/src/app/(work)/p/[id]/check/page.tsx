@@ -10,9 +10,10 @@ import { scrollToTop } from "@/components/page-header";
 import { usePurchase } from "@/components/purchase-provider";
 import { NextStep, StepIntro, TabBody } from "@/components/purchase-view";
 import { WorkingSteps } from "@/components/working-steps";
-import { checkCounts, docsKeyOf, type CheckFinding, type CheckResponse, type CheckResult } from "@/lib/check";
+import { checkCounts, checkInputKey, docsKeyOf, type CheckFinding, type CheckResponse, type CheckResult } from "@/lib/check";
 import { sampleCheck } from "@/lib/check-sample";
 import { plural } from "@/lib/plural";
+import { aiHeaders } from "@/lib/purchase";
 import { ACCEPTED_FILES, readDocuments } from "@/lib/read-documents";
 
 const WORKING_STEPS = [
@@ -133,6 +134,14 @@ export default function CheckPage() {
     setError(null);
     setNotice(null);
     try {
+      // Тот же файл заявки при тех же документах закупки уже проверен — показываем сохранённую проверку:
+      // ни чтение файла, ни ИИ не нужны. Повторная проверка того же — пустая трата бюджета заявки.
+      const inputKey = checkInputKey(files, docsKey);
+      if (!purchase.sample && check?.inputKey === inputKey) {
+        setNotice("Этот файл уже проверен — показываю сохранённую проверку. Исправили заявку — загрузите исправленный файл.");
+        scrollToTop();
+        return;
+      }
       let result: CheckResult;
       if (purchase.sample) {
         result = sampleCheck();
@@ -140,12 +149,12 @@ export default function CheckPage() {
         const { documents: application, failed } = await readDocuments(files);
         const res = await fetch("/api/check", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: aiHeaders(purchase.id),
           body: JSON.stringify({ documents, application }),
         });
         if (!res.ok) throw new Error((await res.text()) || "Не удалось проверить заявку.");
         const body: CheckResponse = await res.json();
-        result = { ...body, files: application.map((d) => d.name), docsKey, checkedAt: new Date().toISOString() };
+        result = { ...body, files: application.map((d) => d.name), docsKey, checkedAt: new Date().toISOString(), inputKey };
         if (failed.length) setNotice(`Не прочитаны и не проверены: ${failed.map((f) => `${f.name} — ${f.reason}`).join("; ")}.`);
       }
       setOpen(null);

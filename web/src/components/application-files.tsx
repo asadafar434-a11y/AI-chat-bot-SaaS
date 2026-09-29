@@ -10,12 +10,13 @@ import { SourceQuote } from "@/components/purchase-bits";
 import { usePurchase } from "@/components/purchase-provider";
 import { archiveName, fileRows, fingerprint, submitItems, toggleReady } from "@/lib/application-files";
 import { rowsOf } from "@/lib/cast";
+import { anketaExtraValues } from "@/lib/fields";
 import { evidenceOf, getProfile, listMyDocuments, samplesOf, type MyDocument } from "@/lib/me-store";
 import { isEvidencePart, PART_SAMPLE_KIND, type PartKey } from "@/lib/my-docs";
 import type { PartDoc } from "@/lib/part-doc";
 import { plural } from "@/lib/plural";
 import { filledCount, PROFILE_KEYS, type Profile } from "@/lib/profile";
-import { titleOf, type Purchase } from "@/lib/purchase";
+import { aiHeaders, titleOf, type Purchase } from "@/lib/purchase";
 import { saveFile } from "@/lib/save-file";
 import { stepsOf } from "@/lib/steps";
 import type { TpResult } from "@/lib/tp";
@@ -92,6 +93,8 @@ export function useApplicationFiles() {
     price: current.form.hasPrice ? purchase.tpPrice : undefined,
     // Реквизиты — только в анкету, декларацию и цену; техническое предложение подают анонимно.
     profile: part === "tp" ? undefined : profile,
+    // Строки анкеты заказчика сверх реквизитов — со значениями, вписанными для этой закупки.
+    anketaExtra: part === "participant" ? anketaExtraValues(purchase, current.form) : undefined,
   });
 
   // Что уйдёт в файл части: готовый документ, шаблон или документ, который ИИ напишет сейчас.
@@ -105,7 +108,7 @@ export function useApplicationFiles() {
     try {
       const res = await fetch("/api/tp/part", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: aiHeaders(purchase.id),
         body: JSON.stringify({
           part,
           documents,

@@ -31,10 +31,12 @@ export default function NewPurchasePage() {
     setError(null);
     try {
       const { documents, failed } = await readDocuments(files);
-      const result = await extractRequirements(documents);
+      // Номер закупки — до разбора: по нему сервер считает бюджет ИИ этой заявки.
+      const id = crypto.randomUUID();
+      const result = await extractRequirements(documents, id);
       const purchase: Purchase = {
         ...fromRequirements(result),
-        id: crypto.randomUUID(),
+        id,
         createdAt: new Date().toISOString(),
         files: documents.map((d) => d.name),
         unreadable: failed,

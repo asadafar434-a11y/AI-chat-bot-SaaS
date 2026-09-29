@@ -421,7 +421,7 @@ export function PurchaseView({ children }: { children: ReactNode }) {
       const addedNames = new Set(added.map((d) => d.name));
       const failedNames = new Set(failed.map((f) => f.name));
       const all = [...documents.filter((d) => !addedNames.has(d.name)), ...added];
-      const result = await extractRequirements(all);
+      const result = await extractRequirements(all, purchase.id);
       await replaceDocuments(all, {
         ...fromRequirements(result),
         files: all.map((d) => d.name),
