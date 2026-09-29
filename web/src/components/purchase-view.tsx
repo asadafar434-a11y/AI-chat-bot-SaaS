@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -8,7 +8,6 @@ import {
   ArrowRightIcon,
   AttachIcon,
   BankIcon,
-  CalculatorIcon,
   CaretDownIcon,
   CaretRightIcon,
   ChatIcon,
@@ -24,7 +23,6 @@ import {
   WarningIcon,
   type IconComponent,
 } from "@/components/icons";
-import { useOpenApplicationFiles } from "@/components/application-files";
 import { Note } from "@/components/note";
 import { DueChip, LawBadge } from "@/components/purchase-bits";
 import { usePurchase } from "@/components/purchase-provider";
@@ -59,29 +57,17 @@ const DOT = {
 };
 
 // Шаг подготовки заявки: номер или галочка, название и что на нём сейчас — словами.
-// Где не помещается, название короче («ТП», «Проверка»); диктор всегда читает полное.
 function StepLink({ step, current }: { step: Step; current: boolean }) {
   const dot = step.state === "fix" && step.tone === "bad" ? "bg-[color-mix(in_srgb,var(--danger)_12%,var(--card))] text-destructive" : DOT[step.state];
-  const full = step.key === "tp" ? "group-data-[short-tp]/steps:sr-only" : "group-data-[short-check]/steps:sr-only";
-  const short = step.key === "tp" ? "hidden group-data-[short-tp]/steps:inline" : "hidden group-data-[short-check]/steps:inline";
   return (
     <Link href={step.href} aria-current={current ? "page" : undefined} className="item flex-none gap-2 py-1">
-      <span aria-hidden className={`grid size-5 flex-none place-items-center rounded-full font-mono text-xs font-bold ${dot}`}>
+      <span aria-hidden className={`grid size-5 flex-none place-items-center rounded-full font-mono text-xs font-semibold ${dot}`}>
         {step.state === "done" ? <CheckIcon className="size-3" strokeWidth={3} /> : step.n}
       </span>
       <span className="grid text-left">
         <span className={current ? "t-strong" : "t-label text-[var(--ink-2)]"}>
           <span className="sr-only">Шаг {step.n}: </span>
-          {step.short === step.title ? (
-            step.title
-          ) : (
-            <>
-              <span className={full}>{step.title}</span>
-              <span aria-hidden className={short}>
-                {step.short}
-              </span>
-            </>
-          )}
+          {step.title}
         </span>
         <span className={`t-caption whitespace-nowrap ${TONE_TEXT[step.tone]}`}>{step.status}</span>
       </span>
@@ -89,18 +75,15 @@ function StepLink({ step, current }: { step: Step; current: boolean }) {
   );
 }
 
-// Подписи в строке шагов сокращаются, только когда не помещаются: сначала «ТП», потом «Проверка», потом
-// у «Поиска», «Цены» и «Вопросов» остаются значки, потом пропадают стрелки между шагами — порядок видно по номерам.
-// Не помещается и так (телефон) — инструменты с подписями уходят на свою строку, а шаги листаются отдельно:
-// иначе «Цена» и «Вопросы» оказываются за краем экрана. Ширина строки зависит от статусов шагов и счётчика
+// Строка шагов сжимается, только когда не помещается: сначала у «Поиска» и «Вопросов» остаются значки, потом
+// пропадают стрелки между шагами — порядок видно по номерам. Не помещается и так — инструменты с подписями
+// уходят на свою строку, а шаги листаются отдельно. Ширина строки зависит от статусов шагов и счётчика
 // вопросов, поэтому она мерится, а не угадывается по ширине панели.
 const FIT_LEVELS = [
-  { "data-short-tp": false, "data-short-check": false, "data-icons": false, "data-tight": false, "data-stack": false },
-  { "data-short-tp": true, "data-short-check": false, "data-icons": false, "data-tight": false, "data-stack": false },
-  { "data-short-tp": true, "data-short-check": true, "data-icons": false, "data-tight": false, "data-stack": false },
-  { "data-short-tp": true, "data-short-check": true, "data-icons": true, "data-tight": false, "data-stack": false },
-  { "data-short-tp": true, "data-short-check": true, "data-icons": true, "data-tight": true, "data-stack": false },
-  { "data-short-tp": true, "data-short-check": true, "data-icons": false, "data-tight": true, "data-stack": true },
+  { "data-icons": false, "data-tight": false, "data-stack": false },
+  { "data-icons": true, "data-tight": false, "data-stack": false },
+  { "data-icons": true, "data-tight": true, "data-stack": false },
+  { "data-icons": false, "data-tight": true, "data-stack": true },
 ];
 
 function useStepsFit(nav: RefObject<HTMLElement | null>, content: string) {
@@ -149,62 +132,68 @@ function useStepsFit(nav: RefObject<HTMLElement | null>, content: string) {
   return Object.fromEntries(Object.entries(FIT_LEVELS[level]).map(([name, on]) => [name, on || undefined]));
 }
 
-// Что делать дальше — в конце шага, чтобы путь по закупке был виден без подсказок.
+// Что делать дальше — в конце шага: первый несделанный шаг после этого, чтобы путь по закупке был виден
+// без подсказок. Всё сделано — как подать заявку.
+const NEXT_TEXT: Record<Exclude<StepKey, "upload" | "analysis">, (p: Purchase, step: Step) => { title: string; text: string; action: string }> = {
+  price: () => ({
+    title: "Цена — до какой цены снижаться",
+    text: "Посчитаю, до какой цены можно снижаться без убытка, и поставлю вашу цену в заявку.",
+    action: "Рассчитать цену",
+  }),
+  review: (p, step) =>
+    !p.tp
+      ? {
+          title: "Проверка — документы заявки",
+          text: "Составлю ТП, анкету и декларацию по форме заказчика. Вам останется вписать то, что знаете только вы.",
+          action: "Составить документы",
+        }
+      : {
+          title: "Проверка — дописать заявку",
+          text: `Осталось в заявке: ${step.status.replace(/^впишите /, "вписать ").replace(/^исправьте /, "исправить ")}.`,
+          action: "Открыть проверку",
+        },
+  package: (p, step) => ({
+    title: "Пакет — документы заявки",
+    text:
+      step.state === "fix"
+        ? `Скачайте файлы Word и отметьте, что из списка заказчика собрано: ${step.status.replace(/^соберите /, "осталось ")}.`
+        : "Скачайте файлы Word по одному или архивом.",
+    action: "Открыть пакет",
+  }),
+};
+
 export function NextStep({ from }: { from: StepKey }) {
   const { purchase } = usePurchase();
-  const openFiles = useOpenApplicationFiles();
-  const [, tp, check] = stepsOf(purchase);
+  const steps = stepsOf(purchase);
+  const after = steps.slice(steps.findIndex((s) => s.key === from) + 1);
+  const target = after.find((s) => s.state !== "done" && s.key in NEXT_TEXT);
   const due = dueLine(purchase.deadline, true);
 
-  let next: { label: string; title: string; text: string; href?: string; action?: string } | null = null;
-  if (from === "req" && tp.state !== "done") {
-    next = {
-      label: "Дальше — шаг 2 из 3",
-      title: "Техническое предложение",
-      text:
-        tp.state === "todo"
-          ? "Составлю черновик по ТЗ: товары с характеристиками и предложение по каждому пункту. Вам останется вписать своё."
-          : `Черновик готов — осталось вписать свои данные: ${tp.status.replace(/^впишите /, "")}.`,
-      href: tp.href,
-      action: tp.state === "todo" ? "Составить ТП" : "Открыть ТП",
-    };
-  } else if (from !== "check" && check.state === "todo") {
-    next = {
-      label: "Дальше — шаг 3 из 3",
-      title: "Проверка заявки",
-      text: "Соберите заявку и загрузите её перед подачей — сверю с извещением и ТЗ по каждому пункту.",
-      href: check.href,
-      action: "Проверить заявку",
-    };
-  } else if (check.state === "done") {
+  let next: { label: string; title: string; text: string; href?: string; action?: string };
+  if (target) {
+    const t = NEXT_TEXT[target.key as keyof typeof NEXT_TEXT](purchase, target);
+    next = { label: `Дальше — шаг ${target.n} из ${steps.length}`, ...t, href: target.href };
+  } else if (steps.at(-1)!.state === "done") {
     next = {
       label: "Готово к подаче",
       title: "Подайте заявку на электронной площадке",
-      text: `${due ? `${due.head}${due.left ? ` — ${due.left}` : ""}.` : "Срок подачи — в извещении о закупке."} Файлы заявки — одним архивом.`,
-      action: "Скачать документы заявки",
+      text: `${due ? `${due.head}${due.left ? ` — ${due.left}` : ""}.` : "Срок подачи — в извещении о закупке."} Подпишите файлы электронной подписью.`,
+      ...(from !== "package" && { href: steps.at(-1)!.href, action: "Открыть пакет" }),
     };
-  }
-  if (!next) return null;
+  } else return null;
 
   return (
     <section aria-label={next.label} className="island flex flex-wrap items-center justify-between gap-3 px-[var(--pad)] py-3">
       <div className="grid min-w-0 gap-0.5">
-        <p className={`t-over ${next.href ? "text-primary" : "text-[var(--ok)]"}`}>{next.label}</p>
+        <p className={`t-over ${target ? "text-[var(--ink-3)]" : "text-[var(--ok)]"}`}>{next.label}</p>
         <p className="t-section">{next.title}</p>
         <p className="text-[var(--ink-2)]">{next.text}</p>
       </div>
-      {next.href ? (
+      {next.href && (
         <Link href={next.href} className="btn">
           {next.action}
           <ArrowRightIcon />
         </Link>
-      ) : (
-        next.action && (
-          <button type="button" onClick={openFiles} className="btn">
-            <DownloadIcon />
-            {next.action}
-          </button>
-        )
       )}
     </section>
   );
@@ -262,6 +251,25 @@ function FileRow({ name, meta, warn }: { name: string; meta: string; warn: boole
   );
 }
 
+// Документы закупки с пометками: прочитан, со скана, не прочитан. В «Сведениях» и на шаге «Загрузка».
+export function PurchaseFiles({ purchase, documents }: { purchase: Purchase; documents: SentDocument[] }) {
+  const scans = new Set(documents.filter((d) => d.scan).map((d) => d.name));
+  return (
+    <ul className="grid gap-2.5">
+      {purchase.files.map((name) => {
+        const scan = scans.has(name);
+        const ext = name.includes(".") ? name.split(".").pop()!.toUpperCase() : "";
+        return (
+          <FileRow key={name} name={name} warn={scan} meta={scan ? "со скана — сверьте цифры" : [ext, "прочитан"].filter(Boolean).join(" · ")} />
+        );
+      })}
+      {purchase.unreadable.map((f) => (
+        <FileRow key={f.name} name={f.name} warn meta={`не прочитан: ${f.reason}`} />
+      ))}
+    </ul>
+  );
+}
+
 // Сведения о закупке: срок, заказчик, цена, закон; документы закупки с пометками; удаление.
 function InfoPane({ purchase, documents, onAdd, onClose, closeButton }: {
   purchase: Purchase;
@@ -275,7 +283,6 @@ function InfoPane({ purchase, documents, onAdd, onClose, closeButton }: {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteError, setDeleteError] = useState(false);
   const due = dueLine(purchase.deadline, true);
-  const scans = new Set(documents.filter((d) => d.scan).map((d) => d.name));
 
   async function deleteIt() {
     try {
@@ -332,23 +339,7 @@ function InfoPane({ purchase, documents, onAdd, onClose, closeButton }: {
       </Fold>
 
       <Fold title="Документы закупки" count={purchase.files.length + purchase.unreadable.length}>
-        <ul className="grid gap-2.5">
-          {purchase.files.map((name) => {
-            const scan = scans.has(name);
-            const ext = name.includes(".") ? name.split(".").pop()!.toUpperCase() : "";
-            return (
-              <FileRow
-                key={name}
-                name={name}
-                warn={scan}
-                meta={scan ? "со скана — сверьте цифры" : [ext, "прочитан"].filter(Boolean).join(" · ")}
-              />
-            );
-          })}
-          {purchase.unreadable.map((f) => (
-            <FileRow key={f.name} name={f.name} warn meta={`не прочитан: ${f.reason}`} />
-          ))}
-        </ul>
+        <PurchaseFiles purchase={purchase} documents={documents} />
         <button type="button" onClick={onAdd} className="link justify-self-start">
           Добавить документы
         </button>
@@ -378,8 +369,11 @@ function InfoPane({ purchase, documents, onAdd, onClose, closeButton }: {
 
 // Открытая закупка: остров-шапка со сроком и шагами подготовки заявки, под ним острова шага, справа сведения.
 // От 1560 px сведения — третьим столбиком, уже — листом поверх закупки по кнопке «Сведения».
+// «Добавить документы» — и в шапке закупки, и на шаге «Загрузка»: одно и то же окно выбора файлов.
+const AddDocuments = createContext<() => void>(() => {});
+export const useAddDocuments = () => useContext(AddDocuments);
+
 export function PurchaseView({ children }: { children: ReactNode }) {
-  const openFiles = useOpenApplicationFiles();
   const { purchase, documents, replaceDocuments } = usePurchase();
   const pathname = usePathname();
   const [infoOpen, setInfoOpen] = useState(false);
@@ -443,7 +437,6 @@ export function PurchaseView({ children }: { children: ReactNode }) {
   const due = dueLine(purchase.deadline, true);
   const onChat = pathname === `${base}/chat`;
   const onSearch = pathname === `${base}/search`;
-  const onPrice = pathname === `${base}/price`;
   const stepsNav = useRef<HTMLElement>(null);
   const fit = useStepsFit(stepsNav, [pathname, asked, ...steps.map((s) => s.status)].join("|"));
   // Документы закупки лежат в «Сведениях»: на кнопке — значок файла и их число, а если файл не прочитан —
@@ -493,16 +486,15 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                 </p>
               </div>
               <div className="flex flex-none items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={openFiles}
-                  aria-label="Скачать заявку: документы Word"
-                  title="Документы заявки — все файлы Word"
+                <Link
+                  href={`${base}/package`}
+                  aria-label="Скачать заявку: пакет документов Word"
+                  title="Пакет — все файлы заявки Word"
                   className="btn btn-line btn-xs"
                 >
                   <DownloadIcon />
                   <span className="@max-[720px]:hidden">Скачать заявку</span>
-                </button>
+                </Link>
                 <button
                   type="button"
                   onClick={() => input.current?.click()}
@@ -541,7 +533,7 @@ export function PurchaseView({ children }: { children: ReactNode }) {
               </div>
             </div>
 
-            {/* Шаги подготовки заявки по порядку; «Поиск», «Цена» и «Вопросы» — не шаги, а инструменты, стоят отдельно справа */}
+            {/* Шаги подготовки заявки по порядку, как в прототипе; «Поиск» и «Вопросы» — не шаги, а инструменты, стоят отдельно справа */}
             <nav
               ref={stepsNav}
               aria-label="Подготовка заявки"
@@ -557,7 +549,7 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                         className="mx-0.5 my-auto size-3.5 flex-none text-[var(--ink-3)] opacity-60 group-data-[tight]/steps:hidden"
                       />
                     )}
-                    <StepLink step={step} current={pathname === step.href} />
+                    <StepLink step={step} current={step.paths.includes(pathname)} />
                   </li>
                 ))}
               </ol>
@@ -570,17 +562,6 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                   <SearchIcon className="size-4 text-[var(--ink-3)]" />
                   <span className="group-data-[icons]/steps:sr-only">
                     Поиск<span className="sr-only"> по документам</span>
-                  </span>
-                </Link>
-                <Link
-                  href={`${base}/price`}
-                  aria-current={onPrice ? "page" : undefined}
-                  title="До какой цены снижаться"
-                  className={`item flex-none ${onPrice ? "t-strong" : "t-label text-[var(--ink-2)]"}`}
-                >
-                  <CalculatorIcon className="size-4 text-primary" />
-                  <span className="group-data-[icons]/steps:sr-only">
-                    Цена<span className="sr-only"> — до какой цены снижаться</span>
                   </span>
                 </Link>
                 <Link
@@ -614,7 +595,7 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                   {error}
                 </Note>
               )}
-              {children}
+              <AddDocuments value={() => input.current?.click()}>{children}</AddDocuments>
             </>
           )}
         </div>

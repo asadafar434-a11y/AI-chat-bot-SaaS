@@ -46,7 +46,7 @@ test("без ТП — только ТП, и его надо составить",
 test("части заявки — по форме заказчика, со статусом: реквизиты, цена, баллы", () => {
   const p = purchase({ tp: tp({ hasPrice: true, smeDeclaration: "[категория]" }, "Обеспечим [ФИО]") });
   assert.deepEqual(view(fileRows(p, { ...STATE, missing: 3 })), [
-    ["tp", "впишите 1 пункт", "download"],
+    ["tp", "впишите 1 поле", "download"],
     ["participant", "впишите реквизиты", "download"],
     ["declaration", "впишите реквизиты", "download"],
     ["price", "впишите цену", "download"],

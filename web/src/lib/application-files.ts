@@ -2,7 +2,8 @@ import type { BadgeInfo } from "@/lib/home";
 import { plural } from "@/lib/plural";
 import { titleOf, type Purchase } from "@/lib/purchase";
 import type { ReqItem } from "@/lib/requirements";
-import { stepsOf } from "@/lib/steps";
+import { fieldsOf } from "@/lib/fields";
+import { EMPTY_PROFILE } from "@/lib/profile";
 import { PART_TITLES, partsOf, type TpPart } from "@/lib/tp-parts";
 
 // Документы заявки. Состав заявки у каждой закупки свой — его задаёт заказчик в «Что подать». Часть файлов пишет
@@ -31,20 +32,23 @@ export type FilesState = {
 const WRITING: BadgeInfo = { tone: "calm", text: "пишу документ…" };
 
 // Файлы, которые пишет приложение, — по порядку частей заявки, со статусом и тем, что сделать.
+// Документы составляются на шаге «Проверка»: пока их нет, у ТП — «Составить».
 export function fileRows(p: Purchase, state: FilesState): FileRow[] {
-  const [, tp] = stepsOf(p);
+  // Сколько полей ТП вписать или исправить — тем же счётом, что у шага «Проверка»: жёлтые места и исполнители.
+  const fill = p.tp
+    ? fieldsOf({ purchase: p, profile: EMPTY_PROFILE }).filter((f) => f.part === "tp" && (f.status === "needs_input" || f.status === "invalid")).length
+    : 0;
   const rows: FileRow[] = [
     {
       part: "tp",
       title: PART_TITLES.tp,
       sub: "первая часть заявки — без названия и реквизитов участника",
-      badge:
-        tp.state === "todo"
-          ? { tone: "calm", text: "не составлено" }
-          : tp.state === "fix"
-            ? { tone: "warn", text: tp.status, icon: "pen" }
-            : { tone: "ok", text: "готово", icon: "check" },
-      action: tp.state === "todo" ? "compose" : "download",
+      badge: !p.tp
+        ? { tone: "calm", text: "не составлено" }
+        : fill
+          ? { tone: "warn", text: `впишите ${fill} ${plural(fill, "поле", "поля", "полей")}`, icon: "pen" }
+          : { tone: "ok", text: "готово", icon: "check" },
+      action: p.tp ? "download" : "compose",
     },
   ];
   if (!p.tp) return rows;
@@ -64,7 +68,7 @@ export function fileRows(p: Purchase, state: FilesState): FileRow[] {
       );
     } else if (part === "price") {
       row(
-        p.tpPrice ? "цена — из шага 2" : "цену вписывают на шаге 2, в ТП",
+        p.tpPrice ? "цена — с шага «Цена»" : "цену ставят в заявку на шаге «Цена»",
         p.tpPrice ? { tone: "ok", text: "цена вписана", icon: "check" } : { tone: "warn", text: "впишите цену", icon: "pen" }
       );
     } else {

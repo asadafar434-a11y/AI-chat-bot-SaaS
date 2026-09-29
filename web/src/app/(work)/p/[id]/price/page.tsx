@@ -7,7 +7,7 @@ import { Island } from "@/components/island";
 import { Note } from "@/components/note";
 import { PriceScale } from "@/components/price-scale";
 import { usePurchase } from "@/components/purchase-provider";
-import { StepIntro, TabBody } from "@/components/purchase-view";
+import { NextStep, StepIntro, TabBody } from "@/components/purchase-view";
 import { calcFor, dropText, pctText, rub, rubShort } from "@/lib/price-calc";
 import {
   GOOD_FAITH_LIMIT,
@@ -331,8 +331,8 @@ export default function PricePage() {
     <>
       <TabBody>
         <StepIntro>
-          До какой цены можно снижаться на торгах, чтобы контракт не ушёл в убыток. Впишите себестоимость — остальное подставлено
-          из документов закупки. Считается прямо в браузере, цифры никуда не отправляются.
+          Шаг 3 — до какой цены можно снижаться на торгах, чтобы контракт не ушёл в убыток. Впишите себестоимость — остальное
+          подставлено из документов закупки. Выбранную цену поставьте в заявку. Считается прямо в браузере, цифры никуда не отправляются.
         </StepIntro>
 
         <Island id="price-costs" level={3} title="Ваши цифры" sub={purchase.sample ? "В примере — вымышленные расходы" : undefined}>
@@ -400,6 +400,30 @@ export default function PricePage() {
               />
             ) : (
               <p className="text-[var(--ink-3)]">Впишите начальную цену — нарисую шкалу.</p>
+            )}
+            {/* Цена заявки — отдельно от примерки: в ТП и предложение о цене попадает только поставленная. */}
+            {calc.price !== null && calc.price > 0 && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-[var(--line)] pt-3">
+                {purchase.tpPrice === calc.price ? (
+                  <p className="t-strong flex items-center gap-2 text-[var(--ok)]">
+                    <CheckIcon className="size-4" />
+                    Эта цена стоит в заявке
+                  </p>
+                ) : (
+                  <>
+                    <button type="button" onClick={() => update({ tpPrice: calc.price ?? undefined })} disabled={above} className="btn">
+                      Поставить цену в заявку
+                    </button>
+                    <span className="t-caption text-[var(--ink-3)]">
+                      {above
+                        ? "Выше начальной цены ставить нельзя"
+                        : purchase.tpPrice
+                          ? `Сейчас в заявке: ${rub(purchase.tpPrice)}`
+                          : "Попадёт в техническое предложение и предложение о цене"}
+                    </span>
+                  </>
+                )}
+              </div>
             )}
             {cols.length > 0 && (
               <Disclosure id="price-table" title="Из чего складывается цена" open={tableOpen} onToggle={() => setTableOpen(!tableOpen)}>
@@ -534,6 +558,7 @@ export default function PricePage() {
             </div>
           )}
         </section>
+        <NextStep from="price" />
       </TabBody>
 
       <Result calc={calc} floor={floor} atFloor={atFloor} unpriced={secured && !rated} />

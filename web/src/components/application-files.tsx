@@ -1,10 +1,9 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Dialog } from "@base-ui/react/dialog";
 import { Badge } from "@/components/badge";
-import { CrossIcon, DocumentIcon, DownloadIcon, WarningIcon } from "@/components/icons";
+import { DocumentIcon, DownloadIcon, WarningIcon } from "@/components/icons";
 import { Note } from "@/components/note";
 import { SourceQuote } from "@/components/purchase-bits";
 import { usePurchase } from "@/components/purchase-provider";
@@ -16,7 +15,7 @@ import { isEvidencePart, PART_SAMPLE_KIND, type PartKey } from "@/lib/my-docs";
 import type { PartDoc } from "@/lib/part-doc";
 import { plural } from "@/lib/plural";
 import { filledCount, PROFILE_KEYS, type Profile } from "@/lib/profile";
-import { aiHeaders, titleOf, type Purchase } from "@/lib/purchase";
+import { aiHeaders, type Purchase } from "@/lib/purchase";
 import { saveFile } from "@/lib/save-file";
 import { stepsOf } from "@/lib/steps";
 import type { TpResult } from "@/lib/tp";
@@ -39,7 +38,7 @@ async function fileFrom(path: "/api/tp/docx" | "/api/tp/zip", body: object, fail
 
 export type Downloading = TpPart | "all" | null;
 
-// Скачивание частей заявки — на шаге ТП и в окне «Документы заявки» одно и то же. Анкета, декларация, цена,
+// Скачивание частей заявки — на шаге «Пакет» и в документе ТП одно и то же. Анкета, декларация, цена,
 // опыт и специалисты пишутся по форме заказчика и образцам того же вида; готовая часть хранится в закупке
 // и скачивается сразу, пока не изменились форма, реквизиты, цена или образцы.
 export function useApplicationFiles() {
@@ -168,52 +167,18 @@ export function useApplicationFiles() {
   return { myDocs, profile, meReady, downloading, writing, error, note, partSamples, isFresh, downloadPart, downloadAll };
 }
 
-// Окно открывается из любого шага закупки: из шапки, из «Готово к подаче» и по ссылке …#files с главной.
-const OpenFiles = createContext<() => void>(() => {});
-export const useOpenApplicationFiles = () => useContext(OpenFiles);
-
-export function ApplicationFiles({ children }: { children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    const fromLink = () => {
-      if (window.location.hash !== "#files") return;
-      history.replaceState(null, "", window.location.pathname + window.location.search);
-      setOpen(true);
-    };
-    const timer = setTimeout(fromLink);
-    window.addEventListener("hashchange", fromLink);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener("hashchange", fromLink);
-    };
-  }, []);
-
-  return (
-    <OpenFiles.Provider value={() => setOpen(true)}>
-      {children}
-      <Dialog.Root open={open} onOpenChange={setOpen}>
-        <Dialog.Portal>
-          <Dialog.Backdrop className="fixed inset-0 z-50 bg-[rgb(16_18_39/.32)]" />
-          <Dialog.Popup className="island fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-32px)] w-[min(680px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain shadow-[var(--float)] outline-none">
-            <FilesBody close={() => setOpen(false)} />
-          </Dialog.Popup>
-        </Dialog.Portal>
-      </Dialog.Root>
-    </OpenFiles.Provider>
-  );
-}
-
 // Строки содержимого — с разделителями; на узком окне бейдж уходит под название, кнопка остаётся справа.
 const FILE_ROW =
   "grid grid-cols-[32px_minmax(0,1fr)_auto_auto] items-center gap-x-3 gap-y-1.5 py-2.5 @max-[520px]:grid-cols-[32px_minmax(0,1fr)_auto]";
 
-function FilesBody({ close }: { close: () => void }) {
+// Шаг «Пакет»: файлы, которые пишет приложение, — скачать по одному или архивом; ниже — что требует заказчик,
+// с отметками готовности. Раньше это было окно «Документы заявки» поверх закупки.
+export function PackageFiles() {
   const { purchase, update } = usePurchase();
   const files = useApplicationFiles();
   const [quote, setQuote] = useState<string | null>(null);
   const tp = purchase.tp;
-  const [, , check] = stepsOf(purchase);
+  const review = stepsOf(purchase)[3];
   const busy = files.downloading !== null || !files.meReady;
   const rows = fileRows(purchase, {
     missing: files.profile ? PROFILE_KEYS.length - filledCount(files.profile) : 0,
@@ -228,22 +193,8 @@ function FilesBody({ close }: { close: () => void }) {
   const count = tp ? partsOf(tp.form, purchase.criteria).length : 1;
 
   return (
-    <div className="grid gap-4 p-[var(--pad)]">
-      <div className="flex items-start justify-between gap-3">
-        <div className="grid min-w-0 gap-1">
-          <p className="t-over truncate text-[var(--ink-3)]">{titleOf(purchase)}</p>
-          <Dialog.Title className="t-page">Документы заявки</Dialog.Title>
-          <Dialog.Description className="text-[var(--ink-2)]">
-            Состав заявки задаёт заказчик. Часть файлов пишу я — каждый отдельным файлом Word, что осталось вписать, выделено жёлтым.
-            Остальное собираете вы.
-          </Dialog.Description>
-        </div>
-        <Dialog.Close aria-label="Закрыть" className="icon-btn -mr-1 -mt-1 flex-none">
-          <CrossIcon className="size-5" />
-        </Dialog.Close>
-      </div>
-
-      <section aria-labelledby="files-made" className="@container grid gap-1">
+    <>
+      <section aria-labelledby="files-made" className="island @container grid gap-1 px-[var(--pad)] pb-3 pt-3">
         <h3 id="files-made" className="t-section">
           Файлы, которые пишу я
         </h3>
@@ -254,12 +205,18 @@ function FilesBody({ close }: { close: () => void }) {
                 <DocumentIcon className="size-4" />
               </span>
               <span className="grid min-w-0 gap-0.5">
-                <span className="t-strong">{row.title}</span>
+                {row.part === "tp" && tp ? (
+                  <Link href={`/p/${purchase.id}/tp`} className="t-strong justify-self-start underline decoration-[var(--edge-2)] underline-offset-4 hover:decoration-current">
+                    {row.title}
+                  </Link>
+                ) : (
+                  <span className="t-strong">{row.title}</span>
+                )}
                 <span className="t-caption text-[var(--ink-3)]">{row.sub}</span>
               </span>
               <Badge {...row.badge} className="justify-self-end @max-[520px]:col-start-2 @max-[520px]:row-start-2 @max-[520px]:justify-self-start" />
               {row.action === "compose" ? (
-                <Link href={`/p/${purchase.id}/tp`} onClick={close} className="btn btn-line btn-xs @max-[520px]:col-start-3 @max-[520px]:row-span-2 @max-[520px]:row-start-1">
+                <Link href={review.href} className="btn btn-line btn-xs @max-[520px]:col-start-3 @max-[520px]:row-span-2 @max-[520px]:row-start-1">
                   Составить
                 </Link>
               ) : (
@@ -276,7 +233,8 @@ function FilesBody({ close }: { close: () => void }) {
           ))}
           {!tp && (
             <li className="py-2.5 text-[var(--ink-3)]">
-              Анкета, декларация и предложение о цене появятся, когда составите ТП: форму заявки беру из документов закупки.
+              Анкета, декларация и предложение о цене появятся, когда составите документы на шаге «Проверка»: форму заявки беру
+              из документов закупки.
             </li>
           )}
         </ul>
@@ -299,7 +257,7 @@ function FilesBody({ close }: { close: () => void }) {
         )}
       </section>
 
-      <section aria-labelledby="files-ask" className="grid gap-1">
+      <section aria-labelledby="files-ask" className="island grid gap-1 px-[var(--pad)] pb-3 pt-3">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3">
           <h3 id="files-ask" className="t-section">
             Что требует заказчик
@@ -342,15 +300,14 @@ function FilesBody({ close }: { close: () => void }) {
         )}
       </section>
 
-      {check.state !== "done" && (
-        <p className="t-caption border-t border-[var(--line)] pt-3 text-[var(--ink-2)]">
-          Перед подачей проверьте заявку:{" "}
-          <Link href={check.href} onClick={close} className="link">
-            шаг 3, проверка заявки
+      {tp && review.state !== "done" && (
+        <p className="px-[var(--pad)] py-1 text-[var(--ink-2)]">
+          В заявке ещё не всё заполнено: {review.status}.{" "}
+          <Link href={review.href} className="link">
+            Шаг 4, проверка
           </Link>
-          .
         </p>
       )}
-    </div>
+    </>
   );
 }

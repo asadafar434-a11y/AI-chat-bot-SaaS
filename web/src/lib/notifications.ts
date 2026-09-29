@@ -31,12 +31,12 @@ export function noticesOf(purchases: Purchase[], seen: ReadonlySet<string>): Not
       notices.push({ key, href: `/p/${p.id}`, tone, title, text, sub: when ? `${titleOf(p)} · ${when}` : titleOf(p), unread: !seen.has(key) });
 
     if (due.days >= 0 && due.tone === "soon") {
-      const [, tp] = stepsOf(p);
+      const review = stepsOf(p)[3];
       add(
         `due:${p.id}:${p.deadline.date}:${STAGES.find((s) => due.days <= s)}`,
         "warn",
         due.days === 0 ? "Подать сегодня" : `До подачи ${daysText(due.days)}`,
-        tp.state === "todo" ? "ТП ещё не составлено" : tp.state === "fix" ? `В ТП осталось: ${tp.status}` : "",
+        !p.tp ? "Документы заявки ещё не составлены" : review.state === "fix" ? `В заявке осталось: ${review.status}` : "",
         // «до 30 сентября, 10:00 МСК»; в день подачи — только время, если оно известно.
         due.head.replace(due.days === 0 ? /^Подать сегодня,? ?/ : /^Подать /, "")
       );

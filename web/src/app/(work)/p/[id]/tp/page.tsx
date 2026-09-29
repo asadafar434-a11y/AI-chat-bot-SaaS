@@ -6,33 +6,22 @@ import { CastPanel } from "@/components/cast-panel";
 import { ArrowRightIcon, CheckIcon, EditIcon, WarningIcon } from "@/components/icons";
 import { Island } from "@/components/island";
 import { Note, Warnings } from "@/components/note";
-import { scrollToTop } from "@/components/page-header";
 import { SourceQuote } from "@/components/purchase-bits";
 import { useApplicationFiles } from "@/components/application-files";
+import { ComposeCard, useCompose } from "@/components/compose-documents";
 import { usePurchase } from "@/components/purchase-provider";
 import { StepIntro, TabBody } from "@/components/purchase-view";
-import { WorkingSteps } from "@/components/working-steps";
 import { castHistory, castLeaks, castTodo } from "@/lib/cast";
-import { samplesOf } from "@/lib/me-store";
 import { isEvidencePart, type PartKey } from "@/lib/my-docs";
 import { plural } from "@/lib/plural";
 import { identityValues } from "@/lib/profile";
-import { aiHeaders } from "@/lib/purchase";
 import { scanWarning } from "@/lib/read-documents";
 import { formatRubles, parseRubles, rublesInWords } from "@/lib/rub-words";
-import { sampleTp } from "@/lib/sample-purchase";
+import { stepsOf } from "@/lib/steps";
 import { itemsFill, needsFill, type TpResult } from "@/lib/tp";
 import { PART_TITLES, partsOf } from "@/lib/tp-parts";
 import { SAMPLE_CAST_HISTORY, SAMPLE_CAST_LIST } from "@/lib/tp-sample";
 import { usePurchases } from "@/lib/use-purchases";
-
-const WORKING_STEPS = [
-  "Ищу в документах форму заявки…",
-  "Читаю ТЗ…",
-  "Выписываю товары и характеристики…",
-  "Готовлю предложение по пунктам…",
-  "Сверяю цитаты с ТЗ…",
-];
 
 function FieldText({ text }: { text: string }) {
   return (
@@ -71,30 +60,6 @@ function Editable({ value, label, onChange }: { value: string; label: string; on
     >
       <FieldText text={value} />
     </button>
-  );
-}
-
-function SamplesLine({ count }: { count: number }) {
-  return (
-    <p className="t-body text-[var(--ink-3)]">
-      {count > 0 ? (
-        <>
-          {`Пишу по вашим техническим предложениям: ${count} ${plural(count, "документ", "документа", "документов")} из `}
-          <Link href="/me/documents" className="link">
-            «Образцов и реквизитов»
-          </Link>
-          .
-        </>
-      ) : (
-        <>
-          Черновик будет в общем стиле.{" "}
-          <Link href="/me/documents" className="link">
-            Загрузите свои документы
-          </Link>
-          {" "}— и ТП будет написано так, как пишете вы.
-        </>
-      )}
-    </p>
   );
 }
 
@@ -169,75 +134,30 @@ function evidenceStatus(part: "experience" | "staff", count: number): string {
     : "документов сотрудников нет — загрузите дипломы, удостоверения и договоры в «Образцы и реквизиты», иначе баллов за специалистов не будет";
 }
 
+// Техническое предложение — документ пакета заявки (шаг «Пакет»): весь текст, правка любого пункта, состав
+// исполнителей, цена и остальные части заявки. Отдельного шага ТП нет (решение владельца 29.09.2026): составляют
+// документы на шаге «Проверка», там же по списку дописывают пропуски.
 export default function TpPage() {
   const { purchase, documents, update } = usePurchase();
   // Составы других закупок — подсказки при наборе фамилии в составе исполнителей.
   const { purchases } = usePurchases();
-  const [working, setWorking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const compose = useCompose();
   const [open, setOpen] = useState<string | null>(null);
   const [confirmRedo, setConfirmRedo] = useState(false);
   const files = useApplicationFiles();
   const { profile, meReady } = files;
   const tp = purchase.tp;
   const toggle = (id: string) => setOpen(open === id ? null : id);
-  const usedSamples = samplesOf(files.myDocs, "tp");
 
-  async function compose() {
-    setWorking(true);
-    setError(null);
-    setConfirmRedo(false);
-    try {
-      let next: TpResult;
-      if (purchase.sample) {
-        next = sampleTp();
-      } else {
-        const res = await fetch("/api/tp", {
-          method: "POST",
-          headers: aiHeaders(purchase.id),
-          body: JSON.stringify({ documents, samples: usedSamples.map(({ name, text }) => ({ name, text })) }),
-        });
-        if (!res.ok) throw new Error((await res.text()) || "Не удалось составить черновик.");
-        next = await res.json();
-      }
-      setOpen(null);
-      // Черновик ИИ сохраняется отдельно: по нему карта полей видит, какие жёлтые места участник уже вписал.
-      update({ tp: next, tpDraft: next });
-      scrollToTop();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setWorking(false);
-    }
-  }
-
-  if (working || !tp) {
+  if (compose.working || !tp) {
     return (
       <TabBody>
-        {working ? (
-          <div className="island px-[var(--pad)]">
-            <WorkingSteps steps={WORKING_STEPS} />
-          </div>
-        ) : (
-          <div className="island grid justify-items-start gap-3 p-[var(--pad)]">
-            <p className="max-w-[70ch] text-[var(--ink-2)]">
-              Шаг 2 — техническое предложение. Найду в документах форму заявки и заполню её, как тендерный юрист: товары с конкретными характеристиками, предложение по пунктам ТЗ, цена. Вам останется вписать то, что знаете только вы.
-            </p>
-            {!purchase.sample && <SamplesLine count={usedSamples.length} />}
-            {error && (
-              <Note tone="warn" icon={WarningIcon}>
-                {error}
-              </Note>
-            )}
-            <button type="button" onClick={() => void compose()} className="btn btn-lg">
-              Составить черновик
-            </button>
-          </div>
-        )}
+        <ComposeCard state={compose} />
       </TabBody>
     );
   }
 
+  const review = stepsOf(purchase)[3];
   const fill = itemsFill(tp);
   const castLeft = castTodo(tp.cast) > 0;
   const points = `${fill} ${plural(fill, "пункт", "пункта", "пунктов")}`;
@@ -370,7 +290,15 @@ export default function TpPage() {
             <div className="island grid gap-2.5 p-3">
               <p className="t-strong">Составить черновик заново? Ваши правки в этом черновике пропадут.</p>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => void compose()} className="btn btn-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirmRedo(false);
+                    setOpen(null);
+                    void compose.compose();
+                  }}
+                  className="btn btn-xs"
+                >
                   Составить заново
                 </button>
                 <button type="button" onClick={() => setConfirmRedo(false)} className="btn btn-line btn-xs">
@@ -386,9 +314,9 @@ export default function TpPage() {
               </button>
             </p>
           )}
-          {error && (
+          {compose.error && (
             <Note tone="warn" icon={WarningIcon}>
-              {error}
+              {compose.error}
             </Note>
           )}
         </div>
@@ -492,8 +420,8 @@ export default function TpPage() {
             >
               {files.downloading === "tp" ? "Собираю файл…" : "Скачать техническое предложение"}
             </button>
-            <Link href={`/p/${purchase.id}/check`} className="btn btn-line max-sm:flex-1">
-              Дальше: проверка заявки
+            <Link href={review.state === "done" ? `/p/${purchase.id}/package` : review.href} className="btn btn-line max-sm:flex-1">
+              {review.state === "done" ? "К пакету документов" : "Дописать на шаге «Проверка»"}
               <ArrowRightIcon />
             </Link>
           </div>
