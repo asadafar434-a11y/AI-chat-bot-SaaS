@@ -1,11 +1,12 @@
 import { ClockIcon, DocumentIcon, WarningIcon } from "@/components/icons";
 import { daysText, type Due } from "@/lib/deadline";
+import { lawOfKind } from "@/lib/law-kind";
 import type { Purchase } from "@/lib/purchase";
 
 export { daysText };
 
 // Значок закупки — номер закона: 44-ФЗ и 223-ФЗ поставщик различает с первого взгляда.
-export const lawOf = (p: Purchase) => /(?<!\d)(44|223)-ФЗ/.exec(p.kind)?.[1] ?? "";
+export const lawOf = (p: Purchase) => lawOfKind(p.kind) ?? "";
 
 // На выделенной строке списка значок белый с контуром, иначе сливается с подсветкой.
 const LAW_SELECTED = "bg-card shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--brand)_25%,transparent)]";

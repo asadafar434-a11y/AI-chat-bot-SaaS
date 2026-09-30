@@ -1,4 +1,5 @@
 import type { Criteria } from "@/lib/criteria";
+import { participantFromPlatform } from "@/lib/law-kind";
 import type { TpForm } from "@/lib/tp";
 
 // Части заявки собираются отдельными файлами: техническое предложение подают в первую часть,
@@ -29,11 +30,12 @@ export function criteriaRowsFor(criteria: Criteria | undefined, part: "experienc
   return criteria.rows.filter((row) => re.test(`${row.indicator} ${row.detail}`));
 }
 
-// Техническое предложение и анкета нужны всегда; декларация и цена — если их требует форма заказчика;
-// сведения об опыте и о специалистах — если за них дают баллы по порядку оценки.
-export const partsOf = (form: TpForm, criteria?: Criteria): TpPart[] => [
+// Техническое предложение нужно всегда. Анкета — кроме 44-ФЗ: там сведения об участнике передаёт площадка
+// (решение владельца 30.09.2026, п. 2 ч. 6 ст. 43 44-ФЗ); kind — закон и способ закупки. Декларация и цена — если их
+// требует форма заказчика; сведения об опыте и о специалистах — если за них дают баллы по порядку оценки.
+export const partsOf = (form: TpForm, criteria?: Criteria, kind?: string): TpPart[] => [
   "tp",
-  "participant",
+  ...(participantFromPlatform(kind) ? [] : (["participant"] as const)),
   ...(form.smeDeclaration ? (["declaration"] as const) : []),
   ...(form.hasPrice ? (["price"] as const) : []),
   ...EVIDENCE_RULES.filter(([part]) => criteriaRowsFor(criteria, part).length > 0).map(([part]) => part),

@@ -122,7 +122,7 @@ export function fieldsOf({ purchase: p, profile, profileSources = {}, evidence =
   const out: ApplicationField[] = [];
   const confirmed = confirmedOf(p);
   const tp: TpResult | undefined = p.tp;
-  const parts = tp ? partsOf(tp.form, p.criteria) : [];
+  const parts = tp ? partsOf(tp.form, p.criteria, p.kind) : [];
   const problems = profileProblems(profile);
 
   // Реквизиты — в анкету, декларацию и цену. Каждое поле — один раз, в первом документе, где оно нужно.

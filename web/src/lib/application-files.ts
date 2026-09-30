@@ -7,8 +7,8 @@ import { EMPTY_PROFILE } from "@/lib/profile";
 import { PART_TITLES, partsOf, type TpPart } from "@/lib/tp-parts";
 
 // Документы заявки. Состав заявки у каждой закупки свой — его задаёт заказчик в «Что подать». Часть файлов пишет
-// приложение: ТП, анкету, декларацию, цену, сведения об опыте и о специалистах. Остальное — выписки, лицензии,
-// обеспечение — участник собирает сам и отмечает, что готово.
+// приложение: ТП, анкету (кроме 44-ФЗ — там сведения об участнике передаёт площадка), декларацию, цену, сведения
+// об опыте и о специалистах. Остальное — выписки, лицензии, обеспечение — участник собирает сам и отмечает, что готово.
 
 // Короткий отпечаток данных: по нему видно, что часть заявки составлена из тех же реквизитов, цены и образцов.
 export function fingerprint(value: unknown): string {
@@ -53,7 +53,7 @@ export function fileRows(p: Purchase, state: FilesState): FileRow[] {
   ];
   if (!p.tp) return rows;
 
-  for (const part of partsOf(p.tp.form, p.criteria).filter((x) => x !== "tp")) {
+  for (const part of partsOf(p.tp.form, p.criteria, p.kind).filter((x) => x !== "tp")) {
     const row = (sub: string, badge: BadgeInfo) =>
       rows.push({ part, title: PART_TITLES[part], sub, badge: state.writing === part ? WRITING : badge, action: "download" });
     if (p.sample) {

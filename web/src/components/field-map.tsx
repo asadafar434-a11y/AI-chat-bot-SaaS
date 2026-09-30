@@ -284,7 +284,7 @@ export function FieldMap() {
                     .slice(0, 4)
                     .map((f) => f.label)
                     .join(", ")}
-                  {profileLeft.length > 4 ? ` и ещё ${profileLeft.length - 4}` : ""} · в анкету, декларацию и цену
+                  {profileLeft.length > 4 ? ` и ещё ${profileLeft.length - 4}` : ""} · в документы с реквизитами
                 </p>
                 <Link href="/me/profile" className="link justify-self-start">
                   Вписать в «Реквизитах»

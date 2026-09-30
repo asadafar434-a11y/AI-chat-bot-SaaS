@@ -155,7 +155,7 @@ export function useApplicationFiles() {
     run("all", async () => {
       let parts = purchase.parts;
       const files: object[] = [];
-      for (const part of partsOf(current.form, purchase.criteria)) {
+      for (const part of partsOf(current.form, purchase.criteria, purchase.kind)) {
         const made = await payloadOf(current, part, parts);
         parts = made.parts;
         files.push({ part, ...made.payload });
@@ -190,7 +190,7 @@ export function PackageFiles() {
   });
   const items = submitItems(purchase);
   const ready = items.filter((i) => i.ready).length;
-  const count = tp ? partsOf(tp.form, purchase.criteria).length : 1;
+  const count = tp ? partsOf(tp.form, purchase.criteria, purchase.kind).length : 1;
 
   return (
     <>

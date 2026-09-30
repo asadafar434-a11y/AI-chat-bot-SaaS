@@ -20,7 +20,7 @@ function purchase(over: Partial<Purchase> = {}): Purchase {
     createdAt: "2026-09-24T10:00:00.000Z",
     short: "Праздник: «День учителя»",
     subject: "",
-    kind: "44-ФЗ · открытый конкурс",
+    kind: "223-ФЗ · конкурс в электронной форме",
     customer: "Школа № 1",
     price: "",
     deadline: { date: "", time: "", zone: "" },
@@ -58,6 +58,8 @@ test("части заявки — по форме заказчика, со ст�
     ["price", "цена вписана", "download"],
   ]);
   assert.equal(fileRows(p, { ...STATE, missing: 3 })[1].sub, "в «Реквизитах» не хватает 3 полей — в файле они жёлтые");
+  // По 44-ФЗ анкеты нет: сведения об участнике передаёт площадка (п. 2 ч. 6 ст. 43).
+  assert.deepEqual(view(fileRows({ ...p, kind: "44-ФЗ · открытый конкурс" }, STATE)).map(([part]) => part), ["tp", "declaration", "price"]);
 });
 
 test("опыт и специалисты — только в конкурсе с баллами за них; без документов — янтарём", () => {

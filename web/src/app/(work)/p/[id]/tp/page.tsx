@@ -323,7 +323,7 @@ export default function TpPage() {
 
         <Island id="tp-parts" level={3} title="Остальные части заявки" sub="Каждая — отдельным файлом Word">
           <ul className="divide-y divide-[var(--line)] px-[var(--pad)]">
-            {partsOf(tp.form, purchase.criteria)
+            {partsOf(tp.form, purchase.criteria, purchase.kind)
               .filter((part): part is PartKey => part !== "tp")
               .map((part) => {
                 const made = purchase.parts?.[part];

@@ -58,7 +58,7 @@ export function stepsOf(p: Purchase): Step[] {
   const bad = p.check ? checkCounts(p.check).bad : 0;
   const asked = p.requirements.submit;
   const ready = asked.filter((d) => (p.submitReady ?? []).includes(d.text)).length;
-  const files = p.tp ? partsOf(p.tp.form, p.criteria).length : 0;
+  const files = p.tp ? partsOf(p.tp.form, p.criteria, p.kind).length : 0;
 
   const upload: Step = {
     key: "upload",

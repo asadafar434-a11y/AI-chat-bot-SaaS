@@ -22,7 +22,7 @@ function purchase(over: Partial<Purchase> = {}): Purchase {
     createdAt: "2026-09-24T10:00:00.000Z",
     short: "Праздник: «День учителя»",
     subject: "",
-    kind: "44-ФЗ · электронный аукцион",
+    kind: "223-ФЗ · запрос котировок в электронной форме",
     customer: "Школа № 1",
     price: "450 000",
     deadline: { date: "", time: "", zone: "" },
@@ -67,6 +67,18 @@ test("реквизиты: есть — заполнено само из «Рек
   // Реквизит, заполненный из документа участника, помнит этот документ.
   const fromDoc = fieldsOf({ purchase: p, profile: PROFILE, profileSources: { inn: "Карточка предприятия.pdf" } });
   assert.equal(byKey(fromDoc, "profile:inn")?.source, "Реквизиты — из «Карточка предприятия.pdf»");
+});
+
+test("по 44-ФЗ анкеты нет — реквизитов и подписанта в карте полей тоже; цена в заявке — со своими реквизитами", () => {
+  const p = purchase({ kind: "44-ФЗ · электронный аукцион", tp: tp("Предоставим зал") });
+  const fields = fieldsOf({ purchase: p, profile: PROFILE });
+  assert.equal(fields.some((f) => f.key.startsWith("profile:") || f.key === "confirm:signer"), false);
+  const withPrice = fieldsOf({ purchase: { ...p, tp: tp("Предоставим зал", { hasPrice: true }) }, profile: PROFILE });
+  assert.deepEqual(
+    withPrice.filter((f) => f.key.startsWith("profile:")).map((f) => f.key),
+    ["profile:vatNote"]
+  );
+  assert.equal(byKey(withPrice, "confirm:signer")?.status, "needs_confirmation");
 });
 
 test("жёлтое место в ТП — вписать; вписанное число сверяется с ТЗ", () => {

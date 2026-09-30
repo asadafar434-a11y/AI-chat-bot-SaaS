@@ -23,7 +23,7 @@ function purchase(over: Partial<Purchase> = {}): Purchase {
     createdAt: "2026-09-24T10:00:00.000Z",
     short: "Праздник",
     subject: "",
-    kind: "44-ФЗ · открытый конкурс",
+    kind: "223-ФЗ · открытый конкурс",
     customer: "Школа № 1",
     price: "500 000,00 ₽",
     deadline: { date: "", time: "", zone: "" },
@@ -84,6 +84,8 @@ test("проверка: пустые места, ошибка в числе, с�
 
 test("пакет: пока проверка не пройдена — число файлов; потом — что собрать из «Что подать»", () => {
   assert.deepEqual(view(purchase({ tp: tp("Зал на [число] мест") }))[4], ["package", "todo", "2 файла", "calm"]);
+  // По 44-ФЗ анкеты нет — остаётся одно ТП.
+  assert.deepEqual(view(purchase({ kind: "44-ФЗ · открытый конкурс", tp: tp("Зал на [число] мест") }))[4], ["package", "todo", "1 файл", "calm"]);
   assert.deepEqual(view(purchase({ tp: tp("Зал на 300 мест") }))[4], ["package", "fix", "соберите 2 из 2", "warn"]);
   const ready = purchase({ tp: tp("Зал на 300 мест"), submitReady: ["Предложение участника", "Выписка из ЕГРЮЛ"] });
   assert.deepEqual(view(ready)[4], ["package", "done", "можно подавать", "ok"]);
