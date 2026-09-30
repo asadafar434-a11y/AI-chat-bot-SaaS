@@ -333,7 +333,7 @@ export default function MyDocumentsPage() {
           {!stage && (
             <section className="island p-2">
               <FileDrop
-                hint="Перетащите сюда свои документы — PDF, Word, сканы и фото. Можно сразу все."
+                hint="Перетащите сюда свои документы — PDF, Word, Excel, сканы и фото. Можно сразу все."
                 button={count ? "Добавить документы" : "Загрузить документы"}
                 onFiles={(files) => void add(files)}
               />

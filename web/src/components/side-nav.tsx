@@ -5,14 +5,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BotMark } from "@/components/bot-mark";
 import { BrandMark } from "@/components/brand-mark";
+import { Soon } from "@/components/soon";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   BriefcaseIcon,
   CaretRightIcon,
   CrossIcon,
   FolderIcon,
   HelpCircleIcon,
+  ClockIcon,
   HomeIcon,
   PlusIcon,
+  SearchIcon,
   UserIcon,
   WalletIcon,
   type IconComponent,
@@ -47,6 +51,17 @@ function NavItem({ href, icon: Icon, current, count, first, children }: {
       <span className="min-w-0 truncate">{children}</span>
       {count !== undefined && <span className="count ml-auto">{count}</span>}
     </Link>
+  );
+}
+
+// Раздел, которого в приложении ещё нет: виден, как в прототипе, но не ведёт никуда и помечен «скоро».
+function SoonItem({ icon: Icon, children }: { icon: IconComponent; children: ReactNode }) {
+  return (
+    <div aria-disabled="true" className="t-label flex min-h-9 min-w-0 items-center gap-2.5 rounded-[var(--r-ctl)] px-2.5 py-2 text-[var(--ink-3)] opacity-70">
+      <Icon className="size-4 shrink-0" />
+      <span className="min-w-0 truncate">{children}</span>
+      <Soon className="ml-auto" />
+    </div>
   );
 }
 
@@ -139,6 +154,8 @@ export function SideNav({ onClose }: { onClose: () => void }) {
           <NavItem href="/purchases" icon={BriefcaseIcon} current={inPurchases} count={data?.purchases}>
             Закупки
           </NavItem>
+          <SoonItem icon={SearchIcon}>Поиск закупок</SoonItem>
+          <SoonItem icon={ClockIcon}>История заявок</SoonItem>
         </nav>
 
         {/* ИИ-ассистент — карточка с роботом, как «Спросить ИИ» в прототипе */}
@@ -176,6 +193,7 @@ export function SideNav({ onClose }: { onClose: () => void }) {
           <NavItem href="/help" icon={HelpCircleIcon} current={pathname === "/help"}>
             Как это работает
           </NavItem>
+          <ThemeToggle />
           <p className="t-caption flex flex-wrap gap-x-3 gap-y-1 px-2 pt-2">
             {LEGAL_PAGES.map((page) => (
               <Link key={page.href} href={page.href} className="link link-quiet">

@@ -4,7 +4,7 @@
 
 @source "../../node_modules/streamdown/dist";
 
-@custom-variant dark (@media (prefers-color-scheme: dark));
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme {
   /* Рабочее место «Закупки»: от 1180 список и закупка рядом, от 1560 — ещё и сведения */
@@ -158,44 +158,43 @@
   --sidebar-ring: var(--brand);
 }
 
-/* Тёмная тема — графитовая, не чёрная: холст, карточки и поля различимы */
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --ink: #f4f4f5;
-    --ink-2: #d4d4d8;
-    --ink-3: #aeb0b8;
-    --rule: #3b3c43;
-    --paper: #212226;
-    --paper-2: #2c2d32;
-    --paper-3: #34353b;
-    --edge: #3b3c43;
-    --edge-2: #4a4b53;
-    --brand: #f4f4f5;
-    --brand-press: #d4d4d8;
-    --brand-tint: #313238;
-    --on-brand: #17181b;
-    --ok: #4ade80;
-    --ok-tint: #263931;
-    --warn: #facc15;
-    --warn-tint: #4a3a0c;
-    --danger: #f87171;
-    /* На светло-красном #f87171 белый даёт 2,8:1 — нужен тёмный: 6,4:1 */
-    --on-danger: #17181b;
-    --info: #a5b4fc;
-    --info-tint: #2a2c4a;
+/* Тёмная тема — графитовая, не чёрная: холст, карточки и поля различимы.
+   Включается атрибутом на <html>: его ставит скрипт из layout.tsx и кнопка в меню */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #f4f4f5;
+  --ink-2: #d4d4d8;
+  --ink-3: #aeb0b8;
+  --rule: #3b3c43;
+  --paper: #212226;
+  --paper-2: #2c2d32;
+  --paper-3: #34353b;
+  --edge: #3b3c43;
+  --edge-2: #4a4b53;
+  --brand: #f4f4f5;
+  --brand-press: #d4d4d8;
+  --brand-tint: #313238;
+  --on-brand: #17181b;
+  --ok: #4ade80;
+  --ok-tint: #263931;
+  --warn: #facc15;
+  --warn-tint: #4a3a0c;
+  --danger: #f87171;
+  /* На светло-красном #f87171 белый даёт 2,8:1 — нужен тёмный: 6,4:1 */
+  --on-danger: #17181b;
+  --info: #a5b4fc;
+  --info-tint: #2a2c4a;
 
-    --canvas: #17181b;
-    --line: #3b3c43;
-    --hover: #2c2d32;
-    --select: #313238;
-    --hairline: 0 1px 2px rgb(0 0 0 / .3);
-    --island-ring: rgb(255 255 255 / .1);
-    --island-shadow: 0 0 0 1px var(--island-ring), 0 1px 2px rgb(0 0 0 / .3), 0 4px 10px -4px rgb(0 0 0 / .4);
-    --float: 0 0 0 1px var(--island-ring), 0 4px 6px -4px rgb(0 0 0 / .5), 0 10px 15px -3px rgb(0 0 0 / .5);
-    --scrim: rgb(0 0 0 / .6);
-    --card: #212226;
-  }
+  --canvas: #17181b;
+  --line: #3b3c43;
+  --hover: #2c2d32;
+  --select: #313238;
+  --hairline: 0 1px 2px rgb(0 0 0 / .3);
+  --island-ring: rgb(255 255 255 / .1);
+  --island-shadow: 0 0 0 1px var(--island-ring), 0 1px 2px rgb(0 0 0 / .3), 0 4px 10px -4px rgb(0 0 0 / .4);
+  --float: 0 0 0 1px var(--island-ring), 0 4px 6px -4px rgb(0 0 0 / .5), 0 10px 15px -3px rgb(0 0 0 / .5);
+  --scrim: rgb(0 0 0 / .6);
+  --card: #212226;
 }
 
 @media (width < 64rem) {

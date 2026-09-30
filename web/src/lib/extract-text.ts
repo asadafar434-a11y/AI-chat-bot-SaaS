@@ -6,6 +6,7 @@ import { claudeErrorText } from "@/lib/claude-errors";
 import { docText, DocTextError, isOle, rtfText } from "@/lib/doc-text";
 import { MAX_SCAN_PAGES, renderPages, transcribe } from "@/lib/ocr";
 import { plural } from "@/lib/plural";
+import { xlsxText } from "@/lib/xlsx-text";
 import { createLimiter, OCR_PAGES_TOTAL } from "@/lib/rate-limit";
 
 // scan — текст распознан со скана или фото: в цифрах возможны ошибки.
@@ -17,6 +18,8 @@ const kindOf = (file: File) => {
   const name = file.name.toLowerCase();
   if (file.type === "application/pdf" || name.endsWith(".pdf")) return "pdf";
   if (name.endsWith(".docx")) return "docx";
+  if (name.endsWith(".xlsx") || name.endsWith(".xlsm")) return "xlsx";
+  if (name.endsWith(".xls")) return "xls";
   if (name.endsWith(".doc") || name.endsWith(".rtf")) return "doc";
   if (/\.(jpe?g|png)$/.test(name) || /^image\/(jpeg|png)$/.test(file.type)) return "image";
   if (/\.(txt|md|csv)$/.test(name) || file.type.startsWith("text/")) return "text";
@@ -91,6 +94,14 @@ export async function extractText(file: File, { ocr = true }: { ocr?: boolean } 
       const buffer = Buffer.from(await file.arrayBuffer());
       const { value } = await mammoth.extractRawText({ buffer });
       return { ok: true, text: value };
+    }
+
+    if (kind === "xlsx") {
+      return { ok: true, text: await xlsxText(Buffer.from(await file.arrayBuffer())) };
+    }
+
+    if (kind === "xls") {
+      return { ok: false, reason: "старый формат .xls не читается — пересохраните файл как .xlsx" };
     }
 
     if (kind === "doc") {

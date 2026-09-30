@@ -76,7 +76,7 @@ export default function NewPurchasePage() {
                 </Note>
               )}
               <FileDrop
-                hint="Перетащите сюда документы закупки — можно сразу несколько: PDF, Word, сканы и фото"
+                hint="Перетащите сюда документы закупки — можно сразу несколько: PDF, Word, Excel, сканы и фото"
                 button="Загрузить документы"
                 onFiles={(files) => void create(files)}
                 onSample={() => void sample()}

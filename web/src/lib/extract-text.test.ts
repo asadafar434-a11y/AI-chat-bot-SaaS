@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Document, Packer, Paragraph } from "docx";
+import ExcelJS from "exceljs";
 import { extractText } from "./extract-text.ts";
 
 const OCR_OFF = /распознавание сканов выключено/;
@@ -120,7 +121,11 @@ test("фото: выключено распознавание, нет ключа
 });
 
 test("неизвестный формат и повреждённый файл; имя файла в журнал не попадает", async (t) => {
-  assert.deepEqual(await extractText(file("смета.xlsx", "PK")), { ok: false, reason: "формат пока не поддерживается" });
+  assert.deepEqual(await extractText(file("презентация.pptx", "PK")), { ok: false, reason: "формат пока не поддерживается" });
+  assert.deepEqual(await extractText(file("смета.xlsx", "PK обрывок")), {
+    ok: false,
+    reason: "не удалось прочитать файл — возможно, он повреждён или защищён паролем",
+  });
 
   const logged: unknown[][] = [];
   t.mock.method(console, "error", (...args: unknown[]) => logged.push(args));
@@ -129,4 +134,27 @@ test("неизвестный формат и повреждённый файл; 
   assert.deepEqual(broken, { ok: false, reason: "не удалось прочитать файл — возможно, он повреждён или защищён паролем" });
   assert.ok(logged.length > 0);
   assert.doesNotMatch(logged.flat().map(String).join(" "), /Иванов/);
+});
+
+test(".xlsx читается по листам: формулы — значением, даты — по-русски, скрытые листы пропускаются, .xls — понятная причина", async () => {
+  const book = new ExcelJS.Workbook();
+  const sheet = book.addWorksheet("Спецификация");
+  sheet.addRow(["№", "Наименование", "Кол-во", "Цена", "Сумма"]);
+  sheet.addRow([1, "Бумага А4,\nбелая", 100, 250.5, { formula: "C2*D2", result: 25050 }]);
+  sheet.addRow([]);
+  sheet.addRow(["", "Срок поставки", new Date(2026, 9, 20)]);
+  book.addWorksheet("Скрытый").addRow(["секрет"]);
+  book.getWorksheet("Скрытый")!.state = "hidden";
+  const buffer = new Uint8Array(await book.xlsx.writeBuffer());
+
+  const result = await extractText(file("спецификация.xlsx", buffer));
+  assert.equal(result.ok, true);
+  const text = result.ok ? result.text : "";
+  assert.match(text, /## Лист «Спецификация»/);
+  assert.match(text, /1 \| Бумага А4, белая \| 100 \| 250,5 \| 25050/);
+  assert.match(text, /Срок поставки \| 20\.10\.2026/);
+  assert.doesNotMatch(text, /секрет/);
+
+  const old = await extractText(file("старый.xls", "x"));
+  assert.deepEqual(old, { ok: false, reason: "старый формат .xls не читается — пересохраните файл как .xlsx" });
 });
