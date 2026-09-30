@@ -117,12 +117,12 @@ export function StepUpload({
 
       {error && (
         <p className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0" /> {error}
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" /> <span className="min-w-0 break-words">{error}</span>
         </p>
       )}
       {notice && (
         <p className="flex items-start gap-2 rounded-md bg-warn-surface/40 px-3 py-2 text-[13px] text-warn-foreground">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0" /> {notice}
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" /> <span className="min-w-0 break-words">{notice}</span>
         </p>
       )}
 

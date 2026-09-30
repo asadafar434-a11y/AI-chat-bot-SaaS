@@ -318,7 +318,7 @@ export function StepPackage({
 
       {error && (
         <p className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0" /> {error}
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" /> <span className="min-w-0 break-words">{error}</span>
         </p>
       )}
       {note && <p className="rounded-md bg-info/10 px-3 py-2 text-[13px] text-info">{note}</p>}

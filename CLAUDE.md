@@ -11,7 +11,9 @@ Support-chat SaaS (аналог Intercom) с ИИ-агентом. Прорабо
 - [design-system/prototype/](design-system/prototype/) — **интерфейс продукта и главный образец вида** (решение владельца 30.09.2026:
   «сделать рабочим именно этот прототип»): React + Vite + Tailwind v4, токены — `src/index.css`. Вид — прототипа, данные и
   логика — настоящие: общий код из `web/src` (`@/…`), закупки в браузере; документы, ИИ и файлы Word — сервер из `web/`.
-  Запуск: интерфейс `npm --prefix design-system/prototype run dev -- --port 3000`, сервер `npm --prefix web run dev -- --port 3001`.
+  Запуск продукта одним адресом `localhost:3000`: `npm --prefix web run build:host`, затем `npm --prefix web run start:local` (в приложении —
+  запуск `product` из `.claude/launch.json`). Для правок с мгновенным обновлением — пара: интерфейс `npm --prefix design-system/prototype run dev -- --port 3000`,
+  сервер `npm --prefix web run dev -- --port 3001`; вместе с `start:local` её не запускают (общий порт 3000).
   Закупки лежат в браузере по адресу страницы — интерфейс держим на `localhost:3000`. Что где и что «скоро» —
   [README прототипа](design-system/prototype/README.md). Приложение на Next (`web/src/app`, `web/src/components`) пока остаётся
   прежним интерфейсом и сервером; править вид там не нужно — правится прототип. Сборка в одну страницу — `npm run build` → `dist/prototype.html`

@@ -8,7 +8,8 @@
 npm --prefix web run dev -- --port 3001                          # сервер: документы, ИИ, файлы Word (нужен ключ ИИ — web/.env.local)
 npm --prefix design-system/prototype run dev -- --port 3000      # интерфейс: http://localhost:3000
 npm --prefix design-system/prototype run build                   # dist/prototype.html — одна страница
-npm --prefix web run build:host                                  # для хостинга: экран → web/public/product, затем сервер
+npm --prefix web run build:host                                  # экран → web/public/product, затем сервер: для хостинга и для start:local
+npm --prefix web run start:local                                 # продукт одним адресом: http://localhost:3000 (вместо пары выше)
 npm --prefix design-system/prototype run typecheck
 ```
 

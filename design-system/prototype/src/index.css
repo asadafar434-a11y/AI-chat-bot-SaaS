@@ -158,6 +158,8 @@ body {
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  /* Слово без пробелов — название файла с подчёркиваниями, ссылка, «аааа…» — переносится, а не выезжает за край. */
+  overflow-wrap: break-word;
   /* Подсказки у края экрана не должны давать горизонтальную прокрутку. */
   overflow-x: clip;
 }
