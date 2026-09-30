@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { ScalesIcon, WarningIcon } from "@/components/icons";
+import { BrandMark } from "@/components/brand-mark";
+import { WarningIcon } from "@/components/icons";
 import { Note } from "@/components/note";
 import { LEGAL_EDITION, LEGAL_PAGES, LEGAL_REVIEWED, type Operator, type OperatorValue } from "@/lib/legal";
 
@@ -47,9 +48,7 @@ export function LegalPage({ title, operator, children }: { title: string; operat
     <main className="h-full overflow-y-auto overscroll-contain">
       <div className="mx-auto grid max-w-[760px] gap-2 p-2 pb-6 sm:pt-6">
         <Link href="/" className="inline-flex w-fit items-center gap-2.5 px-2 py-2">
-          <span className="grid size-7 flex-none place-items-center rounded-[var(--r-ctl)] bg-primary text-primary-foreground shadow-[inset_0_-2px_0_rgb(0_0_0/.12)]">
-            <ScalesIcon className="size-4" />
-          </span>
+          <BrandMark className="size-7" />
           <span className="font-heading text-sm leading-5 font-bold tracking-[-0.01em]">Тендерный юрист</span>
         </Link>
 

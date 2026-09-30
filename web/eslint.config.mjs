@@ -9,7 +9,7 @@ const eslintConfig = defineConfig([
     rules: {
       "no-restricted-imports": [
         "error",
-        { paths: [{ name: "lucide-react", message: "Иконки — из @/components/icons (набор Craftwork)." }] },
+        { paths: [{ name: "lucide-react", message: "Иконки — из @/components/icons: пути Lucide лежат там, пакет не нужен." }] },
       ],
       // «const { id, ...rest } = x» — способ убрать поле из объекта: id тут и не должен использоваться.
       "@typescript-eslint/no-unused-vars": ["warn", { ignoreRestSiblings: true }],

@@ -46,11 +46,11 @@ test("дела — по шагам заявки, со сроком и цвето
   assert.deepEqual(
     tasksOf(list, {}).map((t) => [t.purchase.id, t.text, t.tone, t.go, t.href]),
     [
-      ["a", "Составить техническое предложение", "warn", "tp", "/p/a/tp"],
-      ["b", "Вписать свои данные в ТП — 1 пункт", "brand", "tp", "/p/b/tp"],
-      ["c", "Проверить заявку перед подачей", "brand", "check", "/p/c/check"],
-      ["d", "Исправить ошибки в заявке — 2", "bad", "check", "/p/d/check"],
-      ["e", "Скачать документы и подать заявку на площадке", "brand", "files", "/p/e#files"],
+      ["a", "Составить документы заявки", "warn", "compose", "/p/a/check"],
+      ["b", "Вписать свои данные в заявку — 1 поле", "brand", "review", "/p/b/check"],
+      ["c", "Скачать документы и подать заявку на площадке", "brand", "package", "/p/c/package"],
+      ["d", "Исправить ошибки в заявке — 2", "bad", "review", "/p/d/check"],
+      ["e", "Скачать документы и подать заявку на площадке", "brand", "package", "/p/e/package"],
     ]
   );
 });
@@ -65,36 +65,44 @@ test("сканы и непрочитанные файлы — отдельным
   assert.deepEqual(
     tasks.map((t) => [t.text, t.go]),
     [
-      ["Составить техническое предложение", "tp"],
-      ["Сверить цифры в файле со скана", "req"],
-      ["Пересохранить «Проект контракта.pdf» — файл не прочитан", "req"],
+      ["Составить документы заявки", "compose"],
+      ["Сверить цифры в файле со скана", "analysis"],
+      ["Пересохранить «Проект контракта.pdf» — файл не прочитан", "analysis"],
     ]
   );
   assert.equal(new Set(tasks.map((t) => t.key)).size, tasks.length, "ключи дел не повторяются");
 });
 
-test("этап следует из шагов и срока подачи", () => {
-  assert.equal(laneOf(purchase("a", 5)), "tp");
-  assert.equal(laneOf(purchase("a", 5, { tp: tp("[ИНН]") })), "tp");
-  assert.equal(laneOf(purchase("a", 5, { tp: tp("Готово") })), "check");
-  assert.equal(laneOf(purchase("a", 5, { tp: tp("Готово"), check: check("warn") })), "check");
-  assert.equal(laneOf(purchase("a", 5, { tp: tp("Готово"), check: check() })), "ready");
+test("форма заказчика с ценой, а цена не поставлена — дело на шаге «Цена»", () => {
+  const p = purchase("f", 5, { tp: { ...tp("Готово"), form: { ...PLAIN_FORM, hasPrice: true } } });
+  assert.deepEqual(
+    tasksOf([p], {}).map((t) => [t.text, t.go, t.href]),
+    [["Поставить цену в заявку", "price", "/p/f/price"]]
+  );
+});
+
+test("этап следует из шага «Проверка» и срока подачи", () => {
+  assert.equal(laneOf(purchase("a", 5)), "compose");
+  assert.equal(laneOf(purchase("a", 5, { tp: tp("[ИНН]") })), "fill");
+  assert.equal(laneOf(purchase("a", 5, { tp: tp("Готово") })), "ready");
+  // Замечания к своей заявке не держат этап, ошибки — держат.
+  assert.equal(laneOf(purchase("a", 5, { tp: tp("Готово"), check: check("warn") })), "ready");
+  assert.equal(laneOf(purchase("a", 5, { tp: tp("Готово"), check: check("bad") })), "fill");
   assert.equal(laneOf(purchase("a", -3, { tp: tp("Готово"), check: check() })), "closed");
-  assert.equal(laneOf(purchase("a", null)), "tp");
+  assert.equal(laneOf(purchase("a", null)), "compose");
 });
 
 test("что ждёт на этапе — одной строкой", () => {
-  assert.deepEqual(laneNote("tp", []), { tone: "calm", text: "нет закупок" });
-  assert.deepEqual(laneNote("tp", [purchase("a", 5)]), { tone: "brand", text: "составить ТП" });
-  assert.deepEqual(laneNote("tp", [purchase("a", 5, { tp: tp("[ИНН]") }), purchase("b", 5, { tp: tp("[КПП]") })]), { tone: "warn", text: "2 ждут ваших данных" });
-  assert.deepEqual(laneNote("check", [purchase("a", 5, { tp: tp("Готово"), check: check("bad") })]), { tone: "bad", text: "1 с ошибками" });
-  assert.deepEqual(laneNote("check", [purchase("a", 5, { tp: tp("Готово") })]), { tone: "brand", text: "проверить перед подачей" });
+  assert.deepEqual(laneNote("compose", []), { tone: "calm", text: "нет закупок" });
+  assert.deepEqual(laneNote("compose", [purchase("a", 5)]), { tone: "brand", text: "составить документы" });
+  assert.deepEqual(laneNote("fill", [purchase("a", 5, { tp: tp("[ИНН]") }), purchase("b", 5, { tp: tp("[КПП]") })]), { tone: "warn", text: "2 ждут ваших данных" });
+  assert.deepEqual(laneNote("fill", [purchase("a", 5, { tp: tp("Готово"), check: check("bad") })]), { tone: "bad", text: "1 с ошибками" });
   assert.deepEqual(laneNote("ready", [purchase("a", 5)]), { tone: "ok", text: "можно подавать" });
 });
 
 test("бейджи этапа и срока", () => {
-  assert.deepEqual(stageBadge(purchase("a", 5)), { tone: "brand", text: "составить ТП" });
-  assert.deepEqual(stageBadge(purchase("a", 5, { tp: tp("[ИНН]", "[КПП]") })), { tone: "warn", text: "ТП: впишите 2 пункта", icon: "pen" });
+  assert.deepEqual(stageBadge(purchase("a", 5)), { tone: "brand", text: "составить документы" });
+  assert.deepEqual(stageBadge(purchase("a", 5, { tp: tp("[ИНН]", "[КПП]") })), { tone: "warn", text: "впишите 2 поля", icon: "pen" });
   assert.deepEqual(stageBadge(purchase("a", 5, { tp: tp("Готово"), check: check("bad") })), { tone: "bad", text: "1 ошибка", icon: "alert" });
   assert.deepEqual(stageBadge(purchase("a", 5, { tp: tp("Готово"), check: check() })), { tone: "ok", text: "готово к подаче", icon: "check" });
   assert.deepEqual(stageBadge(purchase("a", -1)), { tone: "calm", text: "приём закончился" });

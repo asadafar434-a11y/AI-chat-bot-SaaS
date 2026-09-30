@@ -23,8 +23,14 @@ export const CheckSchema = z.object({
 export type CheckFinding = z.infer<typeof FindingSchema> & { verified: boolean; appVerified: boolean };
 export type CheckResponse = { findings: CheckFinding[]; okCount: number };
 
-// files — какие файлы заявки проверены; docsKey — какие документы закупки были на момент проверки.
-export type CheckResult = CheckResponse & { files: string[]; docsKey: string; checkedAt: string };
+// files — какие файлы заявки проверены; docsKey — какие документы закупки были на момент проверки;
+// inputKey — отпечаток файлов заявки и документов закупки: тот же отпечаток — та же проверка, ИИ не нужен.
+export type CheckResult = CheckResponse & { files: string[]; docsKey: string; checkedAt: string; inputKey?: string };
+
+// Отпечаток проверки: имена, размеры и даты файлов заявки и список документов закупки. Файл заменили —
+// у него другой размер или дата, и проверка идёт заново.
+export const checkInputKey = (files: { name: string; size: number; lastModified: number }[], docsKey: string) =>
+  JSON.stringify([docsKey, ...files.map((f) => [f.name, f.size, f.lastModified])]);
 
 export const docsKeyOf = (files: string[]) => files.join("\n");
 

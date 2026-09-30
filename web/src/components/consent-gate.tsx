@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
+import { BrandMark } from "@/components/brand-mark";
 import { ConsentChecks, legalLink as doc } from "@/components/consent-checks";
-import { ScalesIcon } from "@/components/icons";
 import { hasConsent, saveConsent } from "@/lib/consent";
 
 // Согласие дали в другой вкладке — эта узнает об этом из события storage.
@@ -32,9 +32,7 @@ export function ConsentGate({ children }: { children: ReactNode }) {
     <main className="grid h-full place-items-center overflow-y-auto p-4">
       <form onSubmit={submit} className="island grid w-full max-w-[400px] gap-4 p-6 max-sm:p-5">
         <div className="flex items-center gap-2.5">
-          <span className="grid size-7 flex-none place-items-center rounded-[var(--r-ctl)] bg-primary text-primary-foreground shadow-[inset_0_-2px_0_rgb(0_0_0/.12)]">
-            <ScalesIcon className="size-4" />
-          </span>
+          <BrandMark className="size-7" />
           <span className="font-heading text-sm leading-5 font-bold tracking-[-0.01em]">Тендерный юрист</span>
         </div>
         <div className="grid gap-1">

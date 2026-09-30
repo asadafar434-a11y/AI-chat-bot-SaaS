@@ -18,6 +18,8 @@ export type DocxRequest = {
   cast?: { clause?: unknown; rows?: Loose<CastLine>[] };
   price?: unknown;
   profile?: Record<string, unknown>;
+  // Строки формы анкеты заказчика сверх реквизитов — что участник вписал под эту закупку.
+  anketaExtra?: Record<string, unknown>;
   // Анкета, декларация или цена, которые ИИ написал по образцам, — уже готовым документом.
   doc?: unknown;
 };
@@ -98,6 +100,10 @@ export async function docxFromRequest(body: DocxRequest): Promise<DocxResult> {
       : null,
     price: Number.isFinite(price) && price > 0 ? price : null,
     profile,
+    // Только в анкету и только вместе с реквизитами: в техническое предложение данные участника не попадают.
+    anketaExtra: profile && body.anketaExtra && typeof body.anketaExtra === "object"
+      ? Object.fromEntries(Object.entries(body.anketaExtra).slice(0, 50).map(([label, value]) => [text(label, 300), text(value, 2000)]))
+      : undefined,
   });
   return { ok: true, part, buffer };
 }

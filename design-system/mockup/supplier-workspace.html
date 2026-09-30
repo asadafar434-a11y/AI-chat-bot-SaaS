@@ -507,15 +507,13 @@
   .marks { display: grid; gap: 8px; margin: 0; padding: 4px var(--pad) 16px; list-style: none; }
   .marks li { display: grid; grid-template-columns: 16px minmax(0, 1fr); align-items: center; gap: 12px; }
   .mark-dot { width: 10px; height: 10px; justify-self: center; border-radius: 50%; }
-  /* Подписи в строке шагов сокращаются, только когда не помещаются (fitTabs): сначала «ТП», потом «Проверка»,
-     потом у «Цены» и «Вопросов» остаются значки, потом пропадают стрелки между шагами. Диктор читает полное
-     название. Не помещается и так (телефон) — инструменты с подписями уходят на свою строку, шаги листаются
-     отдельно: иначе «Цена» и «Вопросы» оказываются за краем экрана. */
-  .tab .short { display: none; }
-  .tabs[data-short-tp] .full-tp, .tabs[data-short-check] .full-check, .tabs[data-icons] .aside-lbl {
+  /* Строка шагов сжимается, только когда не помещается (fitTabs): сначала у «Вопросов» остаётся значок,
+     потом пропадают стрелки между шагами, потом статус словами — только у открытого шага, у остальных его
+     видно по цвету кружка, а диктор читает его целиком. Не помещается и так (телефон) — «Вопросы» уходят
+     на свою строку, шаги листаются отдельно. */
+  .tabs[data-icons] .aside-lbl, .tabs[data-brief] .step:not([aria-current]) .stage {
     position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
   }
-  .tabs[data-short-tp] .short-tp, .tabs[data-short-check] .short-check { display: inline; }
   .tabs[data-tight] .step-sep { display: none; }
   .tabs[data-stack] { flex-wrap: wrap; row-gap: 4px; }
   .tabs[data-stack] .steps { flex: 1 0 100%; min-width: 0; overflow-x: auto; scrollbar-width: none; }
@@ -839,6 +837,53 @@
   .finding.ok .ico { background: var(--ok-tint); color: var(--ok); }
   .finding.ok .what { color: var(--ok); }
   .under { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 8px 0 0; font: var(--t-body); color: var(--ink-2); }
+  .link:disabled { color: var(--ink-3); text-decoration: none; cursor: default; }
+  /* Риск отклонения: заголовок и три деления — зелёное одно, янтарных два, красных три */
+  .risk-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+  .risk-meter { display: inline-flex; gap: 3px; }
+  .risk-meter i { width: 20px; height: 6px; border-radius: var(--r-pill); background: var(--paper-3); }
+  .risk-meter.low i:first-child { background: var(--ok); }
+  .risk-meter.medium i:nth-child(-n+2) { background: var(--warn); }
+  .risk-meter.high i { background: var(--danger); }
+  /* Пункт проверки: куда идти исправлять и «Почему?» — цитата или правило из сохранённой проверки */
+  .find-body { display: grid; gap: 4px; min-width: 0; }
+  .find-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 4px; }
+  .why { display: grid; gap: 6px; margin-top: 4px; }
+  .why p, .why .quote { margin: 0; }
+  .why-src { display: flex; align-items: center; gap: 4px; font: var(--t-caption); color: var(--ink-3); }
+  .why-src > svg { flex: none; }
+
+  /* ---------- что подать и пакет ---------- */
+  /* Документы для подачи — группы «Составлю я», «От вас», «На площадке»; строки с разделителями */
+  .plan { list-style: none; margin: 0; padding: 0 var(--pad) 8px; }
+  .plan-cap { padding: 8px 0 2px; }
+  .plan-cap:not(:first-child) { margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .plan-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; column-gap: 12px; row-gap: 6px; align-items: start; padding: 10px 0; }
+  .plan-row + .plan-row { border-top: 1px solid var(--line); }
+  .plan-row > .badge { margin-top: 5px; }
+  .plan .prow-text .src { justify-self: start; }
+  .doc-list { padding: 0 var(--pad) 4px; }
+  .file-row > .part-gaps { grid-column: 2 / -1; }
+  .row-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pack-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .pill.sm { min-height: 28px; padding-inline: 12px; font: 600 12px/16px var(--ui); }
+  .pack-sub { display: grid; gap: 4px; margin: 0 var(--pad); padding: 10px 0 8px; border-top: 1px solid var(--line); }
+  .pack-sub .files-h { margin: 0; }
+  .ask-sub { margin: 0; font: var(--t-caption); color: var(--ink-3); }
+  .ask-row label + .ask-sub { margin-left: 26px; }
+  .ask-row > .ask-text { font: var(--t-doc); }
+  /* Оплата и проверка специалистом — остров с действием справа, как «Дальше» */
+  .pay { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px var(--pad); }
+  .pay .next-desc { max-width: 64ch; }
+  .teaser-ic.ok { background: var(--ok-tint); color: var(--ok); }
+  /* Строки анкеты заказчика: пустое поле — жёлтое, как пропуск в документе */
+  .input.extra:placeholder-shown { background: var(--warn-tint); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
+  .input.extra { min-height: 56px; }
+  @media (max-width: 559px) {
+    .plan-row { grid-template-columns: 32px minmax(0, 1fr); }
+    .plan-row > .badge { grid-column: 2; justify-self: start; margin-top: 0; }
+    .file-row > .row-acts { grid-column: 2 / -1; grid-row: 3; }
+  }
 
   /* ---------- вопросы: сообщения по правилам AI Elements ---------- */
   /* Разговор — один остров: лента прокручивается внутри, поле ввода прижато к низу острова */
@@ -1710,7 +1755,9 @@
       "izv-7": D("Извещение, раздел 7", "Извещение.pdf", "7. Размер обеспечения заявки: 1% от начальной (максимальной) цены контракта — 6 850,00 руб. Обеспечение предоставляется путём блокирования денежных средств на специальном счёте участника или независимой гарантией."),
       "izv-8": D("Извещение, раздел 8", "Извещение.pdf", "8. Декларация о соответствии участника закупки единым требованиям формируется с использованием программно-аппаратных средств электронной площадки."),
       "izv-11": D("Извещение, раздел 11", "Извещение.pdf", "11. Размер обеспечения исполнения контракта: 5% от цены контракта."),
+      "oc-3.1": D("Порядок оценки, п. 3.1", "Порядок оценки.pdf", "3.1. Программа с таймингом каждого блока церемонии и описание порядка оказания всех услуг по техническому заданию — 100 баллов; программа с таймингом без описания порядка оказания услуг — 50 баллов; программа не представлена — 0 баллов."),
       "oc-4.1": D("Порядок оценки, п. 4.1", "Порядок оценки.pdf", "Подтверждается исполненными договорами (контрактами) и актами о приёмке оказанных услуг. Сведения об опыте представляются по форме приложения 1 к настоящему порядку."),
+      "oc-4.2": D("Порядок оценки, п. 4.2", "Порядок оценки.pdf", "Подтверждается копиями трудовых или гражданско-правовых договоров, дипломов и удостоверений. Сведения о специалистах представляются по форме приложения 2 к настоящему порядку."),
       "k-2.1": D("Проект контракта, п. 2.1", "Проект контракта.pdf", "2.1. Цена контракта определяется по итогам электронного конкурса и не может превышать начальную (максимальную) цену контракта."),
       "k-2.5": D("Проект контракта, п. 2.5", "Проект контракта.pdf", "2.5. Оплата производится в течение 7 рабочих дней с даты подписания Заказчиком документа о приёмке."),
       "k-4.3": D("Проект контракта, п. 4.3", "Проект контракта.pdf", "4.3. Заказчик в течение 3 рабочих дней с даты получения проекта программы согласовывает его либо направляет мотивированные замечания."),
@@ -1738,14 +1785,23 @@
       },
     },
     chat: [{ role: "user", text: "Какое обеспечение нужно и как его внести?" }, "answer"],
-    check: {
-      state: "none", ok: 6,
-      findings: [
-        { kind: "bad", what: "Зал на 120 мест, а по ТЗ нужно не меньше 150.", todo: "За это заявку могут отклонить. Укажите зал вместимостью от 150 мест.", src: "tz-2.1" },
-        { kind: "warn", what: "Написано «за 10 дней», а в ТЗ — «за 10 рабочих дней».", todo: "Допишите слово «рабочих».", src: "tz-3.1" },
-        { kind: "warn", what: "Не указан срок передачи фотографий.", todo: "Добавьте: «в течение 5 рабочих дней».", src: "tz-4.3" },
-      ],
-    },
+    // Что подать — итог разбора документации: документы заявки, кто их готовит и где это сказано.
+    // part — составлю я; own — ваш документ (must — обязательный, иначе — для баллов); platform — на площадке.
+    plan: [
+      { part: "tp", sub: "Порядок оказания услуг по пунктам ТЗ и состав исполнителей — ФИО и почётные звания", ref: "izv-5.1.3" },
+      { own: "Программа мероприятия с таймингом", sub: "Приложение к предложению. За неё — до 10 баллов из 100, без неё — 0", ref: "oc-3.1", must: true },
+      { part: "participant", sub: "Сведения об участнике — из «Реквизитов»", law: "44-43-1" },
+      { part: "experience", sub: "За опыт — до 15 баллов из 100", ref: "oc-4.1" },
+      { own: "Копии исполненных договоров и актов о приёмке", sub: "К сведениям об опыте — без них опыт не засчитают", ref: "oc-4.1" },
+      { part: "staff", sub: "За специалистов — до 15 баллов из 100", ref: "oc-4.2" },
+      { own: "Копии трудовых договоров, дипломов и удостоверений", sub: "К сведениям о специалистах — без них специалистов не засчитают", ref: "oc-4.2" },
+      { own: "Обеспечение заявки — 6 850 ₽", sub: "Деньги на спецсчёте или независимая гарантия", ref: "izv-7", must: true },
+      { platform: "Предложение о цене", sub: "Вписываете на площадке при подаче — цену выберем на шаге «Цена»", ref: "izv-5.1.2" },
+      { platform: "Декларация о соответствии единым требованиям", sub: "Формирует площадка", ref: "izv-8" },
+    ],
+    // Пример на середине пути: участник уже вписал вместимость зала — 120 мест, а по ТЗ нужно не меньше 150.
+    seed: { 1: "Обеспечим площадку: [название и адрес зала], вместимость — 120 мест, гардероб, пандус и доступный вход для маломобильных граждан." },
+    check: { state: "none" },
   };
 
   // Закупка по 223-ФЗ с формой заказчика: товары, цена в заявке, декларация МСП.
@@ -1818,6 +1874,7 @@
     sources: {
       "izv-9": D("Извещение, п. 9", "Извещение.pdf", "9. Участниками закупки могут быть только субъекты малого и среднего предпринимательства."),
       "doc-3.2": D("Документация, п. 3.2", "Документация о закупке.pdf", "3.2. Заявка на участие в запросе предложений включает техническое предложение по форме 2, анкету участника закупки по форме 3 и предложение о цене договора по форме 5 раздела 6 документации."),
+      "doc-3.4": D("Документация, п. 3.4", "Документация о закупке.pdf", "3.4. Цена договора указывается в рублях с учётом НДС либо с указанием основания, по которому НДС не облагается."),
       "doc-3.5": D("Документация, п. 3.5", "Документация о закупке.pdf", "3.5. Участник закупки, сведения о котором отсутствуют в едином реестре субъектов малого и среднего предпринимательства, представляет декларацию о принадлежности к таким субъектам по форме 4 раздела 6 документации."),
       "doc-3.8": D("Документация, п. 3.8", "Документация о закупке.pdf", "3.8. Обеспечение заявки на участие в запросе предложений не требуется."),
       "doc-3.9": D("Документация, п. 3.9", "Документация о закупке.pdf", "3.9. Если участник закупки предложил цену договора на 25 и более процентов ниже начальной (максимальной) цены договора, он представляет обоснование предлагаемой цены договора."),
@@ -1841,10 +1898,13 @@
       },
     },
     chat: [],
-    check: {
-      state: "none", ok: 7,
-      findings: [{ kind: "bad", what: "Масса подарка — 800 г, а по ТЗ нужно не меньше 1000 г.", todo: "За это заявку могут отклонить. Укажите массу нетто от 1000 г.", src: "tz-3.1" }],
-    },
+    plan: [
+      { part: "tp", sub: "По форме 2 раздела 6 документации", ref: "doc-3.2" },
+      { part: "participant", sub: "По форме 3 — сведения об участнике из «Реквизитов»", ref: "doc-3.2" },
+      { part: "price", sub: "По форме 5 — в рублях, с НДС или основанием, почему НДС не облагается", ref: "doc-3.4" },
+      { part: "declaration", sub: "По форме 4 — если вас нет в едином реестре МСП", ref: "doc-3.5" },
+    ],
+    check: { state: "none" },
   };
 
   // Срок подачи прошёл: заявку подали, ждут итогов.
@@ -1872,7 +1932,7 @@
       ],
     },
     tpDraft: {
-      form: PLAIN_FORM, goods: [], antiDumping: { rule: "" },
+      form: { ...PLAIN_FORM, hasPrice: true }, goods: [], antiDumping: { rule: "" },
       items: [
         { clause: "1", topic: "Участники и даты", requirement: "45 человек, 16–17 октября 2026 г.", quote: "Семинар для 45 участников продолжительностью 2 дня: 16–17 октября 2026 г.", offer: "Проведём семинар для 45 участников 16–17 октября 2026 г.", verified: true },
         { clause: "2", topic: "Размещение", requirement: "Отель не дальше 60 км, одноместные номера", quote: "Размещение в загородном отеле не далее 60 км от г. Энска, одноместные номера.", offer: "Загородный отель «Сосновый бор», 38 км от г. Энска, одноместные номера для всех участников.", verified: true },
@@ -1882,6 +1942,7 @@
     sources: {
       "izv-12": D("Извещение, п. 12", "Извещение.pdf", "12. Подведение итогов закупки: не позднее 29.09.2026."),
       "doc-1": D("Документация, раздел 1", "Документация.pdf", "1. Закупка проводится в соответствии с Положением о закупке товаров, работ, услуг АО «Энскэнерго»."),
+      "doc-4.1": D("Документация, п. 4.1", "Документация.pdf", "4.1. Заявка включает техническое предложение по пунктам технического задания и предложение о цене договора."),
     },
     answers: {
       "Когда подведут итоги?": { text: "**Не позднее 29 сентября** — так сказано в извещении, п. 12.", src: [{ doc: "izv-12" }] },
@@ -1892,7 +1953,13 @@
       },
     },
     chat: [{ role: "user", text: "Когда подведут итоги?" }, "answer", { role: "user", text: "Почему здесь не 44-ФЗ?" }, "answer"],
-    check: { state: "done", ok: 3, findings: [] },
+    plan: [
+      { part: "tp", sub: "По пунктам ТЗ", ref: "doc-4.1" },
+      { part: "participant", sub: "Сведения об участнике — из «Реквизитов»" },
+      { part: "price", sub: "Предложение о цене договора", ref: "doc-4.1" },
+    ],
+    // Заявку подали: пакет оплачен и проверен, цена выбрана.
+    check: { state: "done" }, paid: true, priceCalc: { price: 910000 },
   };
 
   // Что появится по кнопке «Новая закупка»: прототип не читает файлы и показывает этот пример.
@@ -1931,10 +1998,19 @@
         { clause: "4", topic: "Оформление", requirement: "Цветочное оформление сцены и зала", quote: "Цветочное оформление сцены и зрительного зала.", offer: "Оформим сцену и зрительный зал живыми цветами.", verified: true },
       ],
     },
-    sources: { "tz-2": D("ТЗ, п. 2", "Техническое задание.docx", "2. Концертная программа продолжительностью не менее 90 минут, не менее 6 номеров.") },
+    sources: {
+      "tz-2": D("ТЗ, п. 2", "Техническое задание.docx", "2. Концертная программа продолжительностью не менее 90 минут, не менее 6 номеров."),
+      "izv-5.1": D("Извещение, п. 5.1", "Извещение.pdf", "5.1. Предложение участника должно содержать концертную программу с перечнем номеров."),
+      "izv-7": D("Извещение, раздел 7", "Извещение.pdf", "7. Размер обеспечения заявки: 1% от начальной (максимальной) цены контракта — 5 300,00 руб."),
+    },
     answers: {},
     chat: [],
-    check: { state: "none", ok: 3, findings: [{ kind: "warn", what: "Номера программы не перечислены, а по ТЗ их должно быть не меньше шести.", todo: "Перечислите номера концерта.", src: "tz-2" }] },
+    plan: [
+      { part: "tp", sub: "Концертная программа с перечнем номеров — за неё дают баллы", ref: "izv-5.1" },
+      { part: "participant", sub: "Сведения об участнике — из «Реквизитов»", law: "44-43-1" },
+      { own: "Обеспечение заявки — 5 300 ₽", sub: "1 % начальной цены", ref: "izv-7", must: true },
+    ],
+    check: { state: "none" },
   };
 
   // Черновик ТП из заготовки ИИ. В составе исполнителей — пустые строки по числу людей, которое требует ТЗ.
@@ -1944,11 +2020,14 @@
     return tp;
   }
 
-  // Готовит закупку к работе: черновик ТП, ответы в истории вопросов.
+  // Готовит закупку к работе: черновик документов, ответы в истории вопросов.
+  // gen — сколько раз составлены документы, rechecks — сколько пересчётов проверки с ИИ потрачено (на заявку их 3).
   function prepare(raw, composed) {
     const p = clone(raw);
     p.tp = composed ? draftTp(p) : null;
-    p.tpPrice = null; p.tpPriceText = ""; p.parts = {}; p.thinking = false;
+    if (composed && p.seed) Object.entries(p.seed).forEach(([i, offer]) => { p.tp.items[Number(i)].offer = offer; });
+    p.tpPrice = null; p.thinking = false;
+    p.gen = composed ? 1 : 0; p.rechecks = 0; p.extra = {}; p.paid = !!raw.paid; p.expert = null;
     const qs = [];
     p.chat = p.chat.map((m) => {
       if (m !== "answer") { qs.push(m.text); return m; }
@@ -1987,10 +2066,12 @@
     info: false, fold: {}, q: "", tabs: {}, lane: null,
     law: { open: null, want: null, threads: clone(THREADS0) },
     notes: [], notifOpen: false,
+    // Формат файлов пакета: Word или PDF.
+    format: "docx",
     // Распознавание сканов через ИИ — выключатель под каждой загрузкой, как в приложении.
     ocr: true,
   };
-  const PURCHASE_SCREENS = ["req", "tp", "check", "chat", "price"];
+  const PURCHASE_SCREENS = ["req", "tp", "price", "check", "pack", "chat"];
   const WORK = ["list", ...PURCHASE_SCREENS];
   const narrow = window.matchMedia("(max-width: 1023px)"); // сайдбар выезжает по кнопке
   const single = window.matchMedia("(max-width: 1179px)"); // закупки — по одной панели
@@ -2004,17 +2085,25 @@
   const reqCount = (p) => REQ_KEYS.reduce((n, k) => n + p.requirements[k].length, 0);
   const countText = (n, one, few, many) => `${n} ${plural(n, one, few, many)}`;
 
-  // Подготовка заявки — три шага по порядку: требования, техническое предложение, проверка заявки.
-  // Потом участник подаёт заявку на электронной площадке. Так же в приложении: web/src/lib/steps.ts.
+  // Заявка под ключ — 1000 ₽ за закупку, проверка живым специалистом — ещё 500 ₽, по желанию.
+  // ИИ стоит денег, поэтому дорогие операции на заявку ограничены: проверку с ИИ можно пересчитать 3 раза,
+  // документы составить заново — 3 раза без вопросов, дальше — только с подтверждением. Итог проверки
+  // пересчитывается сам по сохранённому результату, когда участник правит документы, — без ИИ.
+  const PRICE_APP = 1000, PRICE_EXPERT = 500, RECHECKS = 3, GENS = 3;
+
+  // Путь заявки — пять шагов по порядку: что подать, документы, цена, проверка, пакет.
+  // Документацию с площадки загружают раньше — в «Новой закупке». Потом участник подаёт пакет на площадке.
   function stepsOf(p) {
-    const reqs = reqCount(p);
-    const fill = p.tp ? fillCount(p.tp) : 0;
-    const done = p.check.state === "done";
-    const { bad, warn } = done ? checkCounts(p) : { bad: 0, warn: 0 };
+    const docs = planOf(p).length;
+    const holes = holesTotal(p);
+    const price = ourPrice(p);
+    const review = p.check.state === "done" ? reviewOf(p) : null;
     return [
-      { key: "req", n: 1, title: "Требования", short: "Требования", state: "done", status: reqs ? `выписаны: ${countText(reqs, "пункт", "пункта", "пунктов")}` : "не нашлись в документах", tone: reqs ? "calm" : "warn" },
-      { key: "tp", n: 2, title: "Техническое предложение", short: "ТП", ...(!p.tp ? { state: "todo", status: "не составлено", tone: "calm" } : fill ? { state: "fix", status: `впишите ${countText(fill, "пункт", "пункта", "пунктов")}`, tone: "warn" } : { state: "done", status: "готово", tone: "ok" }) },
-      { key: "check", n: 3, title: "Проверка заявки", short: "Проверка", ...(!done ? { state: "todo", status: "не проверена", tone: "calm" } : bad ? { state: "fix", status: countText(bad, "ошибка", "ошибки", "ошибок"), tone: "bad" } : warn ? { state: "fix", status: countText(warn, "замечание", "замечания", "замечаний"), tone: "warn" } : { state: "done", status: "ошибок нет", tone: "ok" }) },
+      { key: "req", n: 1, title: "Что подать", state: "done", status: docs ? countText(docs, "документ", "документа", "документов") : "не нашлось в документах", tone: docs ? "calm" : "warn" },
+      { key: "tp", n: 2, title: "Документы", ...(!p.tp ? { state: "todo", status: "не составлены", tone: "calm" } : holes ? { state: "fix", status: `впишите ${countText(holes, "пункт", "пункта", "пунктов")}`, tone: "warn" } : { state: "done", status: "составлены", tone: "ok" }) },
+      { key: "price", n: 3, title: "Цена", ...(price ? { state: "done", status: rubRound(price), tone: "ok" } : { state: "todo", status: "не выбрана", tone: "calm" }) },
+      { key: "check", n: 4, title: "Проверка", ...(!review ? { state: "todo", status: "не проверено", tone: "calm" } : { state: review.level === "low" ? "done" : "fix", status: RISK[review.level].short, tone: RISK[review.level].tone }) },
+      { key: "pack", n: 5, title: "Пакет", ...(p.paid ? { state: "done", status: "оплачен", tone: "ok" } : { state: "todo", status: `${PRICE_APP} ₽`, tone: "calm" }) },
     ];
   }
   // Бейдж статуса: пилюля с бледной заливкой статуса, текст и иконка — его цветом. Цвет всегда с подписью:
@@ -2022,13 +2111,131 @@
   const badge = (tone, text, icon) => `<span class="badge ${tone}">${icon ? ic(icon, 14, icon === "check" ? 2.5 : 1.5) : ""}${esc(text)}</span>`;
   // Что с закупкой сейчас — коротко, бейджем: в таблице на главной и в списке закупок.
   function stageBadge(p) {
-    const [, tp, check] = stepsOf(p);
     const due = dueLine(p.deadline, false);
     if (due && due.days < 0) return badge("calm", "приём закончился");
-    if (p.check.state === "done") return check.state === "done" ? badge("ok", "готово к подаче", "check") : badge(check.tone === "bad" ? "bad" : "warn", check.status, "alert");
-    if (tp.state === "todo") return badge("brand", "составить ТП");
-    if (tp.state === "fix") return badge("warn", `ТП: ${tp.status}`, "pen");
-    return badge("brand", "проверить заявку");
+    const [, docs, price, check] = stepsOf(p);
+    if (docs.state === "todo") return badge("brand", "составить документы");
+    if (docs.state === "fix") return badge("warn", `документы: ${docs.status}`, "pen");
+    if (price.state === "todo") return badge("brand", "выбрать цену");
+    if (check.state === "todo") return badge("brand", "проверить пакет");
+    if (check.tone === "bad") return badge("bad", "риск отклонения высокий", "alert");
+    return badge("ok", "готово к подаче", "check");
+  }
+
+  const rubRound = (v) => `${Math.round(v).toLocaleString("ru-RU")} ₽`;
+  // Что подать: документы, которые составлю я, ваши и те, что на площадке.
+  const planOf = (p) => p.plan || [];
+  const ownOf = (p) => planOf(p).filter((r) => r.own);
+  const readyOf = (p) => p.submitReady || [];
+  const isReady = (p, r) => readyOf(p).includes(r.own);
+  // Документы, которые составлю: ТП и анкета — всегда, декларация и цена — если их требует форма заказчика,
+  // опыт и специалисты — если за них дают баллы.
+  const docsOf = (p) => partsOf((p.tp || p.tpDraft).form, p.criteria);
+  // Своя цена заявки — «Ваша цена» на шаге «Цена». Она же встаёт в предложение о цене.
+  const ourPrice = (p) => calcOf(p).price || null;
+  // Реквизиты, без которых документ неполный: в анкете — наименование, ИНН, ОГРН, адрес и руководитель,
+  // в декларации — категория МСП, в предложении о цене — НДС. Остальные пустые поля — жёлтые, но не держат.
+  const NEED = { participant: ["fullName", "inn", "ogrn", "legalAddress", "head"], declaration: ["fullName", "smeCategory"], price: ["vatNote"] };
+  const profileGaps = (k) => (NEED[k] || []).filter((key) => !S.profile[key].trim());
+  // Строки формы анкеты заказчика, которых нет в реквизитах, — вписываются на шаге «Документы».
+  const extraRows = (p) => (p.tp ? p.tp.form.participantFields.filter((f, i, all) => all.indexOf(f) === i && !COVERED.some((re) => re.test(f.trim()))) : []);
+  const extraGaps = (p) => extraRows(p).filter((f) => !((p.extra || {})[f] || "").trim());
+  // Сколько мест осталось вписать в документ: жёлтые пункты ТП, исполнители, строки анкеты, реквизиты.
+  // Опыт и специалисты собираются из ваших договоров и дипломов — их пропуски видны в файле и в проверке.
+  function holesOf(p, k) {
+    if (!p.tp) return 0;
+    if (k === "tp") return itemsFill(p.tp) + (castTodo(p.tp) ? 1 : 0);
+    if (k === "participant") return profileGaps(k).length + extraGaps(p).length;
+    return profileGaps(k).length;
+  }
+  const holesTotal = (p) => docsOf(p).reduce((n, k) => n + holesOf(p, k), 0);
+  const evidenceHoles = (k) => EVIDENCE_DEMO[k].rows.flat().join(" ").match(/\[[^\]]+\]/g) || [];
+
+  // Числа, которые вписал участник, сверяются с заготовкой: из «[число, не меньше 150]» ясно, что меньше 150 нельзя.
+  const AT_LEAST = /\[число, не меньше (\d+(?:[.,]\d+)?)\]/;
+  const toNum = (s) => Number(s.replace(",", "."));
+  function tooLow(template, text) {
+    if (!template || !AT_LEAST.test(template)) return [];
+    const bits = template.split(/(\[[^\]]+\])/);
+    const re = new RegExp("^" + bits.map((b, i) => (i % 2 ? "([\\s\\S]*?)" : b.replace(/[.*+?^$(){}|[\]\\]/g, "\\$&"))).join("") + "$");
+    const m = re.exec(text);
+    if (!m) return [];
+    return bits.filter((_, i) => i % 2).flatMap((field, j) => {
+      const min = AT_LEAST.exec(field);
+      const got = min && /\d+(?:[.,]\d+)?/.exec(m[j + 1]);
+      return got && toNum(got[0]) < toNum(min[1]) ? [{ got: got[0], min: min[1] }] : [];
+    });
+  }
+
+  // Риск отклонения: высокий — есть то, за что отклоняют, или не хватает обязательного; средний — только замечания.
+  const RISK = {
+    high: { tone: "bad", short: "риск высокий", title: "Риск отклонения высокий", lead: "Исправьте отмеченное красным — иначе заявку, скорее всего, отклонят." },
+    medium: { tone: "warn", short: "риск средний", title: "Риск отклонения средний", lead: "За что отклонить, не нашёл. Замечания лучше поправить — они про баллы и цифры." },
+    low: { tone: "ok", short: "риск низкий", title: "Риск отклонения низкий", lead: "Всё заполнено и сходится с документами закупки." },
+  };
+  // Итог проверки пакета: что не так заполнено, чего не хватает, что лучше поправить. У каждого пункта — куда идти
+  // исправлять и «почему» из сохранённой проверки: цитата из документа или правило. ИИ на это не тратится.
+  function reviewOf(p) {
+    const wrong = [], missing = [], later = [];
+    let n = 0;
+    const add = (list, it) => list.push({ id: `rv-${p.id}-${n++}`, ...it });
+    const quoteOf = (key) => (key && p.sources[key] ? { label: p.sources[key].label, quote: p.sources[key].quote } : {});
+    const tp = p.tp;
+    const price = ourPrice(p);
+    const hasPriceDoc = docsOf(p).includes("price");
+    if (!tp) add(missing, { text: "Документы заявки ещё не составлены.", go: "tp", fix: "Составить" });
+    else {
+      const draft = p.tpDraft;
+      tp.goods.forEach((g, i) => tooLow(draft.goods[i] && draft.goods[i].characteristics, g.characteristics).forEach((x) => add(wrong, {
+        text: `${g.name}: ${x.got}, а по ТЗ — не меньше ${x.min}.`, todo: "С таким значением товар не соответствует ТЗ — заявку отклонят.", go: "tp", fix: "Исправить",
+        why: { label: g.source, quote: g.quote } })));
+      tp.items.forEach((it, i) => tooLow(draft.items[i] && draft.items[i].offer, it.offer).forEach((x) => add(wrong, {
+        text: `${it.topic}: ${x.got}, а по ТЗ${it.clause ? `, п. ${it.clause},` : ""} — не меньше ${x.min}.`, todo: "С таким значением предложение не соответствует ТЗ — заявку отклонят.", go: "tp", fix: "Исправить",
+        why: { label: `ТЗ${it.clause ? `, п. ${it.clause}` : ""}`, quote: it.quote } })));
+      const leaks = leaksOf(tp);
+      if (leaks.length) add(wrong, { text: `В техническом предложении — ваши данные: ${leaks.map((v) => `«${v}»`).join(", ")}.`, todo: "Уберите их: техническое предложение подают анонимно.", go: "tp", fix: "Убрать",
+        why: { text: "Техническое предложение подают в первую часть заявки: в ней нельзя раскрывать участника — ни названия, ни ИНН, ни подписи. Если комиссия узнает участника, заявку отклонят." } });
+      if (tp.cast) castCheck(tp.cast).filter((c) => !c.ok).forEach((c) => add(c.rankFail ? wrong : missing, {
+        text: `Состав исполнителей: ${c.text}.`, go: "tp", fix: c.rankFail ? "Исправить" : "Вписать",
+        why: { label: `ТЗ${tp.cast.clause ? `, п. ${tp.cast.clause}` : ""}`, quote: tp.cast.quote } }));
+      const fill = itemsFill(tp);
+      if (fill) add(missing, { text: `В техническом предложении не вписаны данные — ${countText(fill, "пункт", "пункта", "пунктов")}, они выделены жёлтым.`, go: "tp", fix: "Вписать",
+        why: { text: "Жёлтым выделено то, чего нет ни в документах закупки, ни в ваших документах. ИИ такое не придумывает: впишите сами, иначе предложение неполное." } });
+      const extras = extraGaps(p);
+      if (extras.length) add(missing, { text: `Анкета: не заполнено ${extras.map((f) => `«${f}»`).join(", ")}.`, go: "tp", fix: "Вписать",
+        why: { text: `Этой строки нет в «Реквизитах», а форма анкеты заказчика её требует${tp.form.partForms && tp.form.partForms.participant ? ` (${tp.form.partForms.participant})` : ""}.` } });
+      docsOf(p).forEach((k) => {
+        const gaps = profileGaps(k);
+        if (gaps.length) add(missing, { text: `${PART_TITLES[k]}: в «Реквизитах» не заполнено — ${gaps.map((key) => LABELS[key]).join(", ")}.`, go: "profile", fix: "Заполнить",
+          why: { text: "Реквизиты сами подставляются в анкету, декларацию и цену. Без этих полей документ неполный." } });
+      });
+      docsOf(p).filter(isEvidence).forEach((k) => {
+        const holes = evidenceHoles(k);
+        if (holes.length) add(later, { text: `${PART_TITLES[k]}: в ваших документах не нашлось ${countText(holes.length, "сведения", "сведений", "сведений")} — в файле они жёлтые.`, todo: "Добавьте документы в «Образцы и реквизиты» — впишу сам. Или впишите в файле.", act: "preview", part: k, fix: "Посмотреть",
+          why: { text: `Не нашлось: ${holes.join(", ")}.` } });
+      });
+    }
+    const planPrice = planOf(p).find((r) => r.part === "price" || r.platform === "Предложение о цене");
+    if (!price) add(hasPriceDoc ? missing : later, { text: hasPriceDoc ? "Предложение о цене: цена не выбрана." : "Цена заявки не выбрана.", todo: hasPriceDoc ? "" : "Её вписывают на площадке при подаче — выберите заранее, чтобы не уйти в убыток.", go: "price", fix: "Выбрать цену",
+      why: planPrice ? quoteOf(planPrice.ref) : {} });
+    else {
+      const c = calcOf(p);
+      const { floor } = priceFloor(c);
+      if (c.nmck && price > c.nmck) add(wrong, { text: `Цена ${rubRound(price)} выше начальной — ${rubRound(c.nmck)}.`, todo: "Заявку с ценой выше начальной отклонят.", go: "price", fix: "Исправить",
+        why: { text: "Цена заявки не может быть выше начальной (максимальной) цены, которую назвал заказчик." } });
+      else if (floor.ok && price < floor.price) add(later, { text: `По цене ${rubRound(price)} контракт в убытке: без убытка — от ${rubRound(floor.price)}.`, go: "price", fix: "Открыть расчёт" });
+      const drop = c.nmck ? (1 - price / c.nmck) * 100 : 0;
+      if (drop >= 25 && (c.antiDumping || (tp && tp.antiDumping.rule))) add(later, { text: `Снижение ${dropText(drop / 100)} % — это 25 % и больше.`, todo: tp && tp.antiDumping.rule ? tp.antiDumping.rule : "Действуют антидемпинговые меры: обеспечение исполнения в полтора раза больше или подтверждение добросовестности.", go: "price", fix: "Открыть расчёт" });
+    }
+    ownOf(p).filter((r) => !isReady(p, r)).forEach((r) => add(r.must ? missing : later, {
+      text: `${r.own} — не отмечено как готовое.`, todo: r.must ? "Это обязательная часть заявки. Отметьте на шаге «Пакет», когда будет готово." : "Без этого не засчитают баллы.", go: "pack", fix: "Отметить",
+      why: quoteOf(r.ref) }));
+    p.unreadable.forEach((f) => add(later, { text: `Файл «${f.name}» не прочитан: ${f.reason}.`, todo: "Требования выписаны по остальным файлам. Пересохраните файл и добавьте кнопкой «Добавить документы» в шапке закупки." }));
+    (p.scans || []).forEach((name) => add(later, { text: `Файл «${name}» распознан со скана.`, todo: "Цифры, даты и суммы из него сверьте с оригиналом.", go: "req", fix: "Открыть «Что подать»" }));
+    const unverified = REQ_KEYS.reduce((s, k) => s + p.requirements[k].filter((it) => !it.verified).length, 0);
+    if (unverified) add(later, { text: `В ${unverified} ${plural(unverified, "пункте", "пунктах", "пунктах")} требований цитата не найдена в документах дословно.`, todo: "Сверьте эти пункты с документом вручную.", go: "req", fix: "Открыть «Что подать»" });
+    const level = wrong.length || missing.length ? "high" : later.length ? "medium" : "low";
+    return { wrong, missing, later, level };
   }
   // Срок подачи бейджем: янтарный — неделя и меньше, серый — дальше или уже прошёл.
   function dueBadge(p, long) {
@@ -2040,7 +2247,6 @@
   }
   const needsFill = (t) => /\[[^\]]+\]/.test(t || "");
   const itemsFill = (tp) => tp.goods.filter((g) => needsFill(g.characteristics)).length + tp.items.filter((it) => needsFill(it.offer)).length + (needsFill(tp.form.consent) ? 1 : 0);
-  const fillCount = (tp) => itemsFill(tp) + (castTodo(tp) ? 1 : 0);
   const fields = (t) => esc(t).replace(/\[[^\]]+\]/g, (m) => `<mark class="fill">${m}</mark>`);
   const filledCount = () => PROFILE_KEYS.filter((k) => S.profile[k].trim()).length;
   const samplesOf = (kind) => S.docs.filter((d) => d.kinds.includes(kind));
@@ -2233,7 +2439,7 @@
       case "help":
         return { title: "Как это работает", sub: "Путь по закупке и где что лежит" };
       case "new":
-        return { title: "Новая закупка", sub: "Начало пути: загрузите документы — дальше шаги подскажут, что делать" };
+        return { title: "Новая закупка", sub: "Начало пути: загрузите документацию с площадки — дальше шаги подскажут, что делать" };
       case "profile": {
         const canFill = S.docs.some((d) => d.kinds.some((k) => REQUISITE_KINDS.includes(k)));
         return {
@@ -2271,14 +2477,13 @@
       const due = dueLine(p.deadline, false);
       if (!due || due.days < 0) continue;
       const urgent = due.tone === "soon" ? "warn" : "brand";
-      const [, tp] = stepsOf(p);
-      const bad = p.check.state === "done" ? checkCounts(p).bad : 0;
-      if (bad) out.push({ p, go: "check", text: bad === 1 ? "Исправить ошибку в заявке" : `Исправить ошибки в заявке — ${bad}`, tone: "bad" });
-      else if (p.check.state !== "done") {
-        if (tp.state === "todo") out.push({ p, go: "tp", text: "Составить техническое предложение", tone: urgent });
-        else if (tp.state === "fix") out.push({ p, go: "tp", text: `Вписать свои данные в ТП — ${tp.status.replace(/^впишите /, "")}`, tone: urgent });
-        else out.push({ p, go: "check", text: "Проверить заявку перед подачей", tone: urgent });
-      } else if (stepsOf(p)[2].state === "done") out.push({ p, go: "files", text: "Скачать документы и подать заявку на площадке", tone: urgent });
+      const [, docs, price, check, pack] = stepsOf(p);
+      if (docs.state === "todo") out.push({ p, go: "tp", text: "Составить документы заявки", tone: urgent });
+      else if (docs.state === "fix") out.push({ p, go: "tp", text: `Вписать свои данные в документы — ${docs.status.replace(/^впишите /, "")}`, tone: urgent });
+      else if (price.state === "todo") out.push({ p, go: "price", text: "Выбрать цену заявки", tone: urgent });
+      else if (check.state === "todo") out.push({ p, go: "check", text: "Проверить пакет перед подачей", tone: urgent });
+      else if (check.tone === "bad") out.push({ p, go: "check", text: "Исправить заявку: риск отклонения высокий", tone: "bad" });
+      else if (pack.state === "todo") out.push({ p, go: "pack", text: "Скачать пакет и подать заявку на площадке", tone: urgent });
       if ((p.scans || []).length) out.push({ p, go: "req", text: `Сверить цифры в ${p.scans.length === 1 ? "файле со скана" : "файлах со скана"}`, tone: "warn" });
       p.unreadable.forEach((f) => out.push({ p, go: "req", text: `Пересохранить «${f.name}» — файл не прочитан`, tone: "warn" }));
     }
@@ -2287,9 +2492,9 @@
     out.splice(Math.min(1, out.length), 0, ...answers);
     return out;
   }
-  const GO_LABEL = { tp: "Открыть ТП", check: "Открыть проверку", req: "Открыть требования", files: "Скачать документы" };
-  // Кнопка дела: шаг закупки, окно документов заявки или разговор с юристом.
-  const taskAttrs = (t) => t.thread ? `data-act="law-open" data-thread="${t.thread}"` : t.go === "files" ? `data-act="files" data-id="${t.p.id}"` : `data-go="${t.go}" data-id="${t.p.id}"`;
+  const GO_LABEL = { req: "Открыть «Что подать»", tp: "Открыть документы", price: "Выбрать цену", check: "Открыть проверку", pack: "Открыть пакет" };
+  // Кнопка дела: шаг закупки или разговор с юристом.
+  const taskAttrs = (t) => t.thread ? `data-act="law-open" data-thread="${t.thread}"` : `data-go="${t.go}" data-id="${t.p.id}"`;
   const taskBadge = (t, long) => (t.thread ? badge("brand", "новый ответ") : dueBadge(t.p, long));
   const taskWhere = (t) => (t.p ? t.p.short : "Общий вопрос");
 
@@ -2313,31 +2518,31 @@
       </button></li>`).join("")}</ul>` : ""}`;
   }
 
-  // Этапы — как колонки доски у Контур.Закупок и этапы у Тендерплана, но по нашему пути из трёх шагов.
+  // Этапы — как колонки доски у Контур.Закупок и этапы у Тендерплана, но по нашему пути из пяти шагов.
   const LANES = [
-    { key: "tp", title: "Техническое предложение" },
-    { key: "check", title: "Проверка заявки" },
+    { key: "docs", title: "Документы" },
+    { key: "check", title: "Цена и проверка" },
     { key: "ready", title: "Готово к подаче" },
     { key: "closed", title: "Приём закончился" },
   ];
   function laneOf(p) {
     const due = dueLine(p.deadline, false);
     if (due && due.days < 0) return "closed";
-    const [, tp, check] = stepsOf(p);
-    if (check.state === "done") return "ready";
-    return p.check.state === "done" || tp.state === "done" ? "check" : "tp";
+    const [, docs, price, check] = stepsOf(p);
+    if (docs.state !== "done") return "docs";
+    return price.state === "done" && check.state !== "todo" && check.tone !== "bad" ? "ready" : "check";
   }
   // Что на этапе ждёт вас — одной строкой под числом.
   function laneNote(key, list) {
     const steps = list.map((p) => stepsOf(p));
     if (!list.length) return { tone: "", text: "нет закупок" };
-    if (key === "tp") {
-      const fix = steps.filter(([, tp]) => tp.state === "fix").length;
-      return fix ? { tone: "warn", text: `${fix} ${plural(fix, "ждёт", "ждут", "ждут")} ваших данных` } : { tone: "brand", text: "составить ТП" };
+    if (key === "docs") {
+      const fix = steps.filter(([, docs]) => docs.state === "fix").length;
+      return fix ? { tone: "warn", text: `${fix} ${plural(fix, "ждёт", "ждут", "ждут")} ваших данных` } : { tone: "brand", text: "составить документы" };
     }
     if (key === "check") {
-      const bad = list.filter((p) => p.check.state === "done" && checkCounts(p).bad).length;
-      return bad ? { tone: "bad", text: `${bad} с ошибками` } : { tone: "brand", text: "проверить перед подачей" };
+      const bad = steps.filter(([, , , check]) => check.tone === "bad").length;
+      return bad ? { tone: "bad", text: `${bad} с высоким риском отклонения` } : { tone: "brand", text: "выбрать цену и проверить" };
     }
     if (key === "ready") return { tone: "ok", text: "можно подавать" };
     return { tone: "", text: "срок прошёл" };
@@ -2380,11 +2585,11 @@
     const start = `<section class="panel" aria-labelledby="start-title">
         <div class="panel-head"><h2 class="panel-title" id="start-title">С чего начать</h2><button class="link quiet small" type="button" data-go="help">Как это работает</button></div>
         <ol class="start-steps">
-          <li><span class="num" aria-hidden="true">1</span><p class="small"><b>Загрузите документы закупки</b></p><p class="small ink2">Извещение, ТЗ и проект контракта — PDF, Word, сканы или фото.</p></li>
-          <li><span class="num" aria-hidden="true">2</span><p class="small"><b>Пройдите три шага</b></p><p class="small ink2">Требования, техническое предложение, проверка заявки. Каждый шаг подскажет, что делать дальше.</p></li>
-          <li><span class="num" aria-hidden="true">3</span><p class="small"><b>Подайте заявку на площадке</b></p><p class="small ink2">Срок подачи и сколько дней осталось — всегда в шапке закупки.</p></li>
+          <li><span class="num" aria-hidden="true">1</span><p class="small"><b>Загрузите документацию с площадки</b></p><p class="small ink2">Всё, что скачали на площадке: извещение, ТЗ, проект контракта, формы — PDF, Word, сканы или архив.</p></li>
+          <li><span class="num" aria-hidden="true">2</span><p class="small"><b>Пройдите пять шагов</b></p><p class="small ink2">Что подать, документы, цена, проверка, пакет. Документы составляю я — вы вписываете только то, чего я знать не могу.</p></li>
+          <li><span class="num" aria-hidden="true">3</span><p class="small"><b>Скачайте пакет и подайте заявку</b></p><p class="small ink2">Заявка под ключ — ${PRICE_APP} ₽. Проверка живым специалистом — ещё ${PRICE_EXPERT} ₽, по желанию.</p></li>
         </ol>
-        <div class="panel-foot"><button class="btn" type="button" data-go="new">${ic("plus")}Загрузить документы закупки</button><span class="or">или <button class="link" type="button" data-act="sample">посмотреть на примере</button></span></div>
+        <div class="panel-foot"><button class="btn" type="button" data-go="new">${ic("plus")}Загрузить документацию</button><span class="or">или <button class="link" type="button" data-act="sample">посмотреть на примере</button></span></div>
       </section>`;
     return `<div class="home">
       ${list.length ? `<section class="panel" aria-labelledby="now-title">
@@ -2485,42 +2690,48 @@
 
   function tabsHTML(p) {
     const n = asked(p);
-    const label = (st) => st.short === st.title ? esc(st.title) : `<span class="full-${st.key}">${esc(st.title)}</span><span class="short short-${st.key}" aria-hidden="true">${esc(st.short)}</span>`;
     const step = (st, i) => `<li>${i ? `<span class="step-sep" aria-hidden="true">${ic("chev", 14)}</span>` : ""}<button class="tab step" type="button" data-go="${st.key}" data-id="${p.id}"${S.screen === st.key ? ' aria-current="page"' : ""}>
         <span class="step-dot ${st.state}${st.tone === "bad" ? " bad" : ""}" aria-hidden="true">${st.state === "done" ? ic("check", 12, 3) : st.n}</span>
-        <span class="step-text"><span class="step-title"><span class="sr-only">Шаг ${st.n}: </span>${label(st)}</span><span class="stage ${st.tone}">${esc(st.status)}</span></span>
+        <span class="step-text"><span class="step-title"><span class="sr-only">Шаг ${st.n}: </span>${esc(st.title)}</span><span class="stage ${st.tone}">${esc(st.status)}</span></span>
       </button></li>`;
     return `<nav class="tabs" id="tabs" aria-label="Подготовка заявки">
       <ol class="steps">${stepsOf(p).map(step).join("")}</ol>
       <div class="tab-tools">
-        <button class="tab aside accent" type="button" data-go="price" data-id="${p.id}"${S.screen === "price" ? ' aria-current="page"' : ""} title="До какой цены снижаться">${ic("calc", 16)}<span class="aside-lbl">Цена<span class="sr-only"> — до какой цены снижаться</span></span></button>
         <button class="tab aside" type="button" data-go="chat" data-id="${p.id}"${S.screen === "chat" ? ' aria-current="page"' : ""}>${ic("chat", 16)}<span class="aside-lbl">Вопросы</span>${n ? `<span class="count">${n}</span>` : ""}</button>
       </div>
     </nav>`;
   }
 
   // Что делать дальше — в конце шага, чтобы путь по закупке был виден без подсказок.
+  const NEXT = {
+    req: { n: 2, go: "tp", title: "Документы" },
+    tp: { n: 3, go: "price", title: "Цена", text: "Посчитаю, до какой цены можно снижаться без убытка, — выберите цену заявки.", action: "Выбрать цену" },
+    price: { n: 4, go: "check", title: "Проверка", text: "Проверю весь пакет: что где не так заполнено, чего не хватает и насколько велик риск отклонения.", action: "Проверить пакет" },
+    check: { n: 5, go: "pack", title: "Пакет", text: "Скачайте документы по одному или архивом — в Word или PDF.", action: "Открыть пакет" },
+  };
   function nextHTML(p, from) {
-    const [, tp, check] = stepsOf(p);
-    const due = dueLine(p.deadline, true);
-    let n = null;
-    if (from === "req" && tp.state !== "done") n = { label: "Дальше — шаг 2 из 3", title: "Техническое предложение", text: tp.state === "todo" ? "Составлю черновик по ТЗ: товары с характеристиками и предложение по каждому пункту. Вам останется вписать своё." : `Черновик готов — осталось вписать свои данные: ${tp.status.replace(/^впишите /, "")}.`, go: "tp", action: tp.state === "todo" ? "Составить ТП" : "Открыть ТП" };
-    else if (from !== "check" && check.state === "todo") n = { label: "Дальше — шаг 3 из 3", title: "Проверка заявки", text: "Соберите заявку и загрузите её перед подачей — сверю с извещением и ТЗ по каждому пункту.", go: "check", action: "Проверить заявку" };
-    else if (check.state === "done") n = { label: "Готово к подаче", title: "Подайте заявку на электронной площадке", text: `${due ? `${due.head}${due.left ? ` — ${due.left}` : ""}.` : "Срок подачи — в извещении о закупке."} Файлы заявки — одним архивом.`, act: "files", action: "Скачать документы заявки" };
-    if (!n) return "";
-    return `<section class="next" aria-label="${esc(n.label)}">
-      <div class="next-text"><p class="next-label${n.go ? "" : " ok"}">${esc(n.label)}</p><p class="next-title">${esc(n.title)}</p><p class="next-desc">${esc(n.text)}</p></div>
-      ${n.go ? `<button class="btn" type="button" data-go="${n.go}" data-id="${p.id}">${esc(n.action)}${ic("chev", 16)}</button>`
-        : n.act ? `<button class="btn" type="button" data-act="${n.act}" data-id="${p.id}">${ic("download", 16)}${esc(n.action)}</button>` : ""}
+    if (from === "pack") {
+      const due = dueLine(p.deadline, true);
+      return `<section class="next" aria-label="Готово к подаче"><div class="next-text"><p class="next-label ok">Готово к подаче</p><p class="next-title">Подайте заявку на электронной площадке</p><p class="next-desc">${esc(due ? `${due.head}${due.left ? ` — ${due.left}` : ""}.` : "Срок подачи — в извещении о закупке.")} Документы с жёлтыми полями не подавайте — сначала впишите.</p></div></section>`;
+    }
+    const n = NEXT[from];
+    const holes = holesTotal(p);
+    const text = n.text || (!p.tp ? "Составлю все документы заявки по формам заказчика — вам останется вписать то, что знаете только вы."
+      : holes ? `Документы составлены — осталось вписать своё: ${countText(holes, "пункт", "пункта", "пунктов")}.` : "Документы составлены и заполнены.");
+    const action = n.action || (p.tp ? "Открыть документы" : "Составить документы");
+    return `<section class="next" aria-label="Дальше — шаг ${n.n} из 5">
+      <div class="next-text"><p class="next-label">Дальше — шаг ${n.n} из 5</p><p class="next-title">${esc(n.title)}</p><p class="next-desc">${esc(text)}</p></div>
+      ${from === "req" && !p.tp ? `<button class="btn" type="button" data-act="compose-go" data-id="${p.id}">${esc(action)}${ic("chev", 16)}</button>` : `<button class="btn" type="button" data-go="${n.go}" data-id="${p.id}">${esc(action)}${ic("chev", 16)}</button>`}
     </section>`;
   }
 
   function tabHTML(p) {
     switch (S.screen) {
       case "tp": return tpHTML(p);
-      case "check": return checkHTML(p);
-      case "chat": return chatHTML("chat", p, "Спросите про документы закупки…");
       case "price": return priceHTML(p);
+      case "check": return checkHTML(p);
+      case "pack": return packHTML(p);
+      case "chat": return chatHTML("chat", p, "Спросите про документы закупки…");
       default: return reqHTML(p);
     }
   }
@@ -2550,7 +2761,7 @@
         ${lawBadge(p)}
         <div class="pd-text"><h2 class="pd-title" id="pd-title" tabindex="-1">${esc(p.short)}</h2><p class="pd-sub">${pdDue(p)}${p.sample ? '<span class="pd-sample">\u00a0· пример</span>' : ""}</p></div>
         <div class="pd-acts">
-          <button class="btn line xs" type="button" data-act="files" data-id="${p.id}" aria-label="Скачать заявку" title="Документы заявки — файлы Word">${ic("download", 16)}<span class="pd-lbl">Скачать заявку</span></button>
+          <button class="btn line xs" type="button" data-go="pack" data-id="${p.id}" aria-label="Скачать заявку" title="Пакет документов заявки — Word или PDF">${ic("download", 16)}<span class="pd-lbl">Скачать заявку</span></button>
           <label class="btn line xs opt" for="add-doc" title="Добавить документы закупки">${ic("clip", 16)}<span class="pd-lbl opt">Добавить документы</span><input id="add-doc" type="file" multiple class="sr-only" aria-label="Добавить документы закупки"></label>
           <button class="btn line xs info-toggle opt" id="info-toggle" type="button" data-act="info" aria-controls="ws-info" aria-expanded="${S.info}" aria-label="${infoLabel}" title="${infoLabel}">${ic("panel", 16)}<span class="pd-lbl opt">Сведения</span>${docs ? `<span class="doc-count${unread ? " warn" : ""}">${ic(unread ? "alert" : "file", 14)}${unread || docs}</span>` : ""}</button>
         </div>
@@ -2616,9 +2827,6 @@
     </div>`;
   }
 
-  function checkCounts(p) {
-    return { bad: p.check.findings.filter((f) => f.kind === "bad").length, warn: p.check.findings.filter((f) => f.kind === "warn").length };
-  }
 
   /* ---------- как оценят заявку ---------- */
   // Как в web/src/lib/criteria.ts: модель переписывает значимости, долю строки в итоговой сотне баллов считает код.
@@ -2698,7 +2906,50 @@
     </section>`;
   }
 
-  /* ---------- требования ---------- */
+  /* ---------- шаг 1: что подать ---------- */
+  // Что с документом заявки сейчас: подпись под названием и бейдж. Одно и то же — в «Что подать», «Документах» и «Пакете».
+  function docStatus(p, k) {
+    const holes = holesOf(p, k);
+    const fill = (n) => badge("warn", `впишите ${countText(n, "пункт", "пункта", "пунктов")}`, "pen");
+    if (!p.tp) return { sub: "", tag: badge("brand", "составлю") };
+    if (k === "tp") return { sub: "Первая часть заявки — без названия и реквизитов участника", tag: holes ? fill(holes) : badge("ok", "готово", "check") };
+    if (isEvidence(k)) {
+      const n = S.docs.filter((d) => d.kinds.includes(k)).length;
+      if (p.sample) return { sub: EVIDENCE_DEMO[k].score, tag: badge("warn", k === "experience" ? "8,8 из 15 баллов" : "7,5 из 15 баллов", "alert") };
+      return n ? { sub: `Из ${countText(n, "вашего документа", "ваших документов", "ваших документов")} в «Образцах и реквизитах»`, tag: badge("brand", "за них баллы") }
+        : { sub: "Загрузите договоры и дипломы в «Образцы и реквизиты» — без них баллов не будет", tag: badge("warn", "нет документов", "alert") };
+    }
+    if (k === "price") {
+      const price = ourPrice(p);
+      return { sub: price ? "Цена — с шага «Цена»" : "Цену выберите на шаге «Цена» — она встанет в документ", tag: holes ? badge("warn", "впишите НДС в «Реквизитах»", "pen") : price ? badge("ok", rubRound(price), "check") : badge("brand", "выбрать цену") };
+    }
+    return { sub: k === "participant" ? "Сведения об участнике — из «Реквизитов»" : "Категория МСП — из «Реквизитов»", tag: holes ? fill(holes) : badge("ok", "готово", "check") };
+  }
+  const srcOf = (p, r) => (r.law ? refBtn({ law: r.law }, p) : r.ref && p.sources[r.ref] ? refBtn({ doc: r.ref }, p) : "");
+  // Документы для подачи — итог разбора: что составлю я, что нужно от вас, что делает площадка. Под каждым — где это сказано.
+  function planHTML(p) {
+    const rows = planOf(p);
+    if (!rows.length) return `<section class="panel" aria-labelledby="plan-title"><div class="panel-head"><h3 class="panel-title" id="plan-title">Документы для подачи</h3></div><p class="empty-group">${GROUPS.submit.empty}</p></section>`;
+    const ai = rows.filter((r) => r.part), own = rows.filter((r) => r.own), platform = rows.filter((r) => r.platform);
+    const line = (icon, title, r, tag) => `<li class="plan-row"><span class="law icon" aria-hidden="true">${ic(icon, 16)}</span><span class="prow-text"><span class="file-title">${esc(title)}</span>${r.sub ? `<span class="file-sub">${esc(r.sub)}</span>` : ""}<span>${srcOf(p, r)}</span></span>${tag}</li>`;
+    const block = (title, list, html) => (list.length ? `<li class="plan-cap"><span class="eyebrow">${title}</span></li>${html}` : "");
+    const ownTag = (r) => (isReady(p, r) ? badge("ok", "готово", "check") : r.must ? badge("warn", "нужно от вас", "pen") : badge("calm", "для баллов"));
+    return `<section class="panel" aria-labelledby="plan-title">
+      <div class="panel-head"><div><h3 class="panel-title" id="plan-title">Документы для подачи <span class="count">${rows.length}</span></h3><p class="panel-sub">${esc(p.kind)} — состав заявки по документации</p></div>
+        ${p.tp ? `<button class="btn line" type="button" data-go="tp" data-id="${p.id}">Открыть документы</button>` : `<button class="btn" type="button" data-act="compose-go" data-id="${p.id}">Составить документы</button>`}</div>
+      <ul class="plan">
+        ${block("Составлю я", ai, ai.map((r) => line("file", PART_TITLES[r.part], r, docStatus(p, r.part).tag)).join(""))}
+        ${block("От вас", own, own.map((r) => line("clip", r.own, r, ownTag(r))).join(""))}
+        ${block("На площадке", platform, platform.map((r) => line("landmark", r.platform, r, badge("calm", "на площадке"))).join(""))}
+      </ul>
+    </section>`;
+  }
+  const reqGroup = (p, key) => {
+    const items = p.requirements[key];
+    return `<section class="panel" aria-labelledby="req-${key}"><div class="panel-head"><h3 class="panel-title" id="req-${key}">${GROUPS[key].title}${items.length ? ` <span class="count">${items.length}</span>` : ""}</h3></div>
+      ${items.length ? `<ul class="list">${items.map((it, i) => `<li><span>${esc(it.text)}</span>${sourceHTML(`${key}-${i}`, it.source, it.quote, it.verified, "пункт")}</li>`).join("")}</ul>` : `<p class="empty-group">${GROUPS[key].empty}</p>`}
+    </section>`;
+  };
   function reqHTML(p) {
     const unverified = REQ_KEYS.reduce((n, k) => n + p.requirements[k].filter((it) => !it.verified).length, 0) + (p.criteria ? p.criteria.rows.filter((r) => !r.verified).length : 0);
     const notes = warnsHTML([
@@ -2707,15 +2958,13 @@
       unverified ? `В ${unverified} ${plural(unverified, "пункте", "пунктах", "пунктах")} цитата не найдена в документах дословно — сверьте их вручную.` : "",
     ].filter(Boolean));
     return `<div class="tab-body">
-      <p class="tab-lead">Шаг 1 — разобраться, подходит ли вам закупка и что подать. Всё выписано из документов закупки; нажмите на ссылку под пунктом, чтобы увидеть точную цитату.</p>
+      <p class="tab-lead">Шаг 1 — что подать. Разобрал документацию с площадки: из каких документов состоит заявка, кто их готовит и что требует заказчик. Нажмите на ссылку под пунктом — покажу точную цитату.</p>
       ${notes ? `<div class="notes">${notes}</div>` : ""}
-      ${priceTeaserHTML(p)}
-      ${REQ_KEYS.map((key) => {
-        const items = p.requirements[key];
-        return `${key === "submit" ? criteriaHTML(p) : ""}<section class="panel" aria-labelledby="req-${key}"><div class="panel-head"><h3 class="panel-title" id="req-${key}">${GROUPS[key].title}${items.length ? ` <span class="count">${items.length}</span>` : ""}</h3></div>
-          ${items.length ? `<ul class="list">${items.map((it, i) => `<li><span>${esc(it.text)}</span>${sourceHTML(`${key}-${i}`, it.source, it.quote, it.verified, "пункт")}</li>`).join("")}</ul>` : `<p class="empty-group">${GROUPS[key].empty}</p>`}
-        </section>`;
-      }).join("")}
+      ${planHTML(p)}
+      ${reqGroup(p, "who")}
+      ${criteriaHTML(p)}
+      ${reqGroup(p, "scope")}
+      ${reqGroup(p, "terms")}
       ${nextHTML(p, "req")}
     </div>`;
   }
@@ -2729,7 +2978,7 @@
   }
 
   /* ---------- техническое предложение ---------- */
-  const TP_STEPS = ["Ищу в документах форму заявки…", "Читаю ТЗ…", "Выписываю товары и характеристики…", "Готовлю предложение по пунктам…", "Сверяю цитаты с ТЗ…"];
+  const TP_STEPS = ["Ищу в документах формы заявки…", "Читаю ТЗ…", "Составляю техническое предложение…", "Заполняю анкету и остальные документы реквизитами…", "Сверяю цитаты с ТЗ…"];
 
   function tpNotes(p) {
     const tp = p.tp;
@@ -2757,21 +3006,6 @@
     return `<button class="edit" type="button" data-act="edit" data-edit="${key}" data-label="${esc(label)}" aria-label="Изменить: ${esc(label)}">${fields(value)}</button>`;
   }
 
-  function priceInfo(p) {
-    const nmck = parseRub(p.price);
-    const price = p.tpPrice;
-    const drop = nmck && price ? (1 - price / nmck) * 100 : null;
-    const percent = drop !== null ? drop.toLocaleString("ru-RU", { maximumFractionDigits: 1 }) : "";
-    let h = "";
-    if (price) h += `<p class="small ink2">Прописью: ${esc(rublesInWords(price))}</p>`;
-    if (nmck) h += `<p class="small muted">Начальная цена — ${fmtRub(nmck)} ₽${drop !== null && drop > 0 ? ` · снижение ${percent}%` : ""}</p>`;
-    if (drop !== null && drop < 0) h += noteHTML("warn", "Цена выше начальной — такую заявку отклонят.", "", "alert");
-    if (drop !== null && drop >= 25) h += noteHTML("warn", `Снижение ${percent}% — это 25% и больше. ${esc(p.tp.antiDumping.rule || "В таких случаях обычно действуют антидемпинговые меры: обеспечение исполнения в полтора раза больше или подтверждение опыта. Проверьте условия в извещении.")}`, "", "alert");
-    return h;
-  }
-
-  // Готовая часть заявки актуальна, пока не изменились цена, реквизиты и образцы, по которым она составлена.
-  const basisKey = (p, k) => JSON.stringify({ price: p.tp.form.hasPrice ? p.tpPrice || null : null, profile: S.profile, samples: samplesOf(PART_SAMPLE_KIND[k]).map((d) => d.id) });
   function basisText(p, k) {
     const form = p.tp.form.partForms && p.tp.form.partForms[k];
     const samples = samplesOf(PART_SAMPLE_KIND[k]);
@@ -2780,25 +3014,27 @@
     if (form) return `по форме заказчика (${form})`;
     return "по обычной форме — ни формы заказчика, ни образца нет";
   }
-  function partRow(p, k) {
-    const made = p.parts[k];
-    const fresh = made && made.key === basisKey(p, k);
-    const samples = samplesOf(PART_SAMPLE_KIND[k]);
-    const writing = S.ui.writing === k;
-    const status = p.sample ? (isEvidence(k) ? EVIDENCE_DEMO[k].score : "в примере — по стандартному шаблону")
-      : writing ? "Пишу документ — это около минуты…"
-      : fresh ? esc(made.basis)
-      : made ? "реквизиты, цена или образцы изменились — составлю заново"
-      : samples.length ? `составлю по вашему образцу «${esc(samples[0].name)}»${samples.length > 1 ? ` и ещё ${samples.length - 1}` : ""}`
-      : "ваших образцов нет — составлю по форме заказчика";
-    return `<li>
-      <span class="part-name">${esc(PART_TITLES[k])}</span>
-      <button class="btn soft xs" type="button" data-act="part" data-part="${k}"${S.ui.writing ? " disabled" : ""}>${writing ? "Пишу…" : "Скачать"}</button>
-      <span class="part-status">${status}${fresh && !p.sample && !writing ? ` · <button class="link quiet" type="button" data-act="part-redo" data-part="${k}">составить заново</button>` : ""}</span>
-      ${p.sample && isEvidence(k) ? `<ul class="part-gaps">${EVIDENCE_DEMO[k].gaps.map((g) => `<li>${ic("alert", 16)}${esc(g)}</li>`).join("")}</ul>` : ""}
-    </li>`;
+  // Строка документа заявки: название, что с ним и «Посмотреть». В примере у опыта и специалистов — чего не хватает до максимума баллов.
+  function docRow(p, k) {
+    const { sub, tag } = docStatus(p, k);
+    return `<li class="file-row">
+        <span class="law icon" aria-hidden="true">${ic("file", 16)}</span>
+        <span class="prow-text"><span class="file-title">${esc(PART_TITLES[k])}</span>${sub ? `<span class="file-sub">${esc(sub)}</span>` : ""}</span>
+        ${tag}
+        <button class="btn soft xs" type="button" data-act="preview" data-part="${k}">Посмотреть</button>
+        ${p.sample && isEvidence(k) ? `<ul class="part-gaps">${EVIDENCE_DEMO[k].gaps.map((g) => `<li>${ic("alert", 16)}${esc(g)}</li>`).join("")}</ul>` : ""}
+      </li>`;
   }
-  const partsRows = (p) => partsOf(p.tp.form, p.criteria).filter((k) => k !== "tp").map((k) => partRow(p, k)).join("");
+  const docRows = (p) => docsOf(p).map((k) => docRow(p, k)).join("");
+  // Строки формы анкеты заказчика, которых нет в реквизитах, — поле на каждую; пустое — жёлтое.
+  function extraHTML(p) {
+    const rows = extraRows(p);
+    if (!rows.length) return "";
+    return `<section class="panel" aria-labelledby="extra-title">
+      <div class="panel-head"><div><h3 class="panel-title" id="extra-title">Анкета: строки формы заказчика${extraGaps(p).length ? ' <span class="flag" data-flag>впишите данные</span>' : ""}</h3><p class="panel-sub">Их нет в «Реквизитах» — впишите для этой закупки</p></div></div>
+      <div class="panel-body">${rows.map((f, i) => `<div class="num-field"><label for="extra-${i}">${esc(f)}</label><textarea class="input area extra" id="extra-${i}" data-extra="${esc(f)}" rows="2" placeholder="Впишите">${esc(p.extra[f] || "")}</textarea></div>`).join("")}</div>
+    </section>`;
+  }
 
   /* ---------- состав исполнителей ---------- */
   // ТЗ требует назвать исполнителей. Кто нужен — выписано из ТЗ, людей участник вписывает под эту закупку:
@@ -3049,12 +3285,13 @@
   function tpHTML(p) {
     if (!p.tp) {
       const tpSamples = samplesOf("tp");
+      const n = docsOf(p).length;
       return `<div class="tab-body"><section class="panel"><div class="panel-body">
-        <p class="small ink2 m0">Шаг 2 — техническое предложение. Найду в документах форму заявки и заполню её, как тендерный юрист: товары с конкретными характеристиками, предложение по пунктам ТЗ, цена. Вам останется вписать то, что знаете только вы.</p>
+        <p class="small ink2 m0">Шаг 2 — документы. Составлю ${countText(n, "документ", "документа", "документов")} заявки по формам заказчика, как тендерный юрист: техническое предложение по пунктам ТЗ, анкету и остальное из списка «Что подать». Реквизиты подставлю сам — вам останется вписать то, что знаете только вы.</p>
         ${p.sample ? "" : `<p class="small muted m0">${tpSamples.length
-          ? `Пишу по вашим техническим предложениям: ${tpSamples.length} ${plural(tpSamples.length, "документ", "документа", "документов")} из <button class="link" type="button" data-go="docs">«Образцов и реквизитов»</button>.`
-          : 'Черновик будет в общем стиле. <button class="link" type="button" data-go="docs">Загрузите свои документы</button> — и ТП будет написано так, как пишете вы.'}</p>`}
-        <div><button class="btn lg" type="button" data-act="compose">Составить черновик</button></div>
+          ? `Пишу по вашим прошлым заявкам: ${countText(tpSamples.length, "документ", "документа", "документов")} из <button class="link" type="button" data-go="docs">«Образцов и реквизитов»</button>.`
+          : 'Документы будут в общем стиле. <button class="link" type="button" data-go="docs">Загрузите свои прошлые заявки</button> — и напишу так, как пишете вы.'}</p>`}
+        <div><button class="btn lg" type="button" data-act="compose">Составить документы</button></div>
       </div></section></div>`;
     }
     const tp = p.tp;
@@ -3075,64 +3312,77 @@
           ${editHTML(`item:${i}`, it.offer, `Предложение: ${it.topic}`)}
         </li>`).join("")}</ol>
       </section>` : "";
+    // Составлять заново — дорогая операция ИИ: после третьей версии — только с подтверждением.
+    const many = p.gen >= GENS;
+    const redo = S.ui.confirmRedo ? `<div class="confirm">
+        <p>${many ? `Документы уже составлены ${countText(p.gen, "раз", "раза", "раз")}. Новая версия нужна, только если изменились документы закупки или ваши данные. Подтверждаете?` : "Составить документы заново? Ваши правки в этой версии пропадут."}</p>
+        <div class="btn-row"><button class="btn xs" type="button" data-act="redo">${many ? "Подтверждаю — нужна новая версия" : "Составить заново"}</button><button class="btn xs soft" type="button" data-act="cancel-redo">Отмена</button></div>
+      </div>` : `<p class="small muted m0 redo-line">Версия ${p.gen}. Добавили документы закупки или черновик не подходит? <button class="link" type="button" data-act="ask-redo">Составить заново</button></p>`;
     return `<div class="tab-body">
-      <p class="tab-lead">${tp.form.source
-        ? `По форме заказчика: ${esc(tp.form.title)} (${esc(tp.form.source)}). Каждая часть заявки — отдельным файлом.`
-        : "Формы заявки в документах нет — составлено как техническое предложение по пунктам ТЗ."} Техническое предложение идёт в первую часть заявки, поэтому в нём нет ни названия, ни ИНН, ни подписи участника.</p>
+      <p class="tab-lead">Шаг 2 — документы. ${tp.form.source
+        ? `Составил по форме заказчика: ${esc(tp.form.title)} (${esc(tp.form.source)}).`
+        : "Формы заявки в документах нет — техническое предложение составил по пунктам ТЗ."} Реквизиты подставлены из «Реквизитов». Жёлтым — то, что знаете только вы: нажмите на текст и впишите.</p>
       <div class="notes" id="tp-notes">${tpNotes(p)}</div>
-      ${tp.form.hasPrice ? `<section class="price">
-          <label for="tp-price">Цена вашего предложения</label>
-          <div class="price-row"><input class="input num" id="tp-price" inputmode="decimal" autocomplete="off" placeholder="например, 690000" value="${esc(p.tpPriceText)}"><span class="muted">₽</span></div>
-          <div id="price-info" style="display:grid;gap:8px">${priceInfo(p)}</div>
-          <p><button class="link" type="button" data-go="price" data-id="${p.id}">До какой цены снижаться</button></p>
-        </section>` : ""}
+      <section class="panel" aria-labelledby="doc-list-title">
+        <div class="panel-head"><div><h3 class="panel-title" id="doc-list-title">Документы заявки <span class="count">${docsOf(p).length}</span></h3><p class="panel-sub">Каждый — отдельным файлом. Скачать — на шаге «Пакет», в Word или PDF</p></div></div>
+        <ul class="files-list doc-list" id="doc-list">${docRows(p)}</ul>
+      </section>
+      ${extraHTML(p)}
       ${goods}
       ${items}
       ${castHTML(p)}
-      ${S.ui.confirmRedo ? `<div class="confirm">
-          <p>Составить черновик заново? Ваши правки в этом черновике пропадут.</p>
-          <div class="btn-row"><button class="btn xs" type="button" data-act="redo">Составить заново</button><button class="btn xs soft" type="button" data-act="cancel-redo">Отмена</button></div>
-        </div>` : '<p class="small muted m0 redo-line">Добавили документы или черновик не подходит? <button class="link" type="button" data-act="ask-redo">Составить заново</button></p>'}
-      <section class="panel" aria-labelledby="tp-parts">
-        <div class="panel-head"><div><h3 class="panel-title" id="tp-parts">Остальные части заявки</h3><p class="panel-sub">Каждая — отдельным файлом Word</p></div></div>
-        <ul class="parts" id="parts-list">${partsRows(p)}</ul>
-        <p class="parts-foot">Реквизиты берутся из <button class="link" type="button" data-go="profile">«Реквизитов»</button>, образцы — из <button class="link" type="button" data-go="docs">«Образцов и реквизитов»</button>. Чего там нет — выделено в Word жёлтым.</p>
-      </section>
+      ${redo}
     </div>
-    <div class="sticky-actions"><div class="bar"><button class="btn" type="button" data-act="preview-tp">Скачать техническое предложение</button><button class="btn line" type="button" data-go="check" data-id="${p.id}">Дальше: проверка заявки${ic("chev", 16)}</button></div></div>`;
+    <div class="sticky-actions"><div class="bar"><button class="btn" type="button" data-go="price" data-id="${p.id}">Дальше: цена${ic("chev", 16)}</button><button class="btn line" type="button" data-act="preview" data-part="tp">Посмотреть техническое предложение</button></div></div>`;
   }
 
-  /* ---------- проверка заявки ---------- */
+  /* ---------- шаг 4: проверка пакета ---------- */
+  // Пункт проверки: что не так, что сделать, куда идти исправлять и «Почему?» — из сохранённой проверки, без ИИ.
+  function reviewRow(p, it, tone) {
+    const open = S.ui.open === it.id;
+    const fix = it.go ? `<button class="btn soft xs" type="button" data-go="${it.go}" data-id="${p.id}">${esc(it.fix)}</button>`
+      : it.act ? `<button class="btn soft xs" type="button" data-act="${it.act}" data-part="${it.part}">${esc(it.fix)}</button>` : "";
+    const why = it.why && (it.why.text || it.why.quote) ? it.why : null;
+    return `<li class="finding ${tone}">
+      <span class="ico" aria-hidden="true">${tone === "bad" ? "✕" : "!"}</span>
+      <div class="find-body">
+        <p class="what">${esc(it.text)}</p>
+        ${it.todo ? `<p class="todo">${esc(it.todo)}</p>` : ""}
+        ${fix || why ? `<div class="find-acts">${fix}${why ? `<button class="link quiet" type="button" data-act="toggle" data-open="${it.id}" aria-expanded="${open}">Почему?</button>` : ""}</div>` : ""}
+        ${why && open ? `<div class="why">${why.text ? `<p>${esc(why.text)}</p>` : ""}${why.quote ? `<blockquote class="quote">${esc(why.quote)}</blockquote>${why.label ? `<p class="why-src">${ic("file", 12)}${esc(why.label)}</p>` : ""}` : ""}</div>` : ""}
+      </div>
+    </li>`;
+  }
   function checkHTML(p) {
     if (p.check.state !== "done") {
       return `<div class="tab-body">
-        <p class="tab-lead">Шаг 3 — перед подачей. Загрузите свою заявку или техническое предложение: сверю их с ТЗ по каждому пункту и скажу, за что могут отклонить.</p>
-        <section class="panel drop-box">${dropHTML("app", "Перетащите файл заявки сюда", "Загрузить заявку", { act: "sample-check", text: "проверить пример" })}</section>
+        <p class="tab-lead">Шаг 4 — проверка. Сверю весь пакет с извещением и ТЗ: что где не так заполнено, чего не хватает и насколько велик риск, что заявку отклонят.</p>
+        <section class="panel"><div class="panel-body">
+          <div><button class="btn lg" type="button" data-act="run-check">Проверить пакет</button></div>
+          <p class="small muted m0">Проверка ИИ входит в стоимость заявки. Дальше итог обновляется сам, когда вы правите документы, — пересчитывать не нужно.</p>
+          <p class="small ink2 m0">Собирали заявку сами? <label class="link" for="file-app">Проверьте свой файл<input id="file-app" type="file" class="sr-only"></label> — так же, по каждому пункту.</p>
+        </div></section>
       </div>`;
     }
-    const { bad, warn } = checkCounts(p);
-    const parts = [];
-    if (bad) parts.push(`<span class="bad-t">${bad} ${plural(bad, "ошибку", "ошибки", "ошибок")}</span>`);
-    if (warn) parts.push(`<span class="warn-t">${warn} ${plural(warn, "замечание", "замечания", "замечаний")}</span>`);
-    const title = parts.length ? `Нашёл ${parts.join(" и ")}` : "Ошибок нет";
-    const lead = bad ? "Исправьте ошибку до подачи — замечания тоже лучше поправить." : warn ? "Отклонять не за что, но замечания лучше поправить." : "Заявка соответствует ТЗ по всем пунктам.";
-    const ok = p.check.ok;
-    const found = p.check.findings.length;
+    const r = reviewOf(p);
+    const risk = RISK[r.level];
+    const left = RECHECKS - p.rechecks;
+    const group = (id, title, items, tone) => (items.length ? `<section class="panel" aria-labelledby="${id}">
+        <div class="panel-head"><h3 class="panel-title" id="${id}">${title} <span class="count">${items.length}</span></h3></div>
+        <ul class="findings">${items.map((it) => reviewRow(p, it, tone)).join("")}</ul>
+      </section>` : "");
     return `<div class="tab-body">
       <section class="panel verdict" aria-labelledby="check-verdict">
-        <h3 class="check-title" id="check-verdict">${title}</h3>
-        <p class="small ink2 m0">${lead}</p>
-        <p class="under"><button class="link" type="button" data-act="recheck">${found ? "Проверить исправленный файл" : "Проверить другой файл"}</button><span>Сомневаетесь? <button class="link" type="button" data-act="lawyer" data-from="check">Спросить юриста</button></span></p>
+        <div class="risk-head"><h3 class="check-title" id="check-verdict">${risk.title}</h3><span class="risk-meter ${r.level}" aria-hidden="true"><i></i><i></i><i></i></span></div>
+        <p class="small ink2 m0">${risk.lead}</p>
+        <p class="small muted m0">Итог обновляется сам, когда вы правите документы. Пересчёт с ИИ нужен, только если добавили документы закупки.</p>
+        <p class="under"><button class="link" type="button" data-act="recheck"${left > 0 ? "" : " disabled"}>Пересчитать с ИИ</button><span class="small muted" id="recheck-left">${left > 0 ? `осталось ${left} из ${RECHECKS} на эту заявку` : "повторные проверки ИИ для этой заявки закончились"}</span></p>
       </section>
-      <section class="panel" aria-labelledby="find-title">
-        <div class="panel-head"><h3 class="panel-title" id="find-title">${found ? `Что исправить <span class="count">${found}</span>` : "Проверенные пункты"}</h3></div>
-        <ul class="findings">${p.check.findings.map((f) => `<li class="finding ${f.kind}">
-          <span class="ico" aria-hidden="true">${f.kind === "bad" ? "✕" : "!"}</span>
-          <div style="display:grid;gap:4px"><p class="what">${esc(f.what)}</p><p class="todo">${esc(f.todo)}</p>${f.src && p.sources[f.src] ? refBtn({ doc: f.src }, p) : ""}</div>
-        </li>`).join("")}
-        <li class="finding ok"><span class="ico" aria-hidden="true">✓</span><div><p class="what">${found ? "Остальные" : "Все"} ${ok} ${plural(ok, "пункт", "пункта", "пунктов")} — в порядке.</p></div></li>
-        </ul>
-      </section>
+      ${group("rv-wrong", "Не так заполнено", r.wrong, "bad")}
+      ${group("rv-missing", "Не хватает", r.missing, "bad")}
+      ${group("rv-later", "Лучше поправить", r.later, "warn")}
+      ${r.level === "low" ? `<section class="panel"><ul class="findings"><li class="finding ok"><span class="ico" aria-hidden="true">✓</span><div><p class="what">Все документы заполнены и сходятся с ТЗ.</p></div></li></ul></section>` : ""}
+      <p class="tab-lead">Проверил ИИ. Хотите, чтобы пакет посмотрел живой специалист? Это на шаге «Пакет» — ${PRICE_EXPERT} ₽.</p>
       ${nextHTML(p, "check")}
     </div>`;
   }
@@ -3268,25 +3518,6 @@
     : c.price !== null && c.nmck ? `На ${dropText(1 - c.price / c.nmck)} % ниже начальной` : "Сколько хотите предложить на торгах");
 
   // Вход в калькулятор — первым на шаге «Требования», над «Кто может участвовать»: ответ, если уже посчитан, и шкала.
-  function priceTeaserHTML(p) {
-    const c = calcOf(p);
-    const { floor, at } = priceFloor(c);
-    const atFloor = floor.ok && !floor.aboveNmck ? at(floor.price) : null;
-    const text = atFloor ? `Можно снижаться до ${rub(atFloor.price)} — на ${dropText(atFloor.drop)} % ниже начальной.`
-      : floor.ok ? "Даже по начальной цене контракт в убытке — проверьте расходы."
-      : floor.reason === "impossible" ? "Налог и стоимость обеспечения съедают всю цену — проверьте проценты."
-      : `Впишите себестоимость — посчитаю нижнюю цену без убытка${c.nmck ? "" : " (начальную цену тоже впишите: в документах она не нашлась)"}: с налогом, обеспечением и антидемпингом.`;
-    return `<section class="panel teaser" aria-labelledby="req-price">
-      <div class="teaser-head">
-        <div class="teaser-main">
-          <span class="teaser-ic" aria-hidden="true">${ic("calc", 20)}</span>
-          <div class="next-text"><p class="next-label">Перед торгами</p><h3 class="next-title" id="req-price">До какой цены снижаться</h3><p class="next-desc">${text}</p></div>
-        </div>
-        <button class="btn line" type="button" data-go="price" data-id="${p.id}">${ic("calc", 16)}${floor.ok ? "Открыть расчёт" : "Посчитать"}</button>
-      </div>
-      ${floor.ok && c.nmck ? scaleHTML(c, false) : ""}
-    </section>`;
-  }
 
   // Ответ экрана — плавающим островом внизу, как «Скачать ТП»: виден, пока правите расходы и обеспечение.
   function calcResultHTML(c) {
@@ -3360,7 +3591,7 @@
     const tableOpen = !!S.fold["calc-table"];
     const table = calcTableHTML(c);
     return `<div class="tab-body">
-      <p class="tab-lead">До какой цены можно снижаться на торгах, чтобы контракт не ушёл в убыток. Впишите себестоимость — остальное подставлено из документов закупки. Считается прямо в браузере, цифры никуда не отправляются.</p>
+      <p class="tab-lead">Шаг 3 — наша цена. Впишите себестоимость — посчитаю, до какой цены можно снижаться без убытка, остальное подставлено из документов закупки. Выберите «Вашу цену»: она встанет в заявку. Считается прямо в браузере, без ИИ.</p>
       <section class="panel" aria-labelledby="calc-costs-title">
         <div class="panel-head"><div><h3 class="panel-title" id="calc-costs-title">Ваши цифры</h3>${p.sample ? '<p class="panel-sub">В примере — вымышленные расходы</p>' : ""}</div></div>
         <div class="calc-body"><div class="calc-grid three">
@@ -3410,6 +3641,7 @@
           </div>
         </div>
       </section>
+      ${nextHTML(p, "price")}
     </div>
     <div class="sticky-actions"><div class="result-bar" id="calc-result" aria-live="polite">${calcResultHTML(c)}</div></div>`;
   }
@@ -3454,20 +3686,24 @@
     // Способ обеспечения меняет подписи и ставку в поле — экран перерисовывается, фокус остаётся на переключателе.
     if (input.type === "radio") rerender();
     else refreshPrice(p, input.type === "range" ? "range" : input.id === "calc-price" ? "price" : "field");
+    // Своя цена — статус шага «Цена» в строке шагов и в списке закупок.
+    if (input.dataset.calc === "price") refreshCounts();
   }
 
   /* ---------- как это работает: путь по закупке, разделы, цвета ---------- */
   function helpHTML() {
     const path = [
-      ["+", "Новая закупка", "кнопка «Новая закупка»", "Загрузите извещение, ТЗ и проект контракта — PDF, Word, сканы или фото. Через 1–2 минуты закупка появится в разделе «Закупки»."],
-      ["1", "Требования", "в закупке, шаг 1", "Кто может участвовать, как оценят заявку и за что дают баллы, что подать, что требует ТЗ, сроки и деньги. Под каждым пунктом — ссылка на точную цитату из документа."],
-      ["2", "Техническое предложение", "в закупке, шаг 2", "Черновик по форме заказчика. Впишите свои данные в пункты, выделенные жёлтым, и скачайте файл Word. Там же — анкета, декларация и предложение о цене."],
-      ["3", "Проверка заявки", "в закупке, шаг 3", "Загрузите заявку, которую собираетесь подавать. Покажу ошибки, за которые могут отклонить, и замечания — с цитатами из документов."],
+      ["+", "Документация с площадки", "кнопка «Новая закупка»", "Загрузите всё, что скачали на площадке: извещение, ТЗ, проект контракта, формы — PDF, Word, сканы, фото или архив. Через 1–2 минуты закупка появится в разделе «Закупки»."],
+      ["1", "Что подать", "в закупке, шаг 1", "Из каких документов состоит заявка: что составлю я, что нужно от вас, что делает площадка. Там же — кто может участвовать, как оценят заявку, что требует ТЗ, сроки и деньги. Под каждым пунктом — точная цитата из документа."],
+      ["2", "Документы", "в закупке, шаг 2", "Составляю все документы заявки по формам заказчика и подставляю реквизиты. Вы вписываете только то, что выделено жёлтым, — этого нет ни в документах закупки, ни в ваших."],
+      ["3", "Цена", "в закупке, шаг 3", "Впишите себестоимость — посчитаю, до какой цены можно снижаться без убытка, с налогом, обеспечением и антидемпингом. Выбранная цена встаёт в заявку."],
+      ["4", "Проверка", "в закупке, шаг 4", "Сверяю пакет с извещением и ТЗ: что не так заполнено, чего не хватает и риск отклонения. Исправили — итог обновляется сам, без повторной проверки."],
+      ["5", "Пакет", "в закупке, шаг 5", `Все документы — в Word или PDF, по одному или архивом. Заявка под ключ — ${PRICE_APP} ₽. Проверка живым специалистом — ещё ${PRICE_EXPERT} ₽, по желанию.`],
       ["✓", "Подача", "на электронной площадке", "Заявку подаёте вы сами на площадке, до срока подачи. Срок и сколько дней осталось видны в шапке закупки."],
     ];
     const sections = [
       ["home", "home", "Главная", "Самое срочное дело, закупки по этапам и данные компании."],
-      ["list", "list", "Закупки", "Все закупки: список слева, открытая закупка справа — с шагами, расчётом, до какой цены снижаться, и вопросами по ней."],
+      ["list", "list", "Закупки", "Все закупки: список слева, открытая закупка справа — с пятью шагами до пакета документов и вопросами по ней."],
       ["lawyer", "scale", "Вопросы юристу", "Живой юрист по закупкам: ответ обычно в течение рабочего дня. Ответил — число в меню, уведомление в колокольчике наверху и письмо на почту."],
       ["ask", "chat", "Спросить про тендер", "Общий вопрос по 44-ФЗ и 223-ФЗ. Вопрос про конкретную закупку задайте внутри неё — в «Вопросах»: отвечу по её документам."],
       ["profile", "user", "Реквизиты", "Данные компании. Сами попадают в анкету, декларацию и цену — но никогда в ТП: его подают анонимно."],
@@ -3487,9 +3723,9 @@
       <section class="panel" aria-labelledby="marks-title">
         <div class="panel-head"><h2 class="panel-title" id="marks-title">Что значат цвета</h2></div>
         <ul class="marks">
-          <li><span class="mark-dot" style="background:var(--brand)"></span><span>Индиго — ваш следующий шаг: составить ТП, проверить заявку.</span></li>
+          <li><span class="mark-dot" style="background:var(--brand)"></span><span>Индиго — ваш следующий шаг: составить документы, выбрать цену, проверить пакет.</span></li>
           <li><span class="mark-dot" style="background:var(--warn)"></span><span>Янтарный — нужно ваше действие: вписать данные, сверить цифры; до подачи неделя и меньше.</span></li>
-          <li><span class="mark-dot" style="background:var(--danger)"></span><span>Красный — ошибка в заявке, за неё могут отклонить.</span></li>
+          <li><span class="mark-dot" style="background:var(--danger)"></span><span>Красный — за это отклонят заявку: риск отклонения высокий.</span></li>
           <li><span class="step-dot done" style="width:16px;height:16px;justify-self:center">${ic("check", 10, 3)}</span><span>Зелёный с галочкой — шаг сделан, заявка готова к подаче.</span></li>
           <li><span class="mark-dot" style="background:var(--edge-2)"></span><span>Серый — справка или ещё не начато: дни до подачи, прошедший приём.</span></li>
         </ul>
@@ -3499,13 +3735,13 @@
   }
 
   /* ---------- новая закупка ---------- */
-  const NEW_STEPS = ["Читаю документы…", "Смотрю, кто может участвовать…", "Выписываю, что подать в заявке…", "Разбираю требования ТЗ…", "Проверяю сроки и суммы…", "Сверяю цитаты с документами…"];
+  const NEW_STEPS = ["Читаю документацию…", "Смотрю, кто может участвовать…", "Составляю список документов для подачи…", "Разбираю требования ТЗ…", "Проверяю сроки и суммы…", "Сверяю цитаты с документами…"];
   const ADDING_STEPS = ["Читаю новые документы…", "Перечитываю закупку целиком…", "Обновляю требования и сроки…", "Сверяю цитаты с документами…"];
 
   function newHTML() {
     return `<div class="page-col"><section class="panel"><div class="panel-body">
-      ${S.busy ? busyHTML() : `<p class="intro">Загрузите извещение, ТЗ и проект контракта — выпишу требования и сроки. Потом закупка откроется на шаге 1 «Требования», а дальше будут техническое предложение и проверка заявки.</p>
-      ${dropHTML("new", "Перетащите сюда документы закупки — можно сразу несколько: PDF, Word, сканы и фото", "Загрузить документы", { act: "sample", text: "посмотреть на примере" })}`}
+      ${S.busy ? busyHTML() : `<p class="intro">Скачайте на площадке всю документацию закупки — извещение, ТЗ, проект контракта, формы — и загрузите сюда. Разберу, из каких документов состоит заявка, и составлю их. Закупка откроется на шаге 1 «Что подать».</p>
+      ${dropHTML("new", "Перетащите сюда документацию с площадки — можно сразу всё: PDF, Word, сканы, фото или архив .zip", "Загрузить документацию", { act: "sample", text: "посмотреть на примере" })}`}
     </div></section></div>`;
   }
 
@@ -3739,8 +3975,7 @@
     return h;
   }
   function anketaDoc(p) {
-    const extra = p.tp.form.participantFields.filter((f, i, all) => all.indexOf(f) === i && !COVERED.some((re) => re.test(f.trim())));
-    const rows = [...ANKETA.map(([key, label]) => ({ label, value: S.profile[key].trim() })), ...extra.map((label) => ({ label, value: "" }))];
+    const rows = [...ANKETA.map(([key, label]) => ({ label, value: S.profile[key].trim() })), ...extraRows(p).map((label) => ({ label, value: (p.extra[label] || "").trim() }))];
     return `<h3>${esc(PART_TITLES.participant)}</h3>
       <table><thead><tr><th style="width:6%">№</th><th style="width:44%">Наименование сведений</th><th>Сведения об участнике</th></tr></thead>
       <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.label)}</td><td>${r.value ? esc(r.value) : "<mark>[заполните]</mark>"}</td></tr>`).join("")}</tbody></table>
@@ -3763,80 +3998,73 @@
       ${paras(tail)}${signature()}`;
   }
   function priceDoc(p) {
-    const price = p.tpPrice;
+    const price = ourPrice(p);
     const amount = price ? `${fmtRub(price)} руб. (${rublesInWords(price)})` : "[цена договора цифрами] руб. ([цена прописью])";
     const vat = S.profile.vatNote.trim() || "[в том числе НДС по ставке __% — сумма НДС, либо «НДС не облагается» с указанием основания]";
     return `<h3>${esc(PART_TITLES.price)}</h3><p class="c">Предмет закупки: ${esc(p.subject)}</p>${paras(`Предлагаемая цена договора составляет ${amount}, ${vat}.`, true)}${paras(p.tp.form.priceNote, true)}${signature()}`;
   }
 
-  /* ---------- документы заявки: все готовые файлы в одном окне ---------- */
-  // Скачать заявку можно из шапки закупки, из «Готово к подаче» в конце шагов и из дела на главной.
-  // Каждая часть — отдельным файлом Word; жёлтые поля — то, что осталось вписать.
-  function filesRows(p) {
-    const [, tp] = stepsOf(p);
-    const missing = PROFILE_KEYS.length - filledCount();
-    const row = (name, sub, tag, action) => `<li class="file-row">
-        <span class="law icon" aria-hidden="true">${ic("file", 16)}</span>
-        <span class="prow-text"><span class="file-title">${esc(name)}</span><span class="file-sub">${sub}</span></span>
-        ${tag}${action}
-      </li>`;
-    const dl = (k) => `<button class="btn soft xs" type="button" data-act="file-dl" data-part="${k}" data-id="${p.id}"${S.ui.writing ? " disabled" : ""}>${S.ui.writing === k ? "Пишу…" : "Скачать"}</button>`;
-    const rows = [row(PART_TITLES.tp, "первая часть заявки — без названия и реквизитов участника",
-      tp.state === "todo" ? badge("calm", "не составлено") : tp.state === "fix" ? badge("warn", tp.status, "pen") : badge("ok", "готово", "check"),
-      tp.state === "todo" ? `<button class="btn soft xs" type="button" data-go="tp" data-id="${p.id}">Составить</button>` : dl("tp"))];
-    if (!p.tp) return rows.join("") + '<li class="file-note">Анкета, декларация и предложение о цене появятся, когда составите ТП: форму заявки беру из документов закупки.</li>';
-    for (const k of partsOf(p.tp.form, p.criteria).filter((x) => x !== "tp")) {
-      const writing = S.ui.writing === k;
-      if (isEvidence(k)) {
-        const n = S.docs.filter((d) => d.kinds.includes(k)).length;
-        rows.push(row(PART_TITLES[k], n ? `из ${n} ${plural(n, "документа", "документов", "документов")} в «Образцах и реквизитах» · за них дают баллы` : "загрузите документы в «Образцы и реквизиты» — без них баллов не будет",
-          writing ? badge("calm", "пишу документ…") : p.sample ? badge("warn", k === "experience" ? "8,8 из 15 баллов" : "7,5 из 15 баллов", "alert") : n ? badge("brand", "за них баллы") : badge("warn", "нет документов", "alert"),
-          dl(k)));
-        continue;
-      }
-      const price = k === "price";
-      const tag = writing ? badge("calm", "пишу документ…")
-        : price ? (p.tpPrice ? badge("ok", "цена вписана", "check") : badge("warn", "впишите цену", "pen"))
-        : missing ? badge("warn", "впишите реквизиты", "pen") : badge("ok", "готово", "check");
-      const sub = price ? (p.tpPrice ? "цена — из шага 2" : "цену вписывают на шаге 2, в ТП")
-        : missing ? `в «Реквизитах» не хватает ${missing} ${plural(missing, "поля", "полей", "полей")} — в файле они жёлтые` : "реквизиты — из «Реквизитов»";
-      rows.push(row(PART_TITLES[k], sub, tag, dl(k)));
-    }
-    return rows.join("");
-  }
-  // Что требует заказчик — все пункты «Что подать» из требований: выписки, лицензии, обеспечение и остальное,
-  // что участник собирает сам. Отметки «готово» — по тексту пункта. С файлами выше пункты не сопоставляем:
-  // ошибка спрятала бы нужный документ.
-  const readyOf = (p) => p.submitReady || [];
-  function askRows(p) {
-    return p.requirements.submit.map((it, i) => {
-      const ready = readyOf(p).includes(it.text);
-      return `<li class="ask-row${ready ? " ready" : ""}"><label><input type="checkbox" data-ready="${i}"${ready ? " checked" : ""}><span class="ask-text">${esc(it.text)}</span></label>${sourceHTML(`ask-${i}`, it.source, it.quote, it.verified, "пункт")}</li>`;
+  /* ---------- шаг 5: пакет документов ---------- */
+  // Все документы заявки — файлами Word или PDF, по одному или архивом. Оплата — один раз за закупку,
+  // дальше скачивать можно сколько угодно: файлы собираются из сохранённых документов, без ИИ.
+  const FORMATS = { docx: "Word", pdf: "PDF" };
+  const fmtName = (fmt) => FORMATS[fmt] || "Word";
+  // Ваши документы — отметки «готово» по названию пункта; с файлами выше их не сопоставляем: ошибка спрятала бы нужный документ.
+  function ownRows(p) {
+    return ownOf(p).map((r, i) => {
+      const ready = isReady(p, r);
+      return `<li class="ask-row${ready ? " ready" : ""}"><label><input type="checkbox" data-ready="${i}"${ready ? " checked" : ""}><span class="ask-text">${esc(r.own)}${r.must ? "" : '<span class="muted"> · для баллов</span>'}</span></label>${r.sub ? `<p class="ask-sub">${esc(r.sub)}</p>` : ""}${srcOf(p, r)}</li>`;
     }).join("");
   }
-  const askCount = (p) => `готово ${p.requirements.submit.filter((it) => readyOf(p).includes(it.text)).length} из ${p.requirements.submit.length}`;
-  function askHTML(p) {
-    const items = p.requirements.submit;
-    return `<div class="ask-head"><h3 class="files-h">Что требует заказчик</h3>${items.length ? `<span class="small muted" id="files-ask-count">${askCount(p)}</span>` : ""}</div>
-      ${items.length
-        ? `<p class="small muted m0">Всё, что заказчик просит приложить. Часть закрывают файлы выше — отметьте, что уже готово.</p><ul class="files-list" id="files-ask" data-id="${p.id}">${askRows(p)}</ul>`
-        : '<p class="small muted m0">Перечня документов в документах закупки не нашлось — сверьтесь с извещением: что подать, обычно сказано в требованиях к заявке.</p>'}`;
-  }
-  function openFiles(p) {
-    if (!p) return;
-    const [, , check] = stepsOf(p);
-    const n = p.tp ? partsOf(p.tp.form, p.criteria).length : 1;
-    openModal(`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
-      <button class="icon-btn x-close" type="button" data-act="close" aria-label="Закрыть">${ic("x", 20)}</button>
-      <span class="eyebrow">${esc(p.short)}</span>
-      <h2 id="m-title">Документы заявки</h2>
-      <p class="small ink2 m0">Состав заявки задаёт заказчик. Часть файлов пишу я — каждый отдельным файлом Word, что осталось вписать, выделено жёлтым. Остальное собираете вы.</p>
-      <h3 class="files-h">Файлы, которые пишу я</h3>
-      <ul class="files-list" id="files-list">${filesRows(p)}</ul>
-      <div class="btn-row"><button class="btn" type="button" data-act="files-zip" data-id="${p.id}"${p.tp ? "" : " disabled"}>${ic("download", 16)}Скачать всё архивом</button><span class="small muted">${n} ${plural(n, "файл", "файла", "файлов")} Word</span></div>
-      ${askHTML(p)}
-      ${check.state === "done" ? "" : `<p class="small ink2 m0">Перед подачей проверьте заявку: <button class="link" type="button" data-go="check" data-id="${p.id}">шаг 3, проверка заявки</button>.</p>`}
-    </div>`);
+  const ownCount = (p) => `готово ${ownOf(p).filter((r) => isReady(p, r)).length} из ${ownOf(p).length}`;
+  function packHTML(p) {
+    const review = p.check.state === "done" ? reviewOf(p) : null;
+    const fmt = S.format;
+    const docs = docsOf(p);
+    const own = ownOf(p);
+    const platform = planOf(p).filter((r) => r.platform);
+    const price = ourPrice(p);
+    const warn = !p.tp ? noteHTML("warn", `Документы ещё не составлены. <button class="link" type="button" data-act="compose-go" data-id="${p.id}">Составить документы</button>`, "", "alert")
+      : !review ? noteHTML("info", `Пакет ещё не проверен. <button class="link" type="button" data-go="check" data-id="${p.id}">Проверить перед подачей</button> — покажу, чего не хватает и риск отклонения.`, "", "info")
+      : review.level === "high" ? noteHTML("warn", `Риск отклонения высокий — исправьте ${countText(review.wrong.length + review.missing.length, "пункт", "пункта", "пунктов")} до подачи. <button class="link" type="button" data-go="check" data-id="${p.id}">Открыть проверку</button>`, "", "alert") : "";
+    const pay = p.paid
+      ? `<section class="panel pay" aria-label="Оплата"><div class="teaser-main"><span class="teaser-ic ok" aria-hidden="true">${ic("check", 20, 2.5)}</span><div class="next-text"><p class="next-label ok">Оплачено</p><p class="next-title">Заявка под ключ</p><p class="next-desc">Скачивайте сколько угодно, в Word и PDF.</p></div></div></section>`
+      : `<section class="panel pay" aria-labelledby="pay-title"><div class="teaser-main"><span class="teaser-ic" aria-hidden="true">${ic("ruble", 20)}</span><div class="next-text"><p class="next-label">Заявка под ключ</p><h3 class="next-title" id="pay-title">${PRICE_APP} ₽ за эту закупку</h3><p class="next-desc">Оплата один раз. Входит: разбор документации, составление документов, проверка ИИ и ${countText(RECHECKS, "пересчёт", "пересчёта", "пересчётов")}. Скачивать можно сколько угодно, в Word и PDF.</p></div></div>
+          <button class="btn" type="button" data-act="pay" data-id="${p.id}"${p.tp ? "" : " disabled"}>Оплатить ${PRICE_APP} ₽</button></section>`;
+    const dlRow = (k) => {
+      const { tag } = docStatus(p, k);
+      return `<li class="file-row pack-row">
+        <span class="law icon" aria-hidden="true">${ic("file", 16)}</span>
+        <span class="prow-text"><span class="file-title">${esc(PART_TITLES[k])}</span><span class="file-sub">${esc(`${PART_TITLES[k]}.${fmt}`)}</span></span>
+        ${tag}
+        <span class="row-acts"><button class="btn soft xs" type="button" data-act="preview" data-part="${k}"${p.tp ? "" : " disabled"}>Посмотреть</button><button class="btn line xs" type="button" data-act="dl" data-part="${k}"${p.paid ? "" : " disabled"}>${ic("download", 14)}Скачать</button></span>
+      </li>`;
+    };
+    const expert = p.expert
+      ? `<section class="panel pay" aria-label="Проверка специалистом"><div class="teaser-main"><span class="teaser-ic" aria-hidden="true">${ic("user", 20)}</span><div class="next-text"><p class="next-label ok">Отправлено специалисту</p><p class="next-title">Пакет на проверке</p><p class="next-desc">Ответ придёт в «Вопросы юристу» — пришлём уведомление в колокольчик.</p></div></div>
+          <button class="btn line" type="button" data-act="law-open" data-thread="${p.expert}">Открыть разговор</button></section>`
+      : `<section class="panel pay" aria-labelledby="expert-title"><div class="teaser-main"><span class="teaser-ic" aria-hidden="true">${ic("user", 20)}</span><div class="next-text"><p class="next-label">По желанию</p><h3 class="next-title" id="expert-title">Проверка специалистом — ${PRICE_EXPERT} ₽</h3><p class="next-desc">Проверка ИИ уже входит в заявку. Если хотите, пакет целиком посмотрит живой тендерный специалист и ответит в «Вопросах юристу», обычно в течение рабочего дня.</p></div></div>
+          <button class="btn line" type="button" data-act="expert" data-id="${p.id}"${p.tp ? "" : " disabled"}>Отправить за ${PRICE_EXPERT} ₽</button></section>`;
+    return `<div class="tab-body">
+      <p class="tab-lead">Шаг 5 — пакет. Все документы заявки: скачайте по одному или архивом, в Word или PDF, и подайте заявку на площадке до срока.</p>
+      ${warn}
+      ${pay}
+      <section class="panel" aria-labelledby="pack-title">
+        <div class="panel-head"><div><h3 class="panel-title" id="pack-title">Пакет документов <span class="count">${docs.length}</span></h3><p class="panel-sub">${p.paid ? "Файлы собираются из сохранённых документов — скачивайте сколько нужно" : `Скачать — после оплаты. Посмотреть можно сейчас`}</p></div>
+          <div class="pack-tools">
+            <fieldset class="pills-set"><legend class="sr-only">Формат файлов</legend><div class="pills">${Object.entries(FORMATS).map(([key, label]) => `<label class="pill sm"><input class="sr-only" type="radio" name="pack-fmt" data-fmt value="${key}"${fmt === key ? " checked" : ""}>${label}</label>`).join("")}</div></fieldset>
+            <button class="btn xs" type="button" data-act="zip" data-id="${p.id}"${p.paid ? "" : " disabled"}>${ic("download", 14)}Всё архивом</button>
+          </div>
+        </div>
+        <ul class="files-list doc-list" id="pack-list">${docs.map(dlRow).join("")}</ul>
+        ${own.length ? `<div class="pack-sub"><div class="ask-head"><h4 class="files-h">От вас</h4><span class="small muted" id="own-count">${ownCount(p)}</span></div>
+          <p class="small muted m0">Этого я не составляю — отметьте, что готово. Файлы приложите на площадке вместе с пакетом.</p>
+          <ul class="files-list" id="own-list" data-id="${p.id}">${ownRows(p)}</ul></div>` : ""}
+        ${platform.length ? `<div class="pack-sub"><h4 class="files-h">На площадке</h4><ul class="files-list">${platform.map((r) => `<li class="ask-row"><span class="ask-text">${esc(r.platform)}</span><p class="ask-sub">${esc(r.platform === "Предложение о цене" && price ? `Впишите при подаче: ${rubRound(price)}` : r.sub)}</p></li>`).join("")}</ul></div>` : ""}
+      </section>
+      ${expert}
+      ${nextHTML(p, "pack")}
+    </div>`;
   }
 
   /* ---------- уведомления: колокольчик в шапке ---------- */
@@ -3847,9 +4075,9 @@
     for (const p of [...S.purchases].sort(byUrgency)) {
       const due = dueLine(p.deadline, false);
       if (!due) continue;
-      const [, tp] = stepsOf(p);
+      const [, docs] = stepsOf(p);
       if (due.days >= 0 && due.tone === "soon") {
-        notes.push({ id: `n-due-${p.id}`, tone: "warn", title: `До подачи ${daysText(due.days)}`, text: tp.state === "fix" ? `В ТП осталось: ${tp.status}` : tp.state === "todo" ? "ТП ещё не составлено" : "", sub: `${p.short} · сегодня, 09:00`, unread: false, go: "p", id: p.id });
+        notes.push({ id: `n-due-${p.id}`, tone: "warn", title: `До подачи ${daysText(due.days)}`, text: docs.state === "fix" ? `В документах осталось: ${docs.status}` : docs.state === "todo" ? "Документы ещё не составлены" : "", sub: `${p.short} · сегодня, 09:00`, unread: false, go: "p", id: p.id });
       } else if (due.days < 0) {
         notes.push({ id: `n-end-${p.id}`, tone: "", title: "Приём заявок закончился", text: "", sub: `${p.short} · ${due.head.replace(/^Приём заявок закончился /, "")}`, unread: false, go: "p", id: p.id });
       }
@@ -4030,17 +4258,16 @@
     }, 12000);
   }
 
-  function openPreview(p, part, back) {
+  function openPreview(p, part) {
     const body = part === "tp" ? tpDoc(p) : part === "participant" ? anketaDoc(p) : part === "declaration" ? declDoc(p) : isEvidence(part) ? evidenceDoc(p, part) : priceDoc(p);
-    const basis = part === "tp" ? "" : p.sample ? "По стандартному шаблону: в документах примера нет формы заказчика." : `Составлено ${p.parts[part] ? p.parts[part].basis : basisText(p, part)}. Реквизиты — из «Реквизитов».`;
+    const basis = part === "tp" ? "" : p.sample ? "По стандартному шаблону: в документах примера нет формы заказчика." : `Составлено ${basisText(p, part)}. Реквизиты — из «Реквизитов».`;
     openModal(`<div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="m-title">
       <button class="icon-btn x-close" type="button" data-act="close" aria-label="Закрыть">${ic("x", 20)}</button>
-      <span class="eyebrow">Файл Word · предпросмотр</span>
-      <h2 id="m-title">${esc(PART_TITLES[part])}.docx</h2>
+      <span class="eyebrow">${esc(fmtName(S.format))} · предпросмотр</span>
+      <h2 id="m-title">${esc(PART_TITLES[part])}.${esc(S.format)}</h2>
       ${basis ? `<p class="small muted m0">${esc(basis)}</p>` : ""}
       <div class="sheet">${body}</div>
-      <p class="small muted m0">В приложении этот файл скачивается на компьютер. Жёлтые поля остаются жёлтыми и в Word — сразу видно, что осталось вписать.</p>
-      ${back ? `<p class="m0"><button class="link" type="button" data-act="files" data-id="${p.id}">К документам заявки</button></p>` : ""}
+      <p class="small muted m0">Скачать файл — на шаге «Пакет», в Word или PDF. Жёлтые поля остаются жёлтыми и в файле — сразу видно, что осталось вписать.</p>
     </div>`);
   }
 
@@ -4125,11 +4352,11 @@
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, max)}px`;
   }
-  // Строка шагов: подписи сокращаются по ступеням, пока она не поместится, — как в приложении (purchase-view.tsx).
-  // Не помещается и так — инструменты уходят на свою строку, шаги листаются отдельно.
-  const FIT_NAMES = ["short-tp", "short-check", "icons", "tight", "stack"];
-  const FIT_LEVELS = [[], ["short-tp"], ["short-tp", "short-check"], ["short-tp", "short-check", "icons"], ["short-tp", "short-check", "icons", "tight"]];
-  const STACKED = ["short-tp", "short-check", "tight", "stack"];
+  // Строка шагов сжимается по ступеням, пока не поместится: значок у «Вопросов», без стрелок, статус — у открытого шага.
+  // Не помещается и так — «Вопросы» уходят на свою строку, шаги листаются отдельно.
+  const FIT_NAMES = ["icons", "tight", "brief", "stack"];
+  const FIT_LEVELS = [[], ["icons"], ["icons", "tight"], ["icons", "tight", "brief"]];
+  const STACKED = ["tight", "brief", "stack"];
   function fitTabs() {
     const nav = $("#tabs");
     if (!nav || !nav.offsetParent) return;
@@ -4196,6 +4423,8 @@
     if (body) body.innerHTML = plistBodyHTML(p);
     const tabs = $("#tabs");
     if (tabs && p) { tabs.outerHTML = tabsHTML(p); fitTabs(); }
+    const docs = $("#doc-list");
+    if (docs && p) docs.innerHTML = docRows(p);
   }
   const toTop = () => ["view", "pane-main", "chat-scroll"].forEach((id) => { const el = document.getElementById(id); if (el) el.scrollTop = 0; });
 
@@ -4372,46 +4601,26 @@
     rerender();
     toast(`Добавлено: ${names.join(", ")}. В приложении требования и сроки перечитываются с учётом нового файла.`);
   }
+  // Документы составляются всей заявкой сразу. Каждая версия — дорогая операция ИИ, поэтому версии считаются (p.gen).
   async function compose(p) {
     if (!p.sample && !(await runSteps(TP_STEPS))) return;
     S.busy = null;
     p.tp = draftTp(p);
-    p.parts = {};
+    p.gen++;
     S.ui = {};
     render();
     toTop();
   }
-  // Документ пишется около минуты; строка на шаге ТП и в окне документов заявки показывает, что идёт работа.
-  async function writePart(p, k, back) {
-    const visit = S.visit;
-    const redraw = () => {
-      const parts = $("#parts-list"), files = $("#files-list");
-      if (parts) parts.innerHTML = partsRows(p);
-      if (files) files.innerHTML = filesRows(p);
-    };
-    if (!p.sample) {
-      S.ui.writing = k;
-      redraw();
-      await wait(1600);
-      if (S.visit !== visit) return;
-      p.parts[k] = { key: basisKey(p, k), basis: basisText(p, k) };
-      S.ui.writing = null;
-      redraw();
-      // Окно документов закрыли, пока документ писался, — не открываем его снова.
-      if (back && $("#modal").hidden) return;
-    }
-    openPreview(p, k, back);
-  }
-  function onPartClick(p, k, redo) {
-    const made = p.parts[k];
-    if (!redo && (p.sample || (made && made.key === basisKey(p, k)))) { openPreview(p, k); return; }
-    writePart(p, k);
-  }
-  async function runCheck(p) {
-    if (!(await runSteps(["Читаю вашу заявку…", "Сверяю с ТЗ по каждому пункту…", "Смотрю, за что могут отклонить…"]))) return;
+  // Проверка пакета с ИИ. Первая — входит в заявку, пересчитать можно ещё RECHECKS раз. Итог сохраняется
+  // и дальше пересчитывается сам, по сохранённому результату, когда участник правит документы.
+  async function runCheck(p, again) {
+    if (again && p.rechecks >= RECHECKS) return;
+    if (!(await runSteps(again ? ["Перечитываю документы закупки…", "Сверяю пакет с ТЗ заново…"] : ["Читаю пакет документов…", "Сверяю с извещением и ТЗ по каждому пункту…", "Смотрю, за что могут отклонить…"]))) return;
+    if (again) p.rechecks++;
     p.check.state = "done";
     rerender();
     toTop();
+    if (again) toast(`Пересчитал с ИИ. Осталось ${p.rechecks < RECHECKS ? `${RECHECKS - p.rechecks} из ${RECHECKS}` : "0"} на эту заявку.`);
   }
   async function fillFromDocs() {
     const visit = S.visit;
@@ -4471,13 +4680,14 @@
     $("#tp-notes").innerHTML = tpNotes(p);
     refreshCounts();
   }
-  function onPriceInput(input) {
+  // Строка анкеты: пишется на месте, без перерисовки поля; отметка «впишите данные», документы и шаги — обновляются.
+  function onExtraInput(area) {
     const p = cur();
-    const value = Number(input.value.replace(/[\s ]/g, "").replace(",", "."));
-    p.tpPriceText = input.value;
-    p.tpPrice = Number.isFinite(value) && value > 0 ? value : null;
-    $("#price-info").innerHTML = priceInfo(p);
-    if (!S.ui.writing) $("#parts-list").innerHTML = partsRows(p);
+    p.extra[area.dataset.extra] = area.value;
+    const head = $("#extra-title"), flag = head && head.querySelector("[data-flag]");
+    if (extraGaps(p).length) { if (head && !flag) head.insertAdjacentHTML("beforeend", ' <span class="flag" data-flag>впишите данные</span>'); }
+    else if (flag) flag.remove();
+    refreshCounts();
   }
 
   function handleAct(act, el) {
@@ -4517,23 +4727,14 @@
         else ask(p, el.dataset.q);
         break;
       }
-      case "toggle": {
-        S.ui.open = S.ui.open === el.dataset.open ? null : el.dataset.open;
-        // Цитата под пунктом в окне «Документы заявки» — окно не перерисовывается вместе с экраном.
-        const ask = el.closest("#files-ask");
-        if (ask) {
-          ask.innerHTML = askRows(S.purchases.find((x) => x.id === ask.dataset.id));
-          const again = ask.querySelector(`[data-open="${el.dataset.open}"]`);
-          if (again) again.focus();
-        } else rerender();
-        break;
-      }
+      case "toggle": S.ui.open = S.ui.open === el.dataset.open ? null : el.dataset.open; rerender(); break;
       case "ref": openRef(el.dataset.ref, el.dataset.hl); break;
       case "lawyer": {
         // Что приложить: итог проверки заявки или ответ ИИ, после которого возник вопрос.
         if (el.dataset.from === "check" && p) {
-          const found = p.check.findings.map((f) => f.what).join(" ");
-          openAskLawyer({ pid: p.id, label: "итог проверки заявки", text: found || "Проверка заявки: ошибок нет.", question: "" });
+          const r = reviewOf(p);
+          const found = [...r.wrong, ...r.missing, ...r.later].map((it) => it.text).join(" ");
+          openAskLawyer({ pid: p.id, label: "итог проверки пакета", text: `${RISK[r.level].title}. ${found}`.trim(), question: "" });
           break;
         }
         const list = S.screen === "ask" ? S.general.messages : p ? p.chat : [];
@@ -4572,24 +4773,40 @@
         else go(n.go, n.id);
         break;
       }
-      case "files": openFiles(S.purchases.find((x) => x.id === el.dataset.id) || p); break;
-      case "file-dl": {
-        const q = S.purchases.find((x) => x.id === el.dataset.id) || p;
-        const k = el.dataset.part;
-        const made = q.parts[k];
-        if (k === "tp" || q.sample || (made && made.key === basisKey(q, k))) openPreview(q, k, true);
-        else writePart(q, k, true);
+      case "preview": openPreview(p, el.dataset.part); break;
+      // Оплата и скачивание в прототипе ничего не списывают и не сохраняют — показывают, что будет в рабочей версии.
+      case "pay": {
+        p.paid = true;
+        rerender();
+        toast(`Заявка оплачена — ${PRICE_APP} ₽. В прототипе деньги не списываются.`);
         break;
       }
-      case "files-zip": {
-        const q = S.purchases.find((x) => x.id === el.dataset.id) || p;
-        toast(`В рабочей версии скачается архив «${q.short} — заявка.zip» со всеми файлами Word. В прототипе откройте файлы по одному.`);
+      case "dl": toast(`В рабочей версии скачается «${PART_TITLES[el.dataset.part]}.${S.format}». В прототипе файл не сохраняется — посмотрите его кнопкой «Посмотреть».`); break;
+      case "zip": {
+        const n = docsOf(p).length;
+        toast(`В рабочей версии скачается архив «${p.short} — заявка.zip»: ${countText(n, "файл", "файла", "файлов")} ${fmtName(S.format)}. В прототипе файл не сохраняется.`);
+        break;
+      }
+      // Проверка специалистом: разговор в «Вопросах юристу» с пакетом и итогом проверки ИИ. В прототипе ответ — через 12 секунд.
+      case "expert": {
+        const r = p.check.state === "done" ? reviewOf(p) : null;
+        const t = {
+          id: uid(), pid: p.id, title: `Проверка пакета: ${p.short}`, unread: false,
+          ctx: { label: "пакет документов", text: `${countText(docsOf(p).length, "документ", "документа", "документов")}${r ? ` · проверка ИИ: ${RISK[r.level].title.toLowerCase()}` : " · ИИ ещё не проверял"}` },
+          messages: [{ role: "user", text: "Проверьте, пожалуйста, пакет документов перед подачей.", when: "только что" }],
+        };
+        S.law.threads.unshift(t);
+        p.expert = t.id;
+        rerender();
+        toast(`Отправлено специалисту — ${PRICE_EXPERT} ₽. Ответ придёт в «Вопросы юристу». В прототипе деньги не списываются.`);
+        lawReplyLater(t);
         break;
       }
       case "ask-delete": S.ui.confirmDelete = true; rerender(); { const b = $('[data-act="cancel-delete"]'); if (b) b.focus(); } break;
       case "cancel-delete": S.ui.confirmDelete = false; rerender(); break;
       case "delete": S.purchases = S.purchases.filter((x) => x !== p); S.id = null; go("list"); toast("Закупка удалена."); break;
       case "compose": compose(p); break;
+      case "compose-go": go("tp", p.id); compose(p); break;
       case "ask-redo": S.ui.confirmRedo = true; rerender(); { const b = $('[data-act="redo"]'); if (b) b.focus(); } break;
       case "cancel-redo": S.ui.confirmRedo = false; rerender(); break;
       case "redo": compose(p); break;
@@ -4602,9 +4819,6 @@
         if (area) { autosize(area); area.focus(); area.setSelectionRange(area.value.length, area.value.length); }
         break;
       }
-      case "part": onPartClick(p, el.dataset.part, false); break;
-      case "part-redo": onPartClick(p, el.dataset.part, true); break;
-      case "preview-tp": openPreview(p, "tp"); break;
       case "cast-paste": {
         S.ui.castPaste = !S.ui.castPaste;
         rerender();
@@ -4636,11 +4850,11 @@
         if (add) add.focus();
         break;
       }
-      case "sample-check": runCheck(p); break;
-      case "recheck": p.check.state = "none"; rerender(); toTop(); break;
+      case "run-check": runCheck(p, false); break;
+      case "recheck": runCheck(p, true); break;
       case "floor-price": {
         const { floor } = priceFloor(calcOf(p));
-        if (floor.ok) { p.priceCalc = { ...(p.priceCalc || {}), price: floor.price }; refreshPrice(p, "floor"); }
+        if (floor.ok) { p.priceCalc = { ...(p.priceCalc || {}), price: floor.price }; refreshPrice(p, "floor"); refreshCounts(); }
         break;
       }
       case "fill": fillFromDocs(); break;
@@ -4748,7 +4962,7 @@
     else if (t.dataset.edit) onEditInput(t);
     else if (t.dataset.cast) onCastInput(t);
     else if (t.id === "cast-paste-text") S.ui.castText = t.value;
-    else if (t.id === "tp-price") onPriceInput(t);
+    else if (t.dataset.extra !== undefined) onExtraInput(t);
     else if (t.id === "plist-q") { S.q = t.value; const body = $("#plist-body"); if (body) body.innerHTML = plistBodyHTML(PURCHASE_SCREENS.includes(S.screen) ? cur() : null); }
     else if (t.dataset.pf) onProfileInput(t);
     else if (t.dataset.calc && t.type !== "checkbox" && t.type !== "radio") onCalcInput(t);
@@ -4798,19 +5012,23 @@
     const input = e.target;
     if (input.dataset && input.dataset.calc && (input.type === "checkbox" || input.type === "radio")) { onCalcInput(input); return; }
     if (input.dataset && input.dataset.ocr !== undefined) { S.ocr = input.checked; return; }
+    // Ваши документы на шаге «Пакет»: отметка «готово» — по названию пункта. Меняет итог проверки и статусы шагов.
     if (input.dataset && input.dataset.ready !== undefined) {
-      const ask = input.closest("#files-ask");
-      const q = ask && S.purchases.find((x) => x.id === ask.dataset.id);
+      const list = input.closest("#own-list");
+      const q = list && S.purchases.find((x) => x.id === list.dataset.id);
       if (!q) return;
-      const text = q.requirements.submit[Number(input.dataset.ready)].text;
+      const title = ownOf(q)[Number(input.dataset.ready)].own;
       const ready = new Set(readyOf(q));
-      if (input.checked) ready.add(text); else ready.delete(text);
-      q.submitReady = q.requirements.submit.map((it) => it.text).filter((t) => ready.has(t));
+      if (input.checked) ready.add(title); else ready.delete(title);
+      q.submitReady = ownOf(q).map((r) => r.own).filter((t) => ready.has(t));
       input.closest(".ask-row").classList.toggle("ready", input.checked);
-      const count = $("#files-ask-count");
-      if (count) count.textContent = askCount(q);
+      const count = $("#own-count");
+      if (count) count.textContent = ownCount(q);
+      refreshCounts();
       return;
     }
+    // Формат файлов пакета — Word или PDF: один на все файлы и архив.
+    if (input.dataset && input.dataset.fmt !== undefined) { S.format = input.value; rerender(); return; }
     if (input.id === "consent-processing" || input.id === "consent-transfer") {
       $("#consent-ok").disabled = !($("#consent-processing").checked && $("#consent-transfer").checked);
       return;
@@ -4828,7 +5046,7 @@
     if (input.id === "g-file") { S.general.docs = [...new Set([...S.general.docs, ...names])]; S.general.pending = [...new Set([...S.general.pending, ...names])]; rerender(); }
     else if (input.id === "file-new") createPurchase();
     else if (input.id === "add-doc" || input.id === "add-doc-2") addToPurchase(cur(), names);
-    else if (input.id === "file-app") runCheck(cur());
+    else if (input.id === "file-app") runCheck(cur(), false);
     else if (input.id === "file-mydocs" || input.id === "file-mydocs-top") addMyDocs(files);
   });
 
@@ -4884,7 +5102,7 @@
     if (!files.length) return;
     const kind = zone.dataset.drop;
     if (kind === "new") createPurchase();
-    else if (kind === "app") runCheck(cur());
+    else if (kind === "app") runCheck(cur(), false);
     else if (kind === "mydocs") addMyDocs(files);
   });
 

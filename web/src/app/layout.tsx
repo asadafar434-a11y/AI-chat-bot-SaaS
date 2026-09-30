@@ -1,18 +1,19 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono, Montserrat } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import { AppShell } from "@/components/app-shell";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
-// Один шрифт на заголовки и интерфейс. Знак ₽ лежит в наборе latin-ext: он скачивается вместе
-// с остальными и подгружается, когда встречается, а заранее грузятся только латиница и кириллица.
-const montserrat = Montserrat({
-  variable: "--font-montserrat",
+// Шрифты стиля Figma Make: Geist — заголовки, интерфейс и текст, Geist Mono — числа, номера, реквизиты.
+// Знак ₽ лежит в наборе latin-ext: он скачивается вместе с остальными и подгружается, когда встречается,
+// а заранее грузятся только латиница и кириллица.
+const geist = Geist({
+  variable: "--font-geist",
   subsets: ["latin", "cyrillic"],
 });
 
-const jetbrains = JetBrains_Mono({
-  variable: "--font-jetbrains",
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
   subsets: ["latin", "cyrillic"],
 });
 
@@ -25,7 +26,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="ru"
-      className={`${montserrat.variable} ${jetbrains.variable} h-full antialiased`}
+      className={`${geist.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="overflow-hidden">
         <TooltipProvider>

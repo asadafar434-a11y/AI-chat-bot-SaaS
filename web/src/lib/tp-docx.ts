@@ -11,7 +11,7 @@ import {
   WidthType,
 } from "docx";
 import type { PartBlock, PartDoc } from "@/lib/part-doc";
-import { ANKETA, fillFromProfile, type Profile } from "@/lib/profile";
+import { ANKETA, anketaExtraRows, fillFromProfile, type Profile } from "@/lib/profile";
 import { formatRubles, rublesInWords } from "@/lib/rub-words";
 import type { TpForm } from "@/lib/tp";
 import { PART_TITLES, type TpPart } from "@/lib/tp-parts";
@@ -28,18 +28,15 @@ export type TpDocx = {
   price: number | null;
   // Реквизиты участника; в техническое предложение не передаются.
   profile: Profile | null;
+  // Строки формы анкеты заказчика сверх реквизитов, которые участник вписал под эту закупку.
+  anketaExtra?: Record<string, string>;
 };
 
-// Строки формы заказчика, которые уже есть в анкете под другим названием, не повторяем.
-const COVERED = [/^наименование$/i, /^(фамилия|имя|отчество)/i, /место нахождения|место жительства/i, /банковские реквизиты/i, /^инн участника/i];
-
-function anketaRows(form: TpForm, profile: Profile | null) {
-  const extra = form.participantFields.filter(
-    (field, i, all) => all.indexOf(field) === i && !COVERED.some((re) => re.test(field.trim()))
-  );
+// extra — что участник вписал в строки формы заказчика сверх реквизитов (карта полей, fields.ts).
+function anketaRows(form: TpForm, profile: Profile | null, extra: Record<string, string> = {}) {
   return [
     ...ANKETA.map(({ key, label }) => ({ label, value: profile?.[key].trim() ?? "" })),
-    ...extra.map((label) => ({ label, value: "" })),
+    ...anketaExtraRows(form.participantFields).map((label) => ({ label, value: (extra[label] ?? "").trim() })),
   ];
 }
 
@@ -154,10 +151,10 @@ function tpBody({ form, goods, items, cast }: TpDocx): (Paragraph | Table)[] {
   return body;
 }
 
-const participantBody = ({ form, profile }: TpDocx) => [
+const participantBody = ({ form, profile, anketaExtra }: TpDocx) => [
   table([
     headerRow([["№", 6], ["Наименование сведений", 44], ["Сведения об участнике", 50]]),
-    ...anketaRows(form, profile).map(
+    ...anketaRows(form, profile, anketaExtra).map(
       (row, i) =>
         new TableRow({
           children: [

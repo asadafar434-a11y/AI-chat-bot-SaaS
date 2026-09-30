@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { ChatStatus } from "ai";
+import { BotMark } from "@/components/bot-mark";
 import { DocumentIcon, RefreshIcon } from "@/components/icons";
 import {
   Conversation,
@@ -79,8 +80,8 @@ export function ChatFeed({ messages, status, error, onRetry, empty }: ChatFeedPr
             const text = textOf(m);
             const files = m.metadata?.files ?? [];
             if (!text && files.length === 0) return null;
-            return (
-              <Message from={m.role} key={m.id} className={m.role === "assistant" ? "max-w-full" : undefined}>
+            const message = (
+              <Message from={m.role} key={m.id} className={m.role === "assistant" ? "min-w-0 max-w-full" : undefined}>
                 {files.length > 0 && (
                   <div className="flex flex-wrap justify-end gap-2">
                     {files.map((name) => (
@@ -92,7 +93,7 @@ export function ChatFeed({ messages, status, error, onRetry, empty }: ChatFeedPr
                   </div>
                 )}
                 {text && (
-                  <MessageContent className="group-[.is-user]:max-w-[80%] group-[.is-user]:rounded-[var(--r-bubble)] group-[.is-user]:py-2.5">
+                  <MessageContent className="group-[.is-user]:max-w-[80%] group-[.is-user]:rounded-[var(--r-bubble)] group-[.is-user]:rounded-br-sm group-[.is-user]:bg-primary group-[.is-user]:py-2.5 group-[.is-user]:text-primary-foreground">
                     {m.role === "assistant" ? (
                       <MessageResponse
                         isAnimating={status === "streaming" && m.id === last?.id}
@@ -108,9 +109,23 @@ export function ChatFeed({ messages, status, error, onRetry, empty }: ChatFeedPr
                 )}
               </Message>
             );
+            // Ответ ИИ — с роботом слева, как в чате прототипа; вопрос человека — чёрный пузырь справа.
+            return m.role === "assistant" ? (
+              <div key={m.id} className="flex items-start gap-3">
+                <BotMark className="size-7" />
+                {message}
+              </div>
+            ) : (
+              message
+            );
           })
         )}
-        {waiting && <p className="animate-pulse text-[var(--ink-3)]">Изучаю документы и закон…</p>}
+        {waiting && (
+          <div className="flex items-center gap-3">
+            <BotMark className="size-7" />
+            <p className="animate-pulse text-[var(--ink-3)]">Изучаю документы и закон…</p>
+          </div>
+        )}
         {status === "error" && (
           <div className="flex flex-wrap items-center gap-3 text-destructive">
             <span>{error?.message || "Не удалось получить ответ."}</span>

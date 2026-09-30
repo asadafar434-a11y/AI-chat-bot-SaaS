@@ -102,6 +102,13 @@ export const ANKETA: { key: ProfileKey; label: string }[] = [
   { key: "smeCategory", label: "Категория субъекта МСП" },
 ];
 
+// Строки формы анкеты заказчика, которые уже есть в анкете под другим названием, — не повторяем.
+export const ANKETA_COVERED = [/^наименование$/i, /^(фамилия|имя|отчество)/i, /место нахождения|место жительства/i, /банковские реквизиты/i, /^инн участника/i];
+
+// Строки формы анкеты заказчика сверх реквизитов: их участник вписывает под эту закупку.
+export const anketaExtraRows = (participantFields: string[]) =>
+  participantFields.filter((field, i, all) => all.indexOf(field) === i && !ANKETA_COVERED.some((re) => re.test(field.trim())));
+
 // Поля «[…]» в текстах формы заказчика, которые можно заполнить реквизитами. Порядок важен:
 // «[должность, фамилия, имя, отчество руководителя]» — это руководитель, а не наименование.
 const FIELD_RULES: [RegExp, ProfileKey][] = [

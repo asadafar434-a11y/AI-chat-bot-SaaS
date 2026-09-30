@@ -26,6 +26,12 @@ export type Purchase = PurchaseSummary & {
   // Критерии оценки заявок. Закупки, выписанные до них, критериев не имеют — их покажет повторный разбор.
   criteria?: Criteria;
   tp?: TpResult;
+  // ТП, как его составил ИИ, — до правок участника: по нему видно, какие жёлтые места вписаны (lib/fields.ts).
+  tpDraft?: TpResult;
+  // Что участник вписал в мастере заполнения сверх ТП и реквизитов — например, строки анкеты заказчика.
+  fieldValues?: Record<string, string>;
+  // Что участник подтвердил: подписанта, цену, договоры для опыта, цифры из скана (ключи полей lib/fields.ts).
+  confirmed?: string[];
   // Цена, которую участник вписал в заявку, в рублях.
   tpPrice?: number;
   // Что участник вписал в «До какой цены снижаться». Только изменённые поля: остальное берётся из закупки.
@@ -38,11 +44,17 @@ export type Purchase = PurchaseSummary & {
   chat?: ChatMessage[];
 };
 
+// Заголовки запроса к ИИ по закупке: номер закупки — это номер заявки, по нему сервер ведёт бюджет ИИ.
+export const aiHeaders = (purchaseId?: string) => ({
+  "Content-Type": "application/json",
+  ...(purchaseId && { "x-application-id": purchaseId }),
+});
+
 // Требования выписываются при создании закупки и заново — когда к ней добавляют документы.
-export async function extractRequirements(documents: SentDocument[]): Promise<RequirementsResponse> {
+export async function extractRequirements(documents: SentDocument[], purchaseId?: string): Promise<RequirementsResponse> {
   const res = await fetch("/api/requirements", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: aiHeaders(purchaseId),
     body: JSON.stringify({ documents }),
   });
   if (!res.ok) throw new Error((await res.text()) || "Не удалось выписать требования.");
