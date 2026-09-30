@@ -8,6 +8,7 @@ import { POST as profileFromDocs } from "../app/api/my-docs/profile/route.ts";
 import { POST as requirements } from "../app/api/requirements/route.ts";
 import { POST as tp } from "../app/api/tp/route.ts";
 import { POST as tpDocx } from "../app/api/tp/docx/route.ts";
+import { POST as tpPdf } from "../app/api/tp/pdf/route.ts";
 import { POST as tpPart } from "../app/api/tp/part/route.ts";
 import { BAD_REQUEST_TEXT, readJson, sentDocuments } from "./read-json.ts";
 
@@ -30,7 +31,7 @@ test("документы из запроса: только записи с те�
 });
 
 test("маршруты ИИ и сборки Word на кривой JSON отвечают 400 с текстом", async () => {
-  const routes = { chat, check, sortDocs, profileFromDocs, requirements, tp, tpDocx, tpPart };
+  const routes = { chat, check, sortDocs, profileFromDocs, requirements, tp, tpDocx, tpPdf, tpPart };
   for (const [name, post] of Object.entries(routes)) {
     for (const body of ["{", "[1, 2]"]) {
       const res = await post(request(body));
@@ -46,6 +47,7 @@ test("JSON без нужных полей — не 500: просим то, че�
     ["requirements", requirements, '{"documents":{"text":1}}', /./],
     ["check", check, '{"documents":[{"text":"ТЗ"}],"application":"заявка"}', /./],
     ["tp/docx", tpDocx, '{"items":"пункт"}', /В черновике нет пунктов/],
+    ["tp/pdf", tpPdf, '{"items":"пункт"}', /В черновике нет пунктов/],
   ];
   for (const [name, post, body, text] of cases) {
     const res = await post(request(body));

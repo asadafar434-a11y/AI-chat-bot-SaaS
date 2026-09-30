@@ -1,11 +1,14 @@
 import "server-only";
-import { buildPartDocx, buildTpDocx, type CastLine } from "@/lib/tp-docx";
+import { FILE_FORMATS, type FileFormat } from "@/lib/file-format";
+import { buildPartDocx, buildTpDocx } from "@/lib/tp-docx";
+import type { CastLine, TpDocx } from "@/lib/tp-doc-model";
 import { PART_TITLES, type TpPart } from "@/lib/tp-parts";
 import { PartDocFileSchema, type PartDoc } from "@/lib/part-doc";
 import { EMPTY_PROFILE, PROFILE_KEYS, type Profile } from "@/lib/profile";
 import { PLAIN_FORM, type TpForm } from "@/lib/tp";
+import { badRequest, readJson } from "@/lib/read-json";
 
-// Файл Word части заявки — из того, что прислал браузер. Одинаково для одного файла (api/tp/docx)
+// Файл части заявки — Word или PDF — из того, что прислал браузер. Одинаково для одного файла (api/tp/docx, api/tp/pdf)
 // и для архива со всеми (api/tp/zip).
 
 type Loose<T> = { [K in keyof T]?: unknown };
@@ -24,7 +27,7 @@ export type DocxRequest = {
   doc?: unknown;
 };
 
-export type DocxResult = { ok: true; part: TpPart; buffer: Buffer } | { ok: false; status: number; message: string };
+export type FileResult = { ok: true; part: TpPart; buffer: Buffer } | { ok: false; status: number; message: string };
 
 const text = (value: unknown, max: number) => String(value ?? "").slice(0, max);
 const list = <T,>(value: unknown): T[] => (Array.isArray(value) ? value.slice(0, 1000) : []);
@@ -41,15 +44,19 @@ const cleanPartDoc = (doc: PartDoc): PartDoc => ({
 
 export const partOf = (value: unknown): TpPart => (typeof value === "string" && value in PART_TITLES ? (value as TpPart) : "tp");
 
-// Документ собирается из того, что прислал браузер, поэтому всё приводим к ожидаемому виду и длине.
-export async function docxFromRequest(body: DocxRequest): Promise<DocxResult> {
+// Из чего собирается файл: готовый документ, который написал ИИ, или данные закупки и реквизиты.
+type Source = { kind: "doc"; part: TpPart; doc: PartDoc } | { kind: "data"; part: TpPart; data: TpDocx };
+type SourceResult = { ok: true; source: Source } | { ok: false; status: number; message: string };
+
+// Файл собирается из того, что прислал браузер, поэтому всё приводим к ожидаемому виду и длине.
+function sourceFromRequest(body: DocxRequest): SourceResult {
   const part = partOf(body.part);
 
   // Техническое предложение так не собирается никогда: в нём не должно быть ничего об участнике.
   if (body.doc !== undefined && part !== "tp") {
     const parsed = PartDocFileSchema.safeParse(body.doc);
     if (!parsed.success) return { ok: false, status: 400, message: "Документ повреждён — составьте его заново." };
-    return { ok: true, part, buffer: await buildPartDocx(cleanPartDoc(parsed.data)) };
+    return { ok: true, source: { kind: "doc", part, doc: cleanPartDoc(parsed.data) } };
   }
 
   const form = body.form ?? {};
@@ -66,7 +73,7 @@ export async function docxFromRequest(body: DocxRequest): Promise<DocxResult> {
       ? null
       : { ...EMPTY_PROFILE, ...Object.fromEntries(PROFILE_KEYS.map((key) => [key, text(body.profile?.[key], 500)])) };
 
-  const buffer = await buildTpDocx(part, {
+  const data: TpDocx = {
     subject: text(body.subject, 500),
     form: {
       title: text(form.title, 300) || PLAIN_FORM.title,
@@ -104,10 +111,37 @@ export async function docxFromRequest(body: DocxRequest): Promise<DocxResult> {
     anketaExtra: profile && body.anketaExtra && typeof body.anketaExtra === "object"
       ? Object.fromEntries(Object.entries(body.anketaExtra).slice(0, 50).map(([label, value]) => [text(label, 300), text(value, 2000)]))
       : undefined,
-  });
-  return { ok: true, part, buffer };
+  };
+  return { ok: true, source: { kind: "data", part, data } };
+}
+
+// PDF собирается библиотекой, которую незачем грузить, пока просят только Word.
+async function render(source: Source, format: FileFormat): Promise<Buffer> {
+  if (format === "pdf") {
+    const { buildPartPdf, buildTpPdf } = await import("@/lib/tp-pdf");
+    return source.kind === "doc" ? buildPartPdf(source.doc) : buildTpPdf(source.part, source.data);
+  }
+  return source.kind === "doc" ? buildPartDocx(source.doc) : buildTpDocx(source.part, source.data);
+}
+
+export async function fileFromRequest(body: DocxRequest, format: FileFormat = "docx"): Promise<FileResult> {
+  const made = sourceFromRequest(body);
+  if (!made.ok) return made;
+  return { ok: true, part: made.source.part, buffer: await render(made.source, format) };
 }
 
 // Имя файла в заголовке ответа: латиницей — для старых браузеров, по-русски — в filename*.
 export const attachment = (name: string, fallback: string) =>
   `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(name)}`;
+
+// Ответ api/tp/docx и api/tp/pdf: один файл части заявки. Имя по-русски — в заголовке, не в адресе.
+export async function fileRoute(request: Request, format: FileFormat): Promise<Response> {
+  const body = (await readJson(request)) as DocxRequest | null;
+  if (!body) return badRequest();
+  const made = await fileFromRequest(body, format);
+  if (!made.ok) return new Response(made.message, { status: made.status });
+  const { ext, type } = FILE_FORMATS[format];
+  return new Response(new Uint8Array(made.buffer), {
+    headers: { "Content-Type": type, "Content-Disposition": attachment(`${PART_TITLES[made.part]}.${ext}`, `proposal.${ext}`) },
+  });
+}

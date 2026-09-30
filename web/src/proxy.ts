@@ -13,10 +13,10 @@ const aiPerIp = createLimiter(AI_PER_IP);
 const aiTotal = createLimiter(AI_TOTAL);
 const filesPerIp = createLimiter(FILES_PER_IP);
 
-// Запросы, которые тратят бюджет ИИ или силы сервера, — не чаще лимита. Файл Word ТП собирается без ИИ, вход — свой лимит.
+// Запросы, которые тратят бюджет ИИ или силы сервера, — не чаще лимита. Файл Word или PDF части заявки собирается без ИИ, вход — свой лимит.
 function tooMany(request: NextRequest): NextResponse | null {
   const { pathname } = request.nextUrl;
-  if (request.method !== "POST" || !pathname.startsWith("/api/") || pathname === "/api/login" || pathname === "/api/tp/docx") {
+  if (request.method !== "POST" || !pathname.startsWith("/api/") || pathname === "/api/login" || pathname === "/api/tp/docx" || pathname === "/api/tp/pdf") {
     return null;
   }
   const ip = clientIp(request.headers.get("x-forwarded-for"));

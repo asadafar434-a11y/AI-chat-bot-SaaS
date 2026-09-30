@@ -33,7 +33,8 @@ const SECURITY_HEADERS = [
 ];
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["pdf-parse", "mammoth"],
+  // pdfmake и pdfkit читают свои шрифты и таблицы с диска рядом с собой — их нельзя склеивать в общий файл сборки.
+  serverExternalPackages: ["pdf-parse", "mammoth", "pdfmake", "pdfkit"],
   // Заголовок «X-Powered-By: Next.js» подсказывает, какие уязвимости пробовать.
   poweredByHeader: false,
   async headers() {
