@@ -11,12 +11,15 @@ import {
   HomeIcon,
   PlusIcon,
   UserIcon,
+  WalletIcon,
   type IconComponent,
 } from "@/components/icons";
 import { Island } from "@/components/island";
 import { Note } from "@/components/note";
 import { LEGAL_PAGES } from "@/lib/legal";
 import { PageBody, PageHeader } from "@/components/page-header";
+import { rubShort } from "@/lib/price-calc";
+import { PRICE_APP } from "@/lib/pricing";
 import { openSamplePurchase } from "@/lib/sample-purchase";
 import { STORAGE_ERROR } from "@/lib/use-purchases";
 
@@ -85,6 +88,12 @@ const SECTIONS: { icon: IconComponent; title: string; href: string; text: string
     title: "Образцы и реквизиты",
     href: "/me/documents",
     text: "Ваши прошлые заявки, анкеты, карточка предприятия. По ним заполняются реквизиты и пишутся новые документы — так же, как пишете вы.",
+  },
+  {
+    icon: WalletIcon,
+    title: "Тарифы",
+    href: "/tariffs",
+    text: `Заявка — ${rubShort(PRICE_APP)}, пакеты на 5 и 10 заявок — со скидкой. Оплата пока не подключена: документы скачиваются бесплатно.`,
   },
 ];
 

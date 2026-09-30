@@ -271,10 +271,23 @@ export const UploadIcon = /* @__PURE__ */ icon("UploadIcon", [
   ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }],
 ]);
 
+// user-check
+export const UserCheckIcon = /* @__PURE__ */ icon("UserCheckIcon", [
+  ["path", { d: "m16 11 2 2 4-4" }],
+  ["path", { d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" }],
+  ["circle", { cx: "9", cy: "7", r: "4" }],
+]);
+
 // user
 export const UserIcon = /* @__PURE__ */ icon("UserIcon", [
   ["path", { d: "M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" }],
   ["circle", { cx: "12", cy: "7", r: "4" }],
+]);
+
+// wallet
+export const WalletIcon = /* @__PURE__ */ icon("WalletIcon", [
+  ["path", { d: "M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" }],
+  ["path", { d: "M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" }],
 ]);
 
 // triangle-alert

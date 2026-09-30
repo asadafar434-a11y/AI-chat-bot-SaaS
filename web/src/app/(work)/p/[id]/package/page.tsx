@@ -1,18 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { PackageFiles } from "@/components/application-files";
 import { NextStep, StepIntro, TabBody } from "@/components/purchase-view";
+import { Soon } from "@/components/soon";
 import { rubShort } from "@/lib/price-calc";
 import { PRICE_APP, PRICE_EXPERT } from "@/lib/pricing";
-
-// Пометка «скоро»: чего приложение ещё не умеет, не прячем и не выдаём за работающее (CLAUDE.md).
-function Soon() {
-  return (
-    <span className="rounded-[var(--r-pill)] border border-dashed border-[var(--edge-2)] px-1.5 font-mono text-[10px] uppercase leading-4 tracking-wider text-[var(--ink-3)]">
-      скоро
-    </span>
-  );
-}
 
 // Шаг 5 «Пакет», как в прототипе: файлы заявки — по одному или архивом, что требует заказчик — с отметками готовности.
 // Оплата заявки и проверка специалистом в приложении пока не работают: для них нужен сервер — они помечены «скоро».
@@ -32,7 +25,13 @@ export default function PackagePage() {
             Оплата заявки · {rubShort(PRICE_APP)}
             <Soon />
           </p>
-          <p className="text-[var(--ink-2)]">Пакеты на 5 и 10 заявок — со скидкой. Пока оплаты нет — документы скачиваются бесплатно.</p>
+          <p className="text-[var(--ink-2)]">
+            Пакеты на 5 и 10 заявок — со скидкой, подробнее — в{" "}
+            <Link href="/tariffs" className="link">
+              «Тарифах»
+            </Link>
+            . Пока оплаты нет — документы скачиваются бесплатно.
+          </p>
         </div>
         <div className="island grid content-start gap-1 px-[var(--pad)] py-3">
           <p className="t-section flex flex-wrap items-center gap-2">

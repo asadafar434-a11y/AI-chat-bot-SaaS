@@ -14,6 +14,7 @@ import {
   HomeIcon,
   PlusIcon,
   UserIcon,
+  WalletIcon,
   type IconComponent,
 } from "@/components/icons";
 import { onDataChanged } from "@/lib/db";
@@ -169,6 +170,9 @@ export function SideNav({ onClose }: { onClose: () => void }) {
         </Group>
 
         <div className="mt-auto grid gap-0.5">
+          <NavItem href="/tariffs" icon={WalletIcon} current={pathname === "/tariffs"}>
+            Тарифы
+          </NavItem>
           <NavItem href="/help" icon={HelpCircleIcon} current={pathname === "/help"}>
             Как это работает
           </NavItem>
