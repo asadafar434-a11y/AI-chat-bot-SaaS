@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { CaretDownIcon, CheckIcon, WarningIcon } from "@/components/icons";
+import Link from "next/link";
+import { ArrowLeftIcon, ArrowRightIcon, CaretDownIcon, CheckIcon, WarningIcon } from "@/components/icons";
 import { Hint } from "@/components/hint";
 import { Island } from "@/components/island";
 import { Note } from "@/components/note";
 import { PriceScale } from "@/components/price-scale";
 import { usePurchase } from "@/components/purchase-provider";
-import { NextStep, StepIntro, TabBody } from "@/components/purchase-view";
+import { TabBody } from "@/components/purchase-view";
 import { calcFor, dropText, pctText, rub, rubShort } from "@/lib/price-calc";
 import {
   GOOD_FAITH_LIMIT,
@@ -330,10 +331,13 @@ export default function PricePage() {
   return (
     <>
       <TabBody>
-        <StepIntro>
-          Шаг 3 — до какой цены можно снижаться на торгах, чтобы контракт не ушёл в убыток. Впишите себестоимость — остальное
-          подставлено из документов закупки. Выбранную цену поставьте в заявку. Считается прямо в браузере, цифры никуда не отправляются.
-        </StepIntro>
+        <div className="px-[var(--pad)] py-1">
+          <h1 className="t-page">Цена</h1>
+          <p className="mt-1 max-w-[80ch] text-[var(--ink-2)]">
+            До какой цены можно снижаться, чтобы контракт не ушёл в убыток. Впишите себестоимость — остальное подставлено из
+            документов закупки. Выбранную цену поставьте в заявку. Считается прямо в браузере, цифры никуда не отправляются.
+          </p>
+        </div>
 
         <Island id="price-costs" level={3} title="Ваши цифры" sub={purchase.sample ? "В примере — вымышленные расходы" : undefined}>
           <div className="@container px-[var(--pad)] pb-4 pt-1">
@@ -558,7 +562,16 @@ export default function PricePage() {
             </div>
           )}
         </section>
-        <NextStep from="price" />
+        <div className="flex flex-wrap items-center justify-between gap-3 px-[var(--pad)] pb-2">
+          <Link href={`/p/${purchase.id}`} className="btn btn-line">
+            <ArrowLeftIcon />
+            Анализ
+          </Link>
+          <Link href={`/p/${purchase.id}/check`} className="btn">
+            Проверить заявку
+            <ArrowRightIcon />
+          </Link>
+        </div>
       </TabBody>
 
       <Result calc={calc} floor={floor} atFloor={atFloor} unpriced={secured && !rated} />

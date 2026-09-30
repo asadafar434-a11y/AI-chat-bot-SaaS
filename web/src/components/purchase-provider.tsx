@@ -115,7 +115,7 @@ export function PurchaseProvider({ id, children }: { id: string; children: React
   if (loaded.status !== "ready") {
     return (
       <div className="island grid max-w-[560px] justify-items-start gap-2 p-[var(--pad)]">
-        <Link href="/purchases" className="link link-quiet t-body mb-2 inline-flex items-center gap-1.5 no-underline split:hidden">
+        <Link href="/" className="link link-quiet t-body mb-2 inline-flex items-center gap-1.5 no-underline">
           <ArrowLeftIcon aria-hidden className="size-4" />
           Все закупки
         </Link>

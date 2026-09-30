@@ -28,7 +28,7 @@ const PATH: { n: ReactNode; title: string; where: string; text: string }[] = [
     n: <PlusIcon className="size-3.5" />,
     title: "Новая закупка",
     where: "кнопка «Новая закупка»",
-    text: "Загрузите извещение, ТЗ и проект контракта — PDF, Word, Excel, сканы или фото. Через 1–2 минуты закупка появится в разделе «Закупки».",
+    text: "Загрузите извещение, ТЗ и проект контракта — PDF, Word, Excel, ZIP, сканы или фото. Через 1–2 минуты закупка появится в разделе «Закупки».",
   },
   {
     n: "1",
@@ -73,7 +73,7 @@ const SECTIONS: { icon: IconComponent; title: string; href: string; text: string
   {
     icon: ClipboardIcon,
     title: "Закупки",
-    href: "/purchases",
+    href: "/",
     text: "Все закупки: список слева, открытая закупка справа — с шагами, поиском по словам в её документах, расчётом, до какой цены снижаться, и вопросами по ней.",
   },
   {

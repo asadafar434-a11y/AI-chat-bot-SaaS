@@ -1,5 +1,6 @@
 import type { ChatDocument } from "@/lib/chat-types";
 import { extractText } from "@/lib/extract-text";
+import { unzipFiles } from "@/lib/zip-files";
 import { fileProblem, MAX_FILE_MB, MAX_FILES, MAX_REQUEST_BYTES } from "@/lib/read-documents";
 
 type Failed = { name: string; reason: string };
@@ -30,7 +31,29 @@ export async function POST(request: Request) {
   const documents: ChatDocument[] = [];
   const failed: Failed[] = [];
 
+  // Архив .zip раскладывается на файлы — они читаются как обычные.
+  const queue: File[] = [];
   for (const file of files) {
+    if (!/.zip$/i.test(file.name)) {
+      queue.push(file);
+      continue;
+    }
+    const problem = fileProblem(file);
+    if (problem) {
+      failed.push({ name: file.name, reason: problem });
+      continue;
+    }
+    const unpacked = unzipFiles(new Uint8Array(await file.arrayBuffer()));
+    if ("error" in unpacked) {
+      failed.push({ name: file.name, reason: unpacked.error });
+      continue;
+    }
+    for (const skipped of unpacked.skipped) failed.push({ name: `${file.name} → ${skipped.name}`, reason: skipped.reason });
+    if (unpacked.files.length === 0) failed.push({ name: file.name, reason: "в архиве нет файлов" });
+    queue.push(...unpacked.files);
+  }
+
+  for (const file of queue) {
     const problem = fileProblem(file);
     if (problem) {
       failed.push({ name: file.name, reason: problem });

@@ -314,3 +314,19 @@ export const SunIcon = /* @__PURE__ */ icon("SunIcon", [
 export const MoonIcon = /* @__PURE__ */ icon("MoonIcon", [
   ["path", { d: "M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" }],
 ]);
+
+// trash-2
+export const TrashIcon = /* @__PURE__ */ icon("TrashIcon", [
+  ["path", { d: "M10 11v6" }],
+  ["path", { d: "M14 11v6" }],
+  ["path", { d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" }],
+  ["path", { d: "M3 6h18" }],
+  ["path", { d: "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" }],
+]);
+
+// link-2
+export const LinkIcon = /* @__PURE__ */ icon("LinkIcon", [
+  ["path", { d: "M9 17H7A5 5 0 0 1 7 7h2" }],
+  ["path", { d: "M15 7h2a5 5 0 1 1 0 10h-2" }],
+  ["line", { x1: "8", x2: "16", y1: "12", y2: "12" }],
+]);

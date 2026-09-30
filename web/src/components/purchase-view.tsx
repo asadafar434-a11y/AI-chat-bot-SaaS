@@ -287,7 +287,7 @@ function InfoPane({ purchase, documents, onAdd, onClose, closeButton }: {
   async function deleteIt() {
     try {
       await remove();
-      router.replace("/purchases");
+      router.replace("/");
     } catch {
       setConfirmDelete(false);
       setDeleteError(true);
@@ -370,7 +370,8 @@ function InfoPane({ purchase, documents, onAdd, onClose, closeButton }: {
 // Открытая закупка: остров-шапка со сроком и шагами подготовки заявки, под ним острова шага, справа сведения.
 // От 1560 px сведения — третьим столбиком, уже — листом поверх закупки по кнопке «Сведения».
 // «Добавить документы» — и в шапке закупки, и на шаге «Загрузка»: одно и то же окно выбора файлов.
-const AddDocuments = createContext<() => void>(() => {});
+// Без аргументов открывает окно выбора файлов, с файлами — читает их сразу (перетаскивание на шаге «Загрузка»).
+const AddDocuments = createContext<(files?: File[]) => void>(() => {});
 export const useAddDocuments = () => useContext(AddDocuments);
 
 export function PurchaseView({ children }: { children: ReactNode }) {
@@ -455,8 +456,9 @@ export function PurchaseView({ children }: { children: ReactNode }) {
         <div className="-mx-2 -mt-1 flex-none overflow-hidden px-2 pb-1.5 pt-1 [scrollbar-gutter:stable]">
           <div className="island">
             <div className="@container flex min-h-14 items-center gap-2.5 py-2 pl-[var(--pad)] pr-2 max-split:pl-2">
-              <Link href="/purchases" aria-label="Все закупки" className="icon-btn split:hidden">
-                <ArrowLeftIcon className="size-4" />
+              <Link href="/" aria-label="Мои закупки" title="Мои закупки" className="btn btn-line btn-xs flex-none">
+                <ArrowLeftIcon />
+                <span className="@max-[560px]:hidden">Мои закупки</span>
               </Link>
               <span className="contents max-sm:hidden">
                 <LawBadge purchase={purchase} />
@@ -595,7 +597,7 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                   {error}
                 </Note>
               )}
-              <AddDocuments value={() => input.current?.click()}>{children}</AddDocuments>
+              <AddDocuments value={(files) => (files?.length ? void addFiles(files) : input.current?.click())}>{children}</AddDocuments>
             </>
           )}
         </div>

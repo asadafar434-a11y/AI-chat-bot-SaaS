@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { ArrowLeftIcon, ArrowRightIcon } from "@/components/icons";
 import { ComposeCard, useCompose } from "@/components/compose-documents";
 import { FieldMap } from "@/components/field-map";
 import { OwnCheck } from "@/components/own-check";
 import { usePurchase } from "@/components/purchase-provider";
-import { NextStep, StepIntro, TabBody } from "@/components/purchase-view";
+import { TabBody } from "@/components/purchase-view";
 
 // Шаг 4 «Проверка», как в прототипе: документы заявки составлены — по карте полей видно, что заполнено само,
 // что вписать, подтвердить или исправить; не составлены — главная кнопка шага их составляет. Кто готовил
@@ -18,10 +20,13 @@ export default function ReviewPage() {
 
   return (
     <TabBody>
-      <StepIntro>
-        Шаг 4 — дописать и проверить заявку. Всё, что нашлось в документах закупки и в «Реквизитах», уже вписано; здесь —
-        то, что знаете только вы, и то, что нужно подтвердить.
-      </StepIntro>
+      <div className="px-[var(--pad)] py-1">
+        <h1 className="t-page">Проверка перед подачей</h1>
+        <p className="mt-1 max-w-[80ch] text-[var(--ink-2)]">
+          Дописать и проверить заявку. Всё, что нашлось в документах закупки и в «Реквизитах», уже вписано; здесь — то, что
+          знаете только вы, и то, что нужно подтвердить.
+        </p>
+      </div>
 
       {purchase.tp && !compose.working ? <FieldMap /> : <ComposeCard state={compose} />}
 
@@ -44,7 +49,16 @@ export default function ReviewPage() {
         </div>
       )}
 
-      <NextStep from="review" />
+      <div className="flex flex-wrap items-center justify-between gap-3 px-[var(--pad)] pb-2">
+        <Link href={`/p/${purchase.id}/price`} className="btn btn-line">
+          <ArrowLeftIcon />
+          Цена
+        </Link>
+        <Link href={`/p/${purchase.id}/package`} className="btn">
+          Пакет документов
+          <ArrowRightIcon />
+        </Link>
+      </div>
     </TabBody>
   );
 }

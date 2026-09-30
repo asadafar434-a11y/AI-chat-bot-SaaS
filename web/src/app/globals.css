@@ -623,3 +623,20 @@
     border: 0;
   }
 }
+
+/* Свечение робота-ассистента в правом нижнем углу, как в прототипе */
+@keyframes bot-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 8px 12px rgb(79 70 229 / 0.45));
+  }
+  50% {
+    filter: drop-shadow(0 12px 20px rgb(59 130 246 / 0.6));
+  }
+}
+@utility animate-bot-glow {
+  animation: bot-glow 3.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}

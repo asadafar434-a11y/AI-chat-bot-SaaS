@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { BackupIsland } from "@/components/backup-island";
 import { Hint } from "@/components/hint";
-import { CheckIcon, UploadIcon, WarningIcon } from "@/components/icons";
+import { BankIcon, CheckIcon, DocumentIcon, PlusIcon, UploadIcon, WarningIcon } from "@/components/icons";
+import { Badge } from "@/components/badge";
 import { Island } from "@/components/island";
 import { Note } from "@/components/note";
 import { PageBody, PageHeader } from "@/components/page-header";
@@ -18,7 +19,7 @@ import {
   type MyDocument,
   type ProfileMeta,
 } from "@/lib/me-store";
-import { REQUISITE_KINDS, type FoundField } from "@/lib/my-docs";
+import { DOC_KINDS, REQUISITE_KINDS, type FoundField } from "@/lib/my-docs";
 import { plural } from "@/lib/plural";
 import { filledCount, PROFILE_GROUPS, PROFILE_KEYS, type Profile, type ProfileKey } from "@/lib/profile";
 import { profileProblems } from "@/lib/requisites-check";
@@ -27,6 +28,13 @@ type SaveState = "idle" | "saving" | "saved" | "failed";
 type FillNote = { tone: "ok" | "info" | "warn"; text: string };
 
 const LABELS = Object.fromEntries(PROFILE_GROUPS.flatMap((g) => g.fields.map((f) => [f.key, f.label]))) as Record<ProfileKey, string>;
+
+// Разделы страницы — как в прототипе: три карточки вместо пяти групп. Поля и их порядок те же (lib/profile.ts).
+const SECTIONS = [
+  { title: "Организация", hint: "Подставляется в заявку, декларацию СМП и контракт", groups: ["Участник", "Налоги", "Адреса"] },
+  { title: "Банковские реквизиты", hint: "Используются для обеспечения заявки и оплаты", groups: ["Банк"] },
+  { title: "Руководитель и контакты", hint: "Для подписи и связи с заказчиком", groups: ["Руководитель и контакты"] },
+];
 
 // Банковские реквизиты подставляются только вместе: счёт одного банка с БИК другого — ошибка в заявке.
 const BANK_KEYS: ProfileKey[] = ["account", "bankName", "bik", "corrAccount"];
@@ -199,7 +207,7 @@ export default function ProfilePage() {
   return (
     <>
       <PageHeader
-        title="Реквизиты"
+        title="Профиль компании"
         sub={`Данные компании для анкеты, декларации и цены · заполнено ${profile ? filledCount(profile) : 0} из ${PROFILE_KEYS.length}`}
         actions={
           <>
@@ -239,6 +247,34 @@ export default function ProfilePage() {
             </p>
           )}
 
+          {profile && (
+            <>
+              <section className="island flex flex-wrap items-center gap-4 p-[var(--pad)]">
+                <span aria-hidden className="grid size-12 flex-none place-items-center rounded-[var(--r-card)] bg-primary text-[var(--on-brand)]">
+                  <BankIcon className="size-6" />
+                </span>
+                <div className="grid min-w-0 flex-1 gap-0.5">
+                  <p className="t-title truncate">{profile.shortName.trim() || profile.fullName.trim() || "Название компании не указано"}</p>
+                  <p className="font-mono text-[12px] text-[var(--ink-3)]">
+                    {profile.inn.trim() ? `ИНН ${profile.inn.trim()}` : "ИНН не указан"}
+                    {profile.kpp.trim() ? ` · КПП ${profile.kpp.trim()}` : ""}
+                  </p>
+                </div>
+                {profile.smeCategory.trim() && (
+                  <span title="Категория субъекта МСП — из профиля. Нужна для закупок только у малого бизнеса.">
+                    <Badge tone="ok" text={profile.smeCategory.trim()} icon="check" />
+                  </span>
+                )}
+              </section>
+              <p className="island bg-[var(--paper-2)] p-[var(--pad)] text-[var(--ink-2)]">
+                <b className="font-semibold text-foreground">Как это работает: </b>
+                когда ИИ составляет документы заявки, он берёт эти реквизиты и вставляет их в нужные поля — на шаге «Проверка» у
+                каждого поля видно, что оно взято из профиля. Изменятся данные (например, новый расчётный счёт) — обновите их
+                здесь один раз, и все будущие заявки подхватят новое значение.
+              </p>
+            </>
+          )}
+
           {fillNote && (
             <Note tone={fillNote.tone} icon={fillNote.tone === "ok" ? CheckIcon : fillNote.tone === "warn" ? WarningIcon : undefined}>
               {fillNote.text}
@@ -258,10 +294,10 @@ export default function ProfilePage() {
           {meta.suggestions.length > 0 && <Suggestions items={meta.suggestions} onAccept={accept} onDismiss={dismiss} />}
 
           {profile &&
-            PROFILE_GROUPS.map((group, gi) => (
-              <Island key={group.title} id={`pg-${gi}`} title={group.title}>
+            SECTIONS.map((section, gi) => (
+              <Island key={section.title} id={`pg-${gi}`} title={section.title} sub={section.hint}>
                 <div className="grid px-[var(--pad)] pb-3 pt-1">
-                  {group.fields.map((field) => {
+                  {PROFILE_GROUPS.filter((g) => section.groups.includes(g.title)).flatMap((g) => g.fields).map((field) => {
                     const hint = focused === field.key ? undefined : problems[field.key];
                     return (
                       <div
@@ -302,6 +338,45 @@ export default function ProfilePage() {
                 </div>
               </Island>
             ))}
+
+          {profile && (
+            <Island
+              id="pg-samples"
+              title="Образцы и документы"
+              count={docs.length || undefined}
+              sub="Прошлые заявки, прайсы, исполненные контракты. По ним ИИ пишет новые документы так же, как ваши."
+              action={
+                <Link href="/me/documents" className="btn btn-line btn-xs">
+                  <PlusIcon />
+                  Добавить
+                </Link>
+              }
+            >
+              {docs.length === 0 ? (
+                <p className="px-[var(--pad)] pb-3 pt-1 text-[var(--ink-3)]">Документов пока нет — загрузите прошлые заявки и карточку предприятия.</p>
+              ) : (
+                <ul className="grid px-[var(--pad)] pb-3 pt-1">
+                  {docs.slice(0, 6).map((d) => (
+                    <li key={d.id} className="flex items-start gap-3 py-2">
+                      <DocumentIcon className="mt-0.5 size-4 flex-none text-[var(--ink-3)]" />
+                      <span className="grid min-w-0 flex-1">
+                        <span className="t-label truncate">{d.name}</span>
+                        {d.about && <span className="t-caption truncate text-[var(--ink-3)]">{d.about}</span>}
+                      </span>
+                      <Badge tone="calm" text={DOC_KINDS[d.kinds[0]].few} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {docs.length > 6 && (
+                <p className="px-[var(--pad)] pb-3">
+                  <Link href="/me/documents" className="link t-caption">
+                    Все документы ({docs.length})
+                  </Link>
+                </p>
+              )}
+            </Island>
+          )}
 
           <BackupIsland onRestored={read} />
           <WipeIsland />

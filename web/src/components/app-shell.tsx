@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BrandMark } from "@/components/brand-mark";
+import { ChatLauncher } from "@/components/chat-launcher";
 import { ConsentGate } from "@/components/consent-gate";
 import { MenuIcon, PlusIcon } from "@/components/icons";
 import { BrandName, SideNav } from "@/components/side-nav";
@@ -100,6 +101,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {children}
         </div>
       </div>
+      <ChatLauncher />
     </ConsentGate>
   );
 }

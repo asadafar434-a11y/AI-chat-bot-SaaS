@@ -14,7 +14,6 @@ import {
   FolderIcon,
   HelpCircleIcon,
   ClockIcon,
-  HomeIcon,
   PlusIcon,
   SearchIcon,
   UserIcon,
@@ -24,7 +23,7 @@ import {
 import { onDataChanged } from "@/lib/db";
 import { LEGAL_PAGES } from "@/lib/legal";
 import { getProfile } from "@/lib/me-store";
-import { filledCount, PROFILE_KEYS, type Profile } from "@/lib/profile";
+import type { Profile } from "@/lib/profile";
 import { listPurchases } from "@/lib/purchase-store";
 
 type SideData = { purchases: number; profile: Profile };
@@ -94,17 +93,6 @@ function MemberCard({ profile, current }: { profile: Profile; current: boolean }
   );
 }
 
-function Group({ id, title, children }: { id: string; title: string; children: ReactNode }) {
-  return (
-    <section aria-labelledby={id}>
-      <h2 id={id} className="t-over mx-2.5 mb-1 text-[var(--ink-3)]">
-        {title}
-      </h2>
-      <div className="grid gap-0.5">{children}</div>
-    </section>
-  );
-}
-
 // Сайдбар — остров-меню, как в прототипе: логотип, «Новая закупка», разделы, ИИ-ассистент с роботом,
 // данные компании и помощь; внизу карточка участника. Знак, иконки пунктов и аватар стоят на одной вертикали.
 export function SideNav({ onClose }: { onClose: () => void }) {
@@ -148,14 +136,21 @@ export function SideNav({ onClose }: { onClose: () => void }) {
         </Link>
 
         <nav aria-label="Разделы" className="grid gap-0.5">
-          <NavItem href="/" icon={HomeIcon} current={pathname === "/"} first>
-            Главная
-          </NavItem>
-          <NavItem href="/purchases" icon={BriefcaseIcon} current={inPurchases} count={data?.purchases}>
-            Закупки
+          <NavItem href="/" icon={BriefcaseIcon} current={pathname === "/" || inPurchases} count={data?.purchases || undefined} first>
+            Мои закупки
           </NavItem>
           <SoonItem icon={SearchIcon}>Поиск закупок</SoonItem>
           <SoonItem icon={ClockIcon}>История заявок</SoonItem>
+          <NavItem href="/me/profile" icon={UserIcon} current={pathname === "/me/profile"}>
+            Профиль компании
+          </NavItem>
+          {/* Образцы прошлых заявок — по ним пишутся новые документы; реквизиты берутся из них же */}
+          <NavItem href="/me/documents" icon={FolderIcon} current={pathname === "/me/documents"}>
+            Образцы и реквизиты
+          </NavItem>
+          <NavItem href="/tariffs" icon={WalletIcon} current={pathname === "/tariffs"}>
+            Тарифы
+          </NavItem>
         </nav>
 
         {/* ИИ-ассистент — карточка с роботом, как «Спросить ИИ» в прототипе */}
@@ -166,30 +161,12 @@ export function SideNav({ onClose }: { onClose: () => void }) {
         >
           <BotMark className="size-8" />
           <span className="grid min-w-0">
-            <span className="t-label truncate">Спросить про тендер</span>
-            <span className="truncate font-mono text-[11px] leading-4 text-[var(--ink-3)]">ИИ-ассистент</span>
+            <span className="t-label truncate">Спросить ИИ</span>
+            <span className="truncate font-mono text-[11px] leading-4 text-[var(--ink-3)]">помощь по заявке</span>
           </span>
         </Link>
 
-        <Group id="side-me" title="Данные компании">
-          <NavItem
-            href="/me/profile"
-            icon={UserIcon}
-            current={pathname === "/me/profile"}
-            count={data ? `${filledCount(data.profile)}/${PROFILE_KEYS.length}` : undefined}
-          >
-            Реквизиты
-          </NavItem>
-          {/* Без счётчика: с ним длинное название не помещается в сайдбар. Сколько документов — видно на главной. */}
-          <NavItem href="/me/documents" icon={FolderIcon} current={pathname === "/me/documents"}>
-            Образцы и реквизиты
-          </NavItem>
-        </Group>
-
         <div className="mt-auto grid gap-0.5">
-          <NavItem href="/tariffs" icon={WalletIcon} current={pathname === "/tariffs"}>
-            Тарифы
-          </NavItem>
           <NavItem href="/help" icon={HelpCircleIcon} current={pathname === "/help"}>
             Как это работает
           </NavItem>
