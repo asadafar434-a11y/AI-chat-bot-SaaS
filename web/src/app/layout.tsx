@@ -30,6 +30,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="ru"
+      // data-theme ставит скрипт ниже до гидратации, поэтому на сервере его нет — это не ошибка
+      suppressHydrationWarning
       className={`${geist.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="overflow-hidden">
