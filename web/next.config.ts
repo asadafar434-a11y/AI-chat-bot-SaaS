@@ -1,6 +1,14 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
+
+// Экран продукта (design-system/prototype) собирается в public/product командой `npm run build:host`. Есть сборка — главная
+// страница отдаёт его, и у продукта один адрес: экран, /api, вход по паролю, правовые страницы. Нет сборки (первый запуск,
+// автопроверка) или идёт next dev — остаётся прежняя главная страница приложения. Это решается при сборке сервера
+// (next build), поэтому экран собирают до него.
+const HAS_PRODUCT_SCREEN = !isDev && existsSync(path.join(process.cwd(), "public", "product", "index.html"));
 
 // Политика содержимого (CSP) — без nonce, как в руководстве Next.js «Content Security Policy», раздел «Without Nonces»:
 // с nonce все страницы пришлось бы рендерить на каждый запрос. Встроенным скриптам Next.js нужен 'unsafe-inline',
@@ -38,7 +46,15 @@ const nextConfig: NextConfig = {
   // Заголовок «X-Powered-By: Next.js» подсказывает, какие уязвимости пробовать.
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/:path*", headers: SECURITY_HEADERS }];
+    return [
+      { source: "/:path*", headers: SECURITY_HEADERS },
+      // Файлы экрана названы по содержимому (index-AbC123.js): изменились — имя другое, поэтому браузер хранит их год.
+      // private: общий кеш (прокси, CDN) файлы закрытой ссылки не хранит.
+      { source: "/product/assets/:path*", headers: [{ key: "Cache-Control", value: "private, max-age=31536000, immutable" }] },
+    ];
+  },
+  async rewrites() {
+    return HAS_PRODUCT_SCREEN ? { beforeFiles: [{ source: "/", destination: "/product/index.html" }] } : [];
   },
   experimental: {
     // Прокси входа (src/proxy.ts) держит тело запроса в памяти, по умолчанию — только первые 10 МБ,

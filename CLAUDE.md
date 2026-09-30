@@ -15,6 +15,9 @@ Support-chat SaaS (аналог Intercom) с ИИ-агентом. Прорабо
   Закупки лежат в браузере по адресу страницы — интерфейс держим на `localhost:3000`. Что где и что «скоро» —
   [README прототипа](design-system/prototype/README.md). Приложение на Next (`web/src/app`, `web/src/components`) пока остаётся
   прежним интерфейсом и сервером; править вид там не нужно — правится прототип. Сборка в одну страницу — `npm run build` → `dist/prototype.html`
+  На хостинге у продукта один адрес: `npm --prefix web run build:host` собирает экран в `web/public/product` и сервер, главную страницу
+  отдаёт экран (`rewrites` в `web/next.config.ts`); проверка «как на хостинге» — `npm --prefix web run check:host`. Шрифты Geist — свои файлы
+  (`src/fonts`), не Google Fonts: политика содержимого (CSP) не пускает шрифты с чужих сайтов. Данные в браузере привязаны к адресу сайта.
 - [design-system/brand.css](design-system/brand.css) — фирменные токены стиля Figma Make
 - «Улучшение прототипа из GitHub/» — исходник из Figma Make как есть. Новые версии из Make кладутся туда,
   изменения переносятся в `design-system/prototype/`

@@ -20,6 +20,9 @@
 # production
 /build
 
+# экран продукта, собранный из design-system/prototype командой npm run build:host
+/public/product/
+
 # misc
 .DS_Store
 *.pem

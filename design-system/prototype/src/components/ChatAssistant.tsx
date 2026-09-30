@@ -116,7 +116,7 @@ export function ChatAssistant({
                 <div key={m.id} className={`flex items-end gap-2 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   {m.role === 'assistant' && <BotMark className="size-6 shrink-0" />}
                   <div
-                    className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-[13px] leading-snug ${
+                    className={`max-w-[85%] break-words rounded-2xl px-3.5 py-2 text-[13px] leading-snug ${
                       m.role === 'user' ? 'rounded-br-sm bg-primary text-primary-foreground' : 'rounded-bl-sm bg-secondary text-foreground'
                     }`}
                   >
@@ -137,7 +137,7 @@ export function ChatAssistant({
             })}
 
             {notes.map((n) => (
-              <div key={n.id} className="rounded-2xl rounded-bl-sm border border-info/40 bg-info/5 px-3.5 py-2.5 text-[13px] leading-snug">
+              <div key={n.id} className="break-words rounded-2xl rounded-bl-sm border border-info/40 bg-info/5 px-3.5 py-2.5 text-[13px] leading-snug">
                 <p className="flex items-center gap-1.5 text-[12px] font-medium text-info">
                   <UserCheck className="size-3.5" /> Тендерный юрист · ответ по заявке
                 </p>
@@ -168,7 +168,7 @@ export function ChatAssistant({
 
             {chat.error && (
               <p className="flex items-start gap-2 rounded-lg bg-danger/10 px-3 py-2 text-[12px] leading-snug text-danger">
-                <AlertTriangle className="mt-0.5 size-3.5 shrink-0" /> {chat.error}
+                <AlertTriangle className="mt-0.5 size-3.5 shrink-0" /> <span className="min-w-0 break-words">{chat.error}</span>
               </p>
             )}
 
@@ -215,7 +215,7 @@ export function ChatAssistant({
               ))}
             </div>
           )}
-          {chat.notice && <p className="border-t border-border px-3 py-2 text-[12px] text-warn-foreground">{chat.notice}</p>}
+          {chat.notice && <p className="break-words border-t border-border px-3 py-2 text-[12px] text-warn-foreground">{chat.notice}</p>}
 
           {/* Input bar */}
           <form
