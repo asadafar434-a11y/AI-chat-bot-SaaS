@@ -330,3 +330,28 @@ export const LinkIcon = /* @__PURE__ */ icon("LinkIcon", [
   ["path", { d: "M15 7h2a5 5 0 1 1 0 10h-2" }],
   ["line", { x1: "8", x2: "16", y1: "12", y2: "12" }],
 ]);
+
+// scan-search
+export const ScanSearchIcon = /* @__PURE__ */ icon("ScanSearchIcon", [
+  ["path", { d: "M3 7V5a2 2 0 0 1 2-2h2" }],
+  ["path", { d: "M17 3h2a2 2 0 0 1 2 2v2" }],
+  ["path", { d: "M21 17v2a2 2 0 0 1-2 2h-2" }],
+  ["path", { d: "M7 21H5a2 2 0 0 1-2-2v-2" }],
+  ["circle", { cx: "12", cy: "12", r: "3" }],
+  ["path", { d: "m16 16-1.9-1.9" }],
+]);
+
+// shield-alert
+export const ShieldAlertIcon = /* @__PURE__ */ icon("ShieldAlertIcon", [
+  ["path", { d: "M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" }],
+  ["path", { d: "M12 8v4" }],
+  ["path", { d: "M12 16h.01" }],
+]);
+
+// package-check
+export const PackageCheckIcon = /* @__PURE__ */ icon("PackageCheckIcon", [
+  ["path", { d: "m16 16 2 2 4-4" }],
+  ["path", { d: "M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0" }],
+  ["path", { d: "M3.29 7 12 12l8.71-5" }],
+  ["path", { d: "M12 22V12" }],
+]);

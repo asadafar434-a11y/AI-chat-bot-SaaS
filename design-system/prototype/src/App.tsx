@@ -1,20 +1,29 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Check, Upload, ScanSearch, Calculator, ShieldAlert, PackageCheck, ArrowLeft, Clock, Bell } from './lib/icons';
-import { Sidebar, type View, type Notice } from './components/Sidebar';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Check, Upload, ScanSearch, Calculator, ShieldAlert, PackageCheck, ArrowLeft } from './lib/icons';
+import { Sidebar, type View } from './components/Sidebar';
 import { TendersDashboard } from './components/TendersDashboard';
 import { TenderSearch } from './components/TenderSearch';
 import { BidHistory } from './components/BidHistory';
 import { Profile } from './components/Profile';
 import { Tariffs } from './components/Tariffs';
-import { StepUpload } from './components/StepUpload';
-import { StepAnalysis } from './components/StepAnalysis';
-import { StepPricing } from './components/StepPricing';
-import { StepReview } from './components/StepReview';
-import { StepPackage } from './components/StepPackage';
-import { ChatAssistant, type ExpertNote } from './components/ChatAssistant';
-import { Badge, Toast, Tooltip } from './components/ui';
-import { myTenders, foundTenders, gaps, procedureMeta, type Gap, type TenderStatus } from './lib/data';
-import { expertConclusion, expertRemarks, fieldCounts, freshApp, type AppState } from './lib/app-state';
+import { ChatAssistant } from './components/ChatAssistant';
+import { Badge, Tooltip } from './components/ui';
+import { dueLine } from '@/lib/deadline';
+import { procedureHint } from '@/lib/dashboard';
+import { titleOf } from '@/lib/purchase';
+import { deletePurchase, savePurchase } from '@/lib/purchase-store';
+import { askPersistentStorage } from '@/lib/backup';
+import { openSamplePurchase } from '@/lib/sample-purchase';
+import { stepsOf } from '@/lib/steps';
+import { usePurchases } from '@/lib/use-purchases';
+import { PurchaseAnalysis, useProfile } from './real/analysis';
+import { PurchaseProvider, usePurchase } from './real/purchase-provider';
+import { toTender } from './real/tenders';
+import { ConsentGate } from './real/consent';
+import { PurchasePackage } from './real/package';
+import { PurchasePricing } from './real/pricing';
+import { PurchaseReview } from './real/review';
+import { NewPurchaseUpload, PurchaseUpload } from './real/upload';
 
 const steps = [
   { label: 'Загрузка', icon: Upload, hint: 'Документы закупки с площадки' },
@@ -24,136 +33,54 @@ const steps = [
   { label: 'Пакет', icon: PackageCheck, hint: 'Скачать документы и отправить специалисту' },
 ];
 
-export type { Fixes } from './lib/app-state';
-
-// На каком шаге открывать закупку в зависимости от её статуса,
-// чтобы не упираться в загрузку по уже готовым заявкам.
-const stepByStatus: Record<TenderStatus, number> = {
-  draft: 0,
-  progress: 1,
-  ready: 3,
-  submitted: 4,
-};
-
-// Заполненные поля для закупок, которые уже готовы или поданы.
-const SAMPLE_VALUES: Record<string, string> = { registry: 'Товар иностранный — Китай' };
-function sampleValue(g: Gap) {
-  if (g.kind === 'upload') return 'Сертификат_соответствия_МФУ.pdf';
-  if (g.kind === 'choice') return g.choices!.find((c) => c.ok)!.label;
-  if (g.kind === 'confirm') return g.found!;
-  return SAMPLE_VALUES[g.id] ?? (g.placeholder ?? 'указано').replace(/^например:\s*/, '');
-}
-
-function initialApps(): Record<string, AppState> {
-  const out: Record<string, AppState> = {};
-  for (const t of myTenders) {
-    if (t.status === 'ready' || t.status === 'submitted') {
-      out[t.id] = { ...freshApp(), fixes: Object.fromEntries(gaps.map((g) => [g.id, sampleValue(g)])), paid: true, discount: 8 };
-    }
-  }
-  return out;
-}
-
-const titleOf = (id: string) =>
-  myTenders.find((t) => t.id === id)?.title ?? foundTenders.find((t) => t.id === id)?.title ?? 'Новая закупка';
-
 export default function App() {
+  return (
+    <ConsentGate>
+      <Product />
+    </ConsentGate>
+  );
+}
+
+function Product() {
   const [view, setView] = useState<View>('tenders');
-  const [activeTender, setActiveTender] = useState<string | null>(null);
+  // null — новая закупка, документы ещё не загружены.
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [step, setStep] = useState(0);
-  const [apps, setApps] = useState<Record<string, AppState>>(initialApps);
   const [dark, setDark] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
-  // Заявка, по которой только что ответил специалист, — для всплывающего уведомления.
-  const [toast, setToast] = useState<string | null>(null);
-  // Слепая зона, к которой перейти на шаге «Проверка» — из замечания специалиста или из «Анализа».
-  const [focusGap, setFocusGap] = useState<string | null>(null);
-  // Заявок на балансе из купленных пакетов (тарифы 5 и 10 заявок). Списываются по одной на шаге «Пакет».
-  const [credits, setCredits] = useState(0);
+  const { purchases } = usePurchases();
+  const profile = useProfile();
 
-  const key = activeTender ?? 'new';
-  const app = apps[key] ?? freshApp();
-
-  const patchApp = useCallback(
-    (k: string, p: Partial<AppState> | ((a: AppState) => Partial<AppState>)) =>
-      setApps((prev) => {
-        const cur = prev[k] ?? freshApp();
-        return { ...prev, [k]: { ...cur, ...(typeof p === 'function' ? p(cur) : p) } };
-      }),
-    [],
-  );
-  const patch = (p: Partial<AppState> | ((a: AppState) => Partial<AppState>)) => patchApp(key, p);
+  const tenders = useMemo(() => (purchases ?? []).map(toTender), [purchases]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
   }, [dark]);
 
-  // Ответ специалиста прочитан, когда открыт шаг «Пакет» этой заявки.
+  // Просим браузер не стирать данные сайта при нехватке места; не разрешит — остаётся копия файлом в «Профиле компании».
   useEffect(() => {
-    if (view === 'workflow' && step === 4 && app.specialist?.status === 'replied' && !app.specialist.read) {
-      patchApp(key, (a) => ({ specialist: { ...a.specialist!, read: true } }));
-    }
-  }, [view, step, key, app.specialist, patchApp]);
+    void askPersistentStorage();
+  }, []);
 
-  const go = (n: number) => setStep(Math.max(0, Math.min(steps.length - 1, n)));
-  const setFix = (id: string, value: string) =>
-    patch((a) => {
-      const next = { ...a.fixes };
-      if (value) next[id] = value;
-      else delete next[id];
-      return { fixes: next };
-    });
-
-  const openTender = (id: string, at?: number) => {
-    const t = myTenders.find((x) => x.id === id);
-    setActiveTender(id);
-    setStep(at ?? (t ? stepByStatus[t.status] : 0));
-    setFocusGap(null);
+  // Открывая закупку, сразу ведём на первый шаг, где ещё есть работа.
+  const openTender = (id: string, first?: number) => {
+    const p = purchases?.find((x) => x.id === id);
+    const at = first ?? (p ? stepsOf(p).findIndex((s) => s.state !== 'done') : 0);
+    setActiveId(id);
+    setStep(at < 0 ? 4 : at);
     setView('workflow');
+  };
+  // Пример один на браузер. Только что созданного ещё нет в списке — сразу ведём на «Анализ».
+  const openSample = async () => {
+    const id = await openSamplePurchase();
+    openTender(id, purchases?.some((x) => x.id === id) ? undefined : 1);
   };
   const newTender = () => {
-    setActiveTender(null);
-    setApps((prev) => ({ ...prev, new: freshApp() }));
+    setActiveId(null);
     setStep(0);
-    setFocusGap(null);
     setView('workflow');
   };
-  const goToGap = (id: string) => {
-    setFocusGap(id);
-    go(3);
-  };
-
-  // Проверка специалистом: ответ в прототипе приходит через 6 секунд — в жизни до 2 часов.
-  const sendToExpert = () => {
-    const k = key;
-    patchApp(k, (a) => ({ paid: true, specialist: { status: 'sent', read: false, remarks: expertRemarks(a.fixes) } }));
-    window.setTimeout(() => {
-      patchApp(k, (a) => (a.specialist ? { specialist: { ...a.specialist, status: 'replied', read: false } } : {}));
-      setToast(k);
-    }, 6000);
-  };
-  const openReply = (id: string) => {
-    setToast(null);
-    setChatOpen(false);
-    setActiveTender(id === 'new' ? null : id);
-    setStep(4);
-    setFocusGap(null);
-    setView('workflow');
-  };
-
-  const notices: Notice[] = Object.entries(apps)
-    .filter(([, a]) => a.specialist)
-    .map(([id, a]) => ({ id, title: titleOf(id), status: a.specialist!.status, read: a.specialist!.read }));
-  const expertNotes: ExpertNote[] = Object.entries(apps)
-    .filter(([, a]) => a.specialist?.status === 'replied')
-    .map(([id, a]) => ({
-      id,
-      title: titleOf(id),
-      text: [...a.specialist!.remarks.map((r) => `• ${r.text}`), expertConclusion(a.specialist!.remarks)].join('\n'),
-    }));
-
-  const tender = myTenders.find((t) => t.id === activeTender) ?? foundTenders.find((t) => t.id === activeTender);
-  const progressOf = (id: string) => Math.round(fieldCounts((apps[id] ?? freshApp()).fixes).share * 100);
+  const toTenders = useCallback(() => setView('tenders'), []);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -165,186 +92,214 @@ export default function App() {
           onOpenChat={() => setChatOpen(true)}
           dark={dark}
           setDark={setDark}
-          notices={notices}
-          onOpenNotice={openReply}
-          credits={credits}
+          notices={[]}
+          onOpenNotice={() => {}}
+          credits={0}
+          company={{ name: profile.shortName.trim() || profile.fullName.trim(), inn: profile.inn.trim() }}
         />
 
         <main className="min-w-0 flex-1 lg:overflow-y-auto">
           <div className="mx-auto max-w-4xl py-2 lg:py-4">
             {view === 'tenders' && (
-              <TendersDashboard onOpen={(id) => openTender(id)} onNew={newTender} apps={apps} progressOf={progressOf} />
+              <TendersDashboard
+                tenders={tenders}
+                onOpen={(id) => openTender(id)}
+                onNew={newTender}
+                onOpenSample={() => void openSample()}
+                onDelete={(id) => void deletePurchase(id)}
+                onToggleSubmitted={(id) => {
+                  const p = purchases?.find((x) => x.id === id);
+                  if (p) void savePurchase({ ...p, submitted: !p.submitted });
+                }}
+              />
             )}
-            {view === 'search' && <TenderSearch onAdd={(id) => openTender(id)} />}
+            {view === 'search' && <TenderSearch onAdd={() => {}} />}
             {view === 'history' && <BidHistory />}
             {view === 'profile' && <Profile />}
-            {view === 'tariffs' && <Tariffs credits={credits} onBuy={(n) => setCredits((c) => c + n)} />}
-            {view === 'workflow' && (
-              <div className="space-y-6">
-                {/* Workflow header + stepper island */}
-                <div className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <button
-                        onClick={() => setView('tenders')}
-                        className="mb-3 inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2.5 py-1 text-[12px] font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
-                      >
-                        <ArrowLeft className="size-3" /> Мои закупки
-                      </button>
-                      {tender ? (
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Tooltip content={procedureMeta[tender.procedure].hint}>
-                              <span className="rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium text-foreground">
-                                {procedureMeta[tender.procedure].label}
-                              </span>
-                            </Tooltip>
-                            <span className="font-mono text-[11px] text-muted-foreground">
-                              {tender.law} · №{tender.id}
-                            </span>
-                          </div>
-                          <p className="mt-1.5 text-sm font-medium">{tender.title}</p>
-                          <p className="mt-1 text-[12px] text-muted-foreground">
-                            {procedureMeta[tender.procedure].hint}
-                          </p>
-                        </div>
-                      ) : (
-                        <p className="text-sm font-medium">Новая закупка</p>
-                      )}
-                    </div>
-                    {app.specialist && (
-                      <ExpertChip
-                        status={app.specialist.status}
-                        unread={!app.specialist.read}
-                        onOpen={() => go(4)}
-                      />
-                    )}
-                  </div>
-
-                  {/* Horizontal stepper */}
-                  <ol className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                    {steps.map((s, i) => {
-                      const state = i < step ? 'done' : i === step ? 'active' : 'todo';
-                      const Icon = s.icon;
-                      return (
-                        <li key={s.label} className="flex shrink-0 items-center gap-1.5">
-                          <Tooltip
-                            content={i > step ? `${s.hint}. Откроется после шага «${steps[step].label}».` : s.hint}
-                            side="bottom"
-                            align={i === 0 ? 'start' : i === steps.length - 1 ? 'end' : 'center'}
-                          >
-                            <button
-                              onClick={() => i <= step && go(i)}
-                              disabled={i > step}
-                              className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors disabled:cursor-not-allowed ${
-                                state === 'active'
-                                  ? 'bg-secondary text-foreground'
-                                  : state === 'done'
-                                    ? 'text-foreground hover:bg-secondary/60'
-                                    : 'text-muted-foreground'
-                              }`}
-                            >
-                              <span
-                                className={`flex size-5 items-center justify-center rounded-full border text-[10px] ${
-                                  state === 'done'
-                                    ? 'border-foreground bg-primary text-primary-foreground'
-                                    : state === 'active'
-                                      ? 'border-foreground'
-                                      : 'border-border'
-                                }`}
-                              >
-                                {state === 'done' ? <Check className="size-3" /> : <Icon className="size-3" />}
-                              </span>
-                              {s.label}
-                            </button>
-                          </Tooltip>
-                          {i < steps.length - 1 && <span className="h-px w-4 shrink-0 bg-border" />}
-                        </li>
-                      );
-                    })}
-                  </ol>
-                </div>
-
-                {/* Step content */}
-                <div>
-                  {step === 0 && <StepUpload preloaded={!!tender && myTenders.some((t) => t.id === tender.id)} onNext={() => go(1)} />}
-                  {step === 1 && (
-                    <StepAnalysis fixes={app.fixes} onNext={() => go(2)} onBack={() => go(0)} onFixGap={goToGap} />
-                  )}
-                  {step === 2 && (
-                    <StepPricing
-                      discount={app.discount}
-                      setDiscount={(discount) => patch({ discount })}
-                      onNext={() => go(3)}
-                      onBack={() => go(1)}
-                    />
-                  )}
-                  {step === 3 && (
-                    <StepReview
-                      app={app}
-                      setFix={setFix}
-                      patch={patch}
-                      focusGap={focusGap}
-                      onFocused={() => setFocusGap(null)}
-                      onNext={() => go(4)}
-                      onBack={() => go(2)}
-                    />
-                  )}
-                  {step === 4 && (
-                    <StepPackage
-                      app={app}
-                      patch={patch}
-                      onBack={() => go(3)}
-                      onFixGap={goToGap}
-                      onSendToExpert={sendToExpert}
-                      credits={credits}
-                      onUseCredit={() => {
-                        setCredits((c) => Math.max(0, c - 1));
-                        patch({ paid: true, fromPackage: true });
-                      }}
-                      onTariffs={() => setView('tariffs')}
-                    />
-                  )}
-                </div>
-              </div>
-            )}
+            {view === 'tariffs' && <Tariffs />}
+            {view === 'workflow' &&
+              (activeId ? (
+                <PurchaseProvider id={activeId} onMissing={toTenders}>
+                  <Workflow
+                    step={step}
+                    setStep={setStep}
+                    onBackToList={toTenders}
+                    onOpenProfile={() => setView('profile')}
+                    onOpenTariffs={() => setView('tariffs')}
+                  />
+                </PurchaseProvider>
+              ) : (
+                <Shell step={0} setStep={() => {}} onBackToList={toTenders} header={<p className="text-sm font-medium">Новая закупка</p>} reach={0}>
+                  <NewPurchaseUpload
+                    onCreated={(id) => {
+                      setActiveId(id);
+                      setStep(1);
+                    }}
+                  />
+                </Shell>
+              ))}
           </div>
         </main>
       </div>
 
-      <ChatAssistant open={chatOpen} setOpen={setChatOpen} notes={expertNotes} onOpenNote={openReply} />
-
-      {toast && (
-        <Toast
-          title="Специалист ответил"
-          text={`${titleOf(toast)}: заключение и замечания — в шаге «Пакет».`}
-          action="Открыть ответ"
-          onAction={() => openReply(toast)}
-          onClose={() => setToast(null)}
-        />
-      )}
+      <ChatAssistant open={chatOpen} setOpen={setChatOpen} notes={[]} onOpenNote={() => {}} />
     </div>
   );
 }
 
-// Статус проверки специалистом в шапке закупки: отправлено — ждём, ответил — открыть ответ.
-function ExpertChip({ status, unread, onOpen }: { status: 'sent' | 'replied'; unread: boolean; onOpen: () => void }) {
-  if (status === 'sent') {
-    return (
-      <Tooltip content="Юрист вручную сверяет пакет с извещением. Ответ придёт в течение 2 часов — уведомим." align="end">
-        <Badge tone="warn">
-          <Clock className="size-3" /> У специалиста · ответ до 2 ч
-        </Badge>
-      </Tooltip>
-    );
-  }
+// Шапка закупки и шаги — разметка прототипа. header — что в шапке справа от кнопки «Мои закупки».
+function Shell({
+  step,
+  setStep,
+  onBackToList,
+  header,
+  aside,
+  reach,
+  done = [],
+  children,
+}: {
+  step: number;
+  setStep: (n: number) => void;
+  onBackToList: () => void;
+  header: ReactNode;
+  aside?: ReactNode;
+  // Дальше какого шага можно перейти.
+  reach: number;
+  // Пройденные шаги — у них галочка.
+  done?: boolean[];
+  children: ReactNode;
+}) {
   return (
-    <button
-      onClick={onOpen}
-      className="relative inline-flex items-center gap-1.5 rounded-full border border-success/40 bg-success/10 px-2.5 py-1 text-[12px] font-medium text-success transition-colors hover:bg-success/15"
+    <div className="space-y-6">
+      <div className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <button
+              onClick={onBackToList}
+              className="mb-3 inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2.5 py-1 text-[12px] font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+            >
+              <ArrowLeft className="size-3" /> Мои закупки
+            </button>
+            {header}
+          </div>
+          {aside}
+        </div>
+
+        <ol className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          {steps.map((s, i) => {
+            const state = i === step ? 'active' : done[i] ? 'done' : 'todo';
+            const Icon = s.icon;
+            const locked = i > reach;
+            return (
+              <li key={s.label} className="flex shrink-0 items-center gap-1.5">
+                <Tooltip
+                  content={locked ? `${s.hint}. Откроется после шага «${steps[reach].label}».` : s.hint}
+                  side="bottom"
+                  align={i === 0 ? 'start' : i === steps.length - 1 ? 'end' : 'center'}
+                >
+                  <button
+                    onClick={() => !locked && setStep(i)}
+                    disabled={locked}
+                    className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors disabled:cursor-not-allowed ${
+                      state === 'active'
+                        ? 'bg-secondary text-foreground'
+                        : state === 'done'
+                          ? 'text-foreground hover:bg-secondary/60'
+                          : 'text-muted-foreground'
+                    }`}
+                  >
+                    <span
+                      className={`flex size-5 items-center justify-center rounded-full border text-[10px] ${
+                        state === 'done'
+                          ? 'border-foreground bg-primary text-primary-foreground'
+                          : state === 'active'
+                            ? 'border-foreground'
+                            : 'border-border'
+                      }`}
+                    >
+                      {state === 'done' ? <Check className="size-3" /> : <Icon className="size-3" />}
+                    </span>
+                    {s.label}
+                  </button>
+                </Tooltip>
+                {i < steps.length - 1 && <span className="h-px w-4 shrink-0 bg-border" />}
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+
+      <div>{children}</div>
+    </div>
+  );
+}
+
+// Открытая закупка: шапка из её данных и содержимое выбранного шага.
+function Workflow({
+  step,
+  setStep,
+  onBackToList,
+  onOpenProfile,
+  onOpenTariffs,
+}: {
+  step: number;
+  setStep: (n: number) => void;
+  onBackToList: () => void;
+  onOpenProfile: () => void;
+  onOpenTariffs: () => void;
+}) {
+  const { purchase, saveError } = usePurchase();
+  const due = dueLine(purchase.deadline, true);
+  const real = stepsOf(purchase);
+  const go = (n: number) => setStep(Math.max(0, Math.min(steps.length - 1, n)));
+
+  const way = purchase.kind.split('·').slice(1).join('·').trim();
+  // Способ закупки неизвестен (закупку создали без ИИ-анализа) — метку и подсказку не выдумываем.
+  const label = way ? way[0].toUpperCase() + way.slice(1) : '';
+  const hint = procedureHint(purchase);
+  const law = purchase.kind.match(/(?<!\d)(44|223)-ФЗ/)?.[0] ?? '';
+
+  return (
+    <Shell
+      step={step}
+      setStep={go}
+      onBackToList={onBackToList}
+      reach={4}
+      done={real.map((s) => s.state === 'done')}
+      header={
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            {label && (
+              <Tooltip content={hint || label}>
+                <span className="rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium text-foreground">{label}</span>
+              </Tooltip>
+            )}
+            {purchase.sample && <Badge>пример</Badge>}
+            {law && <span className="font-mono text-[11px] text-muted-foreground">{law}</span>}
+          </div>
+          <p className="mt-1.5 text-sm font-medium">{titleOf(purchase)}</p>
+          {hint && <p className="mt-1 text-[12px] text-muted-foreground">{hint}</p>}
+        </div>
+      }
+      aside={
+        due && (
+          <Badge tone={due.tone === 'soon' ? 'warn' : 'neutral'}>
+            {due.head}
+            {due.left ? ` · ${due.left.replace(/ /g, ' ')}` : ''}
+          </Badge>
+        )
+      }
     >
-      <Bell className="size-3.5" /> Ответ специалиста
-      {unread && <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-danger ring-2 ring-card" />}
-    </button>
+      {saveError && (
+        <p className="mb-4 rounded-md bg-warn-surface/40 px-3 py-2 text-[13px] text-warn-foreground">
+          Не получилось сохранить изменения в браузере. Не закрывайте страницу и попробуйте ещё раз.
+        </p>
+      )}
+      {step === 0 && <PurchaseUpload onNext={() => go(1)} />}
+      {step === 1 && <PurchaseAnalysis onNext={() => go(2)} onBack={() => go(0)} onFix={(at) => go(at === 'review' ? 3 : 4)} />}
+      {step === 2 && <PurchasePricing onNext={() => go(3)} onBack={() => go(1)} />}
+      {step === 3 && <PurchaseReview onGo={go} onOpenProfile={onOpenProfile} onNext={() => go(4)} onBack={() => go(2)} />}
+      {step >= 4 && <PurchasePackage onBack={() => go(3)} onFix={() => go(3)} onTariffs={onOpenTariffs} />}
+    </Shell>
   );
 }

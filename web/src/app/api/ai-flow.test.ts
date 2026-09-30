@@ -7,6 +7,8 @@ import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { after, before, test } from "node:test";
 import ExcelJS from "exceljs";
+import { readAnswer, streamEvents } from "../../lib/chat-stream.ts";
+import { POST as chat } from "./chat/route.ts";
 import { POST as check } from "./check/route.ts";
 import { POST as documents } from "./documents/route.ts";
 import { POST as requirements } from "./requirements/route.ts";
@@ -32,11 +34,30 @@ const sse = (event: string, data: unknown) => `event: ${event}\ndata: ${JSON.str
 before(async () => {
   server = createServer(async (req, res) => {
     const request = JSON.parse(await body(req));
-    const content = request.messages[0].content as { type: string; title?: string; source?: { data: string }; text?: string }[];
+    // Текст запроса бывает строкой (подбор статей закона) или блоками (документы, задание, вопрос).
+    const first = request.messages[0].content as string | { type: string; title?: string; source?: { data: string }; text?: string }[];
+    const content = typeof first === "string" ? [{ type: "text", text: first }] : first;
     seen.push({
       system: typeof request.system === "string" ? request.system : JSON.stringify(request.system),
       blocks: content.map((b) => ({ type: b.type, title: b.title, text: b.source?.data ?? b.text ?? "" })),
     });
+    if (request.stream !== true) {
+      // Подбор статей закона перед ответом чата — короткий запрос без потока: модель не выбрала ни одной статьи.
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(
+        JSON.stringify({
+          id: "msg_pick",
+          type: "message",
+          role: "assistant",
+          model: request.model,
+          content: [{ type: "text", text: '{"articles":[]}' }],
+          stop_reason: "end_turn",
+          stop_sequence: null,
+          usage: { input_tokens: 10, output_tokens: 5 },
+        })
+      );
+      return;
+    }
     res.writeHead(200, { "content-type": "text/event-stream" });
     res.write(
       sse("message_start", {
@@ -229,4 +250,46 @@ test("без ключа ИИ сервер честно отвечает 503 и �
     process.env.ANTHROPIC_API_KEY = key;
   }
   assert.equal(seen.length, 0);
+});
+
+test("чат: ответ модели приходит потоком и собирается целиком, документы закупки и вопрос уходят модели", async () => {
+  reply = "Обеспечение заявки — **1 %** от начальной цены (п. 7 извещения).";
+  stop = "end_turn";
+  seen.length = 0;
+  const res = await chat(
+    json({
+      messages: [{ id: "q1", role: "user", parts: [{ type: "text", text: "Какое обеспечение заявки?" }], metadata: { date: "30.09.2026" } }],
+      documents: [{ name: "Извещение.txt", text: NOTICE }],
+    })
+  );
+  assert.equal(res.status, 200, await res.clone().text());
+  assert.match(res.headers.get("content-type") ?? "", /text\/event-stream/);
+
+  const events: string[] = [];
+  let answer = "";
+  for await (const event of streamEvents(res.clone())) {
+    events.push(event.type);
+    if (event.type === "text-delta") answer += event.delta;
+  }
+  assert.deepEqual([events[0], events.at(-1)], ["start", "finish"], "поток начинается и заканчивается служебными событиями");
+  assert.equal(answer, reply);
+  assert.equal(await readAnswer(res), reply, "readAnswer склеивает тот же текст");
+
+  // Главный запрос к модели — последний: перед ним уходит только подбор статей закона.
+  const main = seen.at(-1)!;
+  assert.deepEqual(main.blocks.filter((b) => b.type === "document").map((b) => b.title), ["Извещение.txt"]);
+  assert.match(main.blocks.at(-1)!.text, /Какое обеспечение заявки\?/);
+  assert.match(main.blocks.at(-1)!.text, /Дата вопроса: 30\.09\.2026/);
+});
+
+test("разбор потока: склеенные и оборванные куски, лишние строки и сбой сервера внутри потока", async () => {
+  const stream = (chunks: string[]) =>
+    new Response(new ReadableStream({ start: (c) => (chunks.forEach((x) => c.enqueue(new TextEncoder().encode(x))), c.close()) }));
+  // Событие разрезано посередине, между событиями — служебная строка, в конце — [DONE].
+  const cut = stream(['data: {"type":"text-delta","delta":"Обеспечение ', 'заявки"}\n\n: ping\n\ndata: {"type":"text-delta","delta":" — 1 %"}\n\ndata: [DONE]\n\n']);
+  assert.equal(await readAnswer(cut), "Обеспечение заявки — 1 %");
+  // Последнее событие — без завершающей пустой строки; строка не по формату пропускается.
+  assert.equal(await readAnswer(stream(['data: не json\n\ndata: {"type":"text-delta","delta":"конец"}'])), "конец");
+  // Сбой на стороне сервера приходит событием error — и становится исключением с причиной.
+  await assert.rejects(readAnswer(stream(['data: {"type":"error","errorText":"Лимит запросов исчерпан"}\n\n'])), /Лимит запросов исчерпан/);
 });

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Briefcase, User, Plus, Sun, Moon, Search, History, Bell, Clock, ChevronRight, Menu, X, Wallet } from '../lib/icons';
-import { company } from '../lib/data';
 import { Button, Soon, Tooltip, IconButton, cx } from './ui';
 import { BrandMark } from './BrandMark';
 import { BotMark } from './BotMark';
@@ -29,6 +28,8 @@ type Props = {
   notices: Notice[];
   onOpenNotice: (id: string) => void;
   credits: number;
+  // Название и ИНН — из «Профиля компании»; пока не заполнены — пустые.
+  company: { name: string; inn: string };
 };
 
 // Компьютер — боковая панель; телефон — шапка с бургером и выезжающее меню с тем же содержимым.
@@ -124,7 +125,7 @@ function Logo() {
 }
 
 // Содержимое панели — одно и то же на компьютере и в меню телефона.
-function Body({ view, onNavigate, onNewTender, onOpenChat, dark, setDark, notices, onOpenNotice, credits }: Props) {
+function Body({ view, onNavigate, onNewTender, onOpenChat, dark, setDark, notices, onOpenNotice, credits, company }: Props) {
   // Сначала непрочитанные ответы, потом ожидающие проверки, прочитанные — в конце.
   const sorted = [...notices].sort((a, b) => rank(a) - rank(b));
   const unread = notices.some((n) => n.status === 'replied' && !n.read);
@@ -189,11 +190,13 @@ function Body({ view, onNavigate, onNewTender, onOpenChat, dark, setDark, notice
           onClick={() => onNavigate('profile')}
           className="relative flex w-full items-center gap-2.5 rounded-md border border-border p-2.5 text-left transition-colors hover:bg-secondary"
         >
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold">ТС</div>
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold">
+            {(company.name.replace(/[^\p{L}]/gu, '').slice(0, 2) || '—').toUpperCase()}
+          </div>
           <div className="min-w-0">
-            <p className="truncate text-[13px] font-medium">{company.name}</p>
+            <p className="truncate text-[13px] font-medium">{company.name || 'Моя компания'}</p>
             <p className="truncate font-mono text-[10px] text-muted-foreground">
-              ИНН {company.fields.find((f) => f.key === 'inn')?.value}
+              {company.inn ? `ИНН ${company.inn}` : 'Заполните профиль'}
               {credits > 0 && ` · заявок на балансе: ${credits}`}
             </p>
           </div>

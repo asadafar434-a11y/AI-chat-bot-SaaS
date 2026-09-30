@@ -1,6 +1,6 @@
 import { type ReactNode, type ButtonHTMLAttributes, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Info, Bell } from '../lib/icons';
+import { X, Info, Bell, Check } from '../lib/icons';
 
 export function cx(...parts: (string | false | undefined | null)[]) {
   return parts.filter(Boolean).join(' ');
@@ -211,6 +211,29 @@ export function IconButton({
         {children}
       </button>
     </Tooltip>
+  );
+}
+
+// Галочка: настоящий input скрыт, но остаётся доступным с клавиатуры и экранному диктору.
+export function Checkbox({
+  checked,
+  onChange,
+  children,
+  className,
+}: {
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <label className={cx('flex cursor-pointer items-start gap-2.5', className)}>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.currentTarget.checked)} className="peer sr-only" />
+      <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border border-border bg-card text-primary-foreground transition-colors peer-checked:border-foreground peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
+        {checked && <Check className="size-3" />}
+      </span>
+      <span className="min-w-0 flex-1">{children}</span>
+    </label>
   );
 }
 

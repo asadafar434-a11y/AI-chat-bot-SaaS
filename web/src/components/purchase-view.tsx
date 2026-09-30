@@ -1,25 +1,29 @@
 "use client";
 
-import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
   AttachIcon,
+  CalculatorIcon,
   BankIcon,
   CaretDownIcon,
-  CaretRightIcon,
   ChatIcon,
   CheckIcon,
   ClockIcon,
   CrossIcon,
   DocumentIcon,
   DownloadIcon,
+  PackageCheckIcon,
   PanelRightIcon,
   RubleIcon,
   ScalesIcon,
+  ScanSearchIcon,
   SearchIcon,
+  ShieldAlertIcon,
+  UploadIcon,
   WarningIcon,
   type IconComponent,
 } from "@/components/icons";
@@ -27,11 +31,12 @@ import { Note } from "@/components/note";
 import { DueChip, LawBadge } from "@/components/purchase-bits";
 import { usePurchase } from "@/components/purchase-provider";
 import { WorkingSteps } from "@/components/working-steps";
+import { lawText, procedureHint, procedureOf } from "@/lib/dashboard";
 import { dueLine } from "@/lib/deadline";
 import { plural } from "@/lib/plural";
 import { extractRequirements, fromRequirements, titleOf, type Purchase } from "@/lib/purchase";
 import { ACCEPTED_FILES, readDocuments, type SentDocument } from "@/lib/read-documents";
-import { stepsOf, TONE_TEXT, type Step, type StepKey } from "@/lib/steps";
+import { stepsOf, type Step, type StepKey } from "@/lib/steps";
 
 const ADDING_STEPS = [
   "Читаю новые документы…",
@@ -50,86 +55,45 @@ export function StepIntro({ children }: { children: ReactNode }) {
   return <p className="max-w-[80ch] px-[var(--pad)] py-1 text-[var(--ink-2)]">{children}</p>;
 }
 
-const DOT = {
-  done: "bg-[var(--ok-tint)] text-[var(--ok)]",
-  fix: "bg-[var(--warn-tint)] text-[var(--warn)]",
-  todo: "bg-card text-[var(--ink-3)] shadow-[inset_0_0_0_1px_var(--edge-2)]",
+// Значок шага, как в прототипе: загрузка, анализ, цена, проверка, пакет.
+const STEP_ICON: Record<StepKey, IconComponent> = {
+  upload: UploadIcon,
+  analysis: ScanSearchIcon,
+  price: CalculatorIcon,
+  review: ShieldAlertIcon,
+  package: PackageCheckIcon,
 };
 
-// Шаг подготовки заявки: номер или галочка, название и что на нём сейчас — словами.
-function StepLink({ step, current }: { step: Step; current: boolean }) {
-  const dot = step.state === "fix" && step.tone === "bad" ? "bg-[color-mix(in_srgb,var(--danger)_12%,var(--card))] text-destructive" : DOT[step.state];
+// Шаг подготовки заявки: значок (у пройденного — галочка) и название. Что на шаге сейчас — в подсказке и для диктора.
+function StepPill({ step, current }: { step: Step; current: boolean }) {
+  const Icon = STEP_ICON[step.key];
+  const bubble =
+    step.state === "done"
+      ? "bg-primary text-[var(--on-brand)]"
+      : step.state === "fix"
+        ? step.tone === "bad"
+          ? "bg-[var(--danger-tint)] text-[var(--danger)]"
+          : "bg-[var(--warn-tint)] text-[var(--warn)]"
+        : "bg-[var(--paper-2)] text-[var(--ink-3)]";
   return (
-    <Link href={step.href} aria-current={current ? "page" : undefined} className="item flex-none gap-2 py-1">
-      <span aria-hidden className={`grid size-5 flex-none place-items-center rounded-full font-mono text-xs font-semibold ${dot}`}>
-        {step.state === "done" ? <CheckIcon className="size-3" strokeWidth={3} /> : step.n}
+    <Link
+      href={step.href}
+      aria-current={current ? "page" : undefined}
+      title={`${step.title}: ${step.status}`}
+      className={`flex flex-none items-center gap-2 rounded-[var(--r-ctl)] px-2.5 py-1.5 ${
+        current ? "t-strong bg-[var(--select)]" : "t-label text-[var(--ink-2)] hover:bg-[var(--hover)]"
+      }`}
+    >
+      <span aria-hidden className={`grid size-6 flex-none place-items-center rounded-full ${bubble}`}>
+        {step.state === "done" ? <CheckIcon className="size-3.5" strokeWidth={3} /> : <Icon className="size-3.5" />}
       </span>
-      <span className="grid text-left">
-        <span className={current ? "t-strong" : "t-label text-[var(--ink-2)]"}>
-          <span className="sr-only">Шаг {step.n}: </span>
-          {step.title}
-        </span>
-        <span className={`t-caption whitespace-nowrap ${TONE_TEXT[step.tone]}`}>{step.status}</span>
+      <span>
+        <span className="sr-only">Шаг {step.n}: </span>
+        {step.title}
+        <span className="sr-only">. {step.status}</span>
       </span>
     </Link>
   );
-}
-
-// Строка шагов сжимается, только когда не помещается: сначала у «Поиска» и «Вопросов» остаются значки, потом
-// пропадают стрелки между шагами — порядок видно по номерам. Не помещается и так — инструменты с подписями
-// уходят на свою строку, а шаги листаются отдельно. Ширина строки зависит от статусов шагов и счётчика
-// вопросов, поэтому она мерится, а не угадывается по ширине панели.
-const FIT_LEVELS = [
-  { "data-icons": false, "data-tight": false, "data-stack": false },
-  { "data-icons": true, "data-tight": false, "data-stack": false },
-  { "data-icons": true, "data-tight": true, "data-stack": false },
-  { "data-icons": false, "data-tight": true, "data-stack": true },
-];
-
-function useStepsFit(nav: RefObject<HTMLElement | null>, content: string) {
-  const [level, setLevel] = useState(0);
-  useLayoutEffect(() => {
-    const el = nav.current;
-    if (!el) return;
-    const apply = (i: number) => Object.entries(FIT_LEVELS[i]).forEach(([name, on]) => el.toggleAttribute(name, on));
-    const measure = () => {
-      let i = 0;
-      for (; i < FIT_LEVELS.length - 1; i++) {
-        apply(i);
-        if (el.scrollWidth <= el.clientWidth) break;
-      }
-      apply(i);
-      setLevel(i);
-      // Шаги листаются отдельно — текущий должен быть на виду.
-      const row = el.querySelector("ol");
-      const current = row?.querySelector('[aria-current="page"]');
-      if (row && current) {
-        const r = row.getBoundingClientRect();
-        const c = current.getBoundingClientRect();
-        if (c.right > r.right) row.scrollLeft += c.right - r.right + 8;
-        else if (c.left < r.left) row.scrollLeft -= r.left - c.left + 8;
-      }
-    };
-    measure();
-    // Перемеряем, только когда меняется ширина, и в следующем кадре: высоту строка меняет сама, когда инструменты
-    // уходят на свою строку, — отвечать на это из обработчика значит зациклить его.
-    let width = el.clientWidth;
-    let frame = 0;
-    const observer = new ResizeObserver(() => {
-      if (el.clientWidth === width) return;
-      width = el.clientWidth;
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(measure);
-    });
-    observer.observe(el);
-    void document.fonts?.ready.then(measure);
-    return () => {
-      observer.disconnect();
-      cancelAnimationFrame(frame);
-    };
-  }, [nav, content]);
-  // Атрибуты — как у выбранного уровня: React их не сбросит при следующей отрисовке.
-  return Object.fromEntries(Object.entries(FIT_LEVELS[level]).map(([name, on]) => [name, on || undefined]));
 }
 
 // Что делать дальше — в конце шага: первый несделанный шаг после этого, чтобы путь по закупке был виден
@@ -438,8 +402,6 @@ export function PurchaseView({ children }: { children: ReactNode }) {
   const due = dueLine(purchase.deadline, true);
   const onChat = pathname === `${base}/chat`;
   const onSearch = pathname === `${base}/search`;
-  const stepsNav = useRef<HTMLElement>(null);
-  const fit = useStepsFit(stepsNav, [pathname, asked, ...steps.map((s) => s.status)].join("|"));
   // Документы закупки лежат в «Сведениях»: на кнопке — значок файла и их число, а если файл не прочитан —
   // янтарный значок внимания и число таких файлов. Словами — во всплывающей подсказке и для диктора.
   const docs = purchase.files.length + purchase.unreadable.length;
@@ -454,48 +416,16 @@ export function PurchaseView({ children }: { children: ReactNode }) {
         {/* Шапка закупки — остров над шагом. Место под полосу прокрутки справа у шапки и у тела одно и то же,
             поэтому острова шага встают ровно под ней. */}
         <div className="-mx-2 -mt-1 flex-none overflow-hidden px-2 pb-1.5 pt-1 [scrollbar-gutter:stable]">
-          <div className="island">
-            <div className="@container flex min-h-14 items-center gap-2.5 py-2 pl-[var(--pad)] pr-2 max-split:pl-2">
-              <Link href="/" aria-label="Мои закупки" title="Мои закупки" className="btn btn-line btn-xs flex-none">
+          <div className="island @container grid gap-3 p-[var(--pad)] max-sm:p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Link href="/" aria-label="Мои закупки" title="Мои закупки" className="btn btn-line btn-xs">
                 <ArrowLeftIcon />
-                <span className="@max-[560px]:hidden">Мои закупки</span>
+                Мои закупки
               </Link>
-              <span className="contents max-sm:hidden">
-                <LawBadge purchase={purchase} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <h2 id="pd-title" className="t-title truncate max-sm:line-clamp-2 max-sm:whitespace-normal">
-                  {titleOf(purchase)}
-                </h2>
-                {/* Срок — главная цифра экрана: на узком экране переносится на вторую строку, а не обрезается.
-                    Точка-разделитель держится за словом перед ней, чтобы строка не начиналась с неё. */}
-                <p className="t-caption text-pretty text-[var(--ink-3)]">
-                  {due ? (
-                    <>
-                      {due.head}
-                      {due.left && (
-                        <>
-                          {"\u00a0· "}
-                          <span className={due.tone === "soon" ? "t-tag text-[var(--warn)]" : ""}>{due.left}</span>
-                        </>
-                      )}
-                    </>
-                  ) : (
-                    "Срок подачи не найден в документах"
-                  )}
-                  {/* На телефоне пометка лишняя: пример подписан в сведениях и в списке закупок. */}
-                  {purchase.sample && <span className="max-sm:hidden">{"\u00a0· пример"}</span>}
-                </p>
-              </div>
-              <div className="flex flex-none items-center gap-1.5">
-                <Link
-                  href={`${base}/package`}
-                  aria-label="Скачать заявку: пакет документов Word"
-                  title="Пакет — все файлы заявки Word"
-                  className="btn btn-line btn-xs"
-                >
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Link href={`${base}/package`} aria-label="Скачать заявку: пакет документов Word" title="Пакет — все файлы заявки Word" className="btn btn-line btn-xs">
                   <DownloadIcon />
-                  <span className="@max-[720px]:hidden">Скачать заявку</span>
+                  <span className="@max-[560px]:hidden">Скачать заявку</span>
                 </Link>
                 <button
                   type="button"
@@ -520,7 +450,6 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                 >
                   <PanelRightIcon className={docs ? "@max-[460px]:hidden" : ""} />
                   <span className="@max-[460px]:hidden">Сведения</span>
-                  {/* Число документов — плашкой, как счётчик у «Вопросов»; без подписи остаётся вместо значка панели */}
                   {docs > 0 && (
                     <span
                       className={`t-num -mr-1.5 inline-flex h-5 items-center gap-0.5 rounded-md pl-1 pr-1.5 @max-[460px]:m-0 @max-[460px]:bg-transparent @max-[460px]:p-0 ${
@@ -535,34 +464,54 @@ export function PurchaseView({ children }: { children: ReactNode }) {
               </div>
             </div>
 
-            {/* Шаги подготовки заявки по порядку, как в прототипе; «Поиск» и «Вопросы» — не шаги, а инструменты, стоят отдельно справа */}
-            <nav
-              ref={stepsNav}
-              aria-label="Подготовка заявки"
-              {...fit}
-              className="group/steps flex items-stretch gap-y-1 overflow-x-auto border-t border-[var(--line)] px-2 py-1.5 [scrollbar-width:none] data-[stack]:flex-wrap"
-            >
-              <ol className="flex flex-none items-stretch group-data-[stack]/steps:min-w-0 group-data-[stack]/steps:flex-[1_0_100%] group-data-[stack]/steps:overflow-x-auto group-data-[stack]/steps:[scrollbar-width:none]">
-                {steps.map((step, i) => (
-                  <li key={step.key} className="flex items-stretch">
-                    {i > 0 && (
-                      <CaretRightIcon
-                        aria-hidden
-                        className="mx-0.5 my-auto size-3.5 flex-none text-[var(--ink-3)] opacity-60 group-data-[tight]/steps:hidden"
-                      />
+            <div className="grid gap-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                {procedureOf(purchase) && (
+                  <span className="t-tag rounded-[var(--r-pill)] border border-[var(--line)] bg-[var(--paper-2)] px-2 py-0.5">{procedureOf(purchase)}</span>
+                )}
+                {purchase.sample && <span className="t-tag rounded-[var(--r-pill)] bg-[var(--paper-2)] px-2 py-0.5 text-[var(--ink-2)]">пример</span>}
+                {lawText(purchase) && <span className="font-mono text-[11px] text-[var(--ink-3)]">{lawText(purchase)}</span>}
+              </div>
+              <h2 id="pd-title" className="t-title text-pretty">
+                {titleOf(purchase)}
+              </h2>
+              {procedureHint(purchase) && <p className="t-caption text-[var(--ink-3)]">{procedureHint(purchase)}</p>}
+              {/* Срок — главная цифра экрана: переносится, а не обрезается */}
+              <p className="t-caption text-pretty text-[var(--ink-3)]">
+                {due ? (
+                  <>
+                    {due.head}
+                    {due.left && (
+                      <>
+                        {"\u00a0· "}
+                        <span className={due.tone === "soon" ? "t-tag text-[var(--warn)]" : ""}>{due.left}</span>
+                      </>
                     )}
-                    <StepLink step={step} current={step.paths.includes(pathname)} />
+                  </>
+                ) : (
+                  "Срок подачи не найден в документах"
+                )}
+              </p>
+            </div>
+
+            {/* Шаги подготовки заявки по порядку, как в прототипе; «Поиск» и «Вопросы» — не шаги, а инструменты, стоят справа */}
+            <nav aria-label="Подготовка заявки" className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-[var(--line)] pt-2.5">
+              <ol className="flex min-w-0 items-center gap-1 overflow-x-auto [scrollbar-width:none]">
+                {steps.map((step, i) => (
+                  <li key={step.key} className="flex flex-none items-center gap-1">
+                    {i > 0 && <span aria-hidden className="h-px w-3 flex-none bg-[var(--edge-2)]" />}
+                    <StepPill step={step} current={step.paths.includes(pathname)} />
                   </li>
                 ))}
               </ol>
-              <div className="ml-auto flex flex-none items-stretch gap-0.5 group-data-[stack]/steps:ml-0">
+              <div className="flex flex-none items-center gap-0.5">
                 <Link
                   href={`${base}/search`}
                   aria-current={onSearch ? "page" : undefined}
                   className={`item flex-none ${onSearch ? "t-strong" : "t-label text-[var(--ink-2)]"}`}
                 >
                   <SearchIcon className="size-4 text-[var(--ink-3)]" />
-                  <span className="group-data-[icons]/steps:sr-only">
+                  <span className="@max-[560px]:sr-only">
                     Поиск<span className="sr-only"> по документам</span>
                   </span>
                 </Link>
@@ -572,7 +521,7 @@ export function PurchaseView({ children }: { children: ReactNode }) {
                   className={`item flex-none ${onChat ? "t-strong" : "t-label text-[var(--ink-2)]"}`}
                 >
                   <ChatIcon className="size-4 text-[var(--ink-3)]" />
-                  <span className="group-data-[icons]/steps:sr-only">Вопросы</span>
+                  <span className="@max-[560px]:sr-only">Вопросы</span>
                   {asked > 0 && <span className="count rounded-md bg-[var(--paper-2)] px-1.5">{asked}</span>}
                 </Link>
               </div>

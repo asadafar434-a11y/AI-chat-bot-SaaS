@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useApplicationFiles } from "@/components/application-files";
+import { ApplicationPreview } from "@/components/application-preview";
 import { Badge } from "@/components/badge";
 import { CheckIcon, CrossIcon, EditIcon, HelpCircleIcon } from "@/components/icons";
 import { usePurchase } from "@/components/purchase-provider";
@@ -90,14 +91,25 @@ function FillForm({ field, onSave }: { field: ApplicationField; onSave: (value: 
   );
 }
 
-function Row({ field, children }: { field: ApplicationField; children?: ReactNode }) {
+function actionBadge(field: ApplicationField): { tone: "bad" | "warn" | "ok" | "calm" | "brand"; text: string } {
+  if (field.status === "invalid") return { tone: "bad", text: "Ошибка" };
+  if (field.kind === "unknown") return { tone: "calm", text: "Не определено" };
+  if (field.status === "filled") return { tone: "ok", text: "Заполнено" };
+  if (field.status === "needs_confirmation") return { tone: "warn", text: "Подтвердить" };
+  return { tone: "brand", text: "Ввести" };
+}
+
+function Row({ field, focus = false, children }: { field: ApplicationField; focus?: boolean; children?: ReactNode }) {
   const where = [field.doc, field.context, field.source && field.source !== field.doc ? field.source : ""].filter(Boolean).join(" · ");
   return (
-    <li className="grid grid-cols-[24px_minmax(0,1fr)] gap-x-2.5 gap-y-1.5 py-3">
+    <li id={`fm-${field.key}`} className={`island grid grid-cols-[24px_minmax(0,1fr)] gap-x-2.5 gap-y-1.5 px-[var(--pad)] py-3 ${focus ? "shadow-[inset_0_0_0_1px_var(--warn)]" : ""}`}>
       <StatusIcon field={field} />
       <div className="grid min-w-0 gap-1.5">
         <div className="grid gap-0.5">
-          <p className="t-strong">{field.label}</p>
+          <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+            <p className="t-strong">{field.label}</p>
+            <Badge {...actionBadge(field)} />
+          </div>
           {where && <p className="t-caption text-[var(--ink-3)]">{where}</p>}
           {field.problem && <p className={`t-caption ${field.status === "invalid" ? "text-destructive" : "text-[var(--warn)]"}`}>{field.problem}</p>}
           {field.status === "filled" && field.value && <p className="t-body truncate text-[var(--ink-2)]">{field.value}</p>}
@@ -112,6 +124,8 @@ export function FieldMap() {
   const { purchase, update } = usePurchase();
   const files = useApplicationFiles();
   const [filter, setFilter] = useState<Filter>("left");
+  // Поле, к которому перешли с жёлтого места в предпросмотре или кнопкой «Заполнить».
+  const [focusKey, setFocusKey] = useState<string | null>(null);
   const base = `/p/${purchase.id}`;
 
   if (!files.meReady) return <div className="island px-[var(--pad)] py-3 text-[var(--ink-3)]">Сверяю документы с реквизитами…</div>;
@@ -150,13 +164,23 @@ export function FieldMap() {
 
   // «Вписать» — тем же счётом, что у шага «Проверка» в шапке: только поля этой закупки.
   const ownEmpty = fields.filter((f) => isOwnField(f.key) && f.status === "needs_input").length;
-  const chips: { key: Filter; label: string; n: number | null }[] = [
-    { key: "left", label: "Что осталось", n: null },
-    { key: "invalid", label: "Ошибки", n: summary.invalid },
-    { key: "manual", label: "Вписать", n: ownEmpty },
-    { key: "confirm", label: "Подтвердить", n: summary.confirm },
-    { key: "unknown", label: "Не определено", n: summary.unknown },
-    { key: "done", label: "Заполнено", n: summary.done },
+  const firstEmpty = queue.find((f) => isOwnField(f.key) && f.status === "needs_input");
+  const select = (key: string) => {
+    setFilter("left");
+    setFocusKey(key);
+    requestAnimationFrame(() => {
+      const row = document.getElementById(`fm-${key}`);
+      row?.scrollIntoView({ behavior: "smooth", block: "center" });
+      row?.querySelector("input")?.focus({ preventScroll: true });
+    });
+  };
+  const chips: { key: Filter; label: string; n: number | null; dot: string }[] = [
+    { key: "left", label: "Что осталось", n: null, dot: "" },
+    { key: "invalid", label: "Ошибки", n: summary.invalid, dot: "bg-[var(--danger)]" },
+    { key: "manual", label: "Нужно ввести", n: ownEmpty, dot: "bg-[var(--info)]" },
+    { key: "confirm", label: "Нужно подтвердить", n: summary.confirm, dot: "bg-[var(--warn)]" },
+    { key: "unknown", label: "Нельзя определить", n: summary.unknown, dot: "bg-[var(--edge-2)]" },
+    { key: "done", label: "Заполнено автоматически", n: summary.done, dot: "bg-[var(--ok)]" },
   ];
 
   const control = (f: ApplicationField) => {
@@ -220,7 +244,9 @@ export function FieldMap() {
   };
 
   return (
-    <>
+    <div className="@container grid gap-2">
+      <div className="grid items-start gap-2 @min-[880px]:grid-cols-2">
+        <div className="grid min-w-0 gap-2">
       <section aria-labelledby="fill-title" className="island grid gap-3 px-[var(--pad)] pb-4 pt-3">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <h3 id="fill-title" className="t-title">
@@ -233,7 +259,15 @@ export function FieldMap() {
         <div aria-hidden className="h-1.5 overflow-hidden rounded-full bg-[var(--paper-2)]">
           <div className="h-full rounded-full bg-primary" style={{ width: `${Math.round(summary.share * 100)}%` }} />
         </div>
-        <p className={final.ready ? "text-[var(--ok)]" : "text-[var(--ink-2)]"}>{final.text}</p>
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <p className={final.ready ? "text-[var(--ok)]" : "text-[var(--ink-2)]"}>{final.text}</p>
+          {firstEmpty && (
+            <button type="button" onClick={() => select(firstEmpty.key)} className="btn btn-xs">
+              <EditIcon />
+              Заполнить {count(ownEmpty, "пункт", "пункта", "пунктов")}
+            </button>
+          )}
+        </div>
         <div role="group" aria-label="Показать поля" className="flex flex-wrap gap-1.5">
           {chips
             .filter((c) => c.n === null || c.key === "done" || c.n > 0)
@@ -247,6 +281,7 @@ export function FieldMap() {
                   filter === c.key ? "bg-primary text-primary-foreground" : "bg-[var(--paper-2)] text-[var(--ink-2)] hover:bg-[var(--paper-3)]"
                 }`}
               >
+                {c.dot && <span aria-hidden className={`size-2 rounded-full ${c.dot}`} />}
                 {c.label}
                 {c.n !== null && <span className="t-num">{c.n}</span>}
               </button>
@@ -254,18 +289,18 @@ export function FieldMap() {
         </div>
       </section>
 
-      <section aria-label="Поля заявки" className="island px-[var(--pad)]">
-        <ul className="divide-y divide-[var(--line)]">
+      <section aria-label="Поля заявки">
+        <ul className="grid gap-2">
           {/* Ошибки — первыми, как в очереди мастера; реквизиты — после них одной строкой. */}
           {shown
             .filter((f) => f.status === "invalid")
             .map((f) => (
-              <Row key={f.key} field={f}>
+              <Row key={f.key} field={f} focus={focusKey === f.key}>
                 {control(f)}
               </Row>
             ))}
           {showProfile && (
-            <li className="grid grid-cols-[24px_minmax(0,1fr)] gap-x-2.5 gap-y-1.5 py-3">
+            <li className="island grid grid-cols-[24px_minmax(0,1fr)] gap-x-2.5 gap-y-1.5 px-[var(--pad)] py-3">
               <span aria-hidden className="grid size-6 place-items-center rounded-full bg-[var(--warn-tint)] text-[var(--warn)]">
                 <EditIcon className="size-3.5" />
               </span>
@@ -295,18 +330,21 @@ export function FieldMap() {
           {shown
             .filter((f) => f.status !== "invalid")
             .map((f) => (
-              <Row key={f.key} field={f}>
+              <Row key={f.key} field={f} focus={focusKey === f.key}>
                 {f.status !== "filled" && control(f)}
               </Row>
             ))}
           {!showProfile && shown.length === 0 && (
-            <li className="flex items-center gap-2.5 py-3">
+            <li className="island flex items-center gap-2.5 px-[var(--pad)] py-3">
               <Badge tone="ok" text={filter === "left" ? "всё заполнено" : "здесь пусто"} icon="check" />
               {filter === "left" && <span className="text-[var(--ink-2)]">Осталось подписать заявку электронной подписью и подать на площадке.</span>}
             </li>
           )}
         </ul>
       </section>
+        </div>
+        <ApplicationPreview purchase={purchase} focusKey={focusKey} onSelect={select} />
+      </div>
 
       <p className="px-[var(--pad)] py-1 text-[var(--ink-3)]">
         Весь текст технического предложения — в документе:{" "}
@@ -315,6 +353,6 @@ export function FieldMap() {
         </Link>
         {summary.sign > 0 && " · подпись ставите вы, на площадке — сервис её не ставит"}.
       </p>
-    </>
+    </div>
   );
 }

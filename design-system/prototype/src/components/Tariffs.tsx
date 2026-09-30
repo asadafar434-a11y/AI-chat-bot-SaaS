@@ -1,73 +1,61 @@
-import { useState } from 'react';
+import { AI_LIMITS } from '@/lib/ai-cost';
+import { plural } from '@/lib/plural';
+import { rubShort } from '@/lib/price-calc';
+import { PLANS, PRICE_EXPERT, RECHECK_PACK, type Plan } from '@/lib/pricing';
 import { Check, UserCheck, RefreshCw, Wallet, Sparkles } from '../lib/icons';
-import { Button, Card, Badge, HelpTip, cx } from './ui';
-import { PLANS, PRICE_EXPERT, RECHECK_PACK, rub, type Plan } from '../lib/data';
+import { Button, Card, Badge, HelpTip, Soon, cx } from './ui';
 
-// Что входит в каждую заявку — без доплат.
+// «Тарифы». Вид — прототипа; цены и состав — из приложения (web/src/lib/pricing.ts). Оплаты пока нет — для неё нужен
+// сервер: цены показаны, покупка помечена «скоро», баланса заявок нет. Документы скачиваются бесплатно.
+
+const rechecksText = (n: number) => `${n} ${plural(n, 'пересчёт', 'пересчёта', 'пересчётов')}`;
+const RECHECKS = rechecksText(AI_LIMITS.rechecks);
+
+// Что входит в каждую заявку — без того, чего приложение ещё не умеет: риска отклонения по ИИ пока нет.
 const INCLUDED = [
-  'Разбор документации и список того, что подать',
-  'Документы по формам заказчика и вашим образцам',
+  'Разбор документации и список того, что подать, — с цитатами из документов',
+  'ТП и другие документы — по формам заказчика и вашим образцам',
   'Расчёт «до какой цены снижаться»',
-  'Карта полей, проверка и риск отклонения',
-  '3 пересчёта ИИ; правки и обычные проверки — без ограничений',
-  'Скачивание DOCX и PDF — по одному или архивом',
+  'Карта полей и проверка заявки',
+  `${RECHECKS} ИИ; правки и обычные проверки — без ограничений`,
+  'Скачивание Word и PDF — по одному или архивом',
 ];
 
 const titleOf = (p: Plan) => (p.count === 1 ? 'Одна заявка' : `Пакет ${p.count} заявок`);
 
-export function Tariffs({ credits, onBuy }: { credits: number; onBuy: (count: number) => void }) {
-  const [bought, setBought] = useState<number | null>(null);
+export function Tariffs() {
   const best = PLANS[PLANS.length - 1];
 
   return (
     <div className="animate-fade-up space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Тарифы</h1>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">
-            Платите за заявку, а не за подписку. Пакет выгоднее, если подаёте часто.
-          </p>
-        </div>
-        <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-[13px]">
-          <Wallet className="size-4 text-muted-foreground" />
-          На балансе: <b className="font-mono tabular-nums">{credits}</b> {credits === 1 ? 'заявка' : credits > 1 && credits < 5 ? 'заявки' : 'заявок'}
-        </span>
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight">Тарифы</h1>
+        <p className="mt-0.5 text-[13px] text-muted-foreground">Платите за заявку, а не за подписку. Пакет выгоднее, если подаёте часто.</p>
       </div>
 
-      {bought && (
-        <p className="animate-fade-up flex items-center gap-2 rounded-md bg-success/10 px-3 py-2 text-[13px] text-success">
-          <Check className="size-4" /> Добавлено заявок: {bought}. Спишется по одной на шаге «Пакет». В прототипе — без
-          реальных денег.
-        </p>
-      )}
+      <p className="flex items-start gap-2 rounded-md bg-info/10 px-3 py-2 text-[13px] text-info">
+        <Wallet className="mt-0.5 size-4 shrink-0" />
+        Оплата пока не подключена — документы скачиваются бесплатно. Цены ниже начнут действовать, когда она заработает.
+      </p>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 pt-1.5 sm:grid-cols-3">
         {PLANS.map((p) => {
           const top = p === best;
           return (
             <Card key={p.count} className={cx('relative flex flex-col p-5', top && 'border-foreground/40 shadow-md')}>
               {top && (
-                <span className="bg-brand-gradient absolute -top-2.5 left-5 rounded-full px-2 py-0.5 text-[11px] font-medium text-white">
-                  Выгоднее всего
-                </span>
+                <span className="bg-brand-gradient absolute -top-2.5 left-5 rounded-full px-2 py-0.5 text-[11px] font-medium text-white">Выгоднее всего</span>
               )}
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex min-h-[22px] items-center justify-between gap-2">
                 <p className="text-sm font-medium">{titleOf(p)}</p>
                 {p.discountPct > 0 && <Badge tone="success">−{p.discountPct}%</Badge>}
               </div>
-              <p className="mt-3 font-mono text-2xl font-semibold tabular-nums">{rub(p.price)}</p>
+              <p className="mt-3 font-mono text-2xl font-semibold tabular-nums">{rubShort(p.price)}</p>
               <p className="mt-1 text-[12px] text-muted-foreground">
-                {p.count === 1 ? 'для одной закупки' : `${rub(p.perApp)} за заявку · экономия ${rub(p.saving)}`}
+                {p.count === 1 ? 'для одной закупки' : `${rubShort(p.perApp)} за заявку · экономия ${rubShort(p.saving)}`}
               </p>
-              <Button
-                variant={top ? 'accent' : p.count === 1 ? 'secondary' : 'primary'}
-                className="mt-4 w-full"
-                onClick={() => {
-                  onBuy(p.count);
-                  setBought(p.count);
-                }}
-              >
-                {p.count === 1 ? 'Купить заявку' : `Купить ${p.count} заявок`}
+              <Button variant={top ? 'accent' : p.count === 1 ? 'secondary' : 'primary'} className="mt-4 w-full" disabled>
+                {p.count === 1 ? 'Купить заявку' : `Купить ${p.count} заявок`} <Soon className="border-current/40 text-current" />
               </Button>
             </Card>
           );
@@ -94,11 +82,13 @@ export function Tariffs({ credits, onBuy }: { credits: number; onBuy: (count: nu
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline justify-between gap-2">
-              <p className="text-sm font-medium">Проверка специалистом</p>
-              <span className="font-mono text-sm font-semibold">{rub(PRICE_EXPERT)}</span>
+              <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                Проверка специалистом <Soon />
+              </p>
+              <span className="font-mono text-sm font-semibold">{rubShort(PRICE_EXPERT)}</span>
             </div>
             <p className="mt-1 text-[12px] text-muted-foreground">
-              Тендерный юрист сверит пакет с извещением и даст заключение за 2 часа. Заказывается на шаге «Пакет».
+              Тендерный юрист сверит комплект с извещением перед подачей — заказ на шаге «Пакет». Для переписки с юристом нужен сервер, его пока нет.
             </p>
           </div>
         </Card>
@@ -108,15 +98,14 @@ export function Tariffs({ credits, onBuy }: { credits: number; onBuy: (count: nu
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline justify-between gap-2">
-              <p className="flex items-center gap-1 text-sm font-medium">
-                Ещё {RECHECK_PACK.count} пересчёта ИИ
-                <HelpTip content="Полный повторный разбор заявки ИИ. В каждой заявке 3 пересчёта уже есть; правки полей проверяются бесплатно." />
+              <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                Ещё {rechecksText(RECHECK_PACK.count)} ИИ
+                <HelpTip content={`Повторная проверка всей заявки ИИ. В каждую заявку входят ${RECHECKS}, правки полей проверяются без ИИ и бесплатно.`} />
+                <Soon />
               </p>
-              <span className="font-mono text-sm font-semibold">{rub(RECHECK_PACK.price)}</span>
+              <span className="font-mono text-sm font-semibold">{rubShort(RECHECK_PACK.price)}</span>
             </div>
-            <p className="mt-1 text-[12px] text-muted-foreground">
-              Если 3 пересчёта в заявке кончились. Докупается на шаге «Проверка».
-            </p>
+            <p className="mt-1 text-[12px] text-muted-foreground">Когда {RECHECKS} в заявке закончатся. Пока лимита нет — проверяйте сколько нужно.</p>
           </div>
         </Card>
       </div>

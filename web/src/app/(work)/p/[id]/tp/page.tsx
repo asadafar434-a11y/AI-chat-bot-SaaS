@@ -365,7 +365,7 @@ export default function TpPage() {
                           {" · "}
                           <button
                             type="button"
-                            onClick={() => void files.downloadPart(tp, part, true)}
+                            onClick={() => void files.downloadPart(tp, part, { redo: true })}
                             disabled={files.downloading !== null}
                             className="link link-quiet disabled:opacity-60"
                           >

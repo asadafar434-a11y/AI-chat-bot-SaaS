@@ -1,114 +1,146 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import {
   ShieldAlert,
   ShieldCheck,
   Check,
   HelpCircle,
   Pencil,
-  Paperclip,
-  Eye,
   AlertTriangle,
   CheckCircle2,
   XCircle,
   ChevronDown,
   RefreshCw,
   ListChecks,
-  Loader2,
-  UserCheck,
-  Clock,
   PenLine,
   Sparkles,
 } from '../lib/icons';
-import { Button, Card, Badge, Modal, Tooltip, HelpTip, cx, type Tone } from './ui';
-import { AUTO_TOTAL, RECHECKS, RECHECK_PACK, autoFields, gaps, kindMeta, rub, tender, type FieldKind, type Gap } from '../lib/data';
-import {
-  checkKey,
-  completeness,
-  fieldCounts,
-  gapProblem,
-  gapState,
-  lcFirst,
-  riskOf,
-  type AppState,
-  type Remark,
-} from '../lib/app-state';
+import { Button, Card, Badge, Soon, Tooltip, HelpTip, cx, type Tone } from './ui';
+import { kindMeta, type FieldKind } from '../lib/data';
+import { fieldQueue, fieldSummary, type ApplicationField, type Completeness } from '@/lib/fields';
+import type { Purchase } from '@/lib/purchase';
+import { ApplicationPreview } from './ApplicationPreview';
 
-type Patch = (p: Partial<AppState> | ((a: AppState) => Partial<AppState>)) => void;
+// Шаг «Проверка». Вид — прототипа; поля — настоящая карта полей заявки приложения (web/src/lib/fields.ts):
+// что заполнено само, что подтвердить, что вписать, что не определено и что может только человек.
 
-const sevMeta = {
-  high: { tone: 'danger' as const, label: 'Критично' },
-  medium: { tone: 'warn' as const, label: 'Важно' },
-  low: { tone: 'neutral' as const, label: 'Уточнение' },
-};
+// Жёлтое место в тексте: сам текст с выделенным местом, которое сейчас вписывают.
+function holeText(p: Purchase, key: string): { text: string; hole: number } | null {
+  const [kind, what, index, hole] = key.split(':');
+  if (kind !== 'tp' || !p.tp || hole === 'done') return null;
+  if (what === 'item' && p.tp.items[Number(index)]) return { text: p.tp.items[Number(index)].offer, hole: Number(hole) };
+  if (what === 'good' && p.tp.goods[Number(index)]) return { text: p.tp.goods[Number(index)].characteristics, hole: Number(hole) };
+  if (what === 'consent' && index !== undefined) return { text: p.tp.form.consent, hole: Number(index) };
+  return null;
+}
 
-// Порядок мастера: ошибки, непонятное, обязательное к вводу (сначала критичное), в конце — подтверждения.
-const rankOf = (g: Gap, fixes: AppState['fixes']) =>
-  gapState(g, fixes) === 'invalid' ? 0 : g.field === 'unknown' ? 1 : g.field === 'manual' ? (g.severity === 'high' ? 2 : 3) : 4;
+function Snippet({ text, hole }: { text: string; hole: number }) {
+  const parts = text.split(/(\[[^\]]+\])/).filter(Boolean);
+  let n = -1;
+  return (
+    <p className="whitespace-pre-wrap rounded-md bg-secondary/60 px-3 py-2 text-[12px] leading-relaxed text-muted-foreground">
+      {parts.map((part, i) => {
+        if (!/^\[[^\]]+\]$/.test(part)) return <span key={i}>{part}</span>;
+        n += 1;
+        return (
+          <mark key={i} className={cx('highlight', n === hole && 'ring-1 ring-warn')}>
+            {part}
+          </mark>
+        );
+      })}
+    </p>
+  );
+}
+
+// Вес открытого пункта в «риске отклонения»: ошибка — 35, не определено — 18, пустое обязательное — 10, подтвердить — 7, остальное — 3.
+const weightOf = (f: ApplicationField) =>
+  f.status === 'invalid' ? 35 : f.kind === 'unknown' ? 18 : f.status === 'needs_input' ? (f.required ? 10 : 3) : f.status === 'needs_confirmation' ? 7 : 0;
+
+const badgeOf = (f: ApplicationField): { tone: Tone; text: string } =>
+  f.status === 'invalid'
+    ? { tone: 'danger', text: 'Ошибка' }
+    : f.kind === 'unknown'
+      ? { tone: 'danger', text: 'Не определено' }
+      : f.status === 'filled'
+        ? { tone: 'success', text: 'Готово' }
+        : f.status === 'needs_confirmation'
+          ? { tone: 'warn', text: 'Подтвердить' }
+          : { tone: 'info', text: 'Ввести' };
 
 export function StepReview({
-  app,
-  setFix,
-  patch,
-  focusGap,
-  onFocused,
+  purchase,
+  fields,
+  final,
+  focusKey,
+  warnings,
+  before,
+  after,
+  onFocus,
+  onSave,
+  onGo,
+  onOpenProfile,
   onNext,
   onBack,
 }: {
-  app: AppState;
-  setFix: (id: string, value: string) => void;
-  patch: Patch;
-  focusGap: string | null;
-  onFocused: () => void;
+  purchase: Purchase;
+  fields: ApplicationField[];
+  final: Completeness;
+  // Предупреждения по заявке: утечка реквизитов в ТП, цитаты без подтверждения, сканы.
+  warnings: string[];
+  // Блок над списком пунктов — например, состав исполнителей.
+  before?: ReactNode;
+  // Блок под списком и предпросмотром — проверка своей заявки файлом.
+  after?: ReactNode;
+  focusKey: string | null;
+  onFocus: (key: string | null) => void;
+  // Вписать значение в жёлтое место или строку анкеты; для подтверждения значение пустое.
+  onSave: (key: string, value: string) => void;
+  onGo: (step: number) => void;
+  onOpenProfile: () => void;
   onNext: () => void;
   onBack: () => void;
 }) {
-  const fixes = app.fixes;
-  const [open, setOpen] = useState<string | null>(null);
   const [filter, setFilter] = useState<FieldKind | 'all'>('all');
   const [whyRisk, setWhyRisk] = useState(false);
-  const [wizard, setWizard] = useState<string[] | null>(null);
-  const [recheck, setRecheck] = useState<'idle' | 'running' | 'same' | 'done'>('idle');
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  const counts = fieldCounts(fixes);
-  const risk = riskOf(fixes);
-  const final = completeness(fixes);
-  const allClear = risk.open.length === 0;
-  const remarks = app.specialist?.status === 'replied' ? app.specialist.remarks : [];
-  const remarkFor = (id: string) => remarks.find((r) => r.gapId === id && r.tone !== 'ok');
-  const queue = gaps.filter((g) => gapState(g, fixes) !== 'done').sort((a, b) => rankOf(a, fixes) - rankOf(b, fixes));
+  const summary = fieldSummary(fields);
+  const queue = fieldQueue(fields);
+  const isProfile = (f: ApplicationField) => f.key.startsWith('profile:') || (f.key === 'confirm:signer' && f.status === 'needs_input');
+  const profileLeft = queue.filter(isProfile);
+  const own = queue.filter((f) => !isProfile(f));
+  const ownEmpty = own.filter((f) => f.status === 'needs_input' && !f.key.startsWith('file:')).length;
 
-  const select = (id: string) => {
-    setOpen(id);
+  const open = queue.filter((f) => weightOf(f) > 0);
+  const weight = open.reduce((s, f) => s + weightOf(f), 0);
+  const risk = { pct: weight === 0 ? 3 : Math.min(74, weight + 2), critical: open.some((f) => f.status === 'invalid' || f.kind === 'unknown') };
+  const allClear = open.length === 0;
+  const level = risk.pct >= 50 ? 'высокий' : risk.pct >= 25 ? 'средний' : 'низкий';
+
+  const select = (key: string) => {
     setFilter('all');
-    requestAnimationFrame(() => rowRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+    onFocus(key);
+    requestAnimationFrame(() => {
+      const row = rowRefs.current[key];
+      row?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      row?.querySelector('input')?.focus({ preventScroll: true });
+    });
   };
+  const first = own.find((f) => f.status === 'needs_input' && !f.key.startsWith('file:'));
 
-  // Переход сюда из «Анализа» или из замечания специалиста — сразу к нужному пункту.
-  useEffect(() => {
-    if (!focusGap) return;
-    select(focusGap);
-    onFocused();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusGap]);
+  const shown = (() => {
+    if (filter === 'confirm') return own.filter((f) => f.status === 'needs_confirmation');
+    if (filter === 'manual') return own.filter((f) => f.kind === 'manual' && (f.status === 'needs_input' || f.status === 'invalid'));
+    if (filter === 'unknown') return own.filter((f) => f.kind === 'unknown');
+    return own;
+  })();
 
-  // Полный повторный разбор ИИ — 3 раза на заявку. Данные не менялись — ИИ не вызывается, попытка не списывается.
-  const runRecheck = () => {
-    if (app.checkedKey === checkKey(fixes)) {
-      setRecheck('same');
-      return;
-    }
-    setRecheck('running');
-    window.setTimeout(() => {
-      patch((a) => ({ rechecks: a.rechecks + 1, checkedKey: checkKey(a.fixes) }));
-      setRecheck('done');
-    }, 1200);
+  const counts: Record<FieldKind, number> = {
+    auto: summary.auto,
+    confirm: summary.confirm,
+    manual: summary.manual + summary.invalid,
+    unknown: summary.unknown,
+    sign: summary.sign,
   };
-  // 3 пересчёта в заявке, дальше — пакетами «ещё 3 за 99 ₽».
-  const total = RECHECKS + app.recheckPacks * RECHECK_PACK.count;
-  const left = Math.max(0, total - app.rechecks);
-
-  const shown = filter === 'all' ? gaps : gaps.filter((g) => g.field === filter);
 
   return (
     <div className="animate-fade-up space-y-4">
@@ -116,44 +148,40 @@ export function StepReview({
         <h1 className="text-2xl font-semibold tracking-tight">Проверка перед подачей</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           ИИ сверил заявку с извещением и ТЗ. <mark className="highlight">Жёлтым</mark> — что дописать или подтвердить; у
-          каждого пункта — почему ИИ не заполнил сам и откуда взято значение.
+          каждого пункта видно, откуда взято значение или почему его нет.
         </p>
       </div>
 
-      {app.specialist && <ExpertBanner status={app.specialist.status} remarks={remarks} onGo={select} />}
-
-      {/* Сводка: заполнение, риск, пересчёт — одним островом */}
+      {/* Сводка: заполнение, риск — одним островом */}
       <Card className="divide-y divide-border p-0">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3">
           <div className="min-w-[200px] flex-1">
             <div className="flex items-center justify-between text-[13px]">
               <span className="font-medium">Подготовка заявки</span>
               <span className="font-mono tabular-nums text-muted-foreground">
-                {counts.done} из {counts.total} · {Math.round(counts.share * 100)}%
+                {summary.done} из {summary.total} · {Math.round(summary.share * 100)}%
               </span>
             </div>
             <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-secondary">
-              <div className="h-full rounded-full bg-foreground transition-all duration-500" style={{ width: `${counts.share * 100}%` }} />
+              <div className="h-full rounded-full bg-foreground transition-all duration-500" style={{ width: `${summary.share * 100}%` }} />
             </div>
           </div>
-          {queue.length > 0 ? (
-            <Button size="sm" onClick={() => setWizard(queue.map((g) => g.id))}>
-              <ListChecks className="size-3.5" /> Заполнить {queue.length} {queue.length === 1 ? 'пункт' : queue.length < 5 ? 'пункта' : 'пунктов'}
+          {first ? (
+            <Button size="sm" onClick={() => select(first.key)}>
+              <ListChecks className="size-3.5" /> Заполнить {ownEmpty} {ownEmpty === 1 ? 'пункт' : ownEmpty < 5 ? 'пункта' : 'пунктов'}
             </Button>
           ) : (
             <Badge tone="success">
-              <Check className="size-3" /> Всё заполнено
+              <Check className="size-3" /> Всё, что можно вписать, заполнено
             </Badge>
           )}
         </div>
 
         {/* Виды полей — нажатие показывает только их */}
         <div className="flex flex-wrap gap-1.5 px-4 py-2.5">
-          <KindChip kind="auto" n={counts.auto} active={filter === 'auto'} onClick={() => setFilter(filter === 'auto' ? 'all' : 'auto')} />
-          <KindChip kind="confirm" n={counts.confirm} active={filter === 'confirm'} onClick={() => setFilter(filter === 'confirm' ? 'all' : 'confirm')} />
-          <KindChip kind="manual" n={counts.manual} active={filter === 'manual'} onClick={() => setFilter(filter === 'manual' ? 'all' : 'manual')} />
-          <KindChip kind="unknown" n={counts.unknown} active={filter === 'unknown'} onClick={() => setFilter(filter === 'unknown' ? 'all' : 'unknown')} />
-          <KindChip kind="sign" n={counts.sign} active={filter === 'sign'} onClick={() => setFilter(filter === 'sign' ? 'all' : 'sign')} />
+          {(['auto', 'confirm', 'manual', 'unknown', 'sign'] as FieldKind[]).map((kind) => (
+            <KindChip key={kind} kind={kind} n={counts[kind]} active={filter === kind} onClick={() => setFilter(filter === kind ? 'all' : kind)} />
+          ))}
         </div>
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
@@ -164,7 +192,7 @@ export function StepReview({
               <ShieldAlert className={cx('size-5', risk.critical ? 'text-danger' : 'text-warn')} />
             )}
             <span className="text-[13px] font-medium">Риск отклонения</span>
-            <Tooltip content="Оценка по открытым пунктам: критичное — 35 баллов, важное — 10–18, уточнение — 3–7. Не вероятность, а шкала." align="start">
+            <Tooltip content="Оценка по открытым пунктам: ошибка — 35 баллов, не определено — 18, пустое обязательное поле — 10, подтвердить — 7. Не вероятность, а шкала." align="start">
               <span
                 className={cx(
                   'font-mono text-lg font-semibold tabular-nums',
@@ -174,7 +202,7 @@ export function StepReview({
                 {risk.pct}%
               </span>
             </Tooltip>
-            <span className="text-[12px] text-muted-foreground">{risk.level}</span>
+            <span className="text-[12px] text-muted-foreground">{allClear ? 'минимальный' : level}</span>
           </div>
           <button
             onClick={() => setWhyRisk(!whyRisk)}
@@ -183,127 +211,108 @@ export function StepReview({
             <HelpCircle className="size-3.5" /> Почему такой риск?
           </button>
           <div className="ml-auto">
-            <Tooltip
-              content="Полный повторный разбор ИИ — 3 раза на заявку. Если данные не менялись, ИИ не вызывается и попытка не списывается. Правки полей проверяются бесплатно и сразу."
-              align="end"
-            >
-              <Button size="sm" variant="secondary" disabled={left === 0 || recheck === 'running'} onClick={runRecheck}>
-                {recheck === 'running' ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
-                Пересчитать с ИИ · {left} из {total}
+            <Tooltip content="Полный повторный разбор заявки ИИ с учётом ваших правок — в разработке. Правки полей проверяются бесплатно и сразу." align="end">
+              <Button size="sm" variant="secondary" disabled>
+                <RefreshCw className="size-3.5" /> Пересчитать с ИИ <Soon className="ml-1" />
               </Button>
             </Tooltip>
           </div>
         </div>
 
-        {(whyRisk || recheck !== 'idle' || left === 0) && (
-          <div className="space-y-2 px-4 py-3 text-[12px]">
-            {whyRisk && (
-              <div className="space-y-1.5">
-                {risk.open.length === 0 ? (
-                  <p className="text-success">Открытых пунктов нет — риск минимальный.</p>
-                ) : (
-                  risk.open
-                    .slice()
-                    .sort((a, b) => b.weight - a.weight)
-                    .map((g) => (
-                      <button key={g.id} onClick={() => select(g.id)} className="flex w-full items-center gap-2 text-left hover:text-foreground">
-                        <span className="w-9 shrink-0 text-right font-mono tabular-nums text-muted-foreground">+{g.weight}</span>
-                        <span className="min-w-0 flex-1 truncate">{g.label}</span>
-                        <Badge tone={sevMeta[g.severity].tone}>{sevMeta[g.severity].label}</Badge>
-                      </button>
-                    ))
-                )}
-                <p className="text-muted-foreground">Ответ из сохранённой проверки — ИИ не вызывался.</p>
-              </div>
+        {whyRisk && (
+          <div className="space-y-1.5 px-4 py-3 text-[12px]">
+            {open.length === 0 ? (
+              <p className="text-success">Открытых пунктов нет — риск минимальный.</p>
+            ) : (
+              open
+                .slice()
+                .sort((a, b) => weightOf(b) - weightOf(a))
+                .slice(0, 12)
+                .map((f) => (
+                  <button key={f.key} onClick={() => select(f.key)} className="flex w-full items-center gap-2 text-left hover:text-foreground">
+                    <span className="w-9 shrink-0 text-right font-mono tabular-nums text-muted-foreground">+{weightOf(f)}</span>
+                    <span className="min-w-0 flex-1 truncate">{f.label}</span>
+                    <Badge tone={badgeOf(f).tone}>{badgeOf(f).text}</Badge>
+                  </button>
+                ))
             )}
-            {recheck === 'running' && <p className="text-muted-foreground">ИИ заново разбирает заявку с учётом ваших правок…</p>}
-            {recheck === 'same' && (
-              <p className="text-muted-foreground">Данные не менялись с прошлого пересчёта — показан сохранённый результат. Попытка не списана.</p>
-            )}
-            {recheck === 'done' && <p className="text-muted-foreground">Пересчитано. Новых замечаний нет. Осталось пересчётов: {left} из {total}.</p>}
-            {left === 0 && recheck !== 'running' && (
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-warn-foreground">
-                  Вы использовали все повторные AI-проверки для этой заявки. Правки полей по-прежнему проверяются бесплатно и сразу.
-                </p>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    patch((a) => ({ recheckPacks: a.recheckPacks + 1 }));
-                    setRecheck('idle');
-                  }}
-                >
-                  <RefreshCw className="size-3.5" /> Ещё {RECHECK_PACK.count} пересчёта · {rub(RECHECK_PACK.price)}
-                </Button>
-              </div>
-            )}
+            <p className="text-muted-foreground">Считается в браузере по открытым пунктам — ИИ не вызывается.</p>
           </div>
         )}
       </Card>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Пункты: компактные строки, раскрываются по нажатию */}
-        <div className="space-y-2">
+        {/* Пункты: компактные карточки, раскрываются по нажатию */}
+        <div className="min-w-0 space-y-2">
+          {warnings.length > 0 && (
+            <div className="space-y-1.5 rounded-lg border border-warn/40 bg-warn-surface/30 px-3 py-2.5">
+              {warnings.map((w) => (
+                <p key={w} className="flex items-start gap-2 text-[13px] leading-snug text-warn-foreground">
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warn" />
+                  <span>{w}</span>
+                </p>
+              ))}
+            </div>
+          )}
+          {before}
           {filter === 'auto' ? (
-            <AutoList />
+            <AutoList fields={fields.filter((f) => f.kind === 'auto' && f.status === 'filled')} />
           ) : filter === 'sign' ? (
             <SignRow />
           ) : (
-            shown.map((gap) => (
-              <GapRow
-                key={gap.id}
-                gap={gap}
-                fixes={fixes}
-                expanded={open === gap.id}
-                remark={remarkFor(gap.id)}
-                onToggle={() => setOpen(open === gap.id ? null : gap.id)}
-                onFix={(v) => setFix(gap.id, v)}
-                rowRef={(el) => (rowRefs.current[gap.id] = el)}
-              />
-            ))
+            <>
+              {shown
+                .filter((f) => f.status === 'invalid')
+                .concat(shown.filter((f) => f.status !== 'invalid'))
+                .map((f) => (
+                  <FieldRow
+                    key={f.key}
+                    field={f}
+                    purchase={purchase}
+                    expanded={focusKey === f.key}
+                    onToggle={() => onFocus(focusKey === f.key ? null : f.key)}
+                    onSave={onSave}
+                    onGo={onGo}
+                    onOpenProfile={onOpenProfile}
+                    rowRef={(el) => (rowRefs.current[f.key] = el)}
+                  />
+                ))}
+              {filter === 'all' && profileLeft.length > 0 && (
+                <div className="rounded-lg border border-border bg-card px-3 py-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warn" />
+                    <div className="min-w-0 flex-1 text-[13px]">
+                      <p className="font-medium">
+                        Реквизиты компании: не хватает {profileLeft.length} {profileLeft.length === 1 ? 'поля' : 'полей'}
+                      </p>
+                      <p className="mt-0.5 text-[12px] text-muted-foreground">
+                        {profileLeft.slice(0, 4).map((f) => f.label).join(', ')}
+                        {profileLeft.length > 4 ? ` и ещё ${profileLeft.length - 4}` : ''} · подставятся в документы
+                      </p>
+                      <button onClick={onOpenProfile} className="mt-1.5 text-[12px] font-medium underline underline-offset-4 hover:text-foreground">
+                        Вписать в «Профиле компании»
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {filter !== 'all' && shown.length === 0 && (
+                <p className="rounded-lg border border-border bg-card px-3 py-3 text-[13px] text-muted-foreground">Здесь пусто.</p>
+              )}
+              {filter === 'all' && own.length === 0 && profileLeft.length === 0 && (
+                <p className="flex items-center gap-2 rounded-lg border border-success/40 bg-success/5 px-3 py-3 text-[13px] text-success">
+                  <CheckCircle2 className="size-4" /> Всё заполнено. Осталось подписать заявку электронной подписью и подать на площадке.
+                </p>
+              )}
+              {filter === 'all' && <AutoList fields={fields.filter((f) => f.kind === 'auto' && f.status === 'filled')} collapsed />}
+            </>
           )}
-          {filter === 'all' && <AutoList collapsed />}
         </div>
 
-        {/* Живой предпросмотр */}
-        <Card className="p-0 lg:sticky lg:top-4 lg:h-fit">
-          <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-            <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">Заявка · предпросмотр</span>
-            <span className="inline-flex items-center gap-1 font-mono text-[11px] text-muted-foreground">
-              <Eye className="size-3" /> живой
-            </span>
-          </div>
-          <div className="space-y-3 p-5 text-[13px] leading-relaxed">
-            <p className="font-semibold">Предложение участника в отношении объекта закупки</p>
-            <p className="text-muted-foreground">
-              Закупка №{tender.id}. Страна происхождения: <Mark id="country" fixes={fixes} onSelect={select} open={open} />
-            </p>
-            <p>
-              <b>Поз. 1. Моноблок 23,8".</b> Intel Core i5, ОЗУ 16 ГБ, SSD 512 ГБ.
-            </p>
-            <p>
-              <b>Поз. 2. Ноутбук 15,6".</b> Intel Core i5, ОЗУ 16 ГБ, накопитель <Mark id="poz2-storage" fixes={fixes} onSelect={select} open={open} />
-            </p>
-            <p>
-              <b>Поз. 3. МФУ лазерное А4.</b> Скорость печати <Mark id="poz3-speed" fixes={fixes} onSelect={select} open={open} /> стр/мин,
-              сертификат соответствия — <Mark id="cert-poz3" fixes={fixes} onSelect={select} open={open} />.
-            </p>
-            <p>
-              <b>Поз. 4. ИБП.</b> Выходная мощность <Mark id="poz4-power" fixes={fixes} onSelect={select} open={open} />
-            </p>
-            <p>
-              <b>Реестровые записи.</b> Поз. 1, 2 — из прайса; поз. 3, 4 — <Mark id="registry" fixes={fixes} onSelect={select} open={open} />
-            </p>
-            <div className="space-y-1.5 border-t border-border pt-3 text-[12px] text-muted-foreground">
-              <p>Обеспечение заявки 42 800 ₽ — <Mark id="guarantee" fixes={fixes} onSelect={select} open={open} /></p>
-              <p>Крупная сделка — <Mark id="deal" fixes={fixes} onSelect={select} open={open} /></p>
-              <p>«Приложение 3 к ТЗ» — <Mark id="file-unread" fixes={fixes} onSelect={select} open={open} /></p>
-              <p>Подписывает — <Mark id="signer" fixes={fixes} onSelect={select} open={open} /></p>
-            </div>
-          </div>
-        </Card>
+        <ApplicationPreview purchase={purchase} focusKey={focusKey} onSelect={select} />
       </div>
+
+      {after}
 
       {/* Итоговая проверка: ни одного пустого обязательного поля */}
       <FinalCheck final={final} />
@@ -313,18 +322,9 @@ export function StepReview({
           ← Назад
         </Button>
         <Button variant={risk.critical ? 'secondary' : 'primary'} onClick={onNext} className="ml-auto">
-          {allClear ? 'Сформировать пакет →' : 'Продолжить с открытыми пунктами →'}
+          {final.ready ? 'Сформировать пакет →' : 'Продолжить с открытыми пунктами →'}
         </Button>
       </div>
-
-      {wizard && (
-        <Wizard
-          ids={wizard}
-          fixes={fixes}
-          onFix={setFix}
-          onClose={() => setWizard(null)}
-        />
-      )}
     </div>
   );
 }
@@ -355,337 +355,208 @@ function KindChip({ kind, n, active, onClick }: { kind: FieldKind; n: number; ac
   );
 }
 
-// Замечания специалиста — наверху «Проверки», с переходом к пункту.
-function ExpertBanner({ status, remarks, onGo }: { status: 'sent' | 'replied'; remarks: Remark[]; onGo: (id: string) => void }) {
-  if (status === 'sent') {
-    return (
-      <div className="flex items-center gap-2.5 rounded-lg border border-warn/40 bg-warn-surface/40 px-4 py-2.5 text-[13px] text-warn-foreground">
-        <Clock className="size-4 shrink-0" />
-        Пакет у специалиста — ответ придёт в течение 2 часов. Замечания появятся здесь, у нужных пунктов.
-      </div>
-    );
-  }
-  return (
-    <div className="rounded-lg border border-info/40 bg-info/5 px-4 py-3">
-      <p className="flex items-center gap-2 text-[13px] font-medium text-info">
-        <UserCheck className="size-4" /> Замечания специалиста · {remarks.filter((r) => r.tone !== 'ok').length}
-      </p>
-      <ul className="mt-2 space-y-1.5">
-        {remarks.map((r) => (
-          <li key={r.text} className="flex items-start gap-2 text-[12px]">
-            <span className={cx('mt-1.5 size-1.5 shrink-0 rounded-full', r.tone === 'danger' ? 'bg-danger' : r.tone === 'warn' ? 'bg-warn' : 'bg-success')} />
-            <span className="min-w-0 flex-1 text-muted-foreground">{r.text}</span>
-            {r.gapId && (
-              <button onClick={() => onGo(r.gapId!)} className="shrink-0 font-medium text-foreground underline underline-offset-2">
-                Перейти
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+function stateIcon(f: ApplicationField) {
+  if (f.status === 'filled') return <CheckCircle2 className="size-4 shrink-0 text-success" />;
+  if (f.status === 'invalid') return <XCircle className="size-4 shrink-0 text-danger" />;
+  if (f.kind === 'unknown') return <HelpCircle className="size-4 shrink-0 text-danger" />;
+  return <AlertTriangle className="size-4 shrink-0 text-warn" />;
 }
 
-function stateIcon(gap: Gap, fixes: AppState['fixes']) {
-  const st = gapState(gap, fixes);
-  if (st === 'done') return <CheckCircle2 className="size-4 shrink-0 text-success" />;
-  if (st === 'invalid') return <XCircle className="size-4 shrink-0 text-danger" />;
-  if (gap.field === 'unknown') return <HelpCircle className="size-4 shrink-0 text-danger" />;
-  return <AlertTriangle className={cx('size-4 shrink-0', gap.severity === 'high' ? 'text-danger' : 'text-warn')} />;
-}
-
-const kindTone = (k: FieldKind): Tone => (kindMeta[k].tone === 'info' ? 'info' : kindMeta[k].tone);
-
-const shownValue = (gap: Gap, value: string) => (gap.kind === 'upload' ? `📎 ${value}` : value);
-
-function GapRow({
-  gap,
-  fixes,
+function FieldRow({
+  field,
+  purchase,
   expanded,
-  remark,
   onToggle,
-  onFix,
+  onSave,
+  onGo,
+  onOpenProfile,
   rowRef,
 }: {
-  gap: Gap;
-  fixes: AppState['fixes'];
+  field: ApplicationField;
+  purchase: Purchase;
   expanded: boolean;
-  remark?: Remark;
   onToggle: () => void;
-  onFix: (v: string) => void;
+  onSave: (key: string, value: string) => void;
+  onGo: (step: number) => void;
+  onOpenProfile: () => void;
   rowRef: (el: HTMLDivElement | null) => void;
 }) {
-  const st = gapState(gap, fixes);
-  const value = fixes[gap.id];
+  const badge = badgeOf(field);
+  const where = [field.doc, field.context].filter(Boolean).join(' · ');
   return (
     <div
       ref={rowRef}
       className={cx(
         'scroll-mt-24 rounded-lg border bg-card transition-all',
         expanded ? 'border-foreground/30 shadow-sm' : 'border-border',
-        st !== 'done' && gap.severity === 'high' && 'border-l-2 border-l-danger',
+        field.status === 'invalid' && 'border-l-2 border-l-danger',
       )}
     >
       <button onClick={onToggle} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left">
-        {stateIcon(gap, fixes)}
+        {stateIcon(field)}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{gap.position}</span>
-            <span className="truncate text-[13px] font-medium">{gap.label}</span>
+            {where && <span className="max-w-[45%] shrink-0 truncate font-mono text-[11px] text-muted-foreground">{where}</span>}
+            <span className="truncate text-[13px] font-medium">{field.label}</span>
           </div>
-          {st === 'done' && value && <p className="mt-0.5 truncate text-[12px] text-success">{shownValue(gap, value)}</p>}
-          {st === 'invalid' && <p className="mt-0.5 truncate text-[12px] text-danger">{gapProblem(gap, fixes)}</p>}
+          {field.status === 'filled' && field.value && <p className="mt-0.5 truncate text-[12px] text-success">{field.value}</p>}
+          {field.problem && <p className={cx('mt-0.5 truncate text-[12px]', field.status === 'invalid' ? 'text-danger' : 'text-warn-foreground')}>{field.problem}</p>}
         </div>
-        {remark && (
-          <Tooltip content={`Специалист: ${remark.text}`} align="end">
-            <Badge tone="info">
-              <UserCheck className="size-2.5" /> юрист
-            </Badge>
-          </Tooltip>
-        )}
         <span className="hidden sm:inline-flex">
-          <Badge tone={st === 'done' ? 'success' : kindTone(gap.field)}>{st === 'done' ? 'Готово' : kindMeta[gap.field].short}</Badge>
+          <Badge tone={badge.tone}>{badge.text}</Badge>
         </span>
         <ChevronDown className={cx('size-4 shrink-0 text-muted-foreground transition-transform', expanded && 'rotate-180')} />
       </button>
       {expanded && (
-        <div className="animate-fade-up border-t border-border px-3 pb-3 pt-2.5">
-          {remark && (
-            <p className="mb-2 flex items-start gap-1.5 rounded-md bg-info/10 px-2.5 py-2 text-[12px] text-info">
-              <UserCheck className="mt-0.5 size-3.5 shrink-0" /> Специалист: {remark.text}
+        <div className="animate-fade-up space-y-2.5 border-t border-border px-3 pb-3 pt-2.5">
+          {field.source && (
+            <p className="text-[11px] text-muted-foreground">
+              Откуда: <span className="font-mono">{field.source}</span>
             </p>
           )}
-          <GapBody gap={gap} fixes={fixes} onFix={onFix} />
+          <Control field={field} purchase={purchase} onSave={onSave} onGo={onGo} onOpenProfile={onOpenProfile} />
         </div>
       )}
     </div>
   );
 }
 
-// Почему ИИ не заполнил сам, откуда взято, что будет, если оставить, и сам способ исправить.
-function GapBody({ gap, fixes, onFix, autoFocus }: { gap: Gap; fixes: AppState['fixes']; onFix: (v: string) => void; autoFocus?: boolean }) {
-  return (
-    <div className="space-y-2.5">
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
-        <Badge tone={sevMeta[gap.severity].tone}>{sevMeta[gap.severity].label}</Badge>
-        <span className="font-mono">{gap.ref}</span>
-      </div>
-      <p className="text-[12px] text-muted-foreground">
-        <span className="font-medium text-foreground">Источник: </span>
-        {gap.source}
-      </p>
-      <div className="space-y-1 rounded-md bg-secondary/60 p-2.5 text-[12px] leading-snug text-muted-foreground">
-        <p>
-          <span className="font-medium text-foreground">Почему ИИ не заполнил сам: </span>
-          {gap.why}
-        </p>
-        <p>
-          <span className="font-medium text-foreground">Если оставить: </span>
-          {gap.consequence}
-        </p>
-      </div>
-      <GapControl gap={gap} fixes={fixes} onFix={onFix} autoFocus={autoFocus} />
-    </div>
-  );
-}
+// Способ исправить: вписать, подтвердить или перейти туда, где это делается.
+function Control({
+  field: f,
+  purchase,
+  onSave,
+  onGo,
+  onOpenProfile,
+}: {
+  field: ApplicationField;
+  purchase: Purchase;
+  onSave: (key: string, value: string) => void;
+  onGo: (step: number) => void;
+  onOpenProfile: () => void;
+}) {
+  // Уже вписанное место: поле сразу с прежним значением, чтобы его исправить.
+  const [value, setValue] = useState(f.key.includes(':done:') ? f.value : '');
+  const snippet = holeText(purchase, f.key);
 
-function GapControl({ gap, fixes, onFix, autoFocus }: { gap: Gap; fixes: AppState['fixes']; onFix: (v: string) => void; autoFocus?: boolean }) {
-  const value = fixes[gap.id];
-  const st = gapState(gap, fixes);
-  const [draft, setDraft] = useState(value ?? '');
-  const [editing, setEditing] = useState(false);
-  const fileInput = useRef<HTMLInputElement>(null);
-
-  useEffect(() => setDraft(value ?? ''), [value]);
-
-  if (st === 'done' && !editing && gap.kind !== 'choice') {
-    return (
-      <div className="flex items-center justify-between gap-3 rounded-md border border-success/30 bg-success/5 px-3 py-2">
-        <span className="min-w-0 truncate text-[13px] text-success">
-          {gap.kind === 'confirm' && value === gap.found ? '✓ Подтверждено: ' : ''}
-          {shownValue(gap, value!)}
-        </span>
-        <button
-          onClick={() => {
-            setDraft(value ?? '');
-            setEditing(true);
-          }}
-          className="inline-flex shrink-0 items-center gap-1 text-[12px] text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <Pencil className="size-3" /> Изменить
-        </button>
-      </div>
-    );
-  }
-
-  if (gap.kind === 'confirm' && !editing) {
+  if (f.key.startsWith('anketa:') || (snippet && f.status === 'needs_input')) {
     return (
       <div className="space-y-2">
-        <div className="rounded-md border border-warn/40 bg-warn-surface/30 px-3 py-2 text-[13px]">
-          <span className="text-muted-foreground">ИИ нашёл: </span>
-          <span className="font-medium">{gap.found}</span>
-        </div>
-        <div className="flex gap-2">
-          <Button size="sm" onClick={() => onFix(gap.found!)}>
-            <Check className="size-3.5" /> Подтвердить
-          </Button>
-          <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
-            <Pencil className="size-3.5" /> Изменить
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (gap.kind === 'text' || (gap.kind === 'confirm' && editing)) {
-    const save = () => {
-      if (!draft.trim()) return;
-      onFix(draft.trim());
-      setEditing(false);
-    };
-    return (
-      <div className="space-y-1.5">
-        <div className="flex gap-2">
+        {snippet && <Snippet {...snippet} />}
+        {/* Вписали одно место — следующее в том же тексте получает тот же ключ: форма пересоздаётся по тексту и очищается. */}
+        <form
+          key={`${f.key}:${snippet?.text ?? ''}`}
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (value.trim()) {
+              onSave(f.key, value.trim());
+              setValue('');
+            }
+          }}
+          className="flex flex-wrap items-center gap-2"
+        >
           <input
-            autoFocus={autoFocus || editing}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && save()}
-            placeholder={gap.placeholder ?? gap.found}
-            className={cx(
-              'h-9 min-w-0 flex-1 rounded-md border bg-background px-3 text-sm outline-none transition-colors focus:ring-2 focus:ring-ring/20',
-              st === 'invalid' ? 'border-danger focus:border-danger' : 'border-border focus:border-foreground',
-            )}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={f.label}
+            aria-label={`${f.label}${f.context ? ` — ${f.context}` : ''}`}
+            autoComplete="off"
+            className="h-9 min-w-0 max-w-[48ch] flex-1 rounded-md border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-foreground focus:ring-2 focus:ring-ring/20"
           />
-          <Button size="sm" disabled={!draft.trim()} onClick={save}>
-            Сохранить
+          <Button size="sm" type="submit" disabled={!value.trim()}>
+            Вписать
           </Button>
-        </div>
-        {st === 'invalid' && <p className="text-[12px] text-danger">{gapProblem(gap, fixes)}</p>}
+        </form>
       </div>
     );
   }
-
-  if (gap.kind === 'choice') {
+  if (f.key === 'confirm:price') {
     return (
-      <div className="flex flex-col gap-1.5">
-        {gap.choices!.map((c) => {
-          const active = value === c.label;
-          return (
-            <button
-              key={c.label}
-              onClick={() => onFix(c.label)}
-              className={cx(
-                'flex items-center gap-2 rounded-md border px-3 py-2 text-left text-[13px] transition-colors',
-                active
-                  ? c.ok
-                    ? 'border-success/50 bg-success/5 text-foreground'
-                    : 'border-warn/50 bg-warn-surface/40 text-foreground'
-                  : 'border-border bg-background text-muted-foreground hover:bg-secondary',
-              )}
-            >
-              <span
-                className={cx(
-                  'flex size-4 shrink-0 items-center justify-center rounded-full border',
-                  active ? 'border-foreground bg-primary text-primary-foreground' : 'border-border',
-                )}
-              >
-                {active && <Check className="size-2.5" />}
-              </span>
-              {c.label}
-            </button>
-          );
-        })}
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <input
-        ref={fileInput}
-        type="file"
-        className="hidden"
-        onChange={(e) => {
-          onFix(e.target.files?.[0]?.name ?? 'Сертификат_соответствия.pdf');
-          setEditing(false);
-        }}
-      />
-      <Button variant="secondary" size="sm" className="w-full" onClick={() => fileInput.current?.click()}>
-        <Paperclip className="size-3.5" /> Загрузить файл
+      <Button size="sm" variant="secondary" onClick={() => onGo(2)}>
+        {f.value ? 'Изменить цену на шаге «Цена»' : 'Выбрать цену на шаге «Цена»'} →
       </Button>
-      <p className="mt-1.5 text-[11px] text-muted-foreground">{gap.accept}</p>
-    </div>
-  );
-}
-
-// Место в тексте заявки: жёлтое — дописать, красное — ошибка, зелёное — готово. Нажатие — к пункту слева.
-function Mark({ id, fixes, onSelect, open }: { id: string; fixes: AppState['fixes']; onSelect: (id: string) => void; open: string | null }) {
-  const gap = gaps.find((g) => g.id === id)!;
-  const st = gapState(gap, fixes);
-  const value = fixes[id];
-  const isSel = open === id;
-  if (st === 'done') {
+    );
+  }
+  if (f.status === 'needs_confirmation') {
     return (
-      <button
-        onClick={() => onSelect(id)}
-        className={cx(
-          'rounded px-1 font-medium text-success underline decoration-success/40 underline-offset-2 transition-colors hover:bg-success/10',
-          isSel && 'bg-success/10',
-        )}
+      <div className="flex flex-wrap items-center gap-2">
+        {f.value && <span className="text-[13px] text-muted-foreground">{f.value}</span>}
+        <Button size="sm" onClick={() => onSave(f.key, '')}>
+          <Check className="size-3.5" /> Подтверждаю
+        </Button>
+      </div>
+    );
+  }
+  if (f.key === 'confirm:signer' || f.key === 'confirm:experience' || f.key === 'confirm:staff') {
+    return (
+      <Button size="sm" variant="secondary" onClick={onOpenProfile}>
+        {f.key === 'confirm:signer' ? 'Вписать подписанта в «Профиле компании»' : 'Загрузить документы в «Профиль компании»'} →
+      </Button>
+    );
+  }
+  if (f.key.startsWith('file:')) {
+    return (
+      <Button size="sm" variant="secondary" onClick={() => onGo(0)}>
+        Пересохранить и добавить заново на шаге «Загрузка» →
+      </Button>
+    );
+  }
+  if (f.key.includes(':done:')) {
+    return (
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const next = value.trim();
+          if (next && next !== f.value) onSave(f.key, next);
+        }}
+        className="flex flex-wrap items-center gap-2"
       >
-        {shownValue(gap, value!)}
-      </button>
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          aria-label={`${f.label}${f.context ? ` — ${f.context}` : ''}`}
+          autoComplete="off"
+          className="h-9 min-w-0 max-w-[48ch] flex-1 rounded-md border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-foreground focus:ring-2 focus:ring-ring/20"
+        />
+        <Button size="sm" type="submit" disabled={!value.trim() || value.trim() === f.value}>
+          Изменить
+        </Button>
+      </form>
     );
   }
-  if (st === 'invalid') {
+  if (f.key.startsWith('cast:')) {
     return (
-      <button onClick={() => onSelect(id)} className={cx('rounded bg-danger/10 px-1 font-medium text-danger', isSel && 'ring-2 ring-danger')}>
-        ⚠ {gapProblem(gap, fixes)}
-      </button>
+      <Button size="sm" variant="secondary" onClick={() => document.getElementById('cast-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+        Вписать исполнителей выше ↑
+      </Button>
     );
   }
-  const text =
-    gap.kind === 'upload'
-      ? 'приложить сертификат'
-      : gap.kind === 'confirm'
-        ? `подтвердить: ${gap.found}`
-        : gap.kind === 'choice'
-          ? `выбрать: ${lcFirst(gap.label)}`
-          : `вписать: ${lcFirst(gap.label)}`;
-  return (
-    <button onClick={() => onSelect(id)} className={cx('highlight cursor-pointer text-left font-medium transition-shadow', isSel && 'ring-2 ring-warn')}>
-      ⚠ {text}
-    </button>
-  );
+  return null;
 }
 
-// Заполнено автоматически — с источником у каждого поля.
-function AutoList({ collapsed }: { collapsed?: boolean }) {
+function AutoList({ fields, collapsed }: { fields: ApplicationField[]; collapsed?: boolean }) {
   const [open, setOpen] = useState(!collapsed);
+  if (fields.length === 0) return null;
   return (
     <div className="rounded-lg border border-border bg-card">
       <button onClick={() => setOpen(!open)} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left">
         <Sparkles className="size-4 shrink-0 text-success" />
-        <span className="min-w-0 flex-1 text-[13px] font-medium">Заполнено автоматически · {AUTO_TOTAL}</span>
+        <span className="min-w-0 flex-1 text-[13px] font-medium">Заполнено автоматически · {fields.length}</span>
         <span className="hidden text-[12px] text-muted-foreground sm:inline">с источниками</span>
         <ChevronDown className={cx('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
       </button>
       {open && (
         <div className="divide-y divide-border border-t border-border">
-          {autoFields.map((f) => (
-            <div key={f.label} className="px-3 py-2">
+          {fields.slice(0, 40).map((f) => (
+            <div key={f.key} className="px-3 py-2">
               <div className="flex items-baseline justify-between gap-3">
                 <span className="text-[12px] text-muted-foreground">{f.label}</span>
-                <span className="truncate text-right font-mono text-[12px]">{f.value}</span>
+                <span className="max-w-[55%] truncate text-right font-mono text-[12px]">{f.value}</span>
               </div>
-              <p className="mt-0.5 text-[11px] text-muted-foreground/80">Источник: {f.source}</p>
+              {f.source && <p className="mt-0.5 text-[11px] text-muted-foreground/80">Источник: {f.source}</p>}
             </div>
           ))}
-          <p className="px-3 py-2 text-[11px] text-muted-foreground">
-            И ещё {AUTO_TOTAL - autoFields.length} — характеристики по ТЗ, номера и даты. Все видны в документах пакета.
-          </p>
+          {fields.length > 40 && <p className="px-3 py-2 text-[11px] text-muted-foreground">И ещё {fields.length - 40} — все видны в документах пакета.</p>}
         </div>
       )}
     </div>
@@ -704,10 +575,10 @@ function SignRow() {
   );
 }
 
-export function FinalCheck({ final }: { final: ReturnType<typeof completeness> }) {
+export function FinalCheck({ final }: { final: Completeness }) {
   const rows: [string, ReactNode, string][] = [
     ['Обязательные поля', `${final.fields.filled} из ${final.fields.required}${final.fields.empty ? ` · пустых ${final.fields.empty}` : ' · пустых 0'}${final.fields.invalid ? ` · с ошибкой ${final.fields.invalid}` : ''}`, 'Всё, без чего заявку отклонят: реквизиты, характеристики, документы.'],
-    ['Документы', `${final.documents.ready} из ${final.documents.required}`, 'Файлы заявки, которые уйдут на площадку.'],
+    ['Документы', `${final.documents.ready} из ${final.documents.required}`, 'Документы заказчика из списка «Что подать», отмеченные готовыми.'],
     ['Подтверждения', `${final.confirmations.done} из ${final.confirmations.required}`, 'Значения, которые ИИ нашёл, а решение за вами.'],
     ['Подписи', `${final.signatures.done} из ${final.signatures.required} · на площадке`, 'Подпись ставите вы электронной подписью при подаче.'],
   ];
@@ -737,47 +608,5 @@ export function FinalCheck({ final }: { final: ReturnType<typeof completeness> }
         {final.text}
       </p>
     </Card>
-  );
-}
-
-// Пошаговый мастер: по одному пункту, вместо длинного документа.
-function Wizard({ ids, fixes, onFix, onClose }: { ids: string[]; fixes: AppState['fixes']; onFix: (id: string, v: string) => void; onClose: () => void }) {
-  const [i, setI] = useState(0);
-  const gap = gaps.find((g) => g.id === ids[i])!;
-  const done = gapState(gap, fixes) === 'done';
-  const last = i === ids.length - 1;
-  return (
-    <Modal
-      open
-      onClose={onClose}
-      title={`Заполнение заявки · шаг ${i + 1} из ${ids.length}`}
-      subtitle={`${gap.position} · ${kindMeta[gap.field].label}`}
-      footer={
-        <>
-          <Button variant="ghost" size="sm" disabled={i === 0} onClick={() => setI(i - 1)}>
-            ← Назад
-          </Button>
-          {!done && !last && (
-            <Button variant="secondary" size="sm" onClick={() => setI(i + 1)}>
-              Пропустить
-            </Button>
-          )}
-          <Button size="sm" onClick={() => (last ? onClose() : setI(i + 1))}>
-            {last ? 'Готово' : 'Дальше →'}
-          </Button>
-        </>
-      }
-    >
-      <div className="space-y-3 px-5 py-4">
-        <div className="h-1 overflow-hidden rounded-full bg-secondary">
-          <div className="h-full rounded-full bg-foreground transition-all" style={{ width: `${((i + (done ? 1 : 0)) / ids.length) * 100}%` }} />
-        </div>
-        <div className="flex items-center gap-2">
-          {done ? <CheckCircle2 className="size-5 text-success" /> : <AlertTriangle className="size-5 text-warn" />}
-          <p className="text-base font-semibold">{gap.label}</p>
-        </div>
-        <GapBody key={gap.id} gap={gap} fixes={fixes} onFix={(v) => onFix(gap.id, v)} autoFocus />
-      </div>
-    </Modal>
   );
 }

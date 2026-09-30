@@ -142,6 +142,22 @@ test("значение из мастера попадает на своё жёл
   assert.equal(applyField(p, "profile:inn", "7707083893"), null);
 });
 
+test("уже вписанное значение можно исправить: по ТЗ «не меньше 150» — вписали 120, исправили на 180", () => {
+  const draft = tp("Зал на [число, не меньше 150] мест, [адрес]");
+  const low = purchase({ tp: tp("Зал на 120 мест, Москва"), tpDraft: draft });
+  assert.equal(byKey(fieldsOf({ purchase: low, profile: PROFILE }), "tp:item:0:done:0")?.status, "invalid");
+
+  const fixed = { ...low, ...applyField(low, "tp:item:0:done:0", "180") };
+  assert.equal(fixed.tp?.items[0].offer, "Зал на 180 мест, Москва", "остальное вписанное не пропало");
+  assert.equal(byKey(fieldsOf({ purchase: fixed, profile: PROFILE }), "tp:item:0:done:0")?.status, "filled");
+
+  const other = { ...fixed, ...applyField(fixed, "tp:item:0:done:1", "Казань") };
+  assert.equal(other.tp?.items[0].offer, "Зал на 180 мест, Казань");
+
+  // Без заготовки не знаем, что было на месте, — не трогаем.
+  assert.equal(applyField({ ...low, tpDraft: undefined }, "tp:item:0:done:0", "180"), null);
+});
+
 test("итоговая проверка: пока есть пустые и неподтверждённые — «ещё не готова», потом — «сформирован»", () => {
   const draft = tp("Зал на [число, не меньше 150] мест");
   const open = purchase({ tp: draft, tpDraft: draft });

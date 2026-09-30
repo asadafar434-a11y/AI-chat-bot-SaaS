@@ -56,3 +56,13 @@ export function matches(p: Purchase, title: string, query: string): boolean {
   if (!q) return true;
   return [title, p.customer, p.subject, p.kind, p.price].some((s) => s.toLowerCase().includes(q));
 }
+
+// Что значит способ закупки для участника — строкой под названием закупки, как в прототипе.
+export function procedureHint(p: Purchase): string {
+  const kind = p.kind.toLowerCase();
+  if (/аукцион/.test(kind)) return "Торги на понижение в реальном времени. Побеждает наименьшая цена.";
+  if (/котировк/.test(kind)) return "Одно ценовое предложение без торгов. Побеждает наименьшая цена.";
+  if (/конкурс|запрос предложений/.test(kind)) return "Оценка по критериям: цена, опыт, квалификация — не только цена.";
+  if (/единственн/.test(kind)) return "Прямой контракт без конкурентной процедуры.";
+  return "";
+}

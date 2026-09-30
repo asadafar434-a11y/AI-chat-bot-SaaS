@@ -36,9 +36,10 @@ const OTHER: Record<Exclude<ReqGroupKey, "submit">, { title: string; empty: stri
 };
 
 // Статус пункта «Что подать»: цвет кружка и подпись, как в прототипе — «Не хватает», «Внимание», «Готово».
-const STATUS: Record<PlanStatus, { label: string; bubble: string; tone: "bad" | "warn" | "ok" | "calm"; card: string; hint: string }> = {
+const STATUS: Record<PlanStatus, { label: string; badge: string; bubble: string; tone: "bad" | "warn" | "ok" | "calm"; card: string; hint: string }> = {
   todo: {
     label: "Не хватает",
+    badge: "Отсутствует",
     bubble: "bg-[var(--danger-tint)] text-[var(--danger)]",
     tone: "bad",
     card: "bg-[var(--danger)]",
@@ -46,6 +47,7 @@ const STATUS: Record<PlanStatus, { label: string; bubble: string; tone: "bad" | 
   },
   confirm: {
     label: "Внимание",
+    badge: "Требует внимания",
     bubble: "bg-[var(--warn-tint)] text-[var(--warn)]",
     tone: "warn",
     card: "bg-[var(--warn)]",
@@ -53,6 +55,7 @@ const STATUS: Record<PlanStatus, { label: string; bubble: string; tone: "bad" | 
   },
   done: {
     label: "Готово",
+    badge: "Готово",
     bubble: "bg-[var(--ok-tint)] text-[var(--ok)]",
     tone: "ok",
     card: "bg-[var(--ok)]",
@@ -60,6 +63,7 @@ const STATUS: Record<PlanStatus, { label: string; bubble: string; tone: "bad" | 
   },
   none: {
     label: "Не требуется",
+    badge: "Не требуется",
     bubble: "bg-[var(--paper-2)] text-[var(--ink-3)]",
     tone: "calm",
     card: "bg-[var(--edge-2)]",
@@ -145,7 +149,7 @@ export default function AnalysisPage() {
           </span>
           <span className="flex flex-none items-center gap-2 self-start pt-0.5">
             <span className="max-sm:hidden">
-              <Badge tone={st.tone} text={st.label} />
+              <Badge tone={st.tone} text={st.badge} />
             </span>
             <CaretRightIcon className={`size-4 text-[var(--ink-3)] transition-transform ${expanded ? "rotate-90" : ""}`} />
           </span>

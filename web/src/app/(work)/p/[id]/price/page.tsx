@@ -339,9 +339,36 @@ export default function PricePage() {
           </p>
         </div>
 
-        <Island id="price-costs" level={3} title="Ваши цифры" sub={purchase.sample ? "В примере — вымышленные расходы" : undefined}>
+        <div className="@container">
+          <div className="grid items-start gap-2 @min-[860px]:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+            <div className="grid min-w-0 gap-2 @min-[860px]:order-2">
+              <section aria-label="До какой цены снижаться" className="island grid gap-2 p-[var(--pad)]">
+                <p className="t-over text-[var(--ink-3)]">До какой цены снижаться</p>
+                {floor.ok ? (
+                  <>
+                    <p className="[font:600_28px/32px_var(--mono)] tabular-nums">{rub(floor.price)}</p>
+                    <p className="t-caption text-[var(--ink-3)]">
+                      нижняя цена{calc.nmck ? ` · −${dropText(1 - floor.price / calc.nmck)} % от начальной` : ""}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-[var(--ink-2)]">Впишите расходы — посчитаю нижнюю цену.</p>
+                )}
+                {shown && (
+                  <p
+                    className={`flex items-start gap-2 rounded-[var(--r-card)] px-3 py-2 ${
+                      shown.profit < 0 ? "bg-[var(--danger-tint)] text-[var(--danger)]" : "bg-[var(--ok-tint)] text-[var(--ok)]"
+                    }`}
+                  >
+                    {shown.profit < 0 ? "Убыток при вашей цене: " : "Прибыль при вашей цене: "}
+                    <b className="font-mono font-semibold tabular-nums">{rub(Math.abs(shown.profit))}</b>
+                  </p>
+                )}
+              </section>
+
+        <Island id="price-costs" level={3} title="Мои расходы" sub={purchase.sample ? "В примере — вымышленные расходы" : undefined}>
           <div className="@container px-[var(--pad)] pb-4 pt-1">
-            <div className="grid gap-4 @min-[600px]:grid-cols-3">
+            <div className="grid gap-4">
               <NumberField
                 id="price-nmck"
                 label="Начальная цена"
@@ -370,8 +397,9 @@ export default function PricePage() {
             </div>
           </div>
         </Island>
+            </div>
 
-        <Island id="price-scale" level={3} title="Проверить свою цену" sub="Двигайте ползунок или впишите цену — покажу, что останется">
+        <Island id="price-scale" level={3} className="min-w-0 @min-[860px]:order-1" title="Снижение от НМЦК" sub="Двигайте ползунок или впишите цену — покажу, что останется">
           <div className="grid gap-4 px-[var(--pad)] pb-4 pt-1">
             <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
               <NumberField
@@ -439,6 +467,9 @@ export default function PricePage() {
             )}
           </div>
         </Island>
+
+          </div>
+        </div>
 
         {/* Расходы на участие, обеспечение и антидемпинг — свёрнуты: в сводке видно, что учтено, по нажатию — поля. */}
         <section aria-labelledby="price-more-title" className="island">

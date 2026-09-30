@@ -8,8 +8,13 @@ Support-chat SaaS (аналог Intercom) с ИИ-агентом. Прорабо
 Стиль — **Figma Make**: чёрно-белый интерфейс в духе shadcn/ui, шрифт Geist, иконки с путями Lucide.
 Решение владельца 29.09.2026: «Всё как в Figma Make». Чат в приложении — компоненты **AI Elements (Vercel)**.
 
-- [design-system/prototype/](design-system/prototype/) — **прототип, главный образец**: React + Vite + Tailwind v4,
-  токены — `src/index.css`. Сборка в одну страницу — `npm run build` → `dist/prototype.html`
+- [design-system/prototype/](design-system/prototype/) — **интерфейс продукта и главный образец вида** (решение владельца 30.09.2026:
+  «сделать рабочим именно этот прототип»): React + Vite + Tailwind v4, токены — `src/index.css`. Вид — прототипа, данные и
+  логика — настоящие: общий код из `web/src` (`@/…`), закупки в браузере; документы, ИИ и файлы Word — сервер из `web/`.
+  Запуск: интерфейс `npm --prefix design-system/prototype run dev -- --port 3000`, сервер `npm --prefix web run dev -- --port 3001`.
+  Закупки лежат в браузере по адресу страницы — интерфейс держим на `localhost:3000`. Что где и что «скоро» —
+  [README прототипа](design-system/prototype/README.md). Приложение на Next (`web/src/app`, `web/src/components`) пока остаётся
+  прежним интерфейсом и сервером; править вид там не нужно — правится прототип. Сборка в одну страницу — `npm run build` → `dist/prototype.html`
 - [design-system/brand.css](design-system/brand.css) — фирменные токены стиля Figma Make
 - «Улучшение прототипа из GitHub/» — исходник из Figma Make как есть. Новые версии из Make кладутся туда,
   изменения переносятся в `design-system/prototype/`
@@ -27,6 +32,8 @@ Support-chat SaaS (аналог Intercom) с ИИ-агентом. Прорабо
   `data-theme` на `<html>`, его ставит скрипт в `layout.tsx` до отрисовки (сохранённый выбор, иначе системная тема).
   Читаются PDF, Word, RTF, Excel (`.xlsx`, `.xlsm` — по листам, `web/src/lib/xlsx-text.ts`), сканы и фото; старый `.xls` — нет.
   Сквозные тесты цепочки «файл → запрос к модели → сверка цитат» — `web/src/app/api/ai-flow.test.ts` (поддельный сервер модели).
+  Файлы заявки — Word и PDF, оба из одного описания документа (`web/src/lib/tp-doc-model.ts`): `tp-docx.ts` рисует его в Word,
+  `tp-pdf.ts` — в PDF (pdfmake, шрифт Roboto). Новая часть или строка описывается один раз — в модели; формат ODT пока нет.
 - [design-system/README.md](design-system/README.md) — обзор AI Elements, установка
 
 **Читать перед любой работой по UI.** Ключевое:

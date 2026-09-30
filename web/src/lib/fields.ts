@@ -305,6 +305,16 @@ export function fieldQueue(fields: ApplicationField[]): ApplicationField[] {
 
 // Записать значение из мастера: жёлтое место в ТП, строку анкеты или подтверждение. Реквизиты — общие для всех
 // закупок, их правят в «Реквизитах» (null). Возвращает изменения закупки.
+// Другое значение на месте, которое уже вписано: заготовку разбираем на куски, вписанное берём из текста, нужное меняем.
+function refill(template: string, text: string, j: number, value: string): string {
+  const values = filledValues(template, text);
+  let n = -1;
+  return template
+    .split(/(\[[^\]]+\])/)
+    .map((bit, k) => (k % 2 ? (++n === j ? value : (values[n] ?? bit)) : bit))
+    .join("");
+}
+
 export function applyField(p: Purchase, key: string, value: string): Partial<Purchase> | null {
   const fill = (text: string, j: number) => {
     let n = -1;
@@ -312,6 +322,24 @@ export function applyField(p: Purchase, key: string, value: string): Partial<Pur
   };
   const [kind, what, index, hole] = key.split(":");
   if (key.startsWith("confirm:")) return { confirmed: [...new Set([...(p.confirmed ?? []), key])] };
+  // tp:item:<пункт>:done:<место>, tp:good:<товар>:done:<место>, tp:consent:done:<место>
+  const parts = key.split(":");
+  const doneAt = parts.indexOf("done");
+  if (kind === "tp" && doneAt > 0 && p.tp && p.tpDraft) {
+    const draft = p.tpDraft;
+    const i = Number(index);
+    const j = Number(parts[doneAt + 1]);
+    if (what === "item" && p.tp.items[i] && draft.items[i]) {
+      return { tp: { ...p.tp, items: p.tp.items.map((it, k) => (k === i ? { ...it, offer: refill(draft.items[i].offer, it.offer, j, value) } : it)) } };
+    }
+    if (what === "good" && p.tp.goods[i] && draft.goods[i]) {
+      return { tp: { ...p.tp, goods: p.tp.goods.map((g, k) => (k === i ? { ...g, characteristics: refill(draft.goods[i].characteristics, g.characteristics, j, value) } : g)) } };
+    }
+    if (what === "consent") {
+      return { tp: { ...p.tp, form: { ...p.tp.form, consent: refill(draft.form.consent, p.tp.form.consent, j, value) } } };
+    }
+    return null;
+  }
   if (kind === "anketa") return { fieldValues: { ...p.fieldValues, [key]: value } };
   if (kind === "tp" && p.tp && hole !== undefined && hole !== "done") {
     const i = Number(index);

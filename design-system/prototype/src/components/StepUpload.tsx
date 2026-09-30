@@ -1,22 +1,43 @@
-import { useState } from 'react';
-import { UploadCloud, FileText, X, Link2, Loader2, CheckCircle2 } from '../lib/icons';
+import { useRef, useState, type ReactNode } from 'react';
+import { UploadCloud, FileText, X, Link2, Loader2, CheckCircle2, AlertTriangle } from '../lib/icons';
 import { Button, Card, Soon, Tooltip } from './ui';
-import { sourceDocs, tender, type SourceDoc } from '../lib/data';
 
-export function StepUpload({ onNext, preloaded }: { onNext: () => void; preloaded?: boolean }) {
-  const [files, setFiles] = useState<SourceDoc[]>(preloaded ? sourceDocs : sourceDocs.slice(0, 2));
+// Шаг «Загрузка». Вид — прототипа; данные — настоящие: файлы, которые прочитал сервер, и то, что из них распознано.
+export type UploadFile = { name: string; meta: string; warn?: boolean };
+export type Recognized = { title: string; facts: [string, string][] };
+
+export function StepUpload({
+  files,
+  busy,
+  error,
+  recognized,
+  onFiles,
+  onRemove,
+  onNext,
+  nextLabel,
+  nextDisabled,
+  notice,
+  extra,
+}: {
+  files: UploadFile[];
+  // reading — сервер читает файлы; analyzing — ИИ выписывает требования.
+  busy: 'reading' | 'analyzing' | null;
+  error?: string;
+  recognized?: Recognized | null;
+  onFiles: (files: File[]) => void;
+  // Убрать файл из списка можно, пока закупка не создана.
+  onRemove?: (name: string) => void;
+  onNext: () => void;
+  nextLabel: string;
+  nextDisabled?: boolean;
+  notice?: string | null;
+  // Блок под списком файлов — например, поиск по документам закупки.
+  extra?: ReactNode;
+}) {
   const [dragging, setDragging] = useState(false);
-  const [parsing, setParsing] = useState(false);
-
-  const addRest = () => {
-    setParsing(true);
-    setTimeout(() => {
-      setFiles(sourceDocs);
-      setParsing(false);
-    }, 1100);
-  };
-
-  const ready = files.length >= 3;
+  const input = useRef<HTMLInputElement>(null);
+  const parsing = busy === 'reading';
+  const ready = files.length > 0 && !files.some((f) => f.warn);
 
   return (
     <div className="animate-fade-up space-y-6">
@@ -57,7 +78,8 @@ export function StepUpload({ onNext, preloaded }: { onNext: () => void; preloade
           onDrop={(e) => {
             e.preventDefault();
             setDragging(false);
-            addRest();
+            const dropped = [...e.dataTransfer.files];
+            if (dropped.length) onFiles(dropped);
           }}
           className={`flex cursor-pointer flex-col items-center justify-center gap-3 px-6 py-12 text-center transition-colors ${
             dragging ? 'bg-secondary' : 'bg-transparent'
@@ -75,18 +97,40 @@ export function StepUpload({ onNext, preloaded }: { onNext: () => void; preloade
               {parsing ? 'Распознаём документы…' : 'Перетащите файлы сюда или нажмите для выбора'}
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              PDF, DOCX, XLSX, ZIP — до 50 МБ
+              PDF, Word, Excel, ZIP, сканы и фото
             </p>
           </div>
-          <input type="file" multiple className="hidden" onChange={addRest} />
+          <input
+            ref={input}
+            type="file"
+            multiple
+            accept=".pdf,.docx,.doc,.rtf,.xlsx,.xlsm,.zip,.txt,.md,.jpg,.jpeg,.png"
+            className="hidden"
+            onChange={(e) => {
+              const picked = [...(e.target.files ?? [])];
+              e.target.value = '';
+              if (picked.length) onFiles(picked);
+            }}
+          />
         </label>
       </Card>
+
+      {error && (
+        <p className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" /> {error}
+        </p>
+      )}
+      {notice && (
+        <p className="flex items-start gap-2 rounded-md bg-warn-surface/40 px-3 py-2 text-[13px] text-warn-foreground">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" /> {notice}
+        </p>
+      )}
 
       {files.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-              Загружено · {files.length} файла
+              Загружено · {files.length} {files.length === 1 ? 'файл' : files.length < 5 ? 'файла' : 'файлов'}
             </p>
             {ready && (
               <span className="inline-flex items-center gap-1.5 text-xs text-success">
@@ -99,37 +143,38 @@ export function StepUpload({ onNext, preloaded }: { onNext: () => void; preloade
               key={f.name}
               className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2.5"
             >
-              <FileText className="size-4 shrink-0 text-muted-foreground" />
+              {f.warn ? (
+                <AlertTriangle className="size-4 shrink-0 text-warn" />
+              ) : (
+                <FileText className="size-4 shrink-0 text-muted-foreground" />
+              )}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{f.name}</p>
-                <p className="font-mono text-[11px] text-muted-foreground">
-                  {f.kind} · {f.pages} стр. · {f.size}
-                </p>
+                <p className={`font-mono text-[11px] ${f.warn ? 'text-warn-foreground' : 'text-muted-foreground'}`}>{f.meta}</p>
               </div>
-              <button
-                onClick={() => setFiles((prev) => prev.filter((p) => p.name !== f.name))}
-                className="rounded p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              >
-                <X className="size-4" />
-              </button>
+              {onRemove && (
+                <button
+                  onClick={() => onRemove(f.name)}
+                  disabled={busy !== null}
+                  aria-label={`Убрать ${f.name}`}
+                  className="rounded p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
             </div>
           ))}
         </div>
       )}
 
-      {ready && (
+      {recognized && (
         <Card className="animate-fade-up bg-secondary/40 p-4">
           <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
             Распознанная закупка
           </p>
-          <p className="mt-2 text-sm font-medium leading-snug">{tender.title}</p>
+          <p className="mt-2 text-sm font-medium leading-snug">{recognized.title}</p>
           <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-xs sm:grid-cols-4">
-            {[
-              ['Реестровый №', tender.id],
-              ['Закон', tender.law],
-              ['НМЦК', tender.nmck.toLocaleString('ru-RU') + ' ₽'],
-              ['Подача до', tender.deadline],
-            ].map(([k, v]) => (
+            {recognized.facts.map(([k, v]) => (
               <div key={k}>
                 <p className="text-muted-foreground">{k}</p>
                 <p className="mt-0.5 font-mono text-[12px] text-foreground">{v}</p>
@@ -139,9 +184,15 @@ export function StepUpload({ onNext, preloaded }: { onNext: () => void; preloade
         </Card>
       )}
 
-      <div className="flex justify-end">
-        <Button onClick={onNext} disabled={!ready}>
-          Анализировать документы →
+      {extra}
+
+      <div className="flex items-center justify-end gap-3">
+        {busy === 'analyzing' && (
+          <span className="text-xs text-muted-foreground">ИИ читает документы — это может занять минуту…</span>
+        )}
+        <Button onClick={onNext} disabled={nextDisabled || busy !== null || files.length === 0}>
+          {busy === 'analyzing' && <Loader2 className="size-4 animate-spin" />}
+          {nextLabel}
         </Button>
       </div>
     </div>

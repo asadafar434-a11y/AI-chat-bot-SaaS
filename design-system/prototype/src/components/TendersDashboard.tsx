@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { Search, Plus, Calendar, FileText, ChevronRight, Trash2, Clock, Bell } from '../lib/icons';
 import { Button, Card, Badge, Modal, AIDisclaimer, Tooltip, IconButton } from './ui';
-import { myTenders as initialTenders, statusLabels, procedureMeta, rub, type TenderCard, type TenderStatus } from '../lib/data';
-import type { AppState } from '../lib/app-state';
+import { statusLabels, procedureMeta, rub, type TenderCard, type TenderStatus } from '../lib/data';
 
 const filters: { id: TenderStatus | 'all'; label: string }[] = [
   { id: 'all', label: 'Все' },
@@ -13,34 +12,37 @@ const filters: { id: TenderStatus | 'all'; label: string }[] = [
 ];
 
 export function TendersDashboard({
+  tenders,
   onOpen,
   onNew,
-  apps,
-  progressOf,
+  onDelete,
+  onToggleSubmitted,
+  onOpenSample,
 }: {
+  tenders: TenderCard[];
   onOpen: (id: string) => void;
   onNew: () => void;
-  apps: Record<string, AppState>;
-  progressOf: (id: string) => number;
+  onDelete: (id: string) => void;
+  onToggleSubmitted: (id: string) => void;
+  // Готовый пример закупки — пройти все шаги без своих документов и без запросов к ИИ.
+  onOpenSample?: () => void;
 }) {
   const [filter, setFilter] = useState<TenderStatus | 'all'>('all');
   const [query, setQuery] = useState('');
-  const [tenders, setTenders] = useState<TenderCard[]>(initialTenders);
   const [deleteTarget, setDeleteTarget] = useState<TenderCard | null>(null);
 
   const list = tenders.filter(
     (t) =>
       (filter === 'all' || t.status === filter) &&
       (t.title.toLowerCase().includes(query.toLowerCase()) ||
-        t.customer.toLowerCase().includes(query.toLowerCase()) ||
-        t.id.includes(query)),
+        t.customer.toLowerCase().includes(query.toLowerCase())),
   );
 
   const stat = (s: TenderStatus) => tenders.filter((t) => t.status === s).length;
 
   const confirmDelete = () => {
     if (!deleteTarget) return;
-    setTenders((prev) => prev.filter((t) => t.id !== deleteTarget.id));
+    onDelete(deleteTarget.id);
     setDeleteTarget(null);
   };
 
@@ -60,9 +62,18 @@ export function TendersDashboard({
             Загрузите документацию — ИИ проведёт до готового пакета.
           </p>
         </div>
-        <Button onClick={onNew}>
-          <Plus className="size-4" /> Новая закупка
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {onOpenSample && !tenders.some((t) => t.sample) && (
+            <Tooltip content="Готовая закупка с документами: пройдите все шаги, не загружая своё. Запросов к ИИ нет." align="end">
+              <Button variant="secondary" onClick={onOpenSample}>
+                Посмотреть на примере
+              </Button>
+            </Tooltip>
+          )}
+          <Button onClick={onNew}>
+            <Plus className="size-4" /> Новая закупка
+          </Button>
+        </div>
       </div>
 
       {/* Summary strip */}
@@ -115,8 +126,7 @@ export function TendersDashboard({
       <div className="space-y-2.5">
         {list.map((t) => {
           const st = statusLabels[t.status];
-          const expert = apps[t.id]?.specialist;
-          const progress = t.status === 'progress' ? progressOf(t.id) : t.progress;
+          const progress = t.progress;
           return (
             <Card key={t.id} className="group transition-colors hover:border-foreground/25">
               <div className="flex w-full items-center gap-2 p-4">
@@ -127,21 +137,13 @@ export function TendersDashboard({
                         <Badge tone={st.tone}>{st.label}</Badge>
                       </Tooltip>
                       <Tooltip content={procedureMeta[t.procedure].hint}>
-                        <span className="rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium text-foreground">
-                          {procedureMeta[t.procedure].label}
+                        <span className="rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium text-foreground empty:hidden">
+                          {t.procedureLabel ?? procedureMeta[t.procedure].label}
                         </span>
                       </Tooltip>
-                      {expert && (
-                        <Badge tone={expert.status === 'replied' ? 'success' : 'warn'}>
-                          {expert.status === 'replied' ? <Bell className="size-3" /> : <Clock className="size-3" />}
-                          {expert.status === 'replied' ? 'Ответ специалиста' : 'У специалиста'}
-                          {expert.status === 'replied' && !expert.read && (
-                            <span className="ml-0.5 size-1.5 rounded-full bg-danger" />
-                          )}
-                        </Badge>
-                      )}
+                      {t.sample && <Badge>пример</Badge>}
                       <span className="font-mono text-[11px] text-muted-foreground">
-                        {t.law} · №{t.id}
+                        {t.law}
                       </span>
                     </div>
                     <p className="mt-2 text-sm font-medium leading-snug">{t.title}</p>
@@ -149,10 +151,10 @@ export function TendersDashboard({
 
                     <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-muted-foreground">
                       <Tooltip content="НМЦК — начальная (максимальная) цена контракта. Выше неё цену предложить нельзя." align="start">
-                        <span className="font-mono tabular-nums text-foreground">{rub(t.nmck)}</span>
+                        <span className="font-mono tabular-nums text-foreground">{t.nmck ? rub(t.nmck) : 'цена не указана'}</span>
                       </Tooltip>
                       <span className="inline-flex items-center gap-1">
-                        <Calendar className="size-3.5" /> до {t.deadline}
+                        <Calendar className="size-3.5" /> {t.deadline ? `до ${t.deadline}` : 'срок не найден'}
                       </span>
                       <Tooltip content="Сколько документов закупки загружено из тех, что опубликованы на площадке.">
                         <span className="inline-flex items-center gap-1">
@@ -181,6 +183,15 @@ export function TendersDashboard({
                 </button>
 
                 {/* Удалить — при наведении на карточку; шеврон — по центру справа */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleSubmitted(t.id);
+                  }}
+                  className="hidden shrink-0 text-[12px] text-muted-foreground underline underline-offset-4 hover:text-foreground sm:block"
+                >
+                  {t.status === 'submitted' ? 'Снять отметку «Подана»' : 'Отметить поданной'}
+                </button>
                 <IconButton
                   label="Удалить закупку"
                   tone="danger"
@@ -207,9 +218,13 @@ export function TendersDashboard({
 
         {list.length === 0 && (
           <Card className="flex flex-col items-center gap-3 p-10 text-center">
-            <p className="text-sm text-muted-foreground">По вашему запросу ничего не найдено.</p>
+            <p className="text-sm text-muted-foreground">
+              {tenders.length === 0
+                ? 'Закупок пока нет. Загрузите документы — ИИ выпишет требования и сроки и проведёт до готового пакета.'
+                : 'По вашему запросу ничего не найдено.'}
+            </p>
             <Button variant="secondary" size="sm" onClick={onNew}>
-              <Plus className="size-4" /> Добавить закупку
+              <Plus className="size-4" /> {tenders.length === 0 ? 'Новая закупка' : 'Добавить закупку'}
             </Button>
           </Card>
         )}
