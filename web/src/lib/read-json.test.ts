@@ -8,6 +8,7 @@ import { POST as profileFromDocs } from "../app/api/my-docs/profile/route.ts";
 import { POST as requirements } from "../app/api/requirements/route.ts";
 import { POST as tp } from "../app/api/tp/route.ts";
 import { POST as tpDocx } from "../app/api/tp/docx/route.ts";
+import { POST as tpOdt } from "../app/api/tp/odt/route.ts";
 import { POST as tpPdf } from "../app/api/tp/pdf/route.ts";
 import { POST as tpPart } from "../app/api/tp/part/route.ts";
 import { BAD_REQUEST_TEXT, readJson, sentDocuments } from "./read-json.ts";
@@ -48,6 +49,7 @@ test("JSON без нужных полей — не 500: просим то, че�
     ["check", check, '{"documents":[{"text":"ТЗ"}],"application":"заявка"}', /./],
     ["tp/docx", tpDocx, '{"items":"пункт"}', /В черновике нет пунктов/],
     ["tp/pdf", tpPdf, '{"items":"пункт"}', /В черновике нет пунктов/],
+    ["tp/odt", tpOdt, '{"items":"пункт"}', /В черновике нет пунктов/],
   ];
   for (const [name, post, body, text] of cases) {
     const res = await post(request(body));

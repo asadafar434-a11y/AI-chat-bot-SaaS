@@ -1,6 +1,7 @@
 import "server-only";
 import { FILE_FORMATS, type FileFormat } from "@/lib/file-format";
 import { buildPartDocx, buildTpDocx } from "@/lib/tp-docx";
+import { buildPartOdt, buildTpOdt } from "@/lib/tp-odt";
 import type { CastLine, TpDocx } from "@/lib/tp-doc-model";
 import { PART_TITLES, type TpPart } from "@/lib/tp-parts";
 import { PartDocFileSchema, type PartDoc } from "@/lib/part-doc";
@@ -8,8 +9,8 @@ import { EMPTY_PROFILE, PROFILE_KEYS, type Profile } from "@/lib/profile";
 import { PLAIN_FORM, type TpForm } from "@/lib/tp";
 import { badRequest, readJson } from "@/lib/read-json";
 
-// Файл части заявки — Word или PDF — из того, что прислал браузер. Одинаково для одного файла (api/tp/docx, api/tp/pdf)
-// и для архива со всеми (api/tp/zip).
+// Файл части заявки — Word, PDF или ODT — из того, что прислал браузер. Одинаково для одного файла (api/tp/docx, api/tp/pdf,
+// api/tp/odt) и для архива со всеми (api/tp/zip).
 
 type Loose<T> = { [K in keyof T]?: unknown };
 export type DocxRequest = {
@@ -121,6 +122,7 @@ async function render(source: Source, format: FileFormat): Promise<Buffer> {
     const { buildPartPdf, buildTpPdf } = await import("@/lib/tp-pdf");
     return source.kind === "doc" ? buildPartPdf(source.doc) : buildTpPdf(source.part, source.data);
   }
+  if (format === "odt") return source.kind === "doc" ? buildPartOdt(source.doc) : buildTpOdt(source.part, source.data);
   return source.kind === "doc" ? buildPartDocx(source.doc) : buildTpDocx(source.part, source.data);
 }
 
@@ -134,7 +136,7 @@ export async function fileFromRequest(body: DocxRequest, format: FileFormat = "d
 export const attachment = (name: string, fallback: string) =>
   `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(name)}`;
 
-// Ответ api/tp/docx и api/tp/pdf: один файл части заявки. Имя по-русски — в заголовке, не в адресе.
+// Ответ api/tp/docx, api/tp/pdf и api/tp/odt: один файл части заявки. Имя по-русски — в заголовке, не в адресе.
 export async function fileRoute(request: Request, format: FileFormat): Promise<Response> {
   const body = (await readJson(request)) as DocxRequest | null;
   if (!body) return badRequest();

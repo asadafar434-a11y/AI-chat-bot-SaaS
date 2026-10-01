@@ -1,4 +1,5 @@
-# Автопроверка приложения web/: тесты, линтер, типы и сборка — на каждый PR и на каждое изменение main.
+# Автопроверка на каждый PR и на каждое изменение main: сервер (web/) — тесты, линтер, типы; сервер и экран продукта
+# (design-system/prototype) — сборка для хостинга, типы экрана и проверка «как на хостинге» (npm run check:host).
 # Ключ API для проверки не нужен: ИИ вызывается только при работе приложения, не при сборке.
 name: Проверка приложения
 
@@ -16,9 +17,9 @@ permissions:
 
 jobs:
   web:
-    name: Тесты, линтер, типы и сборка
+    name: Тесты, линтер, типы, сборка и проверка как на хостинге
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: web
@@ -43,5 +44,13 @@ jobs:
       - name: Типы
         run: npx next typegen && npx tsc --noEmit
 
-      - name: Сборка
-        run: npx next build
+      # Ставит зависимости экрана, собирает его в web/public/product, затем сервер (next build).
+      - name: Сборка экрана и сервера
+        run: npm run build:host
+
+      - name: Типы экрана
+        run: npm --prefix ../design-system/prototype run typecheck
+
+      # Настоящий сервер с паролем: вход, закрытые файлы экрана, шрифты, PDF. Запросов к ИИ нет.
+      - name: Проверка как на хостинге
+        run: npm run check:host

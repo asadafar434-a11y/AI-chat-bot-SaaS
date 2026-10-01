@@ -4,7 +4,7 @@ import { FILE_FORMATS, formatOf } from "@/lib/file-format";
 import { attachment, fileFromRequest, type DocxRequest } from "@/lib/tp-docx-request";
 import { badRequest, readJson } from "@/lib/read-json";
 
-// Все файлы заявки одним архивом: ТП и остальные части, каждая — отдельным файлом Word или PDF, по порядку.
+// Все файлы заявки одним архивом: ТП и остальные части, каждая — отдельным файлом Word, PDF или ODT, по порядку.
 // Частей у заявки не больше шести, поэтому больше десяти файлов — это не наша заявка.
 const MAX_FILES = 10;
 

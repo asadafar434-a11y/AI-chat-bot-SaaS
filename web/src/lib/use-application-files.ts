@@ -31,7 +31,7 @@ const castLines = (cast: TpResult["cast"]) =>
     ),
   };
 
-async function fileFrom(path: "/api/tp/docx" | "/api/tp/pdf" | "/api/tp/zip", body: object, failed: string): Promise<Blob> {
+async function fileFrom(path: "/api/tp/docx" | "/api/tp/pdf" | "/api/tp/odt" | "/api/tp/zip", body: object, failed: string): Promise<Blob> {
   const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   if (!res.ok) throw new Error((await res.text()) || failed);
   return res.blob();
@@ -144,16 +144,16 @@ export function useApplicationFilesOf({ purchase, documents, update }: Applicati
     }
   }
 
-  // redo — составить часть заново, даже если готовая актуальна; format — Word (по умолчанию) или PDF.
+  // redo — составить часть заново, даже если готовая актуальна; format — Word (по умолчанию), PDF или ODT.
   const downloadPart = (current: TpResult, part: TpPart, { redo = false, format = "docx" }: { redo?: boolean; format?: FileFormat } = {}) =>
     run(part, async () => {
       const { payload } = await payloadOf(current, part, purchase.parts, redo);
       const { ext } = FILE_FORMATS[format];
-      saveFile(await fileFrom(`/api/tp/${ext}` as "/api/tp/docx" | "/api/tp/pdf", { part, ...payload }, "Не удалось собрать файл."), `${PART_TITLES[part]}.${ext}`);
+      saveFile(await fileFrom(`/api/tp/${ext}` as "/api/tp/docx" | "/api/tp/pdf" | "/api/tp/odt", { part, ...payload }, "Не удалось собрать файл."), `${PART_TITLES[part]}.${ext}`);
     });
 
   // Все файлы заявки одним архивом: недостающие части пишутся по очереди, архив собирает сервер.
-  // Формат один на весь архив: Word или PDF.
+  // Формат один на весь архив: Word, PDF или ODT.
   const downloadAll = (current: TpResult, format: FileFormat = "docx") =>
     run("all", async () => {
       let parts = purchase.parts;

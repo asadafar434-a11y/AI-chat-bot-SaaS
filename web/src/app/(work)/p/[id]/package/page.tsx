@@ -16,7 +16,13 @@ import { stepsOf } from "@/lib/steps";
 
 // Шаг 5 «Пакет», как в прототипе: готова ли заявка к подаче, оплата, формат файлов, состав пакета — по одному или
 // архивом — и проверка специалистом. Оплата и специалист пока не работают (для них нужен сервер) — помечены «скоро»;
-// документы скачиваются бесплатно, формат только DOCX.
+// документы скачиваются бесплатно — Word, PDF или ODT.
+const FORMAT_HINT: Record<FileFormat, string> = {
+  docx: "Word — можно править и дописывать жёлтые места",
+  pdf: "PDF — для подписи и подачи: тот же текст и жёлтые места, что в Word",
+  odt: "ODT — для LibreOffice, Р7-Офис и МойОфис: тот же текст и жёлтые места, что в Word",
+};
+
 export default function PackagePage() {
   const { purchase } = usePurchase();
   const [format, setFormat] = useState<FileFormat>("docx");
@@ -75,18 +81,15 @@ export default function PackagePage() {
             key={key}
             type="button"
             aria-pressed={format === key}
-            title={key === "pdf" ? "PDF — для подписи и подачи: тот же текст и жёлтые места, что в Word" : "Word — можно править и дописывать жёлтые места"}
+            title={FORMAT_HINT[key]}
             onClick={() => setFormat(key)}
             className={`t-label rounded-[var(--r-ctl)] px-3 py-1.5 ${
               format === key ? "bg-primary text-[var(--on-brand)]" : "border border-[var(--line)] bg-card text-[var(--ink-2)] hover:bg-[var(--paper-2)]"
             }`}
           >
-            {key === "docx" ? "DOCX" : "PDF"}
+            {key.toUpperCase()}
           </button>
         ))}
-        <span className="t-label inline-flex items-center gap-2 rounded-[var(--r-ctl)] border border-[var(--line)] bg-card px-3 py-1.5 text-[var(--ink-3)] opacity-70">
-          ODT <Soon />
-        </span>
       </div>
 
       <div className="@container">

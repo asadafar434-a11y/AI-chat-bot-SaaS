@@ -47,14 +47,14 @@ const BADGE_ICON: Record<NonNullable<BadgeInfo['icon']>, ReactNode> = {
   clock: <Clock className="size-2.5" />,
 };
 
-// Форматы файлов: Word — править и дописывать жёлтые места, PDF — подписать и подать. ODT пока нет — помечен «скоро».
-const FORMATS: { id: FileFormat | 'odt'; ext: string; label: string; soon: boolean }[] = [
-  { id: 'docx', ext: 'DOCX', label: 'Word — можно править и дописывать жёлтые места', soon: false },
-  { id: 'pdf', ext: 'PDF', label: 'PDF — для подписи и подачи: тот же текст и жёлтые места, что в Word', soon: false },
-  { id: 'odt', ext: 'ODT', label: 'OpenDocument', soon: true },
+// Форматы файлов: Word — править и дописывать жёлтые места, PDF — подписать и подать, ODT — для LibreOffice, Р7-Офис и МойОфис.
+const FORMATS: { id: FileFormat; ext: string; label: string }[] = [
+  { id: 'docx', ext: 'DOCX', label: 'Word — можно править и дописывать жёлтые места' },
+  { id: 'pdf', ext: 'PDF', label: 'PDF — для подписи и подачи: тот же текст и жёлтые места, что в Word' },
+  { id: 'odt', ext: 'ODT', label: 'ODT — для LibreOffice, Р7-Офис и МойОфис: тот же текст и жёлтые места, что в Word' },
 ];
-const EXT: Record<FileFormat, string> = { docx: 'DOCX', pdf: 'PDF' };
-const NAME: Record<FileFormat, string> = { docx: 'Word', pdf: 'PDF' };
+const EXT: Record<FileFormat, string> = { docx: 'DOCX', pdf: 'PDF', odt: 'ODT' };
+const NAME: Record<FileFormat, string> = { docx: 'Word', pdf: 'PDF', odt: 'ODT' };
 
 function FileRow({
   row,
@@ -294,23 +294,20 @@ export function StepPackage({
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">Формат:</span>
         {FORMATS.map((f) => (
-          <Tooltip key={f.ext} content={f.soon ? `${f.label} — скоро.` : f.label} side="bottom">
+          <Tooltip key={f.ext} content={f.label} side="bottom">
             <button
               type="button"
-              disabled={f.soon || busy}
-              aria-pressed={!f.soon && f.id === format}
-              onClick={() => f.id !== 'odt' && onFormat(f.id)}
+              disabled={busy}
+              aria-pressed={f.id === format}
+              onClick={() => onFormat(f.id)}
               className={cx(
                 'inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors',
-                f.soon
-                  ? 'cursor-not-allowed border-border bg-card text-muted-foreground opacity-60'
-                  : f.id === format
-                    ? 'border-foreground bg-primary text-primary-foreground'
-                    : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-60',
+                f.id === format
+                  ? 'border-foreground bg-primary text-primary-foreground'
+                  : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-60',
               )}
             >
               {f.ext}
-              {f.soon && <Soon />}
             </button>
           </Tooltip>
         ))}

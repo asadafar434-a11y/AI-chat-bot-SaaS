@@ -76,6 +76,7 @@ test("лимит запросов к ИИ с одного адреса: свер
     assert.equal((await proxy(post("/api/chat", nextIp()))).status, 200);
     assert.equal((await proxy(post("/api/tp/docx", ip))).status, 200);
     assert.equal((await proxy(post("/api/tp/pdf", ip))).status, 200);
+    assert.equal((await proxy(post("/api/tp/odt", ip))).status, 200);
     assert.equal((await proxy(post("/api/login", ip))).status, 200);
   });
 });
