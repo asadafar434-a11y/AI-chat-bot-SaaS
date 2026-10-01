@@ -4,7 +4,7 @@ import Link from "next/link";
 
 // Документы открываются в новой вкладке: введённое на странице не пропадёт.
 export const legalLink = (href: string, text: string) => (
-  <Link href={href} target="_blank" className="link">
+  <Link href={href} target="_blank" rel="noopener noreferrer" className="link">
     {text}
   </Link>
 );

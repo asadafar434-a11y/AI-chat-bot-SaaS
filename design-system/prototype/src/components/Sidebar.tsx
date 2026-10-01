@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Briefcase, User, Plus, Sun, Moon, Search, History, Bell, Clock, ChevronRight, Menu, X, Wallet } from '../lib/icons';
-import { Button, Soon, Tooltip, IconButton, cx } from './ui';
+import { Button, Soon, Tooltip, IconButton, cx, useDialogFocus } from './ui';
 import { BrandMark } from './BrandMark';
 import { BotMark } from './BotMark';
 
@@ -35,7 +35,9 @@ type Props = {
 // Компьютер — боковая панель; телефон — шапка с бургером и выезжающее меню с тем же содержимым.
 export function Sidebar(props: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuBox = useRef<HTMLDivElement>(null);
   const unread = props.notices.some((n) => n.status === 'replied' && !n.read);
+  useDialogFocus(menuBox, menuOpen);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -88,7 +90,7 @@ export function Sidebar(props: Props) {
 
       {menuOpen &&
         createPortal(
-          <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Меню">
+          <div ref={menuBox} tabIndex={-1} className="fixed inset-0 z-50 outline-none lg:hidden" role="dialog" aria-modal="true" aria-label="Меню">
             <div className="animate-tip absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setMenuOpen(false)} />
             <div className="animate-slide-in absolute inset-y-0 left-0 flex w-[min(320px,86vw)] flex-col gap-5 overflow-y-auto border-r border-border bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] shadow-2xl">
               <div className="flex items-center justify-between">

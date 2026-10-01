@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { MAX_CONTEXT_CHARS, type ChatMessage } from '@/lib/chat-types';
 import { streamEvents } from '@/lib/chat-stream';
-import { OFFLINE_TEXT } from '@/lib/me-store';
+import { errorMessage, errorText } from '@/lib/http-error';
 import { aiHeaders } from '@/lib/purchase';
 import { readDocuments, type SentDocument } from '@/lib/read-documents';
 import { useActivePurchase } from './active-purchase';
@@ -65,7 +65,7 @@ export function useAssistant() {
         setDocuments(docs);
         if (result.failed.length) setNotice(`Не прочитаны: ${result.failed.map((f) => `${f.name} — ${f.reason}`).join('; ')}.`);
       } catch (e) {
-        setNotice((e as Error).message);
+        setNotice(errorMessage(e));
         setStatus('idle');
         return;
       }
@@ -93,7 +93,7 @@ export function useAssistant() {
         body: JSON.stringify({ messages: [...base, user].map(toChat), documents: docs, general: !purchase }),
         signal: controller.signal,
       });
-      if (!res.ok) throw new Error((await res.text()) || 'Не удалось получить ответ.');
+      if (!res.ok) throw new Error(await errorText(res, 'Не удалось получить ответ.'));
       setStatus('streaming');
       for await (const event of streamEvents(res)) {
         if (event.type === 'text-delta' && event.delta) {
@@ -104,8 +104,10 @@ export function useAssistant() {
           throw new Error(event.errorText || 'Ассистент не ответил.');
         }
       }
+      // Поток закончился, а текста нет: молча убрать пустой ответ — человек решит, что вопрос потерялся.
+      if (!answer) throw new Error('Ассистент не ответил — задайте вопрос ещё раз.');
     } catch (e) {
-      if ((e as Error).name !== 'AbortError') setError(e instanceof TypeError ? OFFLINE_TEXT : (e as Error).message);
+      if ((e as Error).name !== 'AbortError') setError(errorMessage(e));
     } finally {
       abort.current = null;
       setStatus('idle');

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { CheckIcon, CrossIcon, DocumentIcon, WarningIcon } from "@/components/icons";
 import { FileDrop } from "@/components/file-drop";
 import { Island } from "@/components/island";
@@ -9,7 +9,7 @@ import { Note, Warnings } from "@/components/note";
 import { scrollToTop } from "@/components/page-header";
 import { usePurchase } from "@/components/purchase-provider";
 import { WorkingSteps } from "@/components/working-steps";
-import { checkCounts, checkInputKey, docsKeyOf, type CheckFinding, type CheckResponse, type CheckResult } from "@/lib/check";
+import { checkCounts, checkInputKey, docsKeyOfDocuments, sameDocuments, type CheckFinding, type CheckResponse, type CheckResult } from "@/lib/check";
 import { sampleCheck } from "@/lib/check-sample";
 import { plural } from "@/lib/plural";
 import { aiHeaders } from "@/lib/purchase";
@@ -126,7 +126,8 @@ export function OwnCheck() {
   const [open, setOpen] = useState<number | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const check = purchase.check;
-  const docsKey = docsKeyOf(purchase.files);
+  // Отпечаток документов закупки — по содержимому, а не по именам: заменили файл новой версией с тем же именем — проверка устарела.
+  const docsKey = useMemo(() => docsKeyOfDocuments(documents), [documents]);
 
   async function run(files: File[]) {
     setWorking(true);
@@ -223,7 +224,7 @@ export function OwnCheck() {
       {purchase.sample && <Note tone="info">Это пример: проверена вымышленная заявка к вымышленной закупке.</Note>}
       <Warnings
         items={[
-          !purchase.sample && check.docsKey !== docsKey && "После проверки в закупку добавили документы — проверьте заявку заново.",
+          !purchase.sample && !sameDocuments(check.docsKey, documents) && "После проверки в закупку добавили документы — проверьте заявку заново.",
           notice,
           error,
         ]}

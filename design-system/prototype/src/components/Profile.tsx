@@ -14,6 +14,7 @@ import {
   type MyDocument,
   type ProfileMeta,
 } from '@/lib/me-store';
+import { errorMessage } from '@/lib/http-error';
 import { DOC_KIND_KEYS, DOC_KINDS, PART_SAMPLE_KIND, REQUISITE_KINDS, type DocKind, type FoundField } from '@/lib/my-docs';
 import { plural } from '@/lib/plural';
 import { filledCount, PROFILE_GROUPS, PROFILE_KEYS, type Profile as ProfileData, type ProfileKey } from '@/lib/profile';
@@ -106,6 +107,7 @@ function Notice({ tone, children }: { tone: Tone; children: ReactNode }) {
   const Icon = tone === 'ok' ? Check : tone === 'warn' ? AlertTriangle : Info;
   return (
     <p
+      role={tone === 'warn' ? 'alert' : 'status'}
       className={cx(
         'flex items-start gap-2 rounded-md px-3 py-2 text-[13px] leading-snug',
         tone === 'ok' && 'bg-success/10 text-success',
@@ -321,7 +323,7 @@ export function Profile() {
           : { tone: 'info', text: 'Нового в документах не нашлось: всё, что там есть, уже вписано.' },
       );
     } catch (e) {
-      setFillNote({ tone: 'warn', text: (e as Error).message });
+      setFillNote({ tone: 'warn', text: errorMessage(e) });
     } finally {
       setFilling(false);
     }
@@ -356,12 +358,12 @@ export function Profile() {
           next.filled = filled.length;
           next.suggestions = suggestions;
         } catch (e) {
-          next.profileError = (e as Error).message;
+          next.profileError = errorMessage(e);
         }
       }
       setReport(next);
     } catch (e) {
-      setError((e as Error).message);
+      setError(errorMessage(e));
     } finally {
       setStage(null);
       read();
@@ -580,12 +582,13 @@ export function Profile() {
                                 placeholder={field.example}
                                 autoComplete="off"
                                 aria-invalid={hint ? true : undefined}
+                                aria-describedby={hint ? `pf-${field.key}-hint` : undefined}
                                 className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground focus:ring-2 focus:ring-ring/20"
                               />
                             ) : (
                               <span className={cx('break-words font-mono text-[13px] tabular-nums', !value.trim() && 'text-muted-foreground')}>{value.trim() || '—'}</span>
                             )}
-                            {hint && <p className="mt-1 text-[12px] text-warn-foreground">{hint}</p>}
+                            {hint && <p id={`pf-${field.key}-hint`} className="mt-1 text-[12px] text-warn-foreground">{hint}</p>}
                             {meta.sources[field.key] && <p className="mt-1 text-[11px] text-muted-foreground">из «{meta.sources[field.key]}»</p>}
                           </div>
                         </div>

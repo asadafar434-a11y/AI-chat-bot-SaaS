@@ -1,7 +1,8 @@
 import { checkCounts } from "@/lib/check";
 import { fieldsOf } from "@/lib/fields";
+import { requiredItems } from "@/lib/fulfillment";
 import { plural } from "@/lib/plural";
-import { EMPTY_PROFILE } from "@/lib/profile";
+import { EMPTY_PROFILE, type Profile } from "@/lib/profile";
 import type { Purchase } from "@/lib/purchase";
 import { REQ_GROUP_KEYS } from "@/lib/requirements";
 import { formatRubles, parseRubles } from "@/lib/rub-words";
@@ -47,7 +48,8 @@ export function reviewGaps(p: Purchase): { empty: number; invalid: number; price
   };
 }
 
-export function stepsOf(p: Purchase): Step[] {
+// profile — реквизиты участника: по ним видно, что ИП устав не нужен. Без них такие пункты считаются нужными.
+export function stepsOf(p: Purchase, profile?: Profile): Step[] {
   const base = `/p/${p.id}`;
   const docs = p.files.length;
   const reqs = REQ_GROUP_KEYS.reduce((n, key) => n + p.requirements[key].length, 0);
@@ -56,7 +58,8 @@ export function stepsOf(p: Purchase): Step[] {
   const gaps = reviewGaps(p);
   // Своя заявка, проверенная файлом: ошибки в ней тоже держат шаг «Проверка» открытым.
   const bad = p.check ? checkCounts(p.check).bad : 0;
-  const asked = p.requirements.submit;
+  // Только то, что держит подачу: площадка передаст сама, «не требуется» и «по желанию» отметки не ждут.
+  const asked = requiredItems(p, profile);
   const ready = asked.filter((d) => (p.submitReady ?? []).includes(d.text)).length;
   const files = p.tp ? partsOf(p.tp.form, p.criteria, p.kind).length : 0;
 

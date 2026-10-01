@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { castHistory, castLeaks } from '@/lib/cast';
 import { applyField, completeness, fieldsOf } from '@/lib/fields';
+import { errorMessage, errorText } from '@/lib/http-error';
 import { samplesOf } from '@/lib/me-store';
 import { plural } from '@/lib/plural';
 import { identityValues } from '@/lib/profile';
@@ -41,14 +42,14 @@ function ComposeCard({ onDone }: { onDone: () => void }) {
           headers: aiHeaders(purchase.id),
           body: JSON.stringify({ documents, samples: samples.map(({ name, text }) => ({ name, text })) }),
         });
-        if (!res.ok) throw new Error((await res.text()) || 'Не удалось составить черновик.');
+        if (!res.ok) throw new Error(await errorText(res, 'Не удалось составить черновик.'));
         next = await res.json();
       }
       // Черновик ИИ хранится отдельно: по нему карта полей видит, какие жёлтые места участник уже вписал.
       update({ tp: next, tpDraft: next });
       onDone();
     } catch (e) {
-      setError((e as Error).message);
+      setError(errorMessage(e));
     } finally {
       setWorking(false);
     }
@@ -81,7 +82,7 @@ function ComposeCard({ onDone }: { onDone: () => void }) {
                   : 'Черновик будет в общем стиле. Загрузите свои прошлые заявки в «Профиле компании» — и ТП будет написано так, как пишете вы.'}
             </p>
             {error && (
-              <p className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
+              <p role="alert" className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0" /> <span className="min-w-0 break-words">{error}</span>
               </p>
             )}
@@ -125,7 +126,7 @@ export function PurchaseReview({
       }),
     [purchase, profile, my.docs],
   );
-  const final = useMemo(() => completeness(purchase, fields), [purchase, fields]);
+  const final = useMemo(() => completeness(purchase, fields, profile), [purchase, fields, profile]);
 
   // Что не попадёт в карту полей, но может стоить заявки: ТП подают анонимно, цитаты сверяют, сканы читаются неточно.
   const warnings = useMemo(() => {

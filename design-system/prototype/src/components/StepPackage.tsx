@@ -133,6 +133,8 @@ function ChecklistItem({ item, onToggle }: { item: SubmitItem; onToggle: () => v
       <Checkbox checked={item.ready} onChange={onToggle}>
         <span className={cx('text-[13px] leading-snug', item.ready && 'text-muted-foreground line-through')}>{item.text}</span>
       </Checkbox>
+      {/* Площадка передаст сама, «не требуется», «по желанию» — подаче не мешает, отметка не обязательна. */}
+      {!item.required && item.note && <p className="mt-1 pl-[26px] text-[12px] text-muted-foreground">Не мешает подаче: {item.note}</p>}
       <div className="mt-1 pl-[26px] text-[12px]">
         <button
           type="button"
@@ -202,7 +204,9 @@ export function StepPackage({
   const [redo, setRedo] = useState(false);
   const open = rows.find((r) => r.part === openPart && r.preview) ?? null;
   const preview = open?.preview ?? null;
-  const ready = items.filter((i) => i.ready).length;
+  // Отметки ждут только пункты, которые держат подачу; остальные — площадка передаст, «не требуется», «по желанию».
+  const needed = items.filter((i) => i.required);
+  const ready = needed.filter((i) => i.ready).length;
   // Сколько пунктов ещё не закрыто: пустые и неверные поля, неподтверждённое и документы заказчика.
   const openCount =
     final.fields.empty +
@@ -314,11 +318,11 @@ export function StepPackage({
       </div>
 
       {error && (
-        <p className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
+        <p role="alert" className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" /> <span className="min-w-0 break-words">{error}</span>
         </p>
       )}
-      {note && <p className="rounded-md bg-info/10 px-3 py-2 text-[13px] text-info">{note}</p>}
+      {note && <p role="status" className="rounded-md bg-info/10 px-3 py-2 text-[13px] text-info">{note}</p>}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-4">
@@ -363,7 +367,7 @@ export function StepPackage({
               </div>
               {items.length > 0 && (
                 <span className="font-mono text-[11px] text-muted-foreground">
-                  готово {ready} из {items.length}
+                  {needed.length ? `готово ${ready} из ${needed.length}` : 'отмечать нечего'}
                 </span>
               )}
             </div>

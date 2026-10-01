@@ -1,9 +1,54 @@
-import { type ReactNode, type ButtonHTMLAttributes, useEffect } from 'react';
+import { type ReactNode, type ButtonHTMLAttributes, type RefObject, useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Info, Bell, Check } from '../lib/icons';
+import { tabTarget } from '@/lib/focus-trap';
 
 export function cx(...parts: (string | false | undefined | null)[]) {
   return parts.filter(Boolean).join(' ');
+}
+
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+// Окно перехватывает клавиатуру: фокус уходит внутрь, Tab не выходит за окно, а после закрытия фокус возвращается
+// туда, откуда окно открыли. Без этого человек с клавиатурой остаётся «позади» затемнения и жмёт кнопки невидимой страницы.
+export function useDialogFocus(box: RefObject<HTMLElement | null>, active: boolean) {
+  useEffect(() => {
+    const dialog = box.current;
+    if (!active || !dialog) return;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialog.focus({ preventScroll: true });
+    let back = false;
+    const stops = () => [...dialog.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((x) => x.offsetParent !== null);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      back = e.shiftKey;
+      const at = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      const next = tabTarget(stops(), at, back, dialog, !!at && dialog.contains(at));
+      if (next === 'stay') return;
+      e.preventDefault();
+      if (next) next.focus();
+    };
+    // Страж: что бы ни вывело фокус за окно (Tab с прокручиваемой области, программный фокус), он возвращается внутрь.
+    const onFocusIn = (e: FocusEvent) => {
+      if (e.target instanceof Node && dialog.contains(e.target)) return;
+      const items = stops();
+      const target = (back ? items[items.length - 1] : items[0]) ?? dialog;
+      target.focus({ preventScroll: true });
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('focusin', onFocusIn);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('focusin', onFocusIn);
+      // Фокус возвращается кадром позже, когда страница под окном уже обновилась: если нажатое окно открывали из строки,
+      // которую удалили, фокус получает основной блок, а не начало страницы. Открылось другое окно — фокус остаётся у него.
+      requestAnimationFrame(() => {
+        if (document.querySelector('[role=dialog][aria-modal=true]')) return;
+        if (opener?.isConnected) opener.focus({ preventScroll: true });
+        else document.querySelector<HTMLElement>('main')?.focus({ preventScroll: true });
+      });
+    };
+  }, [box, active]);
 }
 
 export function Modal({
@@ -21,6 +66,10 @@ export function Modal({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  const box = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useDialogFocus(box, open);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -37,12 +86,17 @@ export function Modal({
       onClick={onClose}
     >
       <div
+        ref={box}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className="animate-fade-up flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-lg border border-border bg-card shadow-2xl sm:rounded-lg"
+        className="animate-fade-up flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-lg border border-border bg-card shadow-2xl outline-none sm:rounded-lg"
       >
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-3.5">
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{title}</p>
+            <p id={titleId} className="truncate text-sm font-semibold">{title}</p>
             {subtitle && <p className="mt-0.5 truncate text-xs text-muted-foreground">{subtitle}</p>}
           </div>
           <IconButton label="Закрыть" onClick={onClose} side="bottom" align="end">
@@ -78,7 +132,8 @@ export function Button({ variant = 'primary', size = 'md', className, children, 
     // Градиент бренда — как у кнопки чата: для платных и главных действий.
     accent:
       'bg-brand-gradient text-white shadow-md shadow-indigo-500/30 hover:-translate-y-px hover:brightness-110 hover:shadow-lg hover:shadow-indigo-500/40 active:translate-y-0',
-    danger: 'bg-danger text-white hover:opacity-90',
+    // Текст как у главной кнопки: в тёмной теме цвет ошибки светлый, и белая надпись на нём не читалась (2,8 : 1).
+    danger: 'bg-danger text-primary-foreground hover:opacity-90',
   };
   return (
     <button className={cx(base, sizes[size], variants[variant], className)} {...rest}>
@@ -170,8 +225,9 @@ export function HelpTip({ content, side, align }: { content: string; side?: 'top
     <Tooltip content={content} side={side} align={align}>
       <span
         tabIndex={0}
+        role="img"
         aria-label={content}
-        className="inline-flex cursor-help rounded-full text-muted-foreground/60 outline-none transition-colors hover:text-muted-foreground focus-visible:text-foreground"
+        className="inline-flex cursor-help rounded-full text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
       >
         <Info className="size-3.5" />
       </span>
@@ -239,7 +295,7 @@ export function Checkbox({
 
 export function AIDisclaimer({ className }: { className?: string }) {
   return (
-    <p className={cx('flex items-center gap-1.5 text-[11px] text-muted-foreground/60', className)}>
+    <p className={cx('flex items-center gap-1.5 text-[11px] text-muted-foreground', className)}>
       <Info className="size-3 shrink-0" />
       ИИ-анализ носит справочный характер и может содержать ошибки — проверяйте документы перед подачей.
     </p>

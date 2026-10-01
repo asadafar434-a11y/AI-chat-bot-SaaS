@@ -1,7 +1,7 @@
 // Срок подачи заявок: обратный отсчёт и порядок закупок в списке — npm test.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { byUrgency, dueLine } from "./deadline.ts";
+import { byUrgency, dueLine, dueOf, SAMPLE_DUE } from "./deadline.ts";
 
 // Дата через n дней от сегодня — как её пишет разбор документов: ГГГГ-ММ-ДД по местному времени.
 function inDays(n: number): string {
@@ -69,6 +69,19 @@ test("неверная или пустая дата — срока нет, а н
   }
   // Пробелы по краям разбор документов иногда оставляет — дата от этого не пропадает.
   assert.equal(dueLine(on(` ${inDays(5)} `), false)!.days, 5);
+});
+
+test("у примера вместо отсчёта пометка: вымышленная дата не «заканчивается вчера», сколько бы времени ни прошло", () => {
+  const deadline = on("2020-01-15", "10:00", "МСК");
+  assert.equal(dueLine(deadline, true)!.tone, "past", "настоящая закупка с такой датой — «приём закончился»");
+  const sample = dueOf({ sample: true, deadline }, true)!;
+  assert.equal(sample, SAMPLE_DUE);
+  assert.equal(sample.head, "Пример · сроки вымышленные");
+  assert.equal(sample.tone, "calm");
+  assert.equal(sample.left, undefined);
+  // У настоящей закупки отсчёт остаётся как был, а без срока — ничего.
+  assert.deepEqual(dueOf({ deadline }, true), dueLine(deadline, true));
+  assert.equal(dueOf({ deadline: on("") }, true), null);
 });
 
 test("порядок в списке: сначала ближайший срок, потом без срока, в конце прошедшие — свежие выше", () => {

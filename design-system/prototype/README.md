@@ -11,6 +11,7 @@ npm --prefix design-system/prototype run build                   # dist/prototyp
 npm --prefix web run build:host                                  # экран → web/public/product, затем сервер: для хостинга и для start:local
 npm --prefix web run start:local                                 # продукт одним адресом: http://localhost:3000 (вместо пары выше)
 npm --prefix design-system/prototype run typecheck
+npm --prefix design-system/prototype test                        # компоненты в разметку (без браузера): роли, подписи, вывод ответа ИИ
 ```
 
 Шрифты Geist и Geist Mono — файлы в `src/fonts` (лицензия SIL OFL), а не Google Fonts: сервер на хостинге не пускает шрифты с чужих сайтов.
@@ -18,6 +19,17 @@ npm --prefix design-system/prototype run typecheck
 Интерфейс открывают на `localhost:3000`, сервер — на `3001` (другой адрес сервера — переменная `API_ORIGIN`). Закупки и документы
 лежат в браузере по адресу страницы, поэтому адрес менять нельзя — данные прежнего адреса не видны на новом (копия данных — в
 «Профиле компании»).
+
+## Доступность
+
+Проверено 01.10.2026 (QA-аудит): ширины 320–1280 px, светлая и тёмная тема, клавиатура, диктор (роли и подписи).
+
+- Окна (`Modal` и меню на телефоне) — `role="dialog"` с `aria-modal` и названием; фокус уходит внутрь окна, Tab ходит по кругу,
+  Escape закрывает, фокус возвращается туда, откуда окно открыли (`useDialogFocus` в `ui.tsx`; логика — `web/src/lib/focus-trap.ts`).
+- Ошибки — `role="alert"`, пометки — `role="status"`; у каждого поля есть подпись (`label` или `aria-label`), у иконочных кнопок — имя.
+- Контраст текста — не ниже 4,5 : 1 в обеих темах. Подпись, «готово» и «ошибка» в светлой теме чуть темнее, чем в Make
+  (`--muted-foreground`, `--success`, `--danger` в `src/index.css`); `web/src/lib/contrast.test.ts` не даст вернуть бледные цвета
+  при следующем переносе из Make.
 
 ## Что где
 

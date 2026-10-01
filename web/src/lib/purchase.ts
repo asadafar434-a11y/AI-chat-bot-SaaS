@@ -1,4 +1,5 @@
 import type { ChatMessage } from "@/lib/chat-types";
+import { errorText } from "@/lib/http-error";
 import type { CheckResult } from "@/lib/check";
 import type { PartKey } from "@/lib/my-docs";
 import type { PartDoc } from "@/lib/part-doc";
@@ -59,7 +60,7 @@ export async function extractRequirements(documents: SentDocument[], purchaseId?
     headers: aiHeaders(purchaseId),
     body: JSON.stringify({ documents }),
   });
-  if (!res.ok) throw new Error((await res.text()) || "Не удалось выписать требования.");
+  if (!res.ok) throw new Error(await errorText(res, "Не удалось выписать требования."));
   return res.json();
 }
 

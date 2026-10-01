@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
-import { checkCounts, checkInputKey, checkSummary, docsKeyOf, type CheckFinding, type CheckResponse, type CheckResult } from '@/lib/check';
+import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
+import { checkCounts, checkInputKey, checkSummary, docsKeyOfDocuments, sameDocuments, type CheckFinding, type CheckResponse, type CheckResult } from '@/lib/check';
 import { sampleCheck } from '@/lib/check-sample';
+import { errorMessage, errorText } from '@/lib/http-error';
 import { plural } from '@/lib/plural';
 import { aiHeaders } from '@/lib/purchase';
 import { ACCEPTED_FILES, readDocuments } from '@/lib/read-documents';
@@ -70,12 +71,12 @@ function Finding({ finding: f, open, onToggle }: { finding: CheckFinding; open: 
           <div className="space-y-1.5 text-[12px] leading-snug">
             {f.quote && (
               <blockquote className="rounded-md bg-secondary px-3 py-2 text-muted-foreground">
-                <span className="text-muted-foreground/70">В документах закупки: </span>«{f.quote}»
+                <span className="font-medium">В документах закупки: </span>«{f.quote}»
               </blockquote>
             )}
             {f.inApplication && (
               <blockquote className="rounded-md bg-secondary px-3 py-2 text-muted-foreground">
-                <span className="text-muted-foreground/70">В заявке: </span>«{f.inApplication}»
+                <span className="font-medium">В заявке: </span>«{f.inApplication}»
               </blockquote>
             )}
           </div>
@@ -145,7 +146,9 @@ export function OwnCheck() {
   const [openFinding, setOpenFinding] = useState<number | null>(null);
   const [drag, setDrag] = useState(false);
   const input = useRef<HTMLInputElement>(null);
-  const docsKey = docsKeyOf(purchase.files);
+  // Отпечаток документов закупки — по содержимому, а не по именам: заменили файл новой версией с тем же именем — проверка устарела.
+  const docsKey = useMemo(() => docsKeyOfDocuments(documents), [documents]);
+  const docsChanged = useMemo(() => !!check && !sameDocuments(check.docsKey, documents), [check, documents]);
 
   async function run(files: File[]) {
     setWorking(true);
@@ -169,7 +172,7 @@ export function OwnCheck() {
           headers: aiHeaders(purchase.id),
           body: JSON.stringify({ documents, application }),
         });
-        if (!res.ok) throw new Error((await res.text()) || 'Не удалось проверить заявку.');
+        if (!res.ok) throw new Error(await errorText(res, 'Не удалось проверить заявку.'));
         const body: CheckResponse = await res.json();
         result = { ...body, files: application.map((d) => d.name), docsKey, checkedAt: new Date().toISOString(), inputKey };
         if (failed.length) setNotice(`Не прочитаны и не проверены: ${failed.map((f) => `${f.name} — ${f.reason}`).join('; ')}.`);
@@ -177,7 +180,7 @@ export function OwnCheck() {
       setOpenFinding(null);
       update({ check: result });
     } catch (e) {
-      setError((e as Error).message);
+      setError(errorMessage(e));
     } finally {
       setWorking(false);
     }
@@ -222,7 +225,7 @@ export function OwnCheck() {
           />
 
           {error && (
-            <p className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
+            <p role="alert" className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" /> <span className="min-w-0 break-words">{error}</span>
             </p>
           )}
@@ -266,7 +269,7 @@ export function OwnCheck() {
               {purchase.sample && (
                 <p className="rounded-md bg-info/10 px-3 py-2 text-[13px] text-info">Это пример: проверена вымышленная заявка к вымышленной закупке.</p>
               )}
-              {!purchase.sample && check.docsKey !== docsKey && (
+              {!purchase.sample && docsChanged && (
                 <p className="flex items-start gap-2 rounded-md bg-warn-surface/50 px-3 py-2 text-[13px] text-warn-foreground">
                   <AlertTriangle className="mt-0.5 size-4 shrink-0" /> После проверки в закупку добавили документы — проверьте заявку заново.
                 </p>

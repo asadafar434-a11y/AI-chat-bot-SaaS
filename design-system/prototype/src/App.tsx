@@ -8,7 +8,7 @@ import { Profile } from './components/Profile';
 import { Tariffs } from './components/Tariffs';
 import { ChatAssistant } from './components/ChatAssistant';
 import { Badge, Tooltip } from './components/ui';
-import { dueLine } from '@/lib/deadline';
+import { dueOf } from '@/lib/deadline';
 import { procedureHint } from '@/lib/dashboard';
 import { titleOf } from '@/lib/purchase';
 import { deletePurchase, savePurchase } from '@/lib/purchase-store';
@@ -51,7 +51,7 @@ function Product() {
   const { purchases } = usePurchases();
   const profile = useProfile();
 
-  const tenders = useMemo(() => (purchases ?? []).map(toTender), [purchases]);
+  const tenders = useMemo(() => (purchases ?? []).map((p) => toTender(p, profile)), [purchases, profile]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
@@ -65,7 +65,7 @@ function Product() {
   // Открывая закупку, сразу ведём на первый шаг, где ещё есть работа.
   const openTender = (id: string, first?: number) => {
     const p = purchases?.find((x) => x.id === id);
-    const at = first ?? (p ? stepsOf(p).findIndex((s) => s.state !== 'done') : 0);
+    const at = first ?? (p ? stepsOf(p, profile).findIndex((s) => s.state !== 'done') : 0);
     setActiveId(id);
     setStep(at < 0 ? 4 : at);
     setView('workflow');
@@ -98,7 +98,7 @@ function Product() {
           company={{ name: profile.shortName.trim() || profile.fullName.trim(), inn: profile.inn.trim() }}
         />
 
-        <main className="min-w-0 flex-1 lg:overflow-y-auto">
+        <main tabIndex={-1} className="min-w-0 flex-1 outline-none lg:overflow-y-auto">
           <div className="mx-auto max-w-4xl py-2 lg:py-4">
             {view === 'tenders' && (
               <TendersDashboard
@@ -249,8 +249,9 @@ function Workflow({
   onOpenTariffs: () => void;
 }) {
   const { purchase, saveError } = usePurchase();
-  const due = dueLine(purchase.deadline, true);
-  const real = stepsOf(purchase);
+  const profile = useProfile();
+  const due = dueOf(purchase, true);
+  const real = stepsOf(purchase, profile);
   const go = (n: number) => setStep(Math.max(0, Math.min(steps.length - 1, n)));
 
   const way = purchase.kind.split('·').slice(1).join('·').trim();
@@ -291,7 +292,7 @@ function Workflow({
       }
     >
       {saveError && (
-        <p className="mb-4 rounded-md bg-warn-surface/40 px-3 py-2 text-[13px] text-warn-foreground">
+        <p role="alert" className="mb-4 rounded-md bg-warn-surface/40 px-3 py-2 text-[13px] text-warn-foreground">
           Не получилось сохранить изменения в браузере. Не закрывайте страницу и попробуйте ещё раз.
         </p>
       )}

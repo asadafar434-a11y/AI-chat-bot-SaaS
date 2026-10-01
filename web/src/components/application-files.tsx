@@ -43,7 +43,9 @@ export function PackageFiles({ format = "docx" }: { format?: FileFormat }) {
     writing: files.writing,
   });
   const items = submitItems(purchase);
-  const ready = items.filter((i) => i.ready).length;
+  // Отметки ждут только пункты, которые держат подачу: площадка передаст сама, «не требуется», «по желанию» — нет.
+  const needed = items.filter((i) => i.required);
+  const ready = needed.filter((i) => i.ready).length;
   const count = tp ? partsOf(tp.form, purchase.criteria, purchase.kind).length : 1;
 
   return (
@@ -116,7 +118,7 @@ export function PackageFiles({ format = "docx" }: { format?: FileFormat }) {
           <h3 id="files-ask" className="t-section">
             Что требует заказчик
           </h3>
-          {items.length > 0 && <span className="t-caption text-[var(--ink-3)]">{`готово ${ready} из ${items.length}`}</span>}
+          {items.length > 0 && <span className="t-caption text-[var(--ink-3)]">{needed.length ? `готово ${ready} из ${needed.length}` : "отмечать нечего"}</span>}
         </div>
         {items.length === 0 ? (
           <p className="text-[var(--ink-3)]">
@@ -137,6 +139,7 @@ export function PackageFiles({ format = "docx" }: { format?: FileFormat }) {
                     />
                     <span className={`t-read ${item.ready ? "text-[var(--ink-3)] line-through decoration-[var(--edge-2)]" : ""}`}>{item.text}</span>
                   </label>
+                  {!item.required && item.note && <p className="t-caption pl-[26px] text-[var(--ink-3)]">Не мешает подаче: {item.note}</p>}
                   <div className="pl-[26px]">
                     <SourceQuote
                       source={item.source || "цитата"}

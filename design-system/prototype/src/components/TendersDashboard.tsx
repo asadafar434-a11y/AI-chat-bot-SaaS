@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Search, Plus, Calendar, FileText, ChevronRight, Trash2, Clock, Bell } from '../lib/icons';
 import { Button, Card, Badge, Modal, AIDisclaimer, Tooltip, IconButton } from './ui';
 import { statusLabels, procedureMeta, rub, type TenderCard, type TenderStatus } from '../lib/data';
@@ -40,8 +40,17 @@ export function TendersDashboard({
 
   const stat = (s: TenderStatus) => tenders.filter((t) => t.status === s).length;
 
+  // Удалённая строка уносит фокус с собой: после удаления он переходит в основной блок, а не в начало страницы.
+  const countBeforeDelete = useRef<number | null>(null);
+  useEffect(() => {
+    if (countBeforeDelete.current === null || tenders.length >= countBeforeDelete.current) return;
+    countBeforeDelete.current = null;
+    document.querySelector<HTMLElement>('main')?.focus({ preventScroll: true });
+  }, [tenders.length]);
+
   const confirmDelete = () => {
     if (!deleteTarget) return;
+    countBeforeDelete.current = tenders.length;
     onDelete(deleteTarget.id);
     setDeleteTarget(null);
   };
@@ -96,13 +105,14 @@ export function TendersDashboard({
 
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex h-9 min-w-[220px] flex-1 items-center gap-2 rounded-md border border-border bg-card px-3">
+        <div className="flex h-9 min-w-[220px] flex-1 items-center gap-2 rounded-md border border-border bg-card px-3 focus-within:border-foreground focus-within:ring-2 focus-within:ring-ring/20">
           <Search className="size-4 text-muted-foreground" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Поиск по названию, заказчику или № закупки"
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            aria-label="Поиск по моим закупкам"
+            className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
         </div>
         <div className="flex flex-wrap gap-1.5">

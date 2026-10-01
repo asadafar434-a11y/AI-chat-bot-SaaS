@@ -1,4 +1,5 @@
 import type { ChatDocument } from "@/lib/chat-types";
+import { errorText } from "@/lib/http-error";
 import { readScanOcr } from "./scan-setting.ts";
 
 export type SentDocument = Pick<ChatDocument, "name" | "text" | "scan">;
@@ -48,8 +49,10 @@ async function readOne(file: File, send: Send, ocr: boolean): Promise<OneResult>
     return { documents: [], failed: [{ name: file.name, reason: "нет связи с сервером — проверьте интернет и повторите" }] };
   }
   if (!res.ok) {
-    const reason = (await res.text().catch(() => "")).trim();
-    return { documents: [], failed: [{ name: file.name, reason: reason || "сервер не смог прочитать файл — повторите" }] };
+    // В списке файлов причина — про этот файл: «сервер не смог прочитать», а не общее «на сервере что-то сломалось».
+    const unread = "сервер не смог прочитать файл — повторите";
+    const reason = await errorText(res, unread, { 500: unread, 502: unread });
+    return { documents: [], failed: [{ name: file.name, reason }] };
   }
   const { documents, failed }: { documents: ChatDocument[]; failed: FailedFile[] } = await res.json();
   return { documents: documents.map(({ name, text, scan }) => ({ name, text, ...(scan && { scan }) })), failed };

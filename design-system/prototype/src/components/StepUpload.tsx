@@ -59,6 +59,7 @@ export function StepUpload({
             <Link2 className="size-4 text-muted-foreground" />
             <input
               disabled
+              aria-label="Ссылка на закупку в ЕИС — скоро"
               placeholder="Ссылка на закупку в ЕИС — zakupki.gov.ru/epz/order/notice/…"
               className="min-w-0 flex-1 cursor-not-allowed bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
@@ -116,12 +117,12 @@ export function StepUpload({
       </Card>
 
       {error && (
-        <p className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
+        <p role="alert" className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" /> <span className="min-w-0 break-words">{error}</span>
         </p>
       )}
       {notice && (
-        <p className="flex items-start gap-2 rounded-md bg-warn-surface/40 px-3 py-2 text-[13px] text-warn-foreground">
+        <p role="status" className="flex items-start gap-2 rounded-md bg-warn-surface/40 px-3 py-2 text-[13px] text-warn-foreground">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" /> <span className="min-w-0 break-words">{notice}</span>
         </p>
       )}

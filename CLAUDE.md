@@ -71,6 +71,10 @@ Support-chat SaaS (аналог Intercom) с ИИ-агентом. Прорабо
   поиск по площадкам, история с итогами торгов, импорт по ссылке ЕИС.
 - Окна (`Modal`) — через портал в `body`: внутри анимированного блока `fixed` считается от блока, а не от экрана.
 - Сетки из колонок — `grid-cols-1` / `minmax(0, …)`: иначе длинная строка с `truncate` раздвигает колонку.
+- Доступность (QA 01.10.2026, подробности — [README прототипа](design-system/prototype/README.md)): новое окно — только через `Modal`
+  или `useDialogFocus` (`ui.tsx`): роль, фокус внутрь и обратно, Tab по кругу; ошибки — `role="alert"`; у поля — подпись; текст не бледнее
+  4,5 : 1 в обеих темах (`--muted-foreground`, `--success`, `--danger` светлой темы чуть темнее, чем в Make; следит `web/src/lib/contrast.test.ts`).
+  Тесты экрана: `npm --prefix design-system/prototype test` (компоненты в разметку, без браузера).
 
 Источник: Figma `NDctJTjd4iyzeT9zWg3WwZ` («AI Elements — ▲ Vercel (Community)»),
 документация https://elements.ai-sdk.dev.

@@ -1,5 +1,6 @@
 import { fromStore, toStore } from "@/lib/data-format";
 import { STORES, transaction } from "@/lib/db";
+import { errorMessage, errorText, OFFLINE_TEXT } from "@/lib/http-error";
 import {
   clipEvidence,
   clipForSort,
@@ -130,8 +131,8 @@ export function evidenceOf(docs: MyDocument[], kind: DocKind): MyDocument[] {
   return picked;
 }
 
-// Обрыв связи браузер описывает по-английски («Failed to fetch») — пользователю говорим по-русски.
-export const OFFLINE_TEXT = "Нет связи с сервером — проверьте интернет.";
+// Обрыв связи браузер описывает по-английски («Failed to fetch») — пользователю говорим по-русски (lib/http-error.ts).
+export { OFFLINE_TEXT };
 
 async function postJson(url: string, body: unknown): Promise<Response> {
   try {
@@ -149,12 +150,12 @@ export async function sortDocuments(docs: SentDocument[]): Promise<{ sorted: Sor
       const res = await postJson("/api/my-docs/sort", {
         documents: docs.slice(i, i + SORT_BATCH).map((d) => ({ name: d.name, text: clipForSort(d.text) })),
       });
-      if (!res.ok) throw new Error((await res.text()).trim() || "Не удалось разложить документы.");
+      if (!res.ok) throw new Error(await errorText(res, "Не удалось разложить документы."));
       sorted.push(...((await res.json()) as { documents: SortedDoc[] }).documents);
     }
     return { sorted };
   } catch (e) {
-    return { sorted: docs.map((d) => ({ kinds: guessKinds(d.name, d.text), about: "" })), error: (e as Error).message };
+    return { sorted: docs.map((d) => ({ kinds: guessKinds(d.name, d.text), about: "" })), error: errorMessage(e) };
   }
 }
 
@@ -195,7 +196,7 @@ export async function fillProfileFromDocuments(docs: MyDocument[]): Promise<{ fi
   const sources = docs.filter((d) => d.kinds.some((k) => REQUISITE_KINDS.includes(k)));
   if (sources.length === 0) return { filled: [], suggestions: 0 };
   const res = await postJson("/api/my-docs/profile", { documents: sources.map(({ name, text }) => ({ name, text })) });
-  if (!res.ok) throw new Error((await res.text()).trim() || "Не удалось заполнить реквизиты.");
+  if (!res.ok) throw new Error(await errorText(res, "Не удалось заполнить реквизиты."));
   const found: ProfileFound = await res.json();
   const [profile, meta] = await Promise.all([getProfile(), getProfileMeta()]);
   const merged = mergeFound(profile, meta, found);

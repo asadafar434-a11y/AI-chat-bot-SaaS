@@ -5,6 +5,7 @@ import { archiveName, fingerprint } from "@/lib/application-files";
 import { rowsOf } from "@/lib/cast";
 import { anketaExtraValues } from "@/lib/fields";
 import { FILE_FORMATS, type FileFormat } from "@/lib/file-format";
+import { errorMessage, errorText } from "@/lib/http-error";
 import { evidenceOf, getProfile, listMyDocuments, samplesOf, type MyDocument } from "@/lib/me-store";
 import { isEvidencePart, PART_SAMPLE_KIND, type PartKey } from "@/lib/my-docs";
 import type { PartDoc } from "@/lib/part-doc";
@@ -33,7 +34,7 @@ const castLines = (cast: TpResult["cast"]) =>
 
 async function fileFrom(path: "/api/tp/docx" | "/api/tp/pdf" | "/api/tp/odt" | "/api/tp/zip", body: object, failed: string): Promise<Blob> {
   const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  if (!res.ok) throw new Error((await res.text()) || failed);
+  if (!res.ok) throw new Error(await errorText(res, failed));
   return res.blob();
 }
 
@@ -121,7 +122,7 @@ export function useApplicationFilesOf({ purchase, documents, update }: Applicati
         setNote("ИИ не подключён, поэтому документ собран по стандартному шаблону — без ваших образцов.");
         return { payload: templatePayload(current, part), parts };
       }
-      if (!res.ok) throw new Error((await res.text()) || "Не удалось составить документ.");
+      if (!res.ok) throw new Error(await errorText(res, "Не удалось составить документ."));
       const doc = (await res.json()) as PartDoc;
       const next = { ...parts, [part]: { doc, basisKey } };
       update({ parts: next });
@@ -138,7 +139,7 @@ export function useApplicationFilesOf({ purchase, documents, update }: Applicati
     try {
       await work();
     } catch (e) {
-      setError((e as Error).message);
+      setError(errorMessage(e));
     } finally {
       setDownloading(null);
     }

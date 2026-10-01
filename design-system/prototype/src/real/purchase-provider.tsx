@@ -12,7 +12,8 @@ type Value = {
   purchase: Purchase;
   documents: SentDocument[];
   update: (patch: Partial<Purchase>) => void;
-  replaceDocuments: (documents: SentDocument[], patch: Partial<Purchase>) => Promise<void>;
+  // Правка может быть функцией от закупки «на этот момент»: пока ИИ читал документы, участник мог что-то отметить или вписать.
+  replaceDocuments: (documents: SentDocument[], patch: Partial<Purchase> | ((latest: Purchase) => Partial<Purchase>)) => Promise<void>;
   remove: () => Promise<void>;
   saveError: boolean;
 };
@@ -96,9 +97,10 @@ export function PurchaseProvider({ id, onMissing, children }: { id: string; onMi
     [flush],
   );
 
-  const replaceDocuments = useCallback(async (documents: SentDocument[], patch: Partial<Purchase>) => {
+  const replaceDocuments = useCallback(async (documents: SentDocument[], patch: Partial<Purchase> | ((latest: Purchase) => Partial<Purchase>)) => {
     if (!latest.current) return;
-    const purchase = await savePurchaseWithDocuments({ ...latest.current, ...patch }, documents);
+    const changes = typeof patch === 'function' ? patch(latest.current) : patch;
+    const purchase = await savePurchaseWithDocuments({ ...latest.current, ...changes }, documents);
     latest.current = purchase;
     dirty.current = false;
     setLoaded({ status: 'ready', purchase, documents });

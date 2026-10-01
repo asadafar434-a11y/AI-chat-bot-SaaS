@@ -87,7 +87,7 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
     [my.docs],
   );
   const fields = useMemo(() => fieldsOf({ purchase, profile, evidence }), [purchase, profile, evidence]);
-  const final = useMemo(() => completeness(purchase, fields), [purchase, fields]);
+  const final = useMemo(() => completeness(purchase, fields, profile), [purchase, fields, profile]);
 
   if (!my.ready || !files.meReady) return <p className="text-sm text-muted-foreground">Собираю пакет документов…</p>;
 
@@ -148,7 +148,7 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
       final={final}
       rows={rows}
       count={tp ? partsOf(tp.form, purchase.criteria, purchase.kind).length : 1}
-      items={submitItems(purchase)}
+      items={submitItems(purchase, profile)}
       downloading={files.downloading}
       writing={files.writing}
       busy={files.downloading !== null}

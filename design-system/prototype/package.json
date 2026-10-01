@@ -8,6 +8,7 @@
     "build": "vite build && node scripts/one-page.mjs",
     "build:host": "vite build --mode host",
     "typecheck": "tsc --noEmit",
+    "test": "node --test \"tests/*.test.mjs\"",
     "preview": "vite preview",
     "format": "oxfmt"
   },

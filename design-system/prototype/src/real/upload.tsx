@@ -1,9 +1,13 @@
 import { useState } from 'react';
+import { carryReady } from '@/lib/application-files';
 import { lawText } from '@/lib/dashboard';
 import { extractRequirements, fromRequirements, type Purchase } from '@/lib/purchase';
 import { savePurchaseWithDocuments } from '@/lib/purchase-store';
 import { readDocuments, type FailedFile, type SentDocument } from '@/lib/read-documents';
 import { dueLine } from '@/lib/deadline';
+import { dateText } from './tenders';
+import { errorMessage } from '@/lib/http-error';
+import { mergeUpload, type Upload } from '@/lib/upload-merge';
 import { DocSearch } from '../components/DocSearch';
 import { StepUpload, type Recognized, type UploadFile } from '../components/StepUpload';
 import { usePurchase } from './purchase-provider';
@@ -20,22 +24,21 @@ const failedNote = (failed: FailedFile[]) =>
 // Новая закупка: файлы читает сервер, потом ИИ выписывает требования (платный запрос — по кнопке), закупка сохраняется
 // в браузере и открывается на шаге «Анализ».
 export function NewPurchaseUpload({ onCreated }: { onCreated: (id: string) => void }) {
-  const [docs, setDocs] = useState<SentDocument[]>([]);
-  const [failed, setFailed] = useState<FailedFile[]>([]);
+  // Загруженное: что прочиталось и что нет. Добавки складываются, а не затирают друг друга; файл с тем же именем — новая
+  // версия, она заменяет прежнюю (lib/upload-merge.ts).
+  const [upload, setUpload] = useState<Upload>({ documents: [], failed: [] });
+  const { documents: docs, failed } = upload;
   const [busy, setBusy] = useState<'reading' | 'analyzing' | null>(null);
   const [error, setError] = useState('');
 
   async function add(files: File[]) {
-    const fresh = files.filter((f) => !docs.some((d) => d.name === f.name));
-    if (fresh.length === 0) return;
     setBusy('reading');
     setError('');
     try {
-      const read = await readDocuments(fresh);
-      setDocs((prev) => [...prev, ...read.documents]);
-      setFailed(read.failed);
+      const read = await readDocuments(files);
+      setUpload((prev) => mergeUpload(prev, read));
     } catch (e) {
-      setError((e as Error).message);
+      setError(errorMessage(e));
     } finally {
       setBusy(null);
     }
@@ -58,7 +61,7 @@ export function NewPurchaseUpload({ onCreated }: { onCreated: (id: string) => vo
       await savePurchaseWithDocuments(purchase, docs);
       onCreated(id);
     } catch (e) {
-      setError((e as Error).message);
+      setError(errorMessage(e));
       setBusy(null);
     }
   }
@@ -71,7 +74,7 @@ export function NewPurchaseUpload({ onCreated }: { onCreated: (id: string) => vo
       error={error}
       notice={failedNote(failed)}
       onFiles={(f) => void add(f)}
-      onRemove={(name) => setDocs((prev) => prev.filter((d) => d.name !== name))}
+      onRemove={(name) => setUpload((prev) => ({ ...prev, documents: prev.documents.filter((d) => d.name !== name) }))}
       onNext={() => void create()}
       nextLabel="Анализировать документы →"
     />
@@ -88,19 +91,20 @@ export function PurchaseUpload({ onNext }: { onNext: () => void }) {
     setError('');
     try {
       setBusy('reading');
-      const { documents: added, failed } = await readDocuments(files);
-      const addedNames = new Set(added.map((d) => d.name));
-      const failedNames = new Set(failed.map((f) => f.name));
-      const all = [...documents.filter((d) => !addedNames.has(d.name)), ...added];
+      const merged = mergeUpload({ documents, failed: purchase.unreadable }, await readDocuments(files));
       setBusy('analyzing');
-      const result = await extractRequirements(all, purchase.id);
-      await replaceDocuments(all, {
-        ...fromRequirements(result),
-        files: all.map((d) => d.name),
-        unreadable: [...purchase.unreadable.filter((f) => !addedNames.has(f.name) && !failedNames.has(f.name)), ...failed],
-      });
+      const result = await extractRequirements(merged.documents, purchase.id);
+      const fresh = fromRequirements(result);
+      // Пока ИИ читал документы, участник мог отметить пункты в других шагах: отметки берём из закупки на момент записи,
+      // а у пунктов, которые ИИ переписал другими словами, они остаются по цитате (lib/application-files.ts).
+      await replaceDocuments(merged.documents, (latest) => ({
+        ...fresh,
+        files: merged.documents.map((d) => d.name),
+        unreadable: merged.failed,
+        submitReady: carryReady(latest.requirements.submit, latest.submitReady ?? [], fresh.requirements.submit),
+      }));
     } catch (e) {
-      setError(`Документы не добавлены. ${(e as Error).message}`);
+      setError(`Документы не добавлены. ${errorMessage(e)}`);
     } finally {
       setBusy(null);
     }
@@ -115,10 +119,12 @@ export function PurchaseUpload({ onNext }: { onNext: () => void }) {
     ...purchase.unreadable.map((f) => ({ name: f.name, meta: `не прочитан: ${f.reason}`, warn: true })),
   ];
   const due = dueLine(purchase.deadline, true);
+  // В примере срок вымышленный: «закончился вчера» вводило бы в заблуждение, поэтому просто дата с пометкой.
+  const until = purchase.sample ? `${dateText(purchase.deadline.date)} (вымышленная дата)` : due ? due.head.replace(/^Подать /, '').replace(/^Приём заявок /, '') : '';
   const facts: [string, string][] = [
     ['Закон', lawText(purchase)],
     ['Начальная цена', purchase.price],
-    ['Подать до', due ? due.head.replace(/^Подать /, '').replace(/^Приём заявок /, '') : ''],
+    ['Подать до', until],
     ['Заказчик', purchase.customer],
   ];
   const recognized: Recognized | null = facts.some(([, v]) => v)

@@ -1,9 +1,8 @@
 import { Fragment, type ReactNode } from 'react';
+import { isSafeLink } from '@/lib/safe-link';
 
 // Ответы ассистента приходят разметкой Markdown: абзацы, списки, жирный, ссылки на статьи закона, цитаты, таблицы.
 // Здесь только то, что ассистент реально пишет; HTML в тексте не исполняется — React выводит его как текст.
-
-const SAFE_LINK = /^(https?:\/\/|\/|mailto:)/i;
 
 // **жирный**, _курсив_ и *курсив*, `код`, [текст](ссылка)
 function Inline({ text }: { text: string }) {
@@ -20,7 +19,7 @@ function Inline({ text }: { text: string }) {
           );
         const link = /^\[([^\]]+)\]\(([^)\s]+)\)$/.exec(part);
         if (link)
-          return SAFE_LINK.test(link[2]) ? (
+          return isSafeLink(link[2]) ? (
             <a key={i} href={link[2]} target="_blank" rel="noreferrer" className="underline underline-offset-2">
               {link[1]}
             </a>

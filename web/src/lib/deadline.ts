@@ -44,6 +44,13 @@ export function dueLine({ date, time, zone }: Deadline, withTime: boolean): Due 
   );
 }
 
+// Даты примера вымышленные и заданы раз и навсегда: со временем «приём закончился вчера» в нём вводил бы в заблуждение.
+export const SAMPLE_DUE: Due = due("Пример · сроки вымышленные", "calm", 0);
+
+// Срок подачи закупки для шапки; у примера — пометка вместо отсчёта.
+export const dueOf = (p: { sample?: boolean; deadline: Deadline }, withTime: boolean): Due | null =>
+  p.sample ? SAMPLE_DUE : dueLine(p.deadline, withTime);
+
 // Сначала то, что горит, потом закупки без срока, в конце — прошедшие, свежие выше.
 export function byUrgency(a: Deadline, b: Deadline): number {
   const rank = (d: Due | null) => (d === null ? [1, 0] : d.days >= 0 ? [0, d.days] : [2, -d.days]);

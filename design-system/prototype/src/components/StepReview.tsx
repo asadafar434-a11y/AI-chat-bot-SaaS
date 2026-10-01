@@ -553,7 +553,7 @@ function AutoList({ fields, collapsed }: { fields: ApplicationField[]; collapsed
                 <span className="text-[12px] text-muted-foreground">{f.label}</span>
                 <span className="max-w-[55%] truncate text-right font-mono text-[12px]">{f.value}</span>
               </div>
-              {f.source && <p className="mt-0.5 text-[11px] text-muted-foreground/80">Источник: {f.source}</p>}
+              {f.source && <p className="mt-0.5 text-[11px] text-muted-foreground">Источник: {f.source}</p>}
             </div>
           ))}
           {fields.length > 40 && <p className="px-3 py-2 text-[11px] text-muted-foreground">И ещё {fields.length - 40} — все видны в документах пакета.</p>}

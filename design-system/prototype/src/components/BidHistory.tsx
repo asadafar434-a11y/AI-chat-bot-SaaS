@@ -175,13 +175,14 @@ export function BidHistory() {
 
       {/* Search + filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex h-9 min-w-[220px] flex-1 items-center gap-2 rounded-md border border-border bg-card px-3">
+        <div className="flex h-9 min-w-[220px] flex-1 items-center gap-2 rounded-md border border-border bg-card px-3 focus-within:border-foreground focus-within:ring-2 focus-within:ring-ring/20">
           <Search className="size-4 text-muted-foreground" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Поиск по названию, заказчику, № или способу закупки"
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            aria-label="Поиск по истории заявок"
+            className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
         </div>
         <div className="flex flex-wrap gap-1.5">

@@ -1,4 +1,5 @@
 import { lawText, procedureOf, progressOf, statusOf } from '@/lib/dashboard';
+import type { Profile } from '@/lib/profile';
 import { titleOf, type Purchase } from '@/lib/purchase';
 import { parseRubles } from '@/lib/rub-words';
 import { stepsOf } from '@/lib/steps';
@@ -20,8 +21,9 @@ export function procedureKind(p: Purchase): Procedure {
   return 'auction';
 }
 
-export function toTender(p: Purchase): TenderCard {
-  const steps = stepsOf(p);
+// profile — реквизиты участника: по ним видно, что ИП устав не нужен, и готовность закупки в списке совпадает с «Пакетом».
+export function toTender(p: Purchase, profile?: Profile): TenderCard {
+  const steps = stepsOf(p, profile);
   return {
     id: p.id,
     title: titleOf(p),

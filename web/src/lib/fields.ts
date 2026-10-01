@@ -1,4 +1,5 @@
 import { castCheck } from "@/lib/cast";
+import { requiredItems } from "@/lib/fulfillment";
 import { ANKETA, anketaExtraRows, type Profile, type ProfileKey } from "@/lib/profile";
 import type { Purchase } from "@/lib/purchase";
 import { profileProblems } from "@/lib/requisites-check";
@@ -59,15 +60,28 @@ const PLACEHOLDER = /\[[^\]]+\]/g;
 const AT_LEAST = /^\[число, не меньше (\d+(?:[.,]\d+)?)\]$/;
 const toNum = (s: string) => Number(s.replace(",", "."));
 
-// Что вписано на месте жёлтых полей заготовки: заготовку разбираем на куски и находим их в тексте.
-// Участник переписал текст так, что куски не находятся, — значений не знаем (null).
+// Что вписано на месте жёлтых полей заготовки: заготовка — куски текста между полями, их находим в тексте один за другим,
+// каждый на первом подходящем месте. То же ответило бы регулярное выражение с ленивыми группами, но оно перебирало
+// варианты, и на длинном тексте с шестью полями, который участник переписал, страница зависала. Куски не находятся — null.
 export function filledValues(template: string, text: string): (string | null)[] {
-  const bits = template.split(/(\[[^\]]+\])/);
-  const holes = bits.filter((_, i) => i % 2).length;
+  const literals = template.split(/\[[^\]]+\]/);
+  const holes = literals.length - 1;
   if (!holes) return [];
-  const escaped = bits.map((b, i) => (i % 2 ? "([\\s\\S]*?)" : b.replace(/[.*+?^$(){}|[\]\\]/g, "\\$&")));
-  const m = new RegExp(`^${escaped.join("")}$`).exec(text);
-  return m ? m.slice(1).map((v) => v) : Array.from({ length: holes }, () => null);
+  const unknown = () => Array.from({ length: holes }, () => null);
+  const first = literals[0];
+  const last = literals[holes];
+  const end = text.length - last.length;
+  if (end < first.length || !text.startsWith(first) || !text.endsWith(last)) return unknown();
+  const values: string[] = [];
+  let at = first.length;
+  for (let i = 1; i < holes; i++) {
+    const found = text.indexOf(literals[i], at);
+    if (found < 0 || found + literals[i].length > end) return unknown();
+    values.push(text.slice(at, found));
+    at = found + literals[i].length;
+  }
+  values.push(text.slice(at, end));
+  return values;
 }
 
 // Поля одного текста с жёлтыми местами: оставшиеся «[…]» — вписать, заполненные — сверить с заготовкой.
@@ -354,7 +368,8 @@ export function applyField(p: Purchase, key: string, value: string): Partial<Pur
 }
 
 // Итоговая проверка перед скачиванием — ни одного пустого обязательного поля. Документы заказчика — пункты
-// «Что подать» с отметкой «готово». Подпись сервис не ставит: комплект готов, когда осталось только подписать.
+// «Что подать» с отметкой «готово»; только те, что держат подачу: площадка передаст сама, «не требуется» и «по желанию»
+// отметки не ждут (lib/fulfillment.ts). Подпись сервис не ставит: комплект готов, когда осталось только подписать.
 export type Completeness = {
   fields: { required: number; filled: number; empty: number; invalid: number };
   documents: { required: number; ready: number };
@@ -370,13 +385,13 @@ const count = (n: number, one: string, few: string, many: string) => {
   return `${n} ${a > 10 && a < 20 ? many : b === 1 ? one : b >= 2 && b <= 4 ? few : many}`;
 };
 
-export function completeness(p: Purchase, fields: ApplicationField[]): Completeness {
+export function completeness(p: Purchase, fields: ApplicationField[], profile?: Profile): Completeness {
   const need = fields.filter((f) => f.required && f.kind !== "sign" && f.kind !== "confirm");
   const confirms = fields.filter((f) => f.required && f.kind === "confirm");
   const filled = need.filter((f) => f.status === "filled").length;
   const invalid = fields.filter((f) => f.status === "invalid").length;
   const empty = need.filter((f) => f.status === "needs_input").length;
-  const docs = p.requirements.submit;
+  const docs = requiredItems(p, profile);
   const ready = docs.filter((d) => (p.submitReady ?? []).includes(d.text)).length;
   const done = confirms.filter((f) => f.status === "filled").length;
   const signs = fields.filter((f) => f.kind === "sign").length;

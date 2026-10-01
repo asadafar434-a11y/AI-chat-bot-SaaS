@@ -35,6 +35,13 @@ export function ChatAssistant({
   const [seen, setSeen] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const fab = useRef<HTMLButtonElement>(null);
+
+  // Закрытый чат возвращает фокус на кнопку, откуда его открыли: с клавиатуры иначе пришлось бы искать место заново.
+  const closeChat = () => {
+    setOpen(false);
+    fab.current?.focus();
+  };
 
   const busy = chat.status !== 'idle';
   const last = chat.messages.at(-1);
@@ -69,6 +76,7 @@ export function ChatAssistant({
           </span>
         )}
         <button
+          ref={fab}
           onClick={() => setOpen(!open)}
           className={cx(
             'relative flex size-14 items-center justify-center outline-none transition-transform duration-300 ease-out hover:-translate-y-0.5 active:translate-y-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
@@ -83,7 +91,14 @@ export function ChatAssistant({
 
       {/* Panel — anchored top-right */}
       {open && (
-        <div className="animate-fade-up fixed right-4 top-4 z-40 flex h-[560px] max-h-[calc(100vh-2rem)] w-[360px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
+        <div
+          role="dialog"
+          aria-label="ИИ-ассистент"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' && !e.nativeEvent.isComposing) closeChat();
+          }}
+          className="animate-fade-up fixed right-4 top-4 z-40 flex h-[560px] max-h-[calc(100vh-2rem)] w-[360px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
+        >
           {/* Header with explicit close */}
           <div className="flex items-center gap-2.5 border-b border-border px-4 py-3">
             <BotMark className="size-8 shrink-0" />
@@ -91,13 +106,20 @@ export function ChatAssistant({
               <p className="text-sm font-semibold">ИИ-ассистент</p>
               <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">{place}</p>
             </div>
-            <IconButton label="Закрыть чат" onClick={() => setOpen(false)} side="bottom" align="end">
+            <IconButton label="Закрыть чат" onClick={closeChat} side="bottom" align="end">
               <X className="size-4" />
             </IconButton>
           </div>
 
           {/* Messages */}
-          <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+          <div
+            ref={scrollRef}
+            role="log"
+            aria-live="polite"
+            aria-label="Переписка с ИИ-ассистентом"
+            tabIndex={0}
+            className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          >
             {chat.messages.length === 0 && (
               <div className="flex items-end justify-start gap-2">
                 <BotMark className="size-6 shrink-0" />
@@ -248,6 +270,7 @@ export function ChatAssistant({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={chat.mode === 'purchase' ? 'Спросите про документы закупки…' : 'Задайте вопрос по закупкам…'}
+              aria-label="Вопрос ИИ-ассистенту"
               className="h-9 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-foreground focus:ring-2 focus:ring-ring/20"
             />
             {chat.status === 'streaming' || chat.status === 'waiting' ? (

@@ -3,20 +3,16 @@ import { plural } from "@/lib/plural";
 import { titleOf, type Purchase } from "@/lib/purchase";
 import type { ReqItem } from "@/lib/requirements";
 import { fieldsOf } from "@/lib/fields";
-import { EMPTY_PROFILE } from "@/lib/profile";
+import { contextOf, holdsSubmission, ruleOf } from "@/lib/fulfillment";
+import { EMPTY_PROFILE, type Profile } from "@/lib/profile";
 import { PART_TITLES, partsOf, type TpPart } from "@/lib/tp-parts";
 
 // Документы заявки. Состав заявки у каждой закупки свой — его задаёт заказчик в «Что подать». Часть файлов пишет
 // приложение: ТП, анкету (кроме 44-ФЗ — там сведения об участнике передаёт площадка), декларацию, цену, сведения
 // об опыте и о специалистах. Остальное — выписки, лицензии, обеспечение — участник собирает сам и отмечает, что готово.
 
-// Короткий отпечаток данных: по нему видно, что часть заявки составлена из тех же реквизитов, цены и образцов.
-export function fingerprint(value: unknown): string {
-  const text = JSON.stringify(value);
-  let hash = 5381;
-  for (let i = 0; i < text.length; i++) hash = (hash * 33 + text.charCodeAt(i)) | 0;
-  return (hash >>> 0).toString(36);
-}
+// Короткий отпечаток данных — lib/fingerprint.ts; здесь он нужен давно, поэтому остаётся доступным и отсюда.
+export { fingerprint } from "@/lib/fingerprint";
 
 export type FileRow = { part: TpPart; title: string; sub: string; badge: BadgeInfo; action: "download" | "compose" };
 
@@ -84,11 +80,39 @@ export function fileRows(p: Purchase, state: FilesState): FileRow[] {
 }
 
 // Что требует заказчик — пункты «Что подать» из требований; готовые участник отмечает сам. Пункт узнаётся по тексту:
-// требования выписали заново — отметки остаются у тех пунктов, что не изменились.
-export type SubmitItem = ReqItem & { ready: boolean };
+// требования выписали заново — отметки остаются у тех пунктов, что не изменились (и у тех, что ИИ переписал на той же цитате).
+// required — пункт держит подачу; у остальных (площадка передаст, «не требуется», «по желанию») note объясняет, почему не держит.
+export type SubmitItem = ReqItem & { ready: boolean; required: boolean; note?: string };
 
-export const submitItems = (p: Purchase): SubmitItem[] =>
-  p.requirements.submit.map((item) => ({ ...item, ready: (p.submitReady ?? []).includes(item.text) }));
+export function submitItems(p: Purchase, profile?: Profile): SubmitItem[] {
+  const ctx = contextOf(p, profile);
+  return p.requirements.submit.map((item) => {
+    const plan = ruleOf(item, ctx).plan;
+    const required = holdsSubmission(plan);
+    return { ...item, ready: (p.submitReady ?? []).includes(item.text), required, ...(!required && { note: plan.todo }) };
+  });
+}
+
+const normalized = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+
+// Одна и та же цитата из документов: слово в слово или одна целиком внутри другой (не короче 40 знаков — иначе совпадёт случайно).
+function sameQuote(a: string, b: string): boolean {
+  const x = normalized(a);
+  const y = normalized(b);
+  if (!x || !y) return false;
+  if (x === y) return true;
+  const [short, long] = x.length <= y.length ? [x, y] : [y, x];
+  return short.length >= 40 && long.includes(short);
+}
+
+// Требования выписаны заново — документов стало больше. ИИ при этом нередко переписывает пункт другими словами, и отметка
+// «готово» по тексту пропала бы. Отметка остаётся у пункта с тем же текстом и у пункта на той же цитате из документов.
+// Отметок у пунктов, которых больше нет, не остаётся.
+export function carryReady(before: ReqItem[], ready: string[], after: ReqItem[]): string[] {
+  const marked = new Set(ready);
+  const was = before.filter((item) => marked.has(item.text));
+  return [...new Set(after.filter((item) => marked.has(item.text) || was.some((old) => sameQuote(old.quote, item.quote))).map((item) => item.text))];
+}
 
 export function toggleReady(p: Purchase, text: string): string[] {
   const ready = new Set(p.submitReady ?? []);

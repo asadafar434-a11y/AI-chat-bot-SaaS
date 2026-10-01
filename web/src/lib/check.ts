@@ -1,4 +1,5 @@
 import * as z from "zod/v4";
+import { fingerprint } from "@/lib/fingerprint";
 import { plural } from "@/lib/plural";
 
 const FindingSchema = z.object({
@@ -32,7 +33,23 @@ export type CheckResult = CheckResponse & { files: string[]; docsKey: string; ch
 export const checkInputKey = (files: { name: string; size: number; lastModified: number }[], docsKey: string) =>
   JSON.stringify([docsKey, ...files.map((f) => [f.name, f.size, f.lastModified])]);
 
+// Прежний отпечаток — только имена файлов: сохранённые проверки помнят именно его.
 export const docsKeyOf = (files: string[]) => files.join("\n");
+
+// Отпечаток документов закупки: имя и содержимое каждого. Документ заменили более новой версией с тем же именем — отпечаток
+// другой, и проверка по старой версии не считается актуальной (по одним именам файлов этого не видно). Порядок файлов
+// не важен: добавка того же файла переставляет его в конец, а документы остались те же.
+export const docsKeyOfDocuments = (documents: { name: string; text: string }[]) =>
+  documents
+    .map((d) => `${d.name}\t${fingerprint(d.text)}`)
+    .sort()
+    .join("\n");
+
+// Проверка сделана по этим же документам? У проверок, сохранённых раньше, отпечаток — одни имена: их сравниваем по именам.
+export function sameDocuments(savedKey: string, documents: { name: string; text: string }[]): boolean {
+  const legacy = !savedKey.includes("\t");
+  return savedKey === (legacy ? docsKeyOf(documents.map((d) => d.name)) : docsKeyOfDocuments(documents));
+}
 
 // Заявка и документы закупки вместе не должны раздуть запрос: заявка обычно в разы короче ТЗ.
 export const APPLICATION_LIMIT = 200_000;

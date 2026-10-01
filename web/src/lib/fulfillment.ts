@@ -416,6 +416,17 @@ export function contextOf(p: Purchase, profile?: Profile): PlanContext {
   };
 }
 
+// Пункт держит подачу, если без отметки участника заявку подавать нельзя. Площадка передаст сама, «не требуется»,
+// баллы и «по желанию» отметки не ждут — иначе участник отмечал бы «готово» то, что приложение само называет лишним.
+export const holdsSubmission = (plan: Pick<RulePlan, "mandatory" | "blocks">) => plan.mandatory && plan.blocks;
+
+// Пункты «Что подать», которые держат подачу. profile — по нему узнаём ИП (у него нет устава) или организацию;
+// без реквизитов пункты, зависящие от участника, считаются нужными: лишний раз приложить безопаснее, чем не приложить.
+export const requiredItems = (p: Purchase, profile?: Profile): ReqItem[] => {
+  const ctx = contextOf(p, profile);
+  return p.requirements.submit.filter((item) => holdsSubmission(ruleOf(item, ctx).plan));
+};
+
 // Состояние документа, который составляет приложение: есть ли в нём пустые, ошибочные и неподтверждённые поля.
 export function partStateOf(fields: ApplicationField[], part: TpPart): "done" | "confirm" | "todo" {
   const own = fields.filter((f) => f.part === part);
