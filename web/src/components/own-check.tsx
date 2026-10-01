@@ -13,7 +13,7 @@ import { checkCounts, checkInputKey, docsKeyOfDocuments, sameDocuments, type Che
 import { sampleCheck } from "@/lib/check-sample";
 import { plural } from "@/lib/plural";
 import { aiHeaders } from "@/lib/purchase";
-import { ACCEPTED_FILES, readDocuments } from "@/lib/read-documents";
+import { ACCEPTED_FILES, forServer, readDocuments } from "@/lib/read-documents";
 
 const WORKING_STEPS = [
   "Читаю заявку…",
@@ -150,7 +150,7 @@ export function OwnCheck() {
         const res = await fetch("/api/check", {
           method: "POST",
           headers: aiHeaders(purchase.id),
-          body: JSON.stringify({ documents, application }),
+          body: JSON.stringify({ documents: forServer(documents), application: forServer(application) }),
         });
         if (!res.ok) throw new Error((await res.text()) || "Не удалось проверить заявку.");
         const body: CheckResponse = await res.json();

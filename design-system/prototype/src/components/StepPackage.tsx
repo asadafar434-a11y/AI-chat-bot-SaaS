@@ -126,7 +126,8 @@ function FileRow({
 }
 
 // Пункт «Что требует заказчик»: отметка «готово» и откуда взят пункт.
-function ChecklistItem({ item, onToggle }: { item: SubmitItem; onToggle: () => void }) {
+// where — где в файлах закупки стоит цитата: файл, страница, таблица, пункт (lib/doc-locate.ts); считается, когда пункт раскрыт.
+function ChecklistItem({ item, onToggle, whereOf }: { item: SubmitItem; onToggle: () => void; whereOf?: (quote: string) => string | undefined }) {
   const [open, setOpen] = useState(false);
   return (
     <li className="border-b border-border px-4 py-3 last:border-0">
@@ -144,7 +145,12 @@ function ChecklistItem({ item, onToggle }: { item: SubmitItem; onToggle: () => v
         >
           <FileText className="size-3" /> {item.source || 'цитата из документов'}
         </button>
-        {open && <blockquote className="mt-1 rounded-md bg-secondary px-3 py-2 leading-snug text-muted-foreground">«{item.quote}»</blockquote>}
+        {open && (
+          <blockquote className="mt-1 rounded-md bg-secondary px-3 py-2 leading-snug text-muted-foreground">
+            «{item.quote}»
+            {whereOf?.(item.quote) && <span className="mt-1 block break-words text-[11px]">{whereOf(item.quote)}</span>}
+          </blockquote>
+        )}
         {!item.verified && (
           <p className="mt-1 flex items-start gap-1.5 text-warn-foreground">
             <AlertTriangle className="mt-0.5 size-3 shrink-0" />
@@ -158,12 +164,14 @@ function ChecklistItem({ item, onToggle }: { item: SubmitItem; onToggle: () => v
 
 export function StepPackage({
   hasTp,
+  notice,
   format,
   onFormat,
   final,
   rows,
   count,
   items,
+  whereOf,
   downloading,
   writing,
   busy,
@@ -178,6 +186,8 @@ export function StepPackage({
   onBack,
 }: {
   hasTp: boolean;
+  // Блок под заголовком шага — например, «документы закупки изменились».
+  notice?: ReactNode;
   // Формат файлов: один на все скачивания на этом шаге.
   format: FileFormat;
   onFormat: (format: FileFormat) => void;
@@ -185,6 +195,8 @@ export function StepPackage({
   rows: PackageRow[];
   count: number;
   items: SubmitItem[];
+  // Где в файлах закупки стоит цитата пункта: файл, страница, таблица, пункт. Не задана — адреса не показываем.
+  whereOf?: (quote: string) => string | undefined;
   downloading: Downloading;
   writing: TpPart | null;
   busy: boolean;
@@ -232,6 +244,8 @@ export function StepPackage({
           электронной подписью и подайте на площадке.
         </p>
       </div>
+
+      {notice}
 
       {!hasTp ? (
         <Card className="flex flex-wrap items-center justify-between gap-3 border-warn/40 bg-warn-surface/30 p-4">
@@ -379,7 +393,7 @@ export function StepPackage({
             ) : (
               <ul>
                 {items.map((item, i) => (
-                  <ChecklistItem key={`${i}:${item.text}`} item={item} onToggle={() => onToggleReady(item.text)} />
+                  <ChecklistItem key={`${i}:${item.text}`} item={item} onToggle={() => onToggleReady(item.text)} whereOf={whereOf} />
                 ))}
               </ul>
             )}

@@ -2,7 +2,7 @@ import { appIdOf } from "@/lib/ai-guard";
 import { claudeErrorText, NO_KEY_TEXT } from "@/lib/claude-errors";
 import { askJson, ModelStop } from "@/lib/claude-request";
 import { MAX_CONTEXT_CHARS } from "@/lib/chat-types";
-import { quoteFound } from "@/lib/quotes";
+import { quoteChecker } from "@/lib/quotes";
 import { RequirementsSchema, type RequirementsResponse } from "@/lib/requirements";
 import { REQ_INSTRUCTIONS } from "@/lib/requirements-prompt";
 import { badRequest, readJson, sentDocuments } from "@/lib/read-json";
@@ -36,9 +36,8 @@ export async function POST(request: Request) {
       signal: request.signal,
     });
 
-    const texts = documents.map((d) => d.text);
-    const check = <T extends { quote: string }>(items: T[]) =>
-      items.map((item) => ({ ...item, verified: quoteFound(item.quote, texts) }));
+    const found = quoteChecker(documents.map((d) => d.text));
+    const check = <T extends { quote: string }>(items: T[]) => items.map((item) => ({ ...item, verified: found(item.quote) }));
     const { who, submit, scope, terms, criteria, ...summary } = draft;
     const body: RequirementsResponse = {
       ...summary,

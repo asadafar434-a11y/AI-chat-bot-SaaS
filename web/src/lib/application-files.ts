@@ -1,3 +1,4 @@
+import { tpChanges } from "@/lib/doc-changes";
 import type { BadgeInfo } from "@/lib/home";
 import { plural } from "@/lib/plural";
 import { titleOf, type Purchase } from "@/lib/purchase";
@@ -26,10 +27,13 @@ export type FilesState = {
 };
 
 const WRITING: BadgeInfo = { tone: "calm", text: "пишу документ…" };
+// Документы закупки изменились после составления ТП: ТП и всё, что написано по его форме, участник должен проверить.
+const REVIEW: BadgeInfo = { tone: "warn", text: "требует проверки", icon: "alert" };
 
 // Файлы, которые пишет приложение, — по порядку частей заявки, со статусом и тем, что сделать.
 // Документы составляются на шаге «Проверка»: пока их нет, у ТП — «Составить».
 export function fileRows(p: Purchase, state: FilesState): FileRow[] {
+  const stale = tpChanges(p) !== null;
   // Сколько полей ТП вписать или исправить — тем же счётом, что у шага «Проверка»: жёлтые места и исполнители.
   const fill = p.tp
     ? fieldsOf({ purchase: p, profile: EMPTY_PROFILE }).filter((f) => f.part === "tp" && (f.status === "needs_input" || f.status === "invalid")).length
@@ -41,9 +45,11 @@ export function fileRows(p: Purchase, state: FilesState): FileRow[] {
       sub: "первая часть заявки — без названия и реквизитов участника",
       badge: !p.tp
         ? { tone: "calm", text: "не составлено" }
-        : fill
-          ? { tone: "warn", text: `впишите ${fill} ${plural(fill, "поле", "поля", "полей")}`, icon: "pen" }
-          : { tone: "ok", text: "готово", icon: "check" },
+        : stale
+          ? REVIEW
+          : fill
+            ? { tone: "warn", text: `впишите ${fill} ${plural(fill, "поле", "поля", "полей")}`, icon: "pen" }
+            : { tone: "ok", text: "готово", icon: "check" },
       action: p.tp ? "download" : "compose",
     },
   ];
@@ -51,7 +57,7 @@ export function fileRows(p: Purchase, state: FilesState): FileRow[] {
 
   for (const part of partsOf(p.tp.form, p.criteria, p.kind).filter((x) => x !== "tp")) {
     const row = (sub: string, badge: BadgeInfo) =>
-      rows.push({ part, title: PART_TITLES[part], sub, badge: state.writing === part ? WRITING : badge, action: "download" });
+      rows.push({ part, title: PART_TITLES[part], sub, badge: state.writing === part ? WRITING : stale ? REVIEW : badge, action: "download" });
     if (p.sample) {
       row("в примере — по стандартному шаблону", { tone: "calm", text: "пример" });
     } else if (part === "experience" || part === "staff") {

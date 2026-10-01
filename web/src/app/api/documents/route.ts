@@ -71,6 +71,8 @@ export async function POST(request: Request) {
         chars: result.text.length,
         text: result.text,
         ...(result.scan && { scan: true }),
+        // Откуда в файле каждый кусок текста — страница, таблица, строка, лист (lib/doc-source.ts); сервер её не хранит.
+        ...(result.map && { map: result.map }),
       });
     }
   }

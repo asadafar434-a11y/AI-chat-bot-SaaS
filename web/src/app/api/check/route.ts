@@ -5,7 +5,7 @@ import { askJson, ModelStop } from "@/lib/claude-request";
 import { MAX_CONTEXT_CHARS } from "@/lib/chat-types";
 import { APPLICATION_LIMIT, CheckSchema, type CheckResponse } from "@/lib/check";
 import { CHECK_INSTRUCTIONS } from "@/lib/check-prompt";
-import { quoteFound } from "@/lib/quotes";
+import { quoteChecker } from "@/lib/quotes";
 import type { SentDocument } from "@/lib/read-documents";
 import { badRequest, readJson, sentDocuments } from "@/lib/read-json";
 
@@ -57,12 +57,12 @@ export async function POST(request: Request) {
     });
 
     // Цитата требования ищется в документах закупки, цитата ошибки — в самой заявке.
-    const texts = documents.map((d) => d.text);
-    const appTexts = application.map((d) => d.text);
+    const inDocuments = quoteChecker(documents.map((d) => d.text));
+    const inApplication = quoteChecker(application.map((d) => d.text));
     const findings = draft.findings.map((f) => ({
       ...f,
-      verified: !f.quote || quoteFound(f.quote, texts),
-      appVerified: !f.inApplication || quoteFound(f.inApplication, appTexts),
+      verified: !f.quote || inDocuments(f.quote),
+      appVerified: !f.inApplication || inApplication(f.inApplication),
     }));
     const body: CheckResponse = {
       findings: [...findings.filter((f) => f.kind === "bad"), ...findings.filter((f) => f.kind === "warn")],

@@ -8,9 +8,11 @@ import { Note } from "@/components/note";
 import { scrollToTop } from "@/components/page-header";
 import { usePurchase } from "@/components/purchase-provider";
 import { WorkingSteps } from "@/components/working-steps";
+import { stampsOf } from "@/lib/doc-changes";
 import { samplesOf } from "@/lib/me-store";
 import { plural } from "@/lib/plural";
 import { aiHeaders } from "@/lib/purchase";
+import { forServer } from "@/lib/read-documents";
 import { sampleTp } from "@/lib/sample-purchase";
 import type { TpResult } from "@/lib/tp";
 
@@ -44,13 +46,14 @@ export function useCompose() {
         const res = await fetch("/api/tp", {
           method: "POST",
           headers: aiHeaders(purchase.id),
-          body: JSON.stringify({ documents, samples: samples.map(({ name, text }) => ({ name, text })) }),
+          body: JSON.stringify({ documents: forServer(documents), samples: samples.map(({ name, text }) => ({ name, text })) }),
         });
         if (!res.ok) throw new Error((await res.text()) || "Не удалось составить черновик.");
         next = await res.json();
       }
       // Черновик ИИ сохраняется отдельно: по нему карта полей видит, какие жёлтые места участник уже вписал.
-      update({ tp: next, tpDraft: next });
+      // tpDocs — документы, по которым составлено ТП (lib/doc-changes.ts).
+      update({ tp: next, tpDraft: next, tpDocs: stampsOf(documents) });
       scrollToTop();
     } catch (e) {
       setError((e as Error).message);

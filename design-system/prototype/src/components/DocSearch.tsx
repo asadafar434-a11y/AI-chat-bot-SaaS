@@ -1,4 +1,5 @@
 import { useDeferredValue, useMemo, useState } from 'react';
+import { createLocator, describeLocation } from '@/lib/doc-locate';
 import { fragmentsOf, piecesOf, searchDocuments, type DocHits, type Fragment } from '@/lib/doc-search';
 import { plural } from '@/lib/plural';
 import type { SentDocument } from '@/lib/read-documents';
@@ -17,7 +18,8 @@ const FIRST = 5;
 
 const places = (n: number) => `${n} ${plural(n, 'место', 'места', 'мест')}`;
 
-function Snippet({ doc, fragment }: { doc: DocHits; fragment: Fragment }) {
+// where — где в файле стоит найденное: страница, таблица, строка, пункт (lib/doc-locate.ts).
+function Snippet({ doc, fragment, where }: { doc: DocHits; fragment: Fragment; where?: string }) {
   const [wide, setWide] = useState(false);
   const shown = wide ? fragmentsOf(doc.text, fragment.marks, WIDE)[0] : fragment;
   const cut = fragment.from > 0 || fragment.to < doc.text.length;
@@ -36,6 +38,7 @@ function Snippet({ doc, fragment }: { doc: DocHits; fragment: Fragment }) {
         )}
         {shown.to < doc.text.length && ' …'}
       </p>
+      {where && <p className="break-words text-[11px] text-muted-foreground">{where}</p>}
       {cut && (
         <button
           type="button"
@@ -50,7 +53,7 @@ function Snippet({ doc, fragment }: { doc: DocHits; fragment: Fragment }) {
   );
 }
 
-function DocResults({ doc }: { doc: DocHits }) {
+function DocResults({ doc, whereAt }: { doc: DocHits; whereAt: (name: string, pos: number) => string | undefined }) {
   const [all, setAll] = useState(false);
   const fragments = fragmentsOf(doc.text, doc.hits, NEAR);
   const shown = all ? fragments : fragments.slice(0, FIRST);
@@ -62,7 +65,7 @@ function DocResults({ doc }: { doc: DocHits }) {
       {doc.scan && <p className="text-[12px] text-warn-foreground">распознан со скана — цифры сверьте с оригиналом</p>}
       <ul className="divide-y divide-border">
         {shown.map((f) => (
-          <Snippet key={f.from} doc={doc} fragment={f} />
+          <Snippet key={f.from} doc={doc} fragment={f} where={whereAt(doc.name, f.marks[0].start)} />
         ))}
       </ul>
       {fragments.length > FIRST && (
@@ -84,6 +87,11 @@ export function DocSearch({ documents }: { documents: SentDocument[] }) {
   const [query, setQuery] = useState('');
   const deferred = useDeferredValue(query);
   const result = useMemo(() => searchDocuments(documents, deferred), [documents, deferred]);
+  const locator = useMemo(() => createLocator(documents), [documents]);
+  const whereAt = (name: string, pos: number) => {
+    const place = locator.at(name, pos);
+    return (place && describeLocation(place)) || undefined;
+  };
 
   const found = result?.docs.filter((d) => d.total > 0) ?? [];
   const total = found.reduce((n, d) => n + d.total, 0);
@@ -138,7 +146,7 @@ export function DocSearch({ documents }: { documents: SentDocument[] }) {
             )}
           </div>
           {found.map((doc) => (
-            <DocResults key={`${deferred}:${doc.name}`} doc={doc} />
+            <DocResults key={`${deferred}:${doc.name}`} doc={doc} whereAt={whereAt} />
           ))}
         </div>
       )}

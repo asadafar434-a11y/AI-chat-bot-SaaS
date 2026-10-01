@@ -30,6 +30,8 @@ export type AnalysisRow = {
   source: string;
   quote: string;
   quoteFound: boolean;
+  // Где эта цитата в файлах закупки, найденная приложением: файл, страница, таблица, пункт. Нет — не нашлась или карты нет.
+  where?: string;
   // Куда перейти, чтобы это сделать: «Проверка» — вписать поля документа, «Пакет» — приложить и отметить готовым.
   fixAt?: 'review' | 'package';
 };
@@ -161,6 +163,12 @@ export function StepAnalysis({
                         <span className="text-warn-foreground"> · цитата не найдена в документах дословно — сверьте вручную</span>
                       )}
                     </p>
+                    {doc.where && (
+                      <p className="break-words text-muted-foreground">
+                        <span className="font-medium text-foreground">Место в файле: </span>
+                        {doc.where}
+                      </p>
+                    )}
                     <div
                       className={
                         needsAttention

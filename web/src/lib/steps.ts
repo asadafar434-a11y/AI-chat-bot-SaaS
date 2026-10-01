@@ -1,4 +1,5 @@
 import { checkCounts } from "@/lib/check";
+import { tpChanges } from "@/lib/doc-changes";
 import { fieldsOf } from "@/lib/fields";
 import { requiredItems } from "@/lib/fulfillment";
 import { plural } from "@/lib/plural";
@@ -62,6 +63,8 @@ export function stepsOf(p: Purchase, profile?: Profile): Step[] {
   const asked = requiredItems(p, profile);
   const ready = asked.filter((d) => (p.submitReady ?? []).includes(d.text)).length;
   const files = p.tp ? partsOf(p.tp.form, p.criteria, p.kind).length : 0;
+  // Документы закупки изменились после составления ТП: сначала проверить, что оно актуально, потом вписывать (lib/doc-changes.ts).
+  const stale = tpChanges(p) !== null;
 
   const upload: Step = {
     key: "upload",
@@ -106,15 +109,17 @@ export function stepsOf(p: Purchase, profile?: Profile): Step[] {
     paths: [`${base}/check`],
     ...(!p.tp
       ? { state: "todo" as const, status: "не составлена", tone: "calm" as const }
-      : gaps.invalid
-        ? { state: "fix" as const, status: `исправьте ${count(gaps.invalid, "поле", "поля", "полей")}`, tone: "bad" as const }
-        : gaps.empty
-          ? { state: "fix" as const, status: `впишите ${count(gaps.empty, "поле", "поля", "полей")}`, tone: "warn" as const }
-          : bad
-            ? { state: "fix" as const, status: count(bad, "ошибка", "ошибки", "ошибок"), tone: "bad" as const }
-            : gaps.price
-              ? { state: "fix" as const, status: "нужна цена", tone: "warn" as const }
-              : { state: "done" as const, status: "заполнена", tone: "ok" as const }),
+      : stale
+        ? { state: "fix" as const, status: "документы изменились", tone: "warn" as const }
+        : gaps.invalid
+          ? { state: "fix" as const, status: `исправьте ${count(gaps.invalid, "поле", "поля", "полей")}`, tone: "bad" as const }
+          : gaps.empty
+            ? { state: "fix" as const, status: `впишите ${count(gaps.empty, "поле", "поля", "полей")}`, tone: "warn" as const }
+            : bad
+              ? { state: "fix" as const, status: count(bad, "ошибка", "ошибки", "ошибок"), tone: "bad" as const }
+              : gaps.price
+                ? { state: "fix" as const, status: "нужна цена", tone: "warn" as const }
+                : { state: "done" as const, status: "заполнена", tone: "ok" as const }),
   };
 
   const pack: Step = {

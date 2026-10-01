@@ -1,6 +1,7 @@
 // Приём файлов на сервере: битый запрос, слишком большой, слишком много файлов, частичный успех — npm test.
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { c, docx, p as para, tbl, tr } from "../../../lib/docx-fixtures.ts";
 import { MAX_FILES, MAX_REQUEST_BYTES } from "../../../lib/read-documents.ts";
 import { POST } from "./route.ts";
 
@@ -65,4 +66,15 @@ test("распознавание выключено в браузере — фо
   const { documents, failed } = await (await send([new File([new Uint8Array(100)], "фото.jpg", { type: "image/jpeg" })], { ocr: "off" })).json();
   assert.equal(documents.length, 0);
   assert.match(failed[0].reason, /распознавание сканов выключено/);
+});
+
+test("Word с таблицей: в ответе карта — откуда в файле каждый кусок текста; у простого текста карты нет", async () => {
+  const word = docx({ body: para("Техническое задание") + tbl(tr(c("Показатель"), c("Значение")), tr(c("Звук"), c("не менее 4 кВт"))) });
+  const res = await send([new File([new Uint8Array(word)], "ТЗ.docx"), new File(["Простой текст"], "заметка.txt")]);
+  const { documents } = await res.json();
+  assert.equal(documents[0].name, "ТЗ.docx");
+  assert.match(documents[0].text, /Звук \| не менее 4 кВт/);
+  const cell = documents[0].map.spans.find((s: { from: number; to: number }) => documents[0].text.slice(s.from, s.to) === "не менее 4 кВт");
+  assert.deepEqual({ table: cell.table, row: cell.row, col: cell.col }, { table: 1, row: 2, col: 2 });
+  assert.equal(documents[1].map, undefined);
 });

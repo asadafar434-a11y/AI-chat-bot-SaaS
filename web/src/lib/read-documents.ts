@@ -1,9 +1,14 @@
 import type { ChatDocument } from "@/lib/chat-types";
+import { summaryOf } from "@/lib/doc-source";
 import { errorText } from "@/lib/http-error";
 import { readScanOcr } from "./scan-setting.ts";
 
-export type SentDocument = Pick<ChatDocument, "name" | "text" | "scan">;
+export type SentDocument = Pick<ChatDocument, "name" | "text" | "scan" | "map">;
 export type FailedFile = { name: string; reason: string };
+
+// Документы для запроса к серверу: без карты (откуда какой кусок текста). Сервер её не читает, а запрос от неё заметно тяжелее.
+export const forServer = (documents: SentDocument[]): SentDocument[] =>
+  documents.map(({ name, text, scan }) => ({ name, text, ...(scan && { scan }) }));
 
 // Что можно загрузить: сканы и фото распознаёт ИИ, старый Word и RTF читаются без него.
 export const ACCEPTED_FILES = ".pdf,.docx,.doc,.rtf,.xlsx,.xlsm,.zip,.txt,.md,.jpg,.jpeg,.png";
@@ -23,6 +28,23 @@ export function fileProblem(file: { size: number }): string | null {
   if (file.size > MAX_FILE_BYTES) return `файл больше ${MAX_FILE_MB} МБ — разделите его на части или сохраните сканы с меньшим разрешением`;
   if (file.size === 0) return "файл пустой";
   return null;
+}
+
+// Что видно про файл под его названием: тип, сколько текста прочитано, страницы (у Word — по разметке самого Word), таблицы,
+// листы Excel, со скана ли.
+export function docMeta(d: SentDocument): string {
+  const ext = d.name.includes(".") ? d.name.split(".").pop()!.toUpperCase() : "";
+  const s = summaryOf(d.map);
+  return [
+    ext,
+    `${d.text.length.toLocaleString("ru-RU")} симв.`,
+    s.pages ? `${s.approx ? "≈ " : ""}${s.pages} стр.` : "",
+    s.tables ? `таблиц: ${s.tables}` : "",
+    s.sheets > 1 ? `листов: ${s.sheets}` : "",
+    d.scan ? "со скана — сверьте цифры" : "прочитан",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 // Какие файлы закупки распознаны со скана или фото: ошибка в цифре ТЗ перейдёт в требования и ТП.
@@ -55,7 +77,7 @@ async function readOne(file: File, send: Send, ocr: boolean): Promise<OneResult>
     return { documents: [], failed: [{ name: file.name, reason }] };
   }
   const { documents, failed }: { documents: ChatDocument[]; failed: FailedFile[] } = await res.json();
-  return { documents: documents.map(({ name, text, scan }) => ({ name, text, ...(scan && { scan }) })), failed };
+  return { documents: documents.map(({ name, text, scan, map }) => ({ name, text, ...(scan && { scan }), ...(map && { map }) })), failed };
 }
 
 // Текст из файлов достаёт сервер. Файлы уходят по одному: так запрос не упирается в предел размера,

@@ -72,8 +72,10 @@ export function StepReview({
   final,
   focusKey,
   warnings,
+  notice,
   before,
   after,
+  whereOf,
   onFocus,
   onSave,
   onGo,
@@ -86,11 +88,15 @@ export function StepReview({
   final: Completeness;
   // Предупреждения по заявке: утечка реквизитов в ТП, цитаты без подтверждения, сканы.
   warnings: string[];
+  // Блок под заголовком шага — например, «документы закупки изменились».
+  notice?: ReactNode;
   // Блок над списком пунктов — например, состав исполнителей.
   before?: ReactNode;
   // Блок под списком и предпросмотром — проверка своей заявки файлом.
   after?: ReactNode;
   focusKey: string | null;
+  // Где в файлах закупки стоит цитата поля: файл, страница, таблица, пункт (lib/doc-locate.ts). Нет — адреса не показываем.
+  whereOf?: (quote: string) => string | undefined;
   onFocus: (key: string | null) => void;
   // Вписать значение в жёлтое место или строку анкеты; для подтверждения значение пустое.
   onSave: (key: string, value: string) => void;
@@ -151,6 +157,8 @@ export function StepReview({
           каждого пункта видно, откуда взято значение или почему его нет.
         </p>
       </div>
+
+      {notice}
 
       {/* Сводка: заполнение, риск — одним островом */}
       <Card className="divide-y divide-border p-0">
@@ -256,7 +264,7 @@ export function StepReview({
           )}
           {before}
           {filter === 'auto' ? (
-            <AutoList fields={fields.filter((f) => f.kind === 'auto' && f.status === 'filled')} />
+            <AutoList fields={fields.filter((f) => f.kind === 'auto' && f.status === 'filled')} whereOf={whereOf} />
           ) : filter === 'sign' ? (
             <SignRow />
           ) : (
@@ -269,6 +277,7 @@ export function StepReview({
                     key={f.key}
                     field={f}
                     purchase={purchase}
+                    whereOf={whereOf}
                     expanded={focusKey === f.key}
                     onToggle={() => onFocus(focusKey === f.key ? null : f.key)}
                     onSave={onSave}
@@ -304,7 +313,7 @@ export function StepReview({
                   <CheckCircle2 className="size-4" /> Всё заполнено. Осталось подписать заявку электронной подписью и подать на площадке.
                 </p>
               )}
-              {filter === 'all' && <AutoList fields={fields.filter((f) => f.kind === 'auto' && f.status === 'filled')} collapsed />}
+              {filter === 'all' && <AutoList fields={fields.filter((f) => f.kind === 'auto' && f.status === 'filled')} collapsed whereOf={whereOf} />}
             </>
           )}
         </div>
@@ -365,6 +374,7 @@ function stateIcon(f: ApplicationField) {
 function FieldRow({
   field,
   purchase,
+  whereOf,
   expanded,
   onToggle,
   onSave,
@@ -374,6 +384,7 @@ function FieldRow({
 }: {
   field: ApplicationField;
   purchase: Purchase;
+  whereOf?: (quote: string) => string | undefined;
   expanded: boolean;
   onToggle: () => void;
   onSave: (key: string, value: string) => void;
@@ -412,6 +423,11 @@ function FieldRow({
           {field.source && (
             <p className="text-[11px] text-muted-foreground">
               Откуда: <span className="font-mono">{field.source}</span>
+            </p>
+          )}
+          {field.quote && whereOf?.(field.quote) && (
+            <p className="break-words text-[11px] text-muted-foreground">
+              Место в файле: <span className="font-mono">{whereOf(field.quote)}</span>
             </p>
           )}
           <Control field={field} purchase={purchase} onSave={onSave} onGo={onGo} onOpenProfile={onOpenProfile} />
@@ -534,7 +550,7 @@ function Control({
   return null;
 }
 
-function AutoList({ fields, collapsed }: { fields: ApplicationField[]; collapsed?: boolean }) {
+function AutoList({ fields, collapsed, whereOf }: { fields: ApplicationField[]; collapsed?: boolean; whereOf?: (quote: string) => string | undefined }) {
   const [open, setOpen] = useState(!collapsed);
   if (fields.length === 0) return null;
   return (
@@ -554,6 +570,7 @@ function AutoList({ fields, collapsed }: { fields: ApplicationField[]; collapsed
                 <span className="max-w-[55%] truncate text-right font-mono text-[12px]">{f.value}</span>
               </div>
               {f.source && <p className="mt-0.5 text-[11px] text-muted-foreground">Источник: {f.source}</p>}
+              {f.quote && whereOf?.(f.quote) && <p className="mt-0.5 break-words text-[11px] text-muted-foreground">Место в файле: {whereOf(f.quote)}</p>}
             </div>
           ))}
           {fields.length > 40 && <p className="px-3 py-2 text-[11px] text-muted-foreground">И ещё {fields.length - 40} — все видны в документах пакета.</p>}

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
-import { checkCounts, checkInputKey, checkSummary, docsKeyOfDocuments, sameDocuments, type CheckFinding, type CheckResponse, type CheckResult } from '@/lib/check';
+import { checkCounts, checkInputKey, checkSummary, docsKeyOfDocuments, sameDocuments, withApplicationPlaces, type CheckFinding, type CheckResponse, type CheckResult } from '@/lib/check';
+import { createLocator, describeSource } from '@/lib/doc-locate';
 import { sampleCheck } from '@/lib/check-sample';
 import { errorMessage, errorText } from '@/lib/http-error';
 import { plural } from '@/lib/plural';
 import { aiHeaders } from '@/lib/purchase';
-import { ACCEPTED_FILES, readDocuments } from '@/lib/read-documents';
+import { ACCEPTED_FILES, forServer, readDocuments } from '@/lib/read-documents';
 import { AlertTriangle, Check, ChevronDown, FileText, ListChecks, Loader2, Upload, X } from '../lib/icons';
 import { usePurchase } from '../real/purchase-provider';
 import { Badge, Button, Card, cx } from './ui';
@@ -38,7 +39,8 @@ function Working() {
   );
 }
 
-function Finding({ finding: f, open, onToggle }: { finding: CheckFinding; open: boolean; onToggle: () => void }) {
+// where — где в документах закупки стоит цитата требования: файл, страница, таблица, пункт (lib/doc-locate.ts).
+function Finding({ finding: f, open, onToggle, where }: { finding: CheckFinding; open: boolean; onToggle: () => void; where?: string }) {
   const bad = f.kind === 'bad';
   return (
     <li className="grid grid-cols-[24px_minmax(0,1fr)] gap-2.5 py-3">
@@ -72,11 +74,13 @@ function Finding({ finding: f, open, onToggle }: { finding: CheckFinding; open: 
             {f.quote && (
               <blockquote className="rounded-md bg-secondary px-3 py-2 text-muted-foreground">
                 <span className="font-medium">В документах закупки: </span>«{f.quote}»
+                {where && <span className="mt-1 block break-words text-[11px]">{where}</span>}
               </blockquote>
             )}
             {f.inApplication && (
               <blockquote className="rounded-md bg-secondary px-3 py-2 text-muted-foreground">
                 <span className="font-medium">В заявке: </span>«{f.inApplication}»
+                {f.inApplicationAt && <span className="mt-1 block break-words text-[11px]">{f.inApplicationAt}</span>}
               </blockquote>
             )}
           </div>
@@ -149,6 +153,11 @@ export function OwnCheck() {
   // Отпечаток документов закупки — по содержимому, а не по именам: заменили файл новой версией с тем же именем — проверка устарела.
   const docsKey = useMemo(() => docsKeyOfDocuments(documents), [documents]);
   const docsChanged = useMemo(() => !!check && !sameDocuments(check.docsKey, documents), [check, documents]);
+  const locator = useMemo(() => createLocator(documents), [documents]);
+  const whereOf = (quote: string) => {
+    const place = quote ? locator.locate(quote) : null;
+    return place ? describeSource(place) : undefined;
+  };
 
   async function run(files: File[]) {
     setWorking(true);
@@ -170,10 +179,10 @@ export function OwnCheck() {
         const res = await fetch('/api/check', {
           method: 'POST',
           headers: aiHeaders(purchase.id),
-          body: JSON.stringify({ documents, application }),
+          body: JSON.stringify({ documents: forServer(documents), application: forServer(application) }),
         });
         if (!res.ok) throw new Error(await errorText(res, 'Не удалось проверить заявку.'));
-        const body: CheckResponse = await res.json();
+        const body: CheckResponse = withApplicationPlaces(await res.json(), application);
         result = { ...body, files: application.map((d) => d.name), docsKey, checkedAt: new Date().toISOString(), inputKey };
         if (failed.length) setNotice(`Не прочитаны и не проверены: ${failed.map((f) => `${f.name} — ${f.reason}`).join('; ')}.`);
       }
@@ -286,7 +295,7 @@ export function OwnCheck() {
                 </p>
                 <ul className="divide-y divide-border">
                   {check.findings.map((f, i) => (
-                    <Finding key={i} finding={f} open={openFinding === i} onToggle={() => setOpenFinding(openFinding === i ? null : i)} />
+                    <Finding key={i} finding={f} open={openFinding === i} onToggle={() => setOpenFinding(openFinding === i ? null : i)} where={openFinding === i ? whereOf(f.quote) : undefined} />
                   ))}
                   {check.okCount > 0 && (
                     <li className="grid grid-cols-[24px_minmax(0,1fr)] items-center gap-2.5 py-3">

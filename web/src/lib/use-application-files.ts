@@ -10,7 +10,7 @@ import { evidenceOf, getProfile, listMyDocuments, samplesOf, type MyDocument } f
 import { isEvidencePart, PART_SAMPLE_KIND, type PartKey } from "@/lib/my-docs";
 import type { PartDoc } from "@/lib/part-doc";
 import { aiHeaders, type Purchase } from "@/lib/purchase";
-import type { SentDocument } from "@/lib/read-documents";
+import { forServer, type SentDocument } from "@/lib/read-documents";
 import { saveFile } from "@/lib/save-file";
 import type { TpResult } from "@/lib/tp";
 import { criteriaRowsFor, PART_TITLES, partsOf, type TpPart } from "@/lib/tp-parts";
@@ -111,7 +111,7 @@ export function useApplicationFilesOf({ purchase, documents, update }: Applicati
         headers: aiHeaders(purchase.id),
         body: JSON.stringify({
           part,
-          documents,
+          documents: forServer(documents),
           samples: partSamples(part).map(({ name, text }) => ({ name, text })),
           profile,
           price: current.form.hasPrice ? purchase.tpPrice : undefined,

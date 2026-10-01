@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
 import { castHistory, castLeaks } from '@/lib/cast';
+import { stampsOf, tpChanges } from '@/lib/doc-changes';
 import { applyField, completeness, fieldsOf } from '@/lib/fields';
 import { errorMessage, errorText } from '@/lib/http-error';
 import { samplesOf } from '@/lib/me-store';
 import { plural } from '@/lib/plural';
 import { identityValues } from '@/lib/profile';
 import { aiHeaders } from '@/lib/purchase';
-import { scanWarning } from '@/lib/read-documents';
+import { createLocator, describeSource } from '@/lib/doc-locate';
+import { forServer, scanWarning } from '@/lib/read-documents';
 import { sampleTp } from '@/lib/sample-purchase';
 import type { TpResult } from '@/lib/tp';
 import { SAMPLE_CAST_HISTORY, SAMPLE_CAST_LIST } from '@/lib/tp-sample';
@@ -14,6 +16,7 @@ import { usePurchases } from '@/lib/use-purchases';
 import { Button, Card } from '../components/ui';
 import { Loader2, AlertTriangle } from '../lib/icons';
 import { CastCard } from '../components/CastCard';
+import { DocsChanged } from '../components/DocsChanged';
 import { OwnCheck } from '../components/OwnCheck';
 import { StepReview } from '../components/StepReview';
 import { useProfile } from './analysis';
@@ -40,13 +43,14 @@ function ComposeCard({ onDone }: { onDone: () => void }) {
         const res = await fetch('/api/tp', {
           method: 'POST',
           headers: aiHeaders(purchase.id),
-          body: JSON.stringify({ documents, samples: samples.map(({ name, text }) => ({ name, text })) }),
+          body: JSON.stringify({ documents: forServer(documents), samples: samples.map(({ name, text }) => ({ name, text })) }),
         });
         if (!res.ok) throw new Error(await errorText(res, 'Не удалось составить черновик.'));
         next = await res.json();
       }
       // Черновик ИИ хранится отдельно: по нему карта полей видит, какие жёлтые места участник уже вписал.
-      update({ tp: next, tpDraft: next });
+      // tpDocs — документы, по которым составлено ТП: изменятся — ТП «требует проверки» (lib/doc-changes.ts).
+      update({ tp: next, tpDraft: next, tpDocs: stampsOf(documents) });
       onDone();
     } catch (e) {
       setError(errorMessage(e));
@@ -113,6 +117,12 @@ export function PurchaseReview({
   const my = useMyDocs();
   const [focusKey, setFocusKey] = useState<string | null>(null);
   const tp = purchase.tp;
+  // Где в файлах закупки стоят цитаты состава исполнителей (lib/doc-locate.ts).
+  const locator = useMemo(() => createLocator(documents), [documents]);
+  const whereOf = (quote: string) => {
+    const place = quote ? locator.locate(quote) : null;
+    return place ? describeSource(place) : undefined;
+  };
 
   const fields = useMemo(
     () =>
@@ -150,18 +160,24 @@ export function PurchaseReview({
   if (!purchase.tp) return <ComposeCard onDone={() => window.scrollTo({ top: 0 })} />;
   if (!my.ready) return <p className="text-sm text-muted-foreground">Сверяю документы с реквизитами…</p>;
 
+  // Документы закупки изменились после составления ТП — участник проверяет и подтверждает (подтвердил: документы те же).
+  const changes = tpChanges(purchase);
+
   return (
     <StepReview
       purchase={purchase}
       fields={fields}
       final={final}
       warnings={warnings}
+      notice={changes && <DocsChanged changes={changes} onConfirm={() => update({ tpDocs: purchase.docs })} />}
+      whereOf={whereOf}
       before={
         tp?.cast ? (
           <CastCard
             cast={tp.cast}
             history={[...castHistory(purchases ?? [], purchase.id), ...(purchase.sample ? SAMPLE_CAST_HISTORY : [])]}
             sample={purchase.sample ? SAMPLE_CAST_LIST : undefined}
+            whereOf={whereOf}
             onChange={(cast) => update({ tp: { ...tp, cast } })}
           />
         ) : undefined

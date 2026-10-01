@@ -1,10 +1,11 @@
 import type { ChatMessage } from "@/lib/chat-types";
+import type { DocStamp } from "@/lib/doc-changes";
 import { errorText } from "@/lib/http-error";
 import type { CheckResult } from "@/lib/check";
 import type { PartKey } from "@/lib/my-docs";
 import type { PartDoc } from "@/lib/part-doc";
 import type { PriceCalc } from "@/lib/price-floor";
-import type { FailedFile, SentDocument } from "@/lib/read-documents";
+import { forServer, type FailedFile, type SentDocument } from "@/lib/read-documents";
 import type { Criteria } from "@/lib/criteria";
 import type { PurchaseSummary, ReqGroups, RequirementsResponse } from "@/lib/requirements";
 import type { TpResult } from "@/lib/tp";
@@ -22,6 +23,10 @@ export type Purchase = PurchaseSummary & {
   files: string[];
   // Какие из файлов распознаны со скана. Хранится рядом с закупкой, чтобы главная не читала тексты документов.
   scans?: string[];
+  // Документы закупки сейчас: имя и отпечаток содержимого каждого. Пишется при каждом сохранении документов.
+  docs?: DocStamp[];
+  // Документы, по которым составлено ТП. Не совпали с docs — ТП «требует проверки» (lib/doc-changes.ts), пока участник не подтвердит.
+  tpDocs?: DocStamp[];
   unreadable: FailedFile[];
   requirements: ReqGroups;
   // Критерии оценки заявок. Закупки, выписанные до них, критериев не имеют — их покажет повторный разбор.
@@ -58,7 +63,7 @@ export async function extractRequirements(documents: SentDocument[], purchaseId?
   const res = await fetch("/api/requirements", {
     method: "POST",
     headers: aiHeaders(purchaseId),
-    body: JSON.stringify({ documents }),
+    body: JSON.stringify({ documents: forServer(documents) }),
   });
   if (!res.ok) throw new Error(await errorText(res, "Не удалось выписать требования."));
   return res.json();

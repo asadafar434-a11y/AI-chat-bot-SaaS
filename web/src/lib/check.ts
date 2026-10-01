@@ -1,4 +1,5 @@
 import * as z from "zod/v4";
+import { createLocator, describeSource, type LocatableDoc } from "@/lib/doc-locate";
 import { fingerprint } from "@/lib/fingerprint";
 import { plural } from "@/lib/plural";
 
@@ -20,9 +21,22 @@ export const CheckSchema = z.object({
   okCount: z.number().int().describe("Сколько проверенных требований заявка выполняет без замечаний"),
 });
 
-// verified — цитата требования нашлась в документах закупки, appVerified — цитата заявки нашлась в заявке.
-export type CheckFinding = z.infer<typeof FindingSchema> & { verified: boolean; appVerified: boolean };
+// verified — цитата требования нашлась в документах закупки, appVerified — цитата заявки нашлась в заявке,
+// inApplicationAt — где в файле заявки стоит эта цитата, например «Заявка.docx» — стр. 3, таблица 1, строка 2.
+export type CheckFinding = z.infer<typeof FindingSchema> & { verified: boolean; appVerified: boolean; inApplicationAt?: string };
 export type CheckResponse = { findings: CheckFinding[]; okCount: number };
+
+// Место цитаты из заявки узнаём сразу, пока тексты загруженных файлов заявки в руках: потом их в закупке уже нет.
+export function withApplicationPlaces(response: CheckResponse, application: LocatableDoc[]): CheckResponse {
+  const locator = createLocator(application);
+  return {
+    ...response,
+    findings: response.findings.map((f) => {
+      const place = f.inApplication ? locator.locate(f.inApplication) : null;
+      return place ? { ...f, inApplicationAt: describeSource(place) } : f;
+    }),
+  };
+}
 
 // files — какие файлы заявки проверены; docsKey — какие документы закупки были на момент проверки;
 // inputKey — отпечаток файлов заявки и документов закупки: тот же отпечаток — та же проверка, ИИ не нужен.

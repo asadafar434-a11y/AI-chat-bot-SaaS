@@ -2,9 +2,10 @@
 // ИИ здесь нет: его ответы — готовые данные, так же как приходят из /api/requirements и /api/tp; всё остальное — настоящий код.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { carryReady, submitItems, toggleReady } from "./application-files.ts";
+import { carryReady, fileRows, submitItems, toggleReady } from "./application-files.ts";
 import { docsKeyOf, docsKeyOfDocuments, sameDocuments } from "./check.ts";
 import { nextHref, progressOf, statusOf } from "./dashboard.ts";
+import { stampsOf, tpChanges } from "./doc-changes.ts";
 import { applyField, completeness, fieldQueue, fieldsOf } from "./fields.ts";
 import { fulfillmentOf, holdsSubmission, requiredItems } from "./fulfillment.ts";
 import { EMPTY_PROFILE, type Profile } from "./profile.ts";
@@ -221,9 +222,73 @@ test("изменение документации: проверка заявки
   assert.equal(sameDocuments(legacy, [...docs, { name: "Разъяснения.pdf", text: "…" }]), false);
 });
 
-// Не реализовано: ТП и части заявки не помнят, по каким документам составлены. Проверка своей заявки помнит (docsKey), и после
-// замены ТЗ ей говорят «проверьте заново»; составленным документам этого пока не говорят.
-test.todo("изменение документации помечает составленные ТП и части заявки как «требует проверки»");
+const FILES = { missing: 0, evidence: { experience: 0, staff: 0 }, writing: null };
+const REVIEW = "требует проверки";
+
+test("изменение документации помечает составленные ТП и части заявки «требует проверки»; пока участник не подтвердит — не готово", () => {
+  const docs = [
+    { name: "Извещение.pdf", text: "Срок подачи — 10 октября" },
+    { name: "ТЗ.docx", text: "Зал не менее 150 мест" },
+  ];
+  // Закупка готова к подаче: всё вписано, цена выбрана, документ заказчика отмечен; ТП составлено по этим документам.
+  const base = filled([CERT], { submitReady: [CERT.text], docs: stampsOf(docs), tpDocs: stampsOf(docs) });
+  assert.equal(tpChanges(base), null);
+  assert.equal(statusOf(base, stepsOf(base, ORG)), "ready");
+  assert.ok(!check(base, ORG).blocking.some((b) => /документы закупки изменились/.test(b)));
+
+  // Заказчик выпустил изменения: добавили файл, а ТЗ выложили новой версией под тем же именем. Закупка сохранена с новыми документами.
+  const newDocs = [docs[0], { name: "ТЗ.docx", text: "Зал не менее 200 мест" }, { name: "Изменения.pdf", text: "Площадка — не менее 200 мест" }];
+  const changed = { ...base, docs: stampsOf(newDocs) };
+  assert.deepEqual(tpChanges(changed), { added: ["Изменения.pdf"], removed: [], changed: ["ТЗ.docx"] });
+  const steps = stepsOf(changed, ORG);
+  assert.deepEqual([steps[3].state, steps[3].status, steps[3].tone], ["fix", "документы изменились", "warn"]);
+  assert.equal(steps[4].state, "todo", "«Пакет» не говорит «можно подавать»");
+  assert.equal(statusOf(changed, steps), "progress", "в списке — «В работе», а не «Готовы»");
+  assert.ok(progressOf(steps) < 100);
+  const gate = check(changed, ORG);
+  assert.equal(gate.ready, false);
+  assert.match(gate.text, /документы закупки изменились после составления ТП/);
+  // Ручные правки ТП пометка не трогает: проверять нужно, а не терять.
+  assert.equal(changed.tp?.items[0].offer, base.tp?.items[0].offer);
+
+  // Участник проверил и подтвердил: снимок ТП стал равен снимку закупки — пометка снята, закупка снова готова.
+  const confirmed = { ...changed, tpDocs: changed.docs };
+  assert.equal(tpChanges(confirmed), null);
+  assert.equal(statusOf(confirmed, stepsOf(confirmed, ORG)), "ready");
+  assert.ok(!check(confirmed, ORG).blocking.some((b) => /документы закупки изменились/.test(b)));
+  // И снова: изменили ещё раз после подтверждения — пометка возвращается.
+  const again = { ...confirmed, docs: stampsOf([...newDocs, { name: "Разъяснения.pdf", text: "…" }]) };
+  assert.deepEqual(tpChanges(again)?.added, ["Разъяснения.pdf"]);
+
+  // Неизвестно, по каким документам составлено ТП (закупка старая), и ТП ещё нет — не тревожим.
+  assert.equal(tpChanges({ ...changed, tpDocs: undefined }), null);
+  assert.equal(tpChanges({ ...changed, docs: undefined }), null);
+  assert.equal(tpChanges({ ...changed, tp: undefined }), null);
+  assert.equal(stepsOf({ ...changed, tp: undefined }, ORG)[3].status, "не составлена");
+});
+
+test("пометка «требует проверки» стоит и у ТП, и у частей заявки, которые написаны по его форме", () => {
+  const form = { ...PLAIN_FORM, hasPrice: true, participantFields: ["Контактное лицо по договору"], smeDeclaration: "[наименование участника] — [категория]." };
+  const docs = [{ name: "ТЗ.docx", text: "Зал не менее 150 мест" }];
+  const p = filled([CERT], {
+    kind: "223-ФЗ · запрос котировок в электронной форме",
+    tp: tpWith("Зал на 180 мест.", form),
+    docs: stampsOf(docs),
+    tpDocs: stampsOf(docs),
+  });
+  const fresh = fileRows(p, FILES);
+  assert.ok(fresh.length > 1, "кроме ТП есть части заявки");
+  assert.ok(fresh.every((r) => r.badge.text !== REVIEW));
+
+  const stale = fileRows({ ...p, docs: stampsOf([{ name: "ТЗ.docx", text: "Зал не менее 200 мест" }]) }, FILES);
+  assert.deepEqual(stale.map((r) => r.part), fresh.map((r) => r.part));
+  assert.ok(stale.every((r) => r.badge.text === REVIEW && r.badge.tone === "warn"), stale.map((r) => r.badge.text).join(", "));
+  // Что писать, как скачивать и какая подпись под строкой — прежнее: пометка только предупреждает, ничего не отнимает.
+  assert.deepEqual(stale.map((r) => [r.part, r.title, r.action]), fresh.map((r) => [r.part, r.title, r.action]));
+  // Часть, которую сейчас пишет ИИ, остаётся «пишу документ…»: это важнее.
+  const writing = fileRows({ ...p, docs: stampsOf([{ name: "ТЗ.docx", text: "другое" }]) }, { ...FILES, writing: "declaration" });
+  assert.equal(writing.find((r) => r.part === "declaration")?.badge.text, "пишу документ…");
+});
 
 test("статус закупки считается из самой закупки: черновик → в работе → готова → подана; «подана» снимается", () => {
   const draft = purchase({ requirements: { who: [], submit: [CERT], scope: [], terms: [] } });

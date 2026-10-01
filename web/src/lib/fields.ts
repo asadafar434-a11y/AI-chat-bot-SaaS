@@ -1,4 +1,5 @@
 import { castCheck } from "@/lib/cast";
+import { tpChanges } from "@/lib/doc-changes";
 import { requiredItems } from "@/lib/fulfillment";
 import { ANKETA, anketaExtraRows, type Profile, type ProfileKey } from "@/lib/profile";
 import type { Purchase } from "@/lib/purchase";
@@ -35,6 +36,8 @@ export type ApplicationField = {
   problem?: string;
   // Где стоит поле — пункт ТЗ, товар, строка анкеты.
   context?: string;
+  // Цитата из документов закупки, по которой написано поле (у строк ТП): по ней находится место в файле — страница, таблица, строка.
+  quote?: string;
 };
 
 export type FieldsInput = {
@@ -86,7 +89,7 @@ export function filledValues(template: string, text: string): (string | null)[] 
 
 // Поля одного текста с жёлтыми местами: оставшиеся «[…]» — вписать, заполненные — сверить с заготовкой.
 function textFields(
-  base: { key: string; doc: string; part: TpPart; context: string; source: string },
+  base: { key: string; doc: string; part: TpPart; context: string; source: string; quote?: string },
   text: string,
   template: string | undefined
 ): ApplicationField[] {
@@ -184,7 +187,7 @@ export function fieldsOf({ purchase: p, profile, profileSources = {}, evidence =
     tp.goods.forEach((g, i) =>
       out.push(
         ...textFields(
-          { key: `tp:good:${i}`, doc, part: "tp", context: g.name, source: g.source || "ТЗ" },
+          { key: `tp:good:${i}`, doc, part: "tp", context: g.name, source: g.source || "ТЗ", quote: g.quote },
           g.characteristics,
           draft?.goods[i]?.characteristics
         )
@@ -193,7 +196,7 @@ export function fieldsOf({ purchase: p, profile, profileSources = {}, evidence =
     tp.items.forEach((it, i) =>
       out.push(
         ...textFields(
-          { key: `tp:item:${i}`, doc, part: "tp", context: it.topic, source: it.clause ? `ТЗ, п. ${it.clause}` : "ТЗ" },
+          { key: `tp:item:${i}`, doc, part: "tp", context: it.topic, source: it.clause ? `ТЗ, п. ${it.clause}` : "ТЗ", quote: it.quote },
           it.offer,
           draft?.items[i]?.offer
         )
@@ -398,6 +401,7 @@ export function completeness(p: Purchase, fields: ApplicationField[], profile?: 
 
   const blocking = [
     ...(!p.tp ? ["документы заявки ещё не составлены"] : []),
+    ...(tpChanges(p) ? ["документы закупки изменились после составления ТП — проверьте, что оно актуально"] : []),
     ...(empty ? [`не заполнено обязательных полей: ${empty}`] : []),
     ...(invalid ? [`с ошибкой: ${count(invalid, "поле", "поля", "полей")}`] : []),
     ...(confirms.length - done ? [`не подтверждено: ${confirms.length - done}`] : []),

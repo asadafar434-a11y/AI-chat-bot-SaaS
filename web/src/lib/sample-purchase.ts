@@ -1,4 +1,5 @@
 import { castFromDraft } from "@/lib/cast";
+import { stampsOf } from "@/lib/doc-changes";
 import type { PriceCalc } from "@/lib/price-floor";
 import type { Purchase } from "@/lib/purchase";
 import { listPurchases, savePurchaseWithDocuments } from "@/lib/purchase-store";
@@ -146,6 +147,8 @@ export async function upgradeSample(p: Purchase): Promise<Purchase> {
       criteria: fresh.criteria,
       sampleVersion: SAMPLE_VERSION,
       tp: p.tp ? sampleTp() : undefined,
+      // Документы примера обновились вместе с ним, а ТП составлено заново по ним — пометки «требует проверки» нет.
+      tpDocs: p.tp ? stampsOf(SAMPLE_DOCUMENTS) : undefined,
     },
     SAMPLE_DOCUMENTS
   );

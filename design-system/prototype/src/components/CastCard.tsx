@@ -18,12 +18,15 @@ export function CastCard({
   history,
   sample,
   onChange,
+  whereOf,
 }: {
   cast: TpCast;
   history: CastHint[];
   // Пример списка для «Вставить пример» — только в примере закупки.
   sample?: string;
   onChange: (cast: TpCast) => void;
+  // Где в файлах закупки стоит цитата: файл, страница, таблица, пункт (lib/doc-locate.ts).
+  whereOf?: (quote: string) => string | undefined;
 }) {
   const checks = castCheck(cast);
   const todo = checks.some((c) => !c.ok);
@@ -84,7 +87,12 @@ export function CastCard({
       >
         <FileText className="size-3" /> {source}
       </button>
-      {quote === which && <blockquote className="mt-1 rounded-md bg-secondary px-3 py-2 leading-snug text-muted-foreground">«{text}»</blockquote>}
+      {quote === which && (
+        <blockquote className="mt-1 rounded-md bg-secondary px-3 py-2 leading-snug text-muted-foreground">
+          «{text}»
+          {whereOf?.(text) && <span className="mt-1 block break-words text-[11px]">{whereOf(text)}</span>}
+        </blockquote>
+      )}
       {!verified && (
         <p className="mt-1 flex items-start gap-1.5 text-warn-foreground">
           <AlertTriangle className="mt-0.5 size-3 shrink-0" />

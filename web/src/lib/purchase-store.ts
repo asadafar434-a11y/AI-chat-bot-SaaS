@@ -1,5 +1,6 @@
 import { fromStore, toStore } from "@/lib/data-format";
 import { STORES, transaction } from "@/lib/db";
+import { stampsOf } from "@/lib/doc-changes";
 import type { Purchase } from "@/lib/purchase";
 import type { SentDocument } from "@/lib/read-documents";
 
@@ -31,9 +32,10 @@ export const savePurchase = (purchase: Purchase) =>
 
 export const scansOf = (documents: SentDocument[]) => documents.filter((d) => d.scan).map((d) => d.name);
 
-// Возвращает закупку в том виде, в каком она сохранена: со списком файлов со скана.
+// Возвращает закупку в том виде, в каком она сохранена: со списком файлов со скана и снимком документов (по нему видно,
+// что изменилось с тех пор, как составили ТП).
 export async function savePurchaseWithDocuments(purchase: Purchase, documents: SentDocument[]): Promise<Purchase> {
-  const stored = { ...purchase, scans: scansOf(documents) };
+  const stored = { ...purchase, scans: scansOf(documents), docs: stampsOf(documents) };
   await transaction<void>([PURCHASES, DOCUMENTS], "readwrite", (tx) => {
     tx.objectStore(PURCHASES).put(toStore("purchase", stored));
     tx.objectStore(DOCUMENTS).put(documents.map((doc) => toStore("document", doc)), purchase.id);

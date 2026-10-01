@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { fileRows, submitItems, toggleReady } from '@/lib/application-files';
+import { tpChanges } from '@/lib/doc-changes';
+import { createLocator, describeSource } from '@/lib/doc-locate';
 import { completeness, fieldsOf } from '@/lib/fields';
 import type { FileFormat } from '@/lib/file-format';
 import type { PartDoc } from '@/lib/part-doc';
@@ -7,6 +9,7 @@ import { filledCount, PROFILE_KEYS } from '@/lib/profile';
 import { PART_TITLES, partsOf, type TpPart } from '@/lib/tp-parts';
 import { useApplicationFilesOf } from '@/lib/use-application-files';
 import { ApplicationText, MarkedText } from '../components/ApplicationPreview';
+import { DocsChanged } from '../components/DocsChanged';
 import { StepPackage, type PackagePreview, type PackageRow } from '../components/StepPackage';
 import { AlertTriangle } from '../lib/icons';
 import { useProfile } from './analysis';
@@ -87,6 +90,12 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
     [my.docs],
   );
   const fields = useMemo(() => fieldsOf({ purchase, profile, evidence }), [purchase, profile, evidence]);
+  // Где в файлах закупки стоит цитата пункта «Что требует заказчик» (lib/doc-locate.ts).
+  const locator = useMemo(() => createLocator(source.documents), [source.documents]);
+  const whereOf = (quote: string) => {
+    const place = quote ? locator.locate(quote) : null;
+    return place ? describeSource(place) : undefined;
+  };
   const final = useMemo(() => completeness(purchase, fields, profile), [purchase, fields, profile]);
 
   if (!my.ready || !files.meReady) return <p className="text-sm text-muted-foreground">Собираю пакет документов…</p>;
@@ -140,15 +149,20 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
     canRedo: row.part !== 'tp' && !purchase.sample && purchase.parts?.[row.part] !== undefined,
   }));
 
+  // Документы закупки изменились после составления ТП — участник проверяет и подтверждает, как на шаге «Проверка».
+  const changes = tpChanges(purchase);
+
   return (
     <StepPackage
       hasTp={!!tp}
+      notice={changes && <DocsChanged changes={changes} onConfirm={() => update({ tpDocs: purchase.docs })} />}
       format={format}
       onFormat={setFormat}
       final={final}
       rows={rows}
       count={tp ? partsOf(tp.form, purchase.criteria, purchase.kind).length : 1}
       items={submitItems(purchase, profile)}
+      whereOf={whereOf}
       downloading={files.downloading}
       writing={files.writing}
       busy={files.downloading !== null}

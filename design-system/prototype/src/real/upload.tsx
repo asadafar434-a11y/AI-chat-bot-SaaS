@@ -3,7 +3,7 @@ import { carryReady } from '@/lib/application-files';
 import { lawText } from '@/lib/dashboard';
 import { extractRequirements, fromRequirements, type Purchase } from '@/lib/purchase';
 import { savePurchaseWithDocuments } from '@/lib/purchase-store';
-import { readDocuments, type FailedFile, type SentDocument } from '@/lib/read-documents';
+import { docMeta, readDocuments, type FailedFile } from '@/lib/read-documents';
 import { dueLine } from '@/lib/deadline';
 import { dateText } from './tenders';
 import { errorMessage } from '@/lib/http-error';
@@ -12,11 +12,6 @@ import { DocSearch } from '../components/DocSearch';
 import { StepUpload, type Recognized, type UploadFile } from '../components/StepUpload';
 import { usePurchase } from './purchase-provider';
 
-// Что видно про файл: тип, сколько текста прочитано, со скана ли.
-const metaOf = (d: SentDocument) => {
-  const ext = d.name.includes('.') ? d.name.split('.').pop()!.toUpperCase() : '';
-  return [ext, `${d.text.length.toLocaleString('ru-RU')} симв.`, d.scan ? 'со скана — сверьте цифры' : 'прочитан'].filter(Boolean).join(' · ');
-};
 
 const failedNote = (failed: FailedFile[]) =>
   failed.length ? `Не прочитаны: ${failed.map((f) => `${f.name} — ${f.reason}`).join('; ')}.` : null;
@@ -66,7 +61,7 @@ export function NewPurchaseUpload({ onCreated }: { onCreated: (id: string) => vo
     }
   }
 
-  const files: UploadFile[] = docs.map((d) => ({ name: d.name, meta: metaOf(d), warn: Boolean(d.scan) }));
+  const files: UploadFile[] = docs.map((d) => ({ name: d.name, meta: docMeta(d), warn: Boolean(d.scan) }));
   return (
     <StepUpload
       files={files}
@@ -114,7 +109,7 @@ export function PurchaseUpload({ onNext }: { onNext: () => void }) {
   const files: UploadFile[] = [
     ...purchase.files.map((name) => {
       const doc = documents.find((d) => d.name === name);
-      return { name, meta: doc ? metaOf(doc) : 'прочитан', warn: scans.has(name) };
+      return { name, meta: doc ? docMeta(doc) : 'прочитан', warn: scans.has(name) };
     }),
     ...purchase.unreadable.map((f) => ({ name: f.name, meta: `не прочитан: ${f.reason}`, warn: true })),
   ];

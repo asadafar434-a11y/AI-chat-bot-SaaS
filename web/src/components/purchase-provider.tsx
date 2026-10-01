@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeftIcon, WarningIcon } from "@/components/icons";
 import { Note } from "@/components/note";
 import { NewerDataError } from "@/lib/data-format";
+import { stampsOf } from "@/lib/doc-changes";
 import type { Purchase } from "@/lib/purchase";
 import { deletePurchase, getDocuments, getPurchase, savePurchase, savePurchaseWithDocuments, scansOf } from "@/lib/purchase-store";
 import type { SentDocument } from "@/lib/read-documents";
@@ -51,8 +52,10 @@ export function PurchaseProvider({ id, children }: { id: string; children: React
         const stored = upgraded ?? saved;
         const documents = upgraded ? SAMPLE_DOCUMENTS : savedDocuments;
         if (cancelled) return;
-        // Список сканов у старой закупки появится с первым же сохранением.
-        const purchase = stored && { ...stored, scans: stored.scans ?? scansOf(documents) };
+        // Список сканов у старой закупки появится с первым же сохранением. Так же — снимок документов: ТП старой закупки
+        // считается составленным по ним, что изменится дальше — будет видно (lib/doc-changes.ts).
+        const docs = stored?.docs ?? stampsOf(documents);
+        const purchase = stored && { ...stored, scans: stored.scans ?? scansOf(documents), docs, ...(stored.tp && !stored.tpDocs && { tpDocs: docs }) };
         latest.current = purchase ?? null;
         setLoaded(purchase ? { status: "ready", purchase, documents } : { status: "missing" });
       },

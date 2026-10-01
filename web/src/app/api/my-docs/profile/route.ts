@@ -2,7 +2,7 @@ import { claudeErrorText, MY_DOCS_NO_KEY_TEXT } from "@/lib/claude-errors";
 import { askJson, ModelStop } from "@/lib/claude-request";
 import { PROFILE_INSTRUCTIONS, ProfileFoundSchema, SORT_SYSTEM, type FoundField, type ProfileFound } from "@/lib/my-docs";
 import type { ProfileKey } from "@/lib/profile";
-import { quoteFound } from "@/lib/quotes";
+import { quoteChecker } from "@/lib/quotes";
 import { badRequest, readJson } from "@/lib/read-json";
 
 export const maxDuration = 300;
@@ -45,10 +45,11 @@ export async function POST(request: Request) {
 
     const texts = documents.map((d) => d.text);
     const compact = texts.map((t) => t.replace(/[\s ]/g, ""));
+    const quoted = quoteChecker(texts);
     const inDocuments = (key: ProfileKey, value: string, quote = "") =>
       NUMERIC.includes(key)
         ? digits(value).length >= 9 && compact.some((t) => t.includes(digits(value)))
-        : quoteFound(quote, texts) || quoteFound(value, texts);
+        : quoted(quote) || quoted(value);
     const clean = (f: FoundField): FoundField => ({ key: f.key, value: f.value.trim(), source: f.source.trim() });
 
     const result: ProfileFound = {

@@ -27,6 +27,7 @@ before(async () => {
   mods.markdown = await server.ssrLoadModule('/src/components/Markdown.tsx');
   mods.ui = await server.ssrLoadModule('/src/components/ui.tsx');
   mods.upload = await server.ssrLoadModule('/src/components/StepUpload.tsx');
+  mods.changed = await server.ssrLoadModule('/src/components/DocsChanged.tsx');
 });
 
 after(async () => {
@@ -134,4 +135,23 @@ test('шаг «Загрузка»: длинное имя файла и вред�
   assert.doesNotMatch(out, /<img/i);
   assert.match(out, /&lt;img src=x onerror=alert\(1\)&gt;\.pdf/);
   assert.match(out, /А{300}\.docx/);
+});
+
+test('«документы закупки изменились»: что изменилось словами, роль status и кнопка подтверждения', () => {
+  const out = html(h(mods.changed.DocsChanged, { changes: { added: ['Изменения.pdf'], removed: [], changed: ['ТЗ.docx'] }, onConfirm: () => {} }));
+  assert.match(out, /^<div role="status"/);
+  assert.match(out, /Документы закупки изменились после составления ТП/);
+  assert.match(out, /добавлен файл «Изменения\.pdf»; изменён файл «ТЗ\.docx»\./);
+  assert.match(out, /Пока вы не подтвердите, закупка не считается готовой/);
+  assert.match(out, /<button[^>]*>Проверил — всё верно<\/button>/);
+});
+
+test('«документы закупки изменились»: вредная разметка и очень длинное имя файла — только текст, перенос по словам', () => {
+  const evil = '<img src=x onerror=alert(1)>.pdf';
+  const long = 'Д'.repeat(300) + '.docx';
+  const out = html(h(mods.changed.DocsChanged, { changes: { added: [evil], removed: [], changed: [long] }, onConfirm: () => {} }));
+  assert.doesNotMatch(out, /<img/i);
+  assert.match(out, /&lt;img src=x onerror=alert\(1\)&gt;\.pdf/);
+  assert.match(out, /Д{300}\.docx/);
+  assert.match(out, /break-words/, 'длинное имя без пробелов не должно раздвигать строку');
 });

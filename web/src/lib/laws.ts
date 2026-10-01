@@ -1,7 +1,7 @@
 import "server-only";
 import law44 from "@/data/laws/44-fz.json";
 import law223 from "@/data/laws/223-fz.json";
-import { quoteFound } from "@/lib/quotes";
+import { normalize, quoteChecker } from "@/lib/quotes";
 
 // Тексты 44-ФЗ и 223-ФЗ в действующей редакции с официального портала pravo.gov.ru, по статьям.
 // Обновляются скриптом scripts/fetch-laws.mjs — обычно после 1 января и 1 сентября.
@@ -180,14 +180,17 @@ export function searchLaws(query: string, limit = 8): LawHit[] {
 // ---------- сверка цитат ----------
 
 const LAW_TEXTS = LAWS.flatMap((law) => law.articles.map((a) => a.text));
+// Тексты законов приводятся к общему виду один раз, а не на каждый ответ чата.
+let lawsNormalized: string[] | undefined;
 
 type QuoteCheck = { total: number; missing: string[] };
 
 // Цитата в «» из ответа ищется дословно в законах и в документах разговора.
 export function checkQuotes(answer: string, documents: string[]): QuoteCheck {
   const quotes = [...answer.matchAll(/«([^«»]{25,})»/g)].map((m) => m[1]);
-  const texts = [...LAW_TEXTS, ...documents];
-  const missing = quotes.filter((q) => !quoteFound(q, texts));
+  lawsNormalized ??= LAW_TEXTS.map((t) => normalize(t, false).text);
+  const found = quoteChecker(documents, lawsNormalized);
+  const missing = quotes.filter((q) => !found(q));
   return { total: quotes.length, missing };
 }
 

@@ -3,7 +3,7 @@ import { castFromDraft } from "@/lib/cast";
 import { claudeErrorText, NO_KEY_TEXT } from "@/lib/claude-errors";
 import { askJson, cleanSamples, ModelStop, sampleBlocks } from "@/lib/claude-request";
 import { MAX_CONTEXT_CHARS } from "@/lib/chat-types";
-import { quoteFound } from "@/lib/quotes";
+import { quoteChecker } from "@/lib/quotes";
 import { SAMPLES_LIMIT, TpDraftSchema, type TpResponse } from "@/lib/tp";
 import { SAMPLES_NOTE, TP_INSTRUCTIONS } from "@/lib/tp-prompt";
 import { badRequest, readJson, sentDocuments } from "@/lib/read-json";
@@ -42,8 +42,7 @@ export async function POST(request: Request) {
       signal: request.signal,
     });
 
-    const texts = documents.map((d) => d.text);
-    const found = (quote: string) => quoteFound(quote, texts);
+    const found = quoteChecker(documents.map((d) => d.text));
     const checked = <T extends { quote: string }>(item: T) => ({ ...item, verified: found(item.quote) });
     const body: TpResponse = {
       form: draft.form,

@@ -3,7 +3,7 @@ import { MAX_CONTEXT_CHARS, type ChatMessage } from '@/lib/chat-types';
 import { streamEvents } from '@/lib/chat-stream';
 import { errorMessage, errorText } from '@/lib/http-error';
 import { aiHeaders } from '@/lib/purchase';
-import { readDocuments, type SentDocument } from '@/lib/read-documents';
+import { forServer, readDocuments, type SentDocument } from '@/lib/read-documents';
 import { useActivePurchase } from './active-purchase';
 
 // Ассистент в окне чата: вопросы к ИИ. Открыта закупка — отвечает по её документам, а переписка хранится в ней
@@ -90,7 +90,7 @@ export function useAssistant() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: aiHeaders(purchase?.purchase.id),
-        body: JSON.stringify({ messages: [...base, user].map(toChat), documents: docs, general: !purchase }),
+        body: JSON.stringify({ messages: [...base, user].map(toChat), documents: forServer(docs), general: !purchase }),
         signal: controller.signal,
       });
       if (!res.ok) throw new Error(await errorText(res, 'Не удалось получить ответ.'));

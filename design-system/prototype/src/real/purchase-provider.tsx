@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { NewerDataError } from '@/lib/data-format';
+import { stampsOf } from '@/lib/doc-changes';
 import type { Purchase } from '@/lib/purchase';
 import { deletePurchase, getDocuments, getPurchase, savePurchase, savePurchaseWithDocuments, scansOf } from '@/lib/purchase-store';
 import type { SentDocument } from '@/lib/read-documents';
@@ -50,7 +51,10 @@ export function PurchaseProvider({ id, onMissing, children }: { id: string; onMi
         const stored = upgraded ?? saved;
         const documents = upgraded ? SAMPLE_DOCUMENTS : savedDocuments;
         if (cancelled) return;
-        const purchase = stored && { ...stored, scans: stored.scans ?? scansOf(documents) };
+        // Закупка, сохранённая до пометки «требует проверки», узнаёт документы по самим документам; ТП считается составленным
+        // по ним — что изменится дальше, будет видно (lib/doc-changes.ts).
+        const docs = stored?.docs ?? stampsOf(documents);
+        const purchase = stored && { ...stored, scans: stored.scans ?? scansOf(documents), docs, ...(stored.tp && !stored.tpDocs && { tpDocs: docs }) };
         latest.current = purchase ?? null;
         setLoaded(purchase ? { status: 'ready', purchase, documents } : { status: 'missing' });
       },
