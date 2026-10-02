@@ -29,7 +29,9 @@ before(async () => {
   mods.upload = await server.ssrLoadModule('/src/components/StepUpload.tsx');
   mods.changed = await server.ssrLoadModule('/src/components/DocsChanged.tsx');
   mods.requirements = await server.ssrLoadModule('/src/components/RequirementsList.tsx');
-  mods.requirements = await server.ssrLoadModule('/src/components/RequirementsList.tsx');
+  mods.evidence = await server.ssrLoadModule('/src/components/EvidenceBase.tsx');
+  mods.base = await server.ssrLoadModule('@/lib/evidence-base.ts');
+  mods.form = await server.ssrLoadModule('@/lib/evidence-form.ts');
 });
 
 after(async () => {
@@ -251,4 +253,246 @@ test('требования заказчика: много пунктов — п�
   const last = requirementsList(rows.slice(0, 20));
   assert.match(last, /Показать ещё 5(?!\d)/);
   assert.doesNotMatch(last, /осталось/, 'остаток помещается в один шаг — «осталось» не пишем');
+});
+
+// ———— База доказательств (раздел «Профиля компании») ————
+
+const ON = '2026-10-02';
+const fact = (input, id) => mods.base.makeFact(input, new Date('2026-10-01T10:00:00Z'), id);
+const INFO = {
+  requisites: { filled: 12, total: 20, sources: ['Карточка предприятия.pdf'], problems: ['ИНН: в номере не хватает цифр'] },
+  templates: [
+    { label: 'технические предложения', count: 2 },
+    { label: 'анкеты', count: 0 },
+  ],
+};
+const evidence = (props = {}) =>
+  html(
+    h(mods.evidence.EvidenceSection, {
+      facts: [],
+      docs: [],
+      on: ON,
+      info: INFO,
+      gaps: [],
+      busy: false,
+      notice: null,
+      eligible: 0,
+      onFind: () => {},
+      onSave: () => {},
+      onDelete: () => {},
+      onConfirm: () => {},
+      ...props,
+    }),
+  );
+// Открывающий тег кнопки, на которой написано text.
+const openTag = (out, text) => out.match(new RegExp(`<button[^>]*>(?:(?!</button>)[\\s\\S])*?${text}`))?.[0].match(/^<button[^>]*>/)?.[0];
+
+const baseFacts = () => [
+  fact({ kind: 'license', title: 'Лицензия образовательная', fields: { number: 'Л035' }, validity: { until: '2027-05-12' }, source: { type: 'document', docId: 'd1', docName: 'Лицензия.pdf', quote: 'действительна до 12.05.2027', where: 'стр. 1' } }, 'a'),
+  fact({ kind: 'certificate', title: 'Сертификат ISO 9001', validity: { until: '2026-10-12' } }, 'b'),
+  fact({ kind: 'license', title: 'Допуск СРО', validity: { until: '2026-09-01' } }, 'c'),
+  fact({ kind: 'employee', title: 'Иванов И. И., режиссёр', origin: 'ai', source: { type: 'document', docId: 'd2', docName: 'Штат.docx', quote: 'Иванов И. И. — режиссёр' } }, 'd'),
+  fact({ kind: 'equipment', title: 'Актовый зал', measures: [{ what: 'вместимость', value: 200, unit: 'мест' }] }, 'e'),
+];
+
+test('база доказательств: пустая база подсказывает, что делать; поиск фактов недоступен без документов', () => {
+  const out = evidence();
+  assert.match(out, /<h2[^>]*>База доказательств<\/h2>/);
+  assert.match(out, /База пока пуста/);
+  assert.match(out, /Действуют: <b[^>]*>0<\/b>/);
+  // Класс кнопки содержит «disabled:…», поэтому смотрим на сам атрибут.
+  assert.match(openTag(out, 'Найти факты в документах'), / disabled=""/, 'документов нет — искать негде');
+  assert.doesNotMatch(openTag(out, 'Добавить факт'), / disabled=""/, 'добавить вручную можно всегда');
+  assert.match(out, /Это запрос к ИИ/, 'перед платным запросом сказано, что он к ИИ');
+  assert.doesNotMatch(openTag(evidence({ eligible: 2 }), 'Найти факты в документах'), / disabled=""/);
+  const busy = evidence({ eligible: 2, busy: true });
+  assert.match(openTag(busy, 'Ищу факты…'), / disabled=""/, 'пока идёт поиск, второй запрос не отправить');
+});
+
+test('база доказательств: сначала то, что требует внимания; у каждого факта срок, источник и числа', () => {
+  const out = evidence({ facts: baseFacts() });
+  const at = (text) => out.indexOf(text);
+  assert.ok(at('Допуск СРО') > 0 && at('Допуск СРО') < at('Иванов И. И.'), 'просроченное выше всего');
+  assert.ok(at('Иванов И. И.') < at('Сертификат ISO 9001'), 'ждущее подтверждения выше скоро истекающего');
+  assert.ok(at('Сертификат ISO 9001') < at('Лицензия образовательная'), 'скоро истекающее выше спокойного');
+  assert.match(out, /<h2[^>]*>База доказательств<span[^>]*>5<\/span><\/h2>/);
+  assert.match(out, /действует до 12\.05\.2027/);
+  assert.match(out, /истекает через 10 дней \(12\.10\.2026\)/);
+  assert.match(out, /просрочено: действовало до 01\.09\.2026/);
+  assert.match(out, /из «Лицензия\.pdf» — стр\. 1: «действительна до 12\.05\.2027»/, 'документ, место в нём и фраза');
+  assert.match(out, /вписано вручную — документа нет/, 'факт без документа назван словами человека');
+  assert.match(out, /вместимость: 200 мест/);
+  assert.match(out, /Номер: Л035/);
+  // Сводка: что действует, что истекает, что просрочено, что ждёт человека.
+  assert.match(out, /Действуют: <b[^>]*>1<\/b>/);
+  assert.match(out, /Скоро истекут: <b[^>]*>1<\/b>/);
+  assert.match(out, /Просрочены: <b[^>]*>1<\/b>/);
+  assert.match(out, /Ждут подтверждения: <b[^>]*>1<\/b>/);
+  assert.doesNotMatch(out, /Без срока/, 'нулевые счётчики не показываются');
+  // Группы с числом фактов, «Все» выбрана; реквизиты и шаблоны — сводкой.
+  assert.match(out, /aria-pressed="true"[^>]*>Все<span[^>]*>5<\/span>/);
+  assert.match(out, />Лицензии и допуски<span[^>]*>2<\/span>/);
+  assert.match(out, />Сотрудники<span[^>]*>1<\/span>/);
+  assert.match(out, />Реквизиты<span[^>]*>12<\/span>/);
+  assert.match(out, /заполнено 12 из 20/);
+  assert.match(out, /из «Карточка предприятия\.pdf»/);
+  assert.match(out, /ИНН: в номере не хватает цифр/);
+  assert.match(out, /технические предложения — 2/);
+  assert.doesNotMatch(out, /анкеты — 0/);
+});
+
+test('база доказательств: найденное ИИ — не доказательство, пока человек не подтвердил', () => {
+  const ai = baseFacts()[3];
+  const out = evidence({ facts: [ai] });
+  assert.match(out, /Нашёл ИИ в документе — сверьте с ним и подтвердите/);
+  assert.match(out, /Пока не подтверждено, это не доказательство/);
+  assert.equal((out.match(/Подтверждаю/g) ?? []).length, 1);
+  assert.match(out, /Ждут подтверждения: <b[^>]*>1<\/b>/);
+  const done = evidence({ facts: [{ ...ai, confirmed: true }] });
+  assert.doesNotMatch(done, /Подтверждаю/);
+  assert.doesNotMatch(done, /Ждут подтверждения/);
+});
+
+test('база доказательств: группа показывает только свои факты; пустая группа и реквизиты — понятным текстом', () => {
+  const licenses = evidence({ facts: baseFacts(), initialFilter: 'license' });
+  assert.match(licenses, /Допуск СРО/);
+  assert.match(licenses, /Лицензия образовательная/);
+  assert.doesNotMatch(licenses, /Сертификат ISO 9001/);
+  assert.doesNotMatch(licenses, /Реквизиты компании/);
+  assert.doesNotMatch(licenses, /Лицензия или допуск/, 'в группе вид факта повторять не нужно');
+  assert.match(evidence({ facts: baseFacts() }), /Лицензия или допуск/, 'в общем списке у факта указан вид');
+  assert.match(evidence({ facts: baseFacts(), initialFilter: 'finance' }), /В этой группе пока ничего нет/);
+  const requisites = evidence({ facts: baseFacts(), initialFilter: 'requisites' });
+  assert.match(requisites, /Реквизиты компании/);
+  assert.match(requisites, /правятся выше/);
+  assert.doesNotMatch(requisites, /Допуск СРО/);
+  const templates = evidence({ facts: baseFacts(), initialFilter: 'templates' });
+  assert.match(templates, /Шаблоны и образцы/);
+  assert.doesNotMatch(templates, /Допуск СРО/);
+  assert.match(evidence({ info: { ...INFO, templates: [] }, initialFilter: 'templates' }), /пока нет — загрузите прошлые заявки/);
+});
+
+test('база доказательств: много фактов — первые, остальные по кнопке', () => {
+  const facts = Array.from({ length: 40 }, (_, i) => fact({ kind: 'equipment', title: 'Площадка номер ' + i }, 'f' + i));
+  const out = evidence({ facts });
+  assert.equal((out.match(/Площадка номер /g) ?? []).length, 15);
+  assert.match(out, /Показать ещё 15[^<]*\(осталось 25\)/);
+  assert.doesNotMatch(evidence({ facts: facts.slice(0, 15) }), /Показать ещё/);
+});
+
+test('база доказательств: «что требуют закупки» — требование, статус, причина; добавить можно только факт, а не реквизит', () => {
+  const gap = (over = {}) => ({
+    key: 'k',
+    kind: 'license',
+    label: 'Лицензия или членство в СРО',
+    status: 'needs_evidence',
+    optional: false,
+    purchases: [{ id: 'p1', title: 'Праздник' }],
+    from: [{ basis: 'Требование к участнику', text: 'Наличие лицензии на образовательную деятельность' }],
+    reasons: ['в базе нет лицензии, подходящей к требованию'],
+    facts: [],
+    ...over,
+  });
+  const gaps = [
+    gap(),
+    gap({ key: 'k2', kind: 'experience', label: 'Опыт: исполненные договоры', status: 'need_human', optional: true, purchases: [{ id: 'p1', title: 'Праздник' }, { id: 'p2', title: 'Выставка' }], reasons: ['ИИ нашёл договор, он ждёт вашего подтверждения'] }),
+    gap({ key: 'k3', kind: 'requisite', label: 'Реквизиты для анкеты', status: 'needs_evidence', reasons: ['не заполнен ИНН'] }),
+    gap({ key: 'k4', label: 'Уже подтверждённое', status: 'ok' }),
+  ];
+  const out = evidence({ gaps });
+  assert.match(out, /Что требуют ваши закупки/);
+  assert.match(out, /Нужно внимание: 3 из 4/, 'подтверждённое в список «нужно внимание» не попадает');
+  assert.doesNotMatch(out, /Уже подтверждённое/);
+  assert.match(out, /Нет доказательства/);
+  assert.match(out, /Решает человек/);
+  assert.match(out, /в базе нет лицензии, подходящей к требованию/);
+  assert.match(out, /Требование к участнику: «Наличие лицензии на образовательную деятельность»/, 'видно, из какого требования взялась потребность');
+  assert.match(out, /Закупка: «Праздник»/);
+  assert.match(out, /Закупки: «Праздник», «Выставка»/);
+  assert.match(out, /по желанию или за баллы/);
+  assert.match(out, /ничего не подставляет/, 'подсказка к статусу «нет доказательства» говорит, что значение не придумывается');
+  // Кнопка «Добавить в базу» — у «нет доказательства» по лицензии; у «решает человек» и у реквизитов её нет.
+  assert.equal((out.match(/Добавить в базу/g) ?? []).length, 1);
+  assert.match(evidence({ gaps: [gap({ status: 'ok' })] }), /По закупкам в работе всё подтверждено: 1 требование/);
+  assert.match(evidence({ gaps: [] }), /Закупок в работе, которым нужны доказательства, пока нет/);
+});
+
+test('база доказательств: результат поиска и ошибки — role=status и role=alert, текст без разметки', () => {
+  const evil = '<img src=x onerror=alert(1)>';
+  const warn = evidence({ notice: { tone: 'warn', text: evil } });
+  assert.match(warn, /role="alert"/);
+  assert.doesNotMatch(warn, /<img/i);
+  assert.match(warn, /&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.match(evidence({ notice: { tone: 'ok', text: 'Нашёл 3 факта' } }), /role="status"[^>]*>.*Нашёл 3 факта/s);
+  assert.doesNotMatch(evidence(), /role="alert"|role="status"/);
+});
+
+test('факт базы: вредная разметка и очень длинные слова — только текст, перенос по словам; удаление и правка с именем для диктора', () => {
+  const evil = '<img src=x onerror=alert(1)>';
+  const f = fact({ kind: 'employee', title: evil + 'Д'.repeat(300), origin: 'ai', fields: { position: evil }, source: { type: 'document', docId: 'd', docName: evil, quote: evil } }, 'x');
+  const out = html(h(mods.evidence.FactRow, { fact: f, on: ON, showKind: true, onEdit: () => {}, onDelete: () => {}, onConfirm: () => {} }));
+  assert.doesNotMatch(out, /<img/i);
+  assert.match(out, /&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.match(out, /Д{300}/);
+  assert.match(out, /break-words/);
+  assert.match(out, /aria-label="Изменить"/);
+  assert.match(out, /aria-label="Удалить"/);
+  assert.doesNotMatch(out, /Удалить факт из базы\?/, 'вопрос об удалении появляется только после нажатия');
+});
+
+const docs = [{ id: 'd1', name: 'Лицензия.pdf', text: 'ЛИЦЕНЗИЯ № Л035. Лицензия действительна до 12.05.2027. Выдана 12.05.2022.', kinds: ['license'] }];
+const factForm = (draft, props = {}) => html(h(mods.evidence.FactForm, { initial: draft, docs, onSave: () => {}, onCancel: () => {}, ...props }));
+
+test('форма факта: вид выбирается кнопками, у вида свои поля; даты — настоящие поля дат; срок только там, где он бывает', () => {
+  const license = factForm(mods.form.emptyDraft('license'));
+  assert.match(license, /<form[^>]*aria-label="Новый факт"/);
+  assert.match(license, /aria-label="Вид факта"/);
+  assert.match(license, /aria-pressed="true"[^>]*>Лицензия или допуск</);
+  assert.match(license, /aria-pressed="false"[^>]*>Исполненный договор</);
+  assert.match(license, /Кем выдана/);
+  assert.match(license, /<input type="date"[^>]*>/);
+  assert.match(license, /Срок действия — нужен/);
+  assert.match(license, /type="checkbox"[^>]*>\s*Бессрочно/);
+  assert.match(license, /Действует до/);
+  const contract = factForm(mods.form.emptyDraft('experience'));
+  assert.match(contract, /Предмет договора/);
+  assert.doesNotMatch(contract, /Срок действия/, 'у договора срока действия нет');
+  assert.match(contract, /цена договора, руб\./, 'быстрая кнопка с числом, которое обычно нужно');
+  assert.match(factForm(mods.form.emptyDraft('license', { perpetual: true })), /type="checkbox"[^>]*checked=""/);
+  assert.doesNotMatch(factForm(mods.form.emptyDraft('license', { perpetual: true })), /Действует до/, 'у бессрочного дат нет');
+});
+
+test('форма факта: документ из образцов выбирается из списка; подсказка срока из текста; фразы, которой нет в документе, — предупреждение', () => {
+  const draft = mods.form.emptyDraft('license', { title: 'Лицензия', docId: 'd1', quote: 'такой фразы в документе нет' });
+  const out = factForm(draft);
+  assert.match(out, /<option value="d1"[^>]*>Лицензия\.pdf<\/option>/);
+  assert.match(out, /Такой фразы в документе нет/);
+  assert.match(out, /В документе есть срок:/);
+  assert.match(out, /«действительна до 12\.05\.2027» — подставить/);
+  assert.doesNotMatch(factForm({ ...draft, quote: 'Лицензия действительна до 12.05.2027' }), /Такой фразы в документе нет/);
+  const manual = factForm(mods.form.emptyDraft('license'));
+  assert.match(manual, /Без документа — вписываю сам/);
+  assert.match(manual, /Без документа это только ваши слова/);
+  assert.doesNotMatch(manual, /В документе есть срок/);
+});
+
+test('форма факта: правка — без выбора вида; вредная разметка в имени документа — только текст', () => {
+  const f = fact({ kind: 'license', title: 'Лицензия', validity: { until: '2027-05-12' } }, 'a');
+  const out = factForm(mods.form.draftOf(f), { editing: f });
+  assert.match(out, /aria-label="Правка факта"/);
+  assert.doesNotMatch(out, /aria-label="Вид факта"/);
+  assert.match(out, /Сохранить/);
+  assert.match(out, /value="2027-05-12"/);
+  const evil = '<img src=x onerror=alert(1)>';
+  const bad = factForm(mods.form.emptyDraft('license'), { docs: [{ ...docs[0], name: evil }] });
+  assert.doesNotMatch(bad, /<img/i);
+  assert.match(bad, /&lt;img src=x onerror=alert\(1\)&gt;/);
+});
+
+test('форма факта: открытая форма — внутри раздела, над списком', () => {
+  const draft = mods.form.emptyDraft('equipment', { title: 'Актовый зал' });
+  const out = evidence({ initialForm: { draft } });
+  assert.match(out, /aria-label="Новый факт"/);
+  assert.ok(out.indexOf('aria-label="Новый факт"') < out.indexOf('Реквизиты компании'));
+  assert.doesNotMatch(evidence(), /aria-label="Новый факт"/);
 });

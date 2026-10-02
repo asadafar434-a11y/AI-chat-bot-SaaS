@@ -35,6 +35,10 @@ export const DOC_KIND_KEYS = Object.keys(DOC_KINDS) as [DocKind, ...DocKind[]];
 // Реквизиты берём не отовсюду: в ТП их нет по правилам, а в договорах и протоколах рядом стоят реквизиты заказчика.
 export const REQUISITE_KINDS: DocKind[] = ["anketa", "company", "letter", "price", "declaration"];
 
+// Факты базы доказательств — лицензии, сертификаты, договоры, сотрудники, финансы — ищутся в документах компании, опыта,
+// сотрудников и в декларациях (в декларации о МСП — доход и численность). В ТП, заявках и протоколах их нет.
+export const FACT_SOURCE_KINDS: DocKind[] = ["company", "experience", "staff", "declaration"];
+
 // Какими образцами пишется каждая часть заявки, кроме ТП. Для сведений об опыте и о специалистах документы участника
 // того же вида — не образцы стиля, а сами сведения: договоры с актами, дипломы, удостоверения.
 export type PartKey = "participant" | "declaration" | "price" | "experience" | "staff";

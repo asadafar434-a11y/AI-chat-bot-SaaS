@@ -11,6 +11,7 @@ import { readAnswer, streamEvents } from "../../lib/chat-stream.ts";
 import { POST as chat } from "./chat/route.ts";
 import { POST as check } from "./check/route.ts";
 import { POST as documents } from "./documents/route.ts";
+import { POST as facts } from "./my-docs/facts/route.ts";
 import { POST as requirements } from "./requirements/route.ts";
 import { POST as tp } from "./tp/route.ts";
 
@@ -300,13 +301,46 @@ test("проверка заявки: цитата требования ищет�
   assert.match(seen[0].blocks.at(-2)!.title ?? "", /Заявка участника: Заявка/);
 });
 
+test("база доказательств: факты из документов компании проверяются по тексту — выдуманное убирается, источник и документ остаются", async () => {
+  const license = "ЛИЦЕНЗИЯ № Л035-00115-77/00123456. Лицензия предоставлена на осуществление образовательной деятельности. Лицензия действительна до 12.05.2027.";
+  const found = (over: object) => ({
+    kind: "license", title: "Лицензия на образовательную деятельность № Л035-00115-77/00123456", fields: [{ key: "number", value: "Л035-00115-77/00123456" }],
+    measures: [], validFrom: "", validUntil: "2027-05-12", perpetual: false, source: "Лицензия.pdf", quote: "Лицензия действительна до 12.05.2027", ...over,
+  });
+  reply = JSON.stringify({
+    facts: [
+      found({}),
+      found({ title: "Лицензия на медицинскую деятельность", quote: "Лицензия на медицинскую деятельность действительна бессрочно" }),
+      found({ kind: "certificate", title: "Сертификат ISO 9001", quote: "Сертификат ISO 9001 действителен до 01.01.2030", validUntil: "2030-01-01" }),
+    ],
+  });
+  seen.length = 0;
+  const res = await facts(json({ documents: [{ id: "doc-1", name: "Лицензия.pdf", text: license }, { id: "doc-2", name: "Пустой.pdf", text: "  " }] }));
+  assert.equal(res.status, 200, await res.clone().text());
+  const out = await res.json();
+  // Модель увидела документ целиком отдельным блоком и задание с видами фактов.
+  assert.deepEqual(seen[0].blocks.filter((b) => b.type === "document").map((b) => b.title), ["Лицензия.pdf"]);
+  assert.match(seen[0].blocks.at(-1)!.text, /Виды фактов:/);
+  // Прошёл только факт, чья цитата стоит в документе; выдуманные убраны, и об этом сказано.
+  assert.equal(out.facts.length, 1);
+  assert.equal(out.dropped, 2);
+  assert.deepEqual(out.facts[0].source, { type: "document", docId: "doc-1", docName: "Лицензия.pdf", quote: "Лицензия действительна до 12.05.2027" });
+  assert.deepEqual([out.facts[0].fields, out.facts[0].validity], [{ number: "Л035-00115-77/00123456" }, { until: "2027-05-12" }]);
+  assert.equal(out.issues.length, 2);
+
+  // Нет документов с текстом — понятный отказ без обращения к модели.
+  seen.length = 0;
+  assert.equal((await facts(json({ documents: [{ id: "x", name: "Пустой.pdf", text: "" }] }))).status, 400);
+  assert.equal(seen.length, 0);
+});
+
 test("без ключа ИИ сервер честно отвечает 503 и не ходит к модели", async () => {
   const docs = await readSpec();
   const key = process.env.ANTHROPIC_API_KEY;
   delete process.env.ANTHROPIC_API_KEY;
   seen.length = 0;
   try {
-    for (const route of [requirements, tp]) assert.equal((await route(json({ documents: docs }))).status, 503);
+    for (const route of [requirements, tp, facts]) assert.equal((await route(json({ documents: docs }))).status, 503);
     assert.equal((await check(json({ documents: docs, application: [{ name: "a", text: "b" }] }))).status, 503);
   } finally {
     process.env.ANTHROPIC_API_KEY = key;

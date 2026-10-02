@@ -1,11 +1,17 @@
 import { fromStore, toStore } from "@/lib/data-format";
 import { STORES, transaction } from "@/lib/db";
+import { createLocator, describeLocation } from "@/lib/doc-locate";
+import type { DocMap } from "@/lib/doc-source";
+import { makeFact } from "@/lib/evidence-base";
+import type { VerifiedFact } from "@/lib/evidence-extract";
+import { listFacts, mergeNewFacts, saveFacts } from "@/lib/evidence-store";
 import { errorMessage, errorText, OFFLINE_TEXT } from "@/lib/http-error";
 import {
   clipEvidence,
   clipForSort,
   DOC_KINDS,
   EVIDENCE_LIMIT,
+  FACT_SOURCE_KINDS,
   guessKinds,
   REQUISITE_KINDS,
   SORT_BATCH,
@@ -28,6 +34,9 @@ export type MyDocument = {
   kinds: DocKind[];
   about: string;
   scan?: boolean;
+  // Откуда в тексте какой кусок — страница, таблица, лист (doc-source.ts): по ней у факта базы доказательств видно место в файле.
+  // У документов, добавленных до карты, её нет.
+  map?: DocMap;
 };
 
 // Откуда взялись реквизиты. Поле, заполненное из документа, обновляется, когда приходят новые документы;
@@ -189,6 +198,41 @@ export function mergeFound(profile: Profile, meta: ProfileMeta, found: ProfileFo
     suggestions.push(s);
   }
   return { profile: next, meta: { sources, suggestions }, filled };
+}
+
+// Факты базы доказательств из документов компании: ИИ ищет, сервер проверяет каждый по тексту документа, браузер кладёт новое
+// в базу. Всё найденное ждёт подтверждения человека — само по себе оно не доказательство (evidence-match.ts).
+const FACTS_BATCH = 15;
+
+export type FactsReport = { added: number; skipped: number; dropped: number; issues: string[]; documents: number };
+
+export async function findFactsInDocuments(docs: MyDocument[]): Promise<FactsReport> {
+  const pool = docs.filter((d) => d.kinds.some((k) => FACT_SOURCE_KINDS.includes(k)));
+  const report: FactsReport = { added: 0, skipped: 0, dropped: 0, issues: [], documents: pool.length };
+  if (pool.length === 0) return report;
+
+  const verified: VerifiedFact[] = [];
+  for (let i = 0; i < pool.length; i += FACTS_BATCH) {
+    const part = pool.slice(i, i + FACTS_BATCH);
+    const res = await postJson("/api/my-docs/facts", { documents: part.map((d) => ({ id: d.id, name: d.name, text: clipEvidence(d.text) })) });
+    if (!res.ok) throw new Error(await errorText(res, "Не удалось найти факты в документах."));
+    const out: { facts: VerifiedFact[]; dropped: number; issues: string[] } = await res.json();
+    verified.push(...out.facts);
+    report.dropped += out.dropped;
+    report.issues.push(...out.issues);
+  }
+
+  // Место цитаты в файле — страница, таблица, пункт; у документов без карты — по меткам страниц и виду строк.
+  const locator = createLocator(pool);
+  const now = new Date();
+  const found = verified.map((v) => {
+    const place = locator.locate(v.source.quote);
+    const where = place ? describeLocation(place) : "";
+    return makeFact({ ...v, origin: "ai", source: { ...v.source, ...(where && { where }) } }, now);
+  });
+  const { add, skipped } = mergeNewFacts(await listFacts(), found);
+  if (add.length) await saveFacts(add);
+  return { ...report, added: add.length, skipped };
 }
 
 // Реквизиты из документов участника: анкет, карточки предприятия, писем, ценовых предложений.

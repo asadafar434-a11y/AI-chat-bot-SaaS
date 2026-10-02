@@ -37,9 +37,11 @@ import {
   Trash2,
   Upload,
 } from '../lib/icons';
+import { EvidenceBase } from './EvidenceBase';
 import { Badge, Button, Card, HelpTip, IconButton, Tooltip, cx } from './ui';
 
-// «Профиль компании»: реквизиты для анкеты, декларации и цены, образцы прошлых заявок и копия данных. Вид — прототипа,
+// «Профиль компании»: реквизиты для анкеты, декларации и цены, база доказательств (лицензии, договоры, сотрудники, оборудование,
+// финансы — с источником и сроком), образцы прошлых заявок и копия данных. Вид — прототипа,
 // данные — настоящие, из браузера (IndexedDB). Реквизиты сохраняются сами, пока их вписывают: «Отмена» возвращает то, что
 // было до правки, а потерять набранное из-за закрытой вкладки нельзя.
 
@@ -93,11 +95,12 @@ function groupSuggestions(items: FoundField[]): FoundField[][] {
 const SAMPLE_KINDS: DocKind[] = ['tp', ...Object.values(PART_SAMPLE_KIND)];
 const pages = (text: string) => Math.max(1, Math.round(text.length / 2500));
 
-// «1 закупка, 2 образца и реквизиты» — только то, что есть.
-function contents({ purchases, samples, profile }: { purchases: number; samples: number; profile: boolean }) {
+// «1 закупка, 2 образца, 3 факта и реквизиты» — только то, что есть.
+function contents({ purchases, samples, facts, profile }: { purchases: number; samples: number; facts: number; profile: boolean }) {
   const parts = [
     purchases > 0 && `${purchases} ${plural(purchases, 'закупка', 'закупки', 'закупок')}`,
     samples > 0 && `${samples} ${plural(samples, 'образец', 'образца', 'образцов')}`,
+    facts > 0 && `${facts} ${plural(facts, 'факт', 'факта', 'фактов')} базы доказательств`,
     profile && 'реквизиты',
   ].filter((part): part is string => Boolean(part));
   return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} и ${parts.at(-1)}` : (parts[0] ?? '');
@@ -347,6 +350,7 @@ export function Profile() {
         kinds: sorted[i].kinds,
         about: sorted[i].about,
         ...(d.scan && { scan: true }),
+        ...(d.map && { map: d.map }),
       }));
       await saveMyDocuments(added);
       const next: Report = { added, failed, sortError };
@@ -406,7 +410,7 @@ export function Profile() {
       const { backup, ...counts } = await exportBackup();
       const inside = contents(counts);
       if (!inside) {
-        setBackupNote({ tone: 'info', text: 'Сохранять пока нечего: в этом браузере нет ни закупок, ни образцов, ни реквизитов.' });
+        setBackupNote({ tone: 'info', text: 'Сохранять пока нечего: в этом браузере нет ни закупок, ни образцов, ни фактов, ни реквизитов.' });
         return;
       }
       const name = `Тендерный юрист — копия ${new Date(backup.savedAt).toLocaleDateString('ru-RU')}.json`;
@@ -598,6 +602,9 @@ export function Profile() {
               </Card>
             ))}
           </div>
+
+          {/* База доказательств: факты о компании с источником и сроком; что требуют закупки и чего не хватает */}
+          <EvidenceBase profile={profile} sources={meta.sources} docs={docs} />
         </>
       )}
 
@@ -768,7 +775,7 @@ export function Profile() {
       <Card className="space-y-3 p-5">
         <div>
           <span className="text-sm font-medium">Копия данных</span>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">Закупки, документы, реквизиты и образцы</p>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">Закупки, документы, реквизиты, образцы и база доказательств</p>
         </div>
         <p className="max-w-[70ch] text-[13px] leading-snug text-muted-foreground">
           Всё это хранится только в этом браузере. Если очистить браузер — пропадёт, а Safari может стереть данные сам, если сервис не
@@ -806,7 +813,7 @@ export function Profile() {
           <p className="mt-0.5 text-[12px] text-muted-foreground">Из этого браузера — всё сразу</p>
         </div>
         <p className="max-w-[70ch] text-[13px] leading-snug text-muted-foreground">
-          Удалятся все закупки с документами и черновиками, реквизиты, образцы, настройки и отметка о согласии. Вернуть их можно будет
+          Удалятся все закупки с документами и черновиками, реквизиты, образцы, база доказательств, настройки и отметка о согласии. Вернуть их можно будет
           только из копии — сохраните её выше. На сервере данные не хранятся; то, что уже отправлено ИИ, хранится у Anthropic по её
           условиям — подробнее в{' '}
           <a href="/privacy" target="_blank" rel="noreferrer" className="underline underline-offset-4 hover:text-foreground">

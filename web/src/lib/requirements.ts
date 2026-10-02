@@ -1,6 +1,7 @@
 import * as z from "zod/v4";
 import type { Condition } from "@/lib/conditions";
 import { CriteriaSchema, type Criteria } from "@/lib/criteria";
+import { lenient } from "@/lib/lenient";
 
 // Требование заказчика — то, что написано в документах закупки. Не предложение поставщика: что поставщик предложит,
 // знает только он, и значение за него из границы заказчика («не менее 150») не выводится (conditions.ts, tp-guard.ts).
@@ -58,11 +59,8 @@ const CoreSchema = z.object({
   quote: z.string().describe("Дословная цитата из документа, на которой основан пункт"),
 });
 
-// Новые поля требования модель иногда пропускает или заполняет не из списка. Лишний запрос на исправление стоит денег, а код
-// всё равно перепроверяет эти поля по цитате, поэтому пропущенное или неверное принимается как «не указано».
-const lenient = <T extends z.ZodType>(schema: T, fallback: z.output<T>) =>
-  z.preprocess((value) => (schema.safeParse(value).success ? value : fallback), schema);
-
+// Новые поля требования модель иногда пропускает или заполняет не из списка: пропущенное принимается как «не указано» (lenient.ts),
+// а код всё равно перепроверяет эти поля по цитате.
 const ItemSchema = CoreSchema.extend({
   mandatory: lenient(z.enum(MANDATORY), "unclear").describe(
     "Обязательность, как её называет документ: required — без этого отклонят или не допустят; optional — по желанию, отклонения не будет; conditional — только при условии (условие — в text); scored — за это дают баллы; unclear — документ не говорит"

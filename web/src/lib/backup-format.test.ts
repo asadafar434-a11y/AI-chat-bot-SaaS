@@ -12,6 +12,7 @@ const dump: Dump = {
     ["что-то-ещё", { x: 1 }],
   ],
   samples: [{ id: "s1" }],
+  facts: [{ id: "f1" }, { id: "f2" }],
 };
 
 test("копия и обратно — то же самое, лишние настройки не попадают", () => {
@@ -25,7 +26,25 @@ test("копия и обратно — то же самое, лишние нас
     assert.deepEqual(parsed.dump.purchases, dump.purchases);
     assert.deepEqual(parsed.dump.documents, dump.documents);
     assert.deepEqual(parsed.dump.samples, dump.samples);
+    assert.deepEqual(parsed.dump.facts, dump.facts);
   }
+});
+
+test("факты базы доказательств: копия без них (сделана раньше) читается, копия только с ними — не пустая, новее приложения — не читается", () => {
+  const { facts: _facts, ...old } = buildBackup(dump);
+  const parsedOld = parseBackup(JSON.parse(JSON.stringify(old)));
+  assert.ok(parsedOld.ok);
+  if (parsedOld.ok) assert.deepEqual(parsedOld.dump.facts, [], "в старой копии фактов нет — это не ошибка");
+
+  const factsOnly = buildBackup({ purchases: [], documents: [], settings: [], samples: [], facts: [{ id: "f9" }] });
+  assert.ok(parseBackup(factsOnly).ok);
+
+  const newer = buildBackup({ ...dump, facts: [{ id: "f1", v: 99 } as { id: string }] });
+  assert.match((parseBackup(newer) as { reason: string }).reason, /более новая версия/);
+  // Битые записи фактов отбрасываются.
+  const broken = parseBackup({ ...buildBackup(dump), facts: [{ id: "f1" }, { id: "" }, "мусор", null] });
+  assert.ok(broken.ok);
+  if (broken.ok) assert.deepEqual(broken.dump.facts, [{ id: "f1" }]);
 });
 
 test("чужой файл, другая версия и пустая копия не принимаются", () => {
@@ -33,7 +52,7 @@ test("чужой файл, другая версия и пустая копия 
   assert.equal(parseBackup(null).ok, false);
   const other = { ...buildBackup(dump), version: 99 };
   assert.match((parseBackup(other) as { reason: string }).reason, /другой версией/);
-  const empty = buildBackup({ purchases: [], documents: [], settings: [], samples: [] });
+  const empty = buildBackup({ purchases: [], documents: [], settings: [], samples: [], facts: [] });
   assert.equal(parseBackup(empty).ok, false);
 });
 
@@ -54,16 +73,18 @@ test("битые записи отбрасываются, целые остаю�
 });
 
 test("загрузка копии ничего не затирает: только то, чего нет в браузере", () => {
-  const add = missingFrom(dump, { purchases: new Set(["p1"]), samples: new Set(), profile: true });
+  const add = missingFrom(dump, { purchases: new Set(["p1"]), samples: new Set(), facts: new Set(["f1"]), profile: true });
   assert.deepEqual(add.purchases, [{ id: "p2" }]);
   assert.deepEqual(add.documents, []);
   assert.deepEqual(add.samples, [{ id: "s1" }]);
+  assert.deepEqual(add.facts, [{ id: "f2" }], "факт, который уже есть, не затирается");
   assert.deepEqual(add.settings, []);
 
-  const empty = missingFrom(dump, { purchases: new Set(), samples: new Set(["s1"]), profile: false });
+  const empty = missingFrom(dump, { purchases: new Set(), samples: new Set(["s1"]), facts: new Set(), profile: false });
   assert.deepEqual(empty.purchases.map((p) => p.id), ["p1", "p2"]);
   assert.deepEqual(empty.documents.map(([id]) => id), ["p1"]);
   assert.deepEqual(empty.samples, []);
+  assert.deepEqual(empty.facts.map((f) => f.id), ["f1", "f2"]);
   assert.equal(empty.settings.length, 3);
 });
 

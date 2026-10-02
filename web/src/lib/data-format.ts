@@ -28,6 +28,8 @@ const MIGRATIONS = {
   ],
   profile: [],
   profileMeta: [],
+  // Факты базы доказательств компании (evidence-base.ts).
+  fact: [],
 } satisfies Record<string, Migration[]>;
 
 export type RecordKind = keyof typeof MIGRATIONS;

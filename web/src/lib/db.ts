@@ -1,6 +1,7 @@
-// Данные приложения лежат в IndexedDB этого браузера, в двух базах: закупки с текстами документов —
-// в одной, реквизиты и образцы участника — в другой. Новые хранилища заводятся новой базой, а не
-// повышением версии: обновление версии ждёт, пока закроются все старые вкладки, и может зависнуть.
+// Данные приложения лежат в IndexedDB этого браузера, в трёх базах: закупки с текстами документов — в одной, реквизиты
+// и образцы участника — во второй, база доказательств компании (факты с источниками и сроками действия) — в третьей.
+// Новые хранилища заводятся новой базой, а не повышением версии: обновление версии ждёт, пока закроются все старые вкладки,
+// и может зависнуть.
 // Формат самих записей — номер в каждой записи и миграции при чтении — в data-format.ts.
 const DATABASES = {
   "tender-lawyer": [
@@ -11,12 +12,13 @@ const DATABASES = {
     ["settings", undefined],
     ["samples", { keyPath: "id" }],
   ],
+  "tender-lawyer-evidence": [["facts", { keyPath: "id" }]],
 } as const satisfies Record<string, readonly (readonly [string, IDBObjectStoreParameters | undefined])[]>;
 
 type DbName = keyof typeof DATABASES;
 type StoreName = (typeof DATABASES)[DbName][number][0];
 
-export const STORES = { purchases: "purchases", documents: "documents", settings: "settings", samples: "samples" } as const;
+export const STORES = { purchases: "purchases", documents: "documents", settings: "settings", samples: "samples", facts: "facts" } as const;
 
 const dbOf = (store: StoreName): DbName =>
   (Object.keys(DATABASES) as DbName[]).find((db) => DATABASES[db].some(([name]) => name === store))!;
@@ -77,7 +79,7 @@ export async function transaction<T>(
   });
 }
 
-// Удаляет обе базы целиком — «Удалить все мои данные». Свои соединения закрываем сразу; открытые в других вкладках
+// Удаляет все базы целиком — «Удалить все мои данные». Свои соединения закрываем сразу; открытые в других вкладках
 // закроются сами (onversionchange), а если вкладка не отпускает базу — удаление дождётся её закрытия.
 export async function deleteDatabases(): Promise<"done" | "blocked"> {
   for (const promise of opening.values()) {
