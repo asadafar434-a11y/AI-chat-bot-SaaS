@@ -3,6 +3,9 @@ import { AlertTriangle, Archive, Check, CheckCircle2, Clock, CreditCard, Downloa
 import { AIDisclaimer, Badge, Button, Card, Checkbox, HelpTip, IconButton, Modal, Soon, Tooltip, cx, type Tone } from './ui';
 import { categorySummary, CATEGORY_TITLES, type ValidationReport, type ValidationCategory } from '@/lib/validation-engine';
 import { BUILD_STEP_TITLES, type BuildReport, type BuildStepId, type BuildStepStatus } from '@/lib/application-builder';
+import { type AuditReport, type AuditSeverity } from '@/lib/submission-audit';
+import { type ScoringReport } from '@/lib/scoring-engine';
+import { pointsText } from '@/lib/criteria';
 import { FinalCheck } from './StepReview';
 import type { SubmitItem } from '@/lib/application-files';
 import type { Completeness } from '@/lib/fields';
@@ -257,6 +260,196 @@ function BuildPanel({ report }: { report: BuildReport }) {
   );
 }
 
+// ——— Финальная проверка перед подачей ———
+
+const AUDIT_ICON: Record<AuditSeverity, ReactNode> = {
+  CRITICAL: <XCircle className="size-3.5 text-danger" />,
+  WARNING: <AlertTriangle className="size-3.5 text-warn" />,
+  INFO: <Info className="size-3.5 text-muted-foreground" />,
+};
+const AUDIT_TONE: Record<AuditSeverity, Tone> = {
+  CRITICAL: 'danger',
+  WARNING: 'warn',
+  INFO: 'neutral',
+};
+const AUDIT_LABEL: Record<AuditSeverity, string> = {
+  CRITICAL: 'Критично',
+  WARNING: 'Предупреждение',
+  INFO: 'Информация',
+};
+const RISK_LABEL: Record<AuditReport['risk'], string> = {
+  high: 'Высокий риск отклонения',
+  medium: 'Средний риск',
+  low: 'Готово к подаче',
+};
+const RISK_TONE: Record<AuditReport['risk'], Tone> = {
+  high: 'danger',
+  medium: 'warn',
+  low: 'success',
+};
+
+function AuditPanel({ report }: { report: AuditReport }) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  if (report.findings.length === 0) {
+    return (
+      <Card className="flex items-center gap-2.5 p-4">
+        <CheckCircle2 className="size-4 shrink-0 text-success" />
+        <p className="text-[13px] text-muted-foreground">Нарушений перед подачей не обнаружено.</p>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="p-0">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+        <div className="flex items-center gap-2">
+          {report.risk === 'high' ? (
+            <XCircle className="size-4 text-danger" />
+          ) : report.risk === 'medium' ? (
+            <AlertTriangle className="size-4 text-warn" />
+          ) : (
+            <CheckCircle2 className="size-4 text-success" />
+          )}
+          <span className="text-sm font-medium">Финальная проверка</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          {report.critical > 0 && <Badge tone="danger">{report.critical} критичных</Badge>}
+          {report.warnings > 0 && <Badge tone="warn">{report.warnings} предупреждений</Badge>}
+          {report.info > 0 && <Badge tone="neutral">{report.info} инфо</Badge>}
+          <Badge tone={RISK_TONE[report.risk]}>{RISK_LABEL[report.risk]}</Badge>
+        </div>
+      </div>
+      <ul className="divide-y divide-border">
+        {report.findings.map((f) => {
+          const isOpen = expanded === f.id;
+          return (
+            <li key={f.id}>
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                onClick={() => setExpanded(isOpen ? null : f.id)}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary/50"
+              >
+                {AUDIT_ICON[f.severity]}
+                <span className="min-w-0 flex-1 text-[13px]">{f.what}</span>
+                <Badge tone={AUDIT_TONE[f.severity]}>{AUDIT_LABEL[f.severity]}</Badge>
+              </button>
+              {isOpen && (
+                <dl className="border-t border-border bg-secondary/30 px-4 py-3 space-y-1.5 text-[12px]">
+                  <div className="flex gap-2">
+                    <dt className="shrink-0 text-muted-foreground w-24">Требование</dt>
+                    <dd>{f.requirement}</dd>
+                  </div>
+                  <div className="flex gap-2">
+                    <dt className="shrink-0 text-muted-foreground w-24">Источник</dt>
+                    <dd>{f.source}</dd>
+                  </div>
+                  {f.evidence && (
+                    <div className="flex gap-2">
+                      <dt className="shrink-0 text-muted-foreground w-24">Доказательство</dt>
+                      <dd>{f.evidence}</dd>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <dt className="shrink-0 text-muted-foreground w-24 font-medium">Что сделать</dt>
+                    <dd className="font-medium">{f.fix}</dd>
+                  </div>
+                </dl>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <div className="flex items-start gap-2 border-t border-border px-4 py-3">
+        <Info className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+        <p className="text-[11px] text-muted-foreground">
+          Критичные нарушения — вероятное отклонение заявки. Предупреждения — нужна проверка человека.
+        </p>
+      </div>
+    </Card>
+  );
+}
+
+// ——— Оценка по критериям ———
+
+function ScoringPanel({ report }: { report: ScoringReport }) {
+  if (report.howWins !== 'points' || report.groups.length === 0) return null;
+
+  return (
+    <Card className="p-0">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Info className="size-4 text-muted-foreground" />
+          <span className="text-sm font-medium">Оценка по критериям</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          {report.totalPoints !== null && report.totalMax !== null ? (
+            <Badge tone="neutral">
+              {pointsText(report.totalPoints)} из {pointsText(report.totalMax)}
+            </Badge>
+          ) : (
+            <Badge tone="neutral">Не все формулы распознаны</Badge>
+          )}
+        </div>
+      </div>
+      <div className="divide-y divide-border">
+        {report.groups.map((group) => (
+          <div key={group.name}>
+            <div className="flex items-center justify-between gap-2 bg-secondary/40 px-4 py-2">
+              <span className="text-[13px] font-medium truncate">{group.name}</span>
+              {group.weightText && (
+                <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{group.weightText}</span>
+              )}
+            </div>
+            <table className="w-full text-[12px]">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="px-4 py-1.5 text-left font-medium text-muted-foreground">Показатель</th>
+                  <th className="px-2 py-1.5 text-right font-medium text-muted-foreground whitespace-nowrap">Макс.</th>
+                  <th className="px-2 py-1.5 text-right font-medium text-muted-foreground whitespace-nowrap">База</th>
+                  <th className="px-2 py-1.5 text-right font-medium text-muted-foreground whitespace-nowrap">Балл</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {group.criteria.map((c, i) => {
+                  const label = c.row.indicator || c.row.detail || c.row.criterion;
+                  const compVal =
+                    c.value.kind === 'count' ? `${c.value.n} шт.` :
+                    c.value.kind === 'present' ? (c.value.yes ? 'Есть' : 'Нет') : '—';
+                  return (
+                    <tr key={i}>
+                      <td className="px-4 py-2 leading-snug">
+                        <p className="truncate" title={label}>{label}</p>
+                        {c.gap && (
+                          <p className="mt-0.5 text-[11px] text-muted-foreground truncate" title={c.gap}>{c.gap}</p>
+                        )}
+                      </td>
+                      <td className="px-2 py-2 text-right text-muted-foreground whitespace-nowrap">
+                        {c.maxPoints !== null ? pointsText(c.maxPoints) : '?'}
+                      </td>
+                      <td className="px-2 py-2 text-right text-muted-foreground whitespace-nowrap">{compVal}</td>
+                      <td className="px-2 py-2 text-right font-medium whitespace-nowrap">
+                        {c.points !== null ? pointsText(c.points) : '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-start gap-2 border-t border-border px-4 py-3">
+        <Info className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+        <p className="text-[11px] text-muted-foreground">
+          Баллы рассчитаны по базе доказательств. ИИ не участвует — только код. Цена считается площадкой.
+        </p>
+      </div>
+    </Card>
+  );
+}
+
 function FileRow({
   row,
   format,
@@ -387,6 +580,8 @@ export function StepPackage({
   onBack,
   validation,
   buildReport,
+  auditReport: auditRep,
+  scoringReport: scoringRep,
 }: {
   hasTp: boolean;
   // Блок под заголовком шага — например, «документы закупки изменились».
@@ -418,6 +613,10 @@ export function StepPackage({
   validation?: ValidationReport;
   // Статус сборки заявки по 7 шагам (application-builder.ts): если не задан, блок не показывается.
   buildReport?: BuildReport;
+  // Финальная проверка перед подачей (submission-audit.ts): если не задан, блок не показывается.
+  auditReport?: AuditReport;
+  // Оценка по критериям (scoring-engine.ts): если не задан или howWins ≠ points, блок не показывается.
+  scoringReport?: ScoringReport;
 }) {
   const [openPart, setOpenPart] = useState<TpPart | null>(null);
   const [redo, setRedo] = useState(false);
@@ -608,8 +807,14 @@ export function StepPackage({
               </ul>
             )}
           </Card>
+          {/* Финальная проверка перед подачей */}
+          {auditRep && <AuditPanel report={auditRep} />}
+
           {/* Детерминированная проверка */}
           {validation && <ValidationPanel report={validation} />}
+
+          {/* Оценка по критериям */}
+          {scoringRep && <ScoringPanel report={scoringRep} />}
         </div>
 
         {/* Проверка специалистом — пока не работает */}

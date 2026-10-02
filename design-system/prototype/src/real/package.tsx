@@ -1,5 +1,9 @@
 import { useMemo, useState } from 'react';
 import { buildReport, type BuildReport } from '@/lib/application-builder';
+import { auditReport, type AuditReport } from '@/lib/submission-audit';
+import { scoringReport, type ScoringReport } from '@/lib/scoring-engine';
+import { validate } from '@/lib/validation-engine';
+import { NO_CRITERIA } from '@/lib/criteria';
 import { fileRows, submitItems, toggleReady } from '@/lib/application-files';
 import { tpChanges } from '@/lib/doc-changes';
 import { createLocator, describeSource } from '@/lib/doc-locate';
@@ -15,7 +19,7 @@ import { DocsChanged } from '../components/DocsChanged';
 import { StepPackage, type PackagePreview, type PackageRow } from '../components/StepPackage';
 import { AlertTriangle } from '../lib/icons';
 import { useProfile } from './analysis';
-import { useMyDocs } from './hooks';
+import { useFacts, useMyDocs } from './hooks';
 import { usePurchase } from './purchase-provider';
 
 // Документ, который ИИ составил по форме заказчика: заголовок, абзацы и таблицы; пропуски «[…]» — жёлтые.
@@ -80,6 +84,8 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
   const files = useApplicationFilesOf(source);
   const profile = useProfile();
   const my = useMyDocs();
+  const factsData = useFacts();
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const tp = purchase.tp;
   // Word или PDF — выбор действует на все скачивания этого шага.
   const [format, setFormat] = useState<FileFormat>('docx');
@@ -108,6 +114,19 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
   const appBuildReport = useMemo(
     (): BuildReport => buildReport({ plans, fields, final, hasTp: !!purchase.tp, generatedParts }),
     [plans, fields, final, purchase.tp, generatedParts]
+  );
+  const validationResult = useMemo(
+    () => validate({ purchase, profile, facts: factsData.facts, fields, today }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [purchase, profile, factsData.facts, fields, today],
+  );
+  const appAuditReport = useMemo(
+    (): AuditReport => auditReport({ final, plans, fields, validation: validationResult, today, deadline: purchase.deadline }),
+    [final, plans, fields, validationResult, today, purchase.deadline],
+  );
+  const appScoringReport = useMemo(
+    (): ScoringReport => scoringReport({ criteria: purchase.criteria ?? NO_CRITERIA, facts: factsData.facts }),
+    [purchase.criteria, factsData.facts],
   );
 
   if (!my.ready || !files.meReady) return <p className="text-sm text-muted-foreground">Собираю пакет документов…</p>;
@@ -188,6 +207,9 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
       onTariffs={onTariffs}
       onBack={onBack}
       buildReport={appBuildReport}
+      validation={validationResult}
+      auditReport={appAuditReport}
+      scoringReport={appScoringReport}
     />
   );
 }
