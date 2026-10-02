@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { AlertTriangle, Archive, Check, CheckCircle2, Clock, CreditCard, Download, Eye, FileText, HelpCircle, Info, Loader2, PenLine, RefreshCw, ShieldCheck, UserCheck, XCircle } from '../lib/icons';
 import { AIDisclaimer, Badge, Button, Card, Checkbox, HelpTip, IconButton, Modal, Soon, Tooltip, cx, type Tone } from './ui';
 import { categorySummary, CATEGORY_TITLES, type ValidationReport, type ValidationCategory } from '@/lib/validation-engine';
+import { BUILD_STEP_TITLES, type BuildReport, type BuildStepId, type BuildStepStatus } from '@/lib/application-builder';
 import { FinalCheck } from './StepReview';
 import type { SubmitItem } from '@/lib/application-files';
 import type { Completeness } from '@/lib/fields';
@@ -171,6 +172,91 @@ function ValidationPanel({ report }: { report: ValidationReport }) {
   );
 }
 
+// ——— Сборка заявки: 7 шагов ———
+
+const BUILD_STATUS_ICON: Record<BuildStepStatus, ReactNode> = {
+  done: <CheckCircle2 className="size-3.5 text-success" />,
+  partial: <AlertTriangle className="size-3.5 text-warn" />,
+  pending: <Clock className="size-3.5 text-muted-foreground" />,
+  na: <span className="inline-block size-3.5 text-center text-[10px] leading-[14px] text-muted-foreground">—</span>,
+};
+const BUILD_STATUS_TONE: Record<BuildStepStatus, Tone> = {
+  done: 'success',
+  partial: 'warn',
+  pending: 'neutral',
+  na: 'neutral',
+};
+const BUILD_STATUS_LABEL: Record<BuildStepStatus, string> = {
+  done: 'Готово',
+  partial: 'Частично',
+  pending: 'Ожидает',
+  na: 'Не требуется',
+};
+
+const BUILD_STEP_ORDER: BuildStepId[] = [
+  'required_documents',
+  'existing_documents',
+  'generated_documents',
+  'auto_filled',
+  'confirmed_facts',
+  'unknown_marked',
+  'package_assembled',
+];
+
+function BuildPanel({ report }: { report: BuildReport }) {
+  const [expanded, setExpanded] = useState<BuildStepId | null>(null);
+  const sorted = BUILD_STEP_ORDER.map((id) => report.steps.find((s) => s.id === id)!).filter(Boolean);
+
+  return (
+    <Card className="p-0">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+        <div className="flex items-center gap-2">
+          {BUILD_STATUS_ICON[report.overall]}
+          <span className="text-sm font-medium">Сборка заявки</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          {report.blockingCount > 0 ? (
+            <Badge tone="warn">{report.blockingCount} не готово</Badge>
+          ) : (
+            <Badge tone="success">Все шаги выполнены</Badge>
+          )}
+        </div>
+      </div>
+      <ul className="divide-y divide-border">
+        {sorted.map((step, i) => {
+          const isOpen = expanded === step.id;
+          return (
+            <li key={step.id}>
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                onClick={() => setExpanded(isOpen ? null : step.id)}
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-secondary/50"
+              >
+                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{i + 1}</span>
+                {BUILD_STATUS_ICON[step.status]}
+                <span className="min-w-0 flex-1 text-[13px]">{BUILD_STEP_TITLES[step.id]}</span>
+                <Badge tone={BUILD_STATUS_TONE[step.status]}>{BUILD_STATUS_LABEL[step.status]}</Badge>
+              </button>
+              {isOpen && (
+                <p className="border-t border-border bg-secondary/30 px-4 py-2 text-[12px] text-muted-foreground">
+                  {step.detail}
+                </p>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <div className="flex items-start gap-2 border-t border-border px-4 py-3">
+        <Info className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+        <p className="text-[11px] text-muted-foreground">
+          Система только вставляет подтверждённые факты и отмечает жёлтым то, что не знает. Предположений нет.
+        </p>
+      </div>
+    </Card>
+  );
+}
+
 function FileRow({
   row,
   format,
@@ -300,6 +386,7 @@ export function StepPackage({
   onTariffs,
   onBack,
   validation,
+  buildReport,
 }: {
   hasTp: boolean;
   // Блок под заголовком шага — например, «документы закупки изменились».
@@ -329,6 +416,8 @@ export function StepPackage({
   onBack: () => void;
   // Результат детерминированной проверки (validation-engine.ts): если не задан, блок не показывается.
   validation?: ValidationReport;
+  // Статус сборки заявки по 7 шагам (application-builder.ts): если не задан, блок не показывается.
+  buildReport?: BuildReport;
 }) {
   const [openPart, setOpenPart] = useState<TpPart | null>(null);
   const [redo, setRedo] = useState(false);
@@ -487,6 +576,9 @@ export function StepPackage({
               ))}
             </div>
           </Card>
+
+          {/* Сборка заявки по 7 шагам */}
+          {buildReport && <BuildPanel report={buildReport} />}
 
           {/* Что требует заказчик */}
           <Card className="p-0">

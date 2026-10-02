@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { buildReport, type BuildReport } from '@/lib/application-builder';
 import { fileRows, submitItems, toggleReady } from '@/lib/application-files';
 import { tpChanges } from '@/lib/doc-changes';
 import { createLocator, describeSource } from '@/lib/doc-locate';
@@ -6,6 +7,7 @@ import { completeness, fieldsOf } from '@/lib/fields';
 import type { FileFormat } from '@/lib/file-format';
 import type { PartDoc } from '@/lib/part-doc';
 import { filledCount, PROFILE_KEYS } from '@/lib/profile';
+import { fulfillmentOf } from '@/lib/fulfillment';
 import { PART_TITLES, partsOf, type TpPart } from '@/lib/tp-parts';
 import { useApplicationFilesOf } from '@/lib/use-application-files';
 import { ApplicationText, MarkedText } from '../components/ApplicationPreview';
@@ -98,6 +100,16 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
   };
   const final = useMemo(() => completeness(purchase, fields, profile), [purchase, fields, profile]);
 
+  const plans = useMemo(() => fulfillmentOf(purchase, { profile, fields }), [purchase, profile, fields]);
+  const generatedParts = useMemo((): TpPart[] => {
+    if (!purchase.tp) return [];
+    return ['tp', ...(Object.keys(purchase.parts ?? {}) as TpPart[])];
+  }, [purchase.tp, purchase.parts]);
+  const appBuildReport = useMemo(
+    (): BuildReport => buildReport({ plans, fields, final, hasTp: !!purchase.tp, generatedParts }),
+    [plans, fields, final, purchase.tp, generatedParts]
+  );
+
   if (!my.ready || !files.meReady) return <p className="text-sm text-muted-foreground">Собираю пакет документов…</p>;
 
   const law = purchase.kind.match(/(?<!\d)(44|223)-ФЗ/)?.[0] ?? '';
@@ -175,6 +187,7 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
       onFix={onFix}
       onTariffs={onTariffs}
       onBack={onBack}
+      buildReport={appBuildReport}
     />
   );
 }
