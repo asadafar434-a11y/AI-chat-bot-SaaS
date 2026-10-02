@@ -174,3 +174,43 @@ test("итоговая проверка: пока есть пустые и не�
   assert.equal(ready.text, "Формальный комплект заявки сформирован. Осталось подписать его электронной подписью и подать на площадке.");
   assert.deepEqual(ready.signatures, { required: 1, done: 0 });
 });
+
+test("подсказки с «не больше», диапазоном и размерами сверяются так же, как «не меньше»", () => {
+  const draft = (offer: string) => tp(offer);
+  const check = (draftText: string, filledText: string) =>
+    byKey(fieldsOf({ purchase: purchase({ tp: tp(filledText), tpDraft: draft(draftText) }), profile: PROFILE }), "tp:item:0:done:0");
+
+  assert.equal(check("Вес [число, не больше 5] кг", "Вес 6 кг")?.problem, "6 — по ТЗ не больше 5");
+  assert.equal(check("Вес [число, не больше 5] кг", "Вес 4,5 кг")?.status, "filled");
+  assert.equal(check("Опыт [число, от 3 до 5] лет", "Опыт 7 лет")?.problem, "7 — по ТЗ от 3 до 5");
+  assert.equal(check("Опыт [число, от 3 до 5] лет", "Опыт 4 лет")?.status, "filled");
+  assert.equal(check("Экран [размер, не меньше 3×2] м", "Экран 2×1,5 м")?.problem, "2×1,5 — по ТЗ не меньше 3×2");
+  assert.equal(check("Экран [размер, не меньше 3×2] м", "Экран 4×2,5 м")?.status, "filled");
+  // Подсказки нет — вписанное принимается как есть.
+  assert.equal(check("Адрес [адрес зала]", "Адрес ул. Мира, 5")?.status, "filled");
+});
+
+test("значение, которое ИИ подобрал за участника в прежнем черновике, — «подтвердите», а не «заполнено само»", () => {
+  // Черновик, составленный до запрета: ИИ поставил число на границу требования «не менее 150 мест».
+  const old = tp("Зал на 150 мест, гардероб.");
+  const p = purchase({ tp: old, tpDraft: old });
+  const guess = byKey(fieldsOf({ purchase: p, profile: PROFILE }), "confirm:guess:item:0");
+  assert.deepEqual([guess?.kind, guess?.status, guess?.required, guess?.value, guess?.context], ["confirm", "needs_confirmation", true, "150 мест", "Зал"]);
+  assert.match(guess?.problem ?? "", /^По ТЗ не менее 150 мест\. ИИ взял её как ваше значение/);
+  assert.equal(guess?.quote, "не менее 150 мест");
+
+  // Блокирует готовность, пока участник не подтвердит; после подтверждения — «готово».
+  const open = completeness(p, fieldsOf({ purchase: p, profile: PROFILE }));
+  assert.match(open.text, /не подтверждено: \d/);
+  const confirmed = { ...p, ...applyField(p, "confirm:guess:item:0", "") };
+  assert.equal(byKey(fieldsOf({ purchase: confirmed, profile: PROFILE }), "confirm:guess:item:0")?.status, "filled");
+
+  // Новый черновик с пустым местом вместо числа, а также число, которое участник вписал сам, этого поля не дают.
+  const fresh = tp("Зал на [число, не меньше 150] мест, гардероб.");
+  assert.equal(byKey(fieldsOf({ purchase: purchase({ tp: fresh, tpDraft: fresh }), profile: PROFILE }), "confirm:guess:item:0"), undefined);
+  const typed = purchase({ tp: tp("Зал на 150 мест, гардероб."), tpDraft: fresh });
+  assert.equal(byKey(fieldsOf({ purchase: typed, profile: PROFILE }), "confirm:guess:item:0"), undefined, "вписанное участником — его решение");
+  assert.equal(byKey(fieldsOf({ purchase: typed, profile: PROFILE }), "tp:item:0:done:0")?.status, "filled");
+  // Без черновика не узнать, что писал ИИ, а что участник, — ничего не придумываем.
+  assert.equal(byKey(fieldsOf({ purchase: purchase({ tp: old }), profile: PROFILE }), "confirm:guess:item:0"), undefined);
+});

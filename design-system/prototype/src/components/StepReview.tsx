@@ -16,6 +16,7 @@ import {
 } from '../lib/icons';
 import { Button, Card, Badge, Soon, Tooltip, HelpTip, cx, type Tone } from './ui';
 import { kindMeta, type FieldKind } from '../lib/data';
+import { acceptableValue, parseHint } from '@/lib/conditions';
 import { fieldQueue, fieldSummary, type ApplicationField, type Completeness } from '@/lib/fields';
 import type { Purchase } from '@/lib/purchase';
 import { ApplicationPreview } from './ApplicationPreview';
@@ -454,11 +455,33 @@ function Control({
   // Уже вписанное место: поле сразу с прежним значением, чтобы его исправить.
   const [value, setValue] = useState(f.key.includes(':done:') ? f.value : '');
   const snippet = holeText(purchase, f.key);
+  // Подсказка «число, не меньше 150» — граница заказчика: значение вписывает участник, ИИ его не выбирает.
+  const hint = snippet && f.status === 'needs_input' ? parseHint(f.label) : null;
+  const accept = hint ? acceptableValue(hint) : null;
 
   if (f.key.startsWith('anketa:') || (snippet && f.status === 'needs_input')) {
     return (
       <div className="space-y-2">
         {snippet && <Snippet {...snippet} />}
+        {hint && (
+          <p className="text-[12px] leading-snug text-muted-foreground">
+            Заказчик назвал только границу: <span className="font-mono">{f.label.replace(/^(?:число|размер), /, '')}</span>. Сколько предложить —
+            решаете вы: ИИ за вас это не выбирает.
+            {accept && (
+              <>
+                {' '}
+                <button
+                  type="button"
+                  onClick={() => onSave(f.key, accept)}
+                  className="font-medium text-foreground underline underline-offset-4 hover:no-underline"
+                >
+                  Предложить ровно {accept}
+                </button>{' '}
+                — если готовы дать именно столько.
+              </>
+            )}
+          </p>
+        )}
         {/* Вписали одно место — следующее в том же тексте получает тот же ключ: форма пересоздаётся по тексту и очищается. */}
         <form
           key={`${f.key}:${snippet?.text ?? ''}`}

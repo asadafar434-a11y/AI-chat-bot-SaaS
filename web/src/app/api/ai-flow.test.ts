@@ -158,6 +158,66 @@ test("xlsx → требования: таблица дошла до модели
   assert.deepEqual(out.criteria.rows.map((r: { verified: boolean }) => r.verified), [true, false], "цитаты критериев тоже сверяются");
 });
 
+test("требования со всеми полями: числа и срок проверены по цитате, «не менее» — из документа, а не со слов модели", async () => {
+  const docs = await readSpec();
+  const row = (over: object) => ({
+    text: "", source: "ТЗ", quote: "", mandatory: "required", type: "service", deadline: "", numbers: [], check: "", evidence: [], ...over,
+  });
+  reply = JSON.stringify({
+    short: "Бумага", subject: "Бумага", kind: "44-ФЗ · запрос котировок", customer: "ГБУ Тест", price: "100 000 ₽",
+    deadline: { date: "2026-10-20", time: "10:00", zone: "МСК" },
+    who: [],
+    submit: [
+      row({ text: "Заявка", type: "product", quote: "Заявки принимаются до 20.10.2026 10:00 МСК", deadline: "до 20.10.2026 10:00 МСК", mandatory: "technical" }),
+    ],
+    scope: [
+      row({
+        text: "Плотность бумаги не менее 80 г/м²", quote: "Плотность не менее 80 г/м²", type: "product",
+        // Модель ошиблась: написала 8 вместо 80 и перепутала границу.
+        numbers: [{ what: "плотность", op: "max", value: 8, value2: 0, unit: "г/м²", raw: "не более 8 г/м²" }],
+        check: "названа марка бумаги", evidence: ["сертификат", "сертификат"],
+      }),
+    ],
+    terms: [row({ text: "Подать до 25 октября", type: "deadline", quote: "Заявки принимаются до 20.10.2026 10:00 МСК", deadline: "до 25.10.2026" })],
+    criteria: { howWins: "price", rows: [] },
+  });
+  const res = await requirements(json({ documents: docs }));
+  assert.equal(res.status, 200, await res.clone().text());
+  const out = await res.json();
+
+  // Тип по группе, обязательность не из списка — «не указано».
+  assert.deepEqual([out.groups.submit[0].type, out.groups.submit[0].mandatory], ["document", "unclear"]);
+  assert.equal(out.groups.submit[0].deadline, "до 20.10.2026 10:00 МСК");
+
+  const paper = out.groups.scope[0];
+  assert.deepEqual(paper.numbers.map((c: { what: string; op: string; value: number; unit: string }) => [c.op, c.value, c.unit]), [["min", 80, "г/м²"]], "граница — из документа");
+  assert.equal(paper.numbers[0].what, "", "название от модели берётся, только если её число совпало с документом");
+  assert.match(paper.issues.join(" "), /не найдено в цитате/);
+  assert.deepEqual(paper.evidence, ["сертификат"]);
+  assert.equal(paper.check, "названа марка бумаги");
+
+  // Срок, которого нет в цитате, не принимается; число из пересказа, которого нет в цитате, помечается.
+  assert.equal(out.groups.terms[0].deadline, "");
+  assert.match(out.groups.terms[0].issues.join(" "), /срок «до 25\.10\.2026» не найден в цитате/);
+  assert.match(out.groups.terms[0].issues.join(" "), /число 25/);
+});
+
+test("старый формат ответа без новых полей принимается: поля заполняются как «не указано», платной попытки исправления нет", async () => {
+  const docs = await readSpec();
+  reply = JSON.stringify({
+    short: "Бумага", subject: "", kind: "", customer: "", price: "", deadline: { date: "", time: "", zone: "" },
+    who: [], submit: [], scope: [{ text: "Плотность не менее 80 г/м²", source: "ТЗ", quote: "Плотность не менее 80 г/м²" }], terms: [],
+    criteria: { howWins: "unknown", rows: [] },
+  });
+  seen.length = 0;
+  const res = await requirements(json({ documents: docs }));
+  assert.equal(res.status, 200, await res.clone().text());
+  const out = await res.json();
+  assert.equal(seen.length, 1, "модель не просили исправлять ответ");
+  assert.deepEqual([out.groups.scope[0].mandatory, out.groups.scope[0].type], ["unclear", "other"]);
+  assert.deepEqual(out.groups.scope[0].numbers.map((c: { value: number }) => c.value), [80], "числа из цитаты код находит сам");
+});
+
 test("ответ модели не по схеме: одна попытка исправления, потом понятная ошибка", async () => {
   const docs = await readSpec();
   reply = "это не JSON";
@@ -203,6 +263,8 @@ test("техпредложение: образцы участника уходя
   const out = await res.json();
   assert.equal(out.goods[0].verified, true);
   assert.match(out.goods[0].characteristics, /\[марка бумаги\]/, "что модель не знает, остаётся полем «[…]»");
+  // Заказчик: «плотность не менее 80», модель написала «80» — это граница заказчика, а не значение участника.
+  assert.equal(out.goods[0].characteristics, "Плотность [число, не меньше 80] г/м², марка [марка бумаги]");
 
   const titles = seen[0].blocks.filter((b) => b.type === "document").map((b) => b.title);
   assert.deepEqual(titles, ["Извещение.txt", "ТЗ.xlsx", "Образец участника: Мой прошлый ТП.docx"]);

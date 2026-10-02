@@ -3,6 +3,7 @@ import { claudeErrorText, NO_KEY_TEXT } from "@/lib/claude-errors";
 import { askJson, ModelStop } from "@/lib/claude-request";
 import { MAX_CONTEXT_CHARS } from "@/lib/chat-types";
 import { quoteChecker } from "@/lib/quotes";
+import { refineGroups } from "@/lib/requirement-engine";
 import { RequirementsSchema, type RequirementsResponse } from "@/lib/requirements";
 import { REQ_INSTRUCTIONS } from "@/lib/requirements-prompt";
 import { badRequest, readJson, sentDocuments } from "@/lib/read-json";
@@ -37,12 +38,12 @@ export async function POST(request: Request) {
     });
 
     const found = quoteChecker(documents.map((d) => d.text));
-    const check = <T extends { quote: string }>(items: T[]) => items.map((item) => ({ ...item, verified: found(item.quote) }));
     const { who, submit, scope, terms, criteria, ...summary } = draft;
+    // Пункты: цитата — из документов дословно, числа и срок — из цитаты, а не из слов модели (requirement-engine.ts).
     const body: RequirementsResponse = {
       ...summary,
-      groups: { who: check(who), submit: check(submit), scope: check(scope), terms: check(terms) },
-      criteria: { howWins: criteria.howWins, rows: check(criteria.rows) },
+      groups: refineGroups(draft, found),
+      criteria: { howWins: criteria.howWins, rows: criteria.rows.map((row) => ({ ...row, verified: found(row.quote) })) },
     };
     return Response.json(body);
   } catch (error) {

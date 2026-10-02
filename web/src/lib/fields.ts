@@ -1,10 +1,12 @@
 import { castCheck } from "@/lib/cast";
+import { hintProblem, parseHint } from "@/lib/conditions";
 import { tpChanges } from "@/lib/doc-changes";
 import { requiredItems } from "@/lib/fulfillment";
 import { ANKETA, anketaExtraRows, type Profile, type ProfileKey } from "@/lib/profile";
 import type { Purchase } from "@/lib/purchase";
 import { profileProblems } from "@/lib/requisites-check";
 import { needsFill, type TpForm, type TpResult } from "@/lib/tp";
+import { guardContext, guardOffer, ownConditions } from "@/lib/tp-guard";
 import { PART_TITLES, partsOf, type TpPart } from "@/lib/tp-parts";
 
 // Карта полей заявки — ядро «заявки под ключ». По каждому полю документов заявки видно, что с ним:
@@ -60,8 +62,6 @@ const LABELS = Object.fromEntries(ANKETA.map(({ key, label }) => [key, label])) 
 const labelOf = (key: ProfileKey) => LABELS[key] ?? (key === "vatNote" ? "Как писать НДС в цене" : key === "signer" ? "Подписант" : key);
 
 const PLACEHOLDER = /\[[^\]]+\]/g;
-const AT_LEAST = /^\[число, не меньше (\d+(?:[.,]\d+)?)\]$/;
-const toNum = (s: string) => Number(s.replace(",", "."));
 
 // Что вписано на месте жёлтых полей заготовки: заготовка — куски текста между полями, их находим в тексте один за другим,
 // каждый на первом подходящем месте. То же ответило бы регулярное выражение с ленивыми группами, но оно перебирало
@@ -107,26 +107,53 @@ function textFields(
     out.push({ ...base, key: base.key, label: base.context, kind: "auto", status: "filled", value: text, required: true });
     return out;
   }
-  // Заполненные места: вписанное значение и проверка числа по заготовке — «[число, не меньше 150]».
+  // Заполненные места: вписанное значение и проверка числа по подсказке заготовки — «[число, не меньше 150]»,
+  // «[число, не больше 5]», «[число, от 3 до 5]», «[размер, не меньше 3×2]» (conditions.ts).
   const values = filledValues(template, text);
   holes.forEach((hole, j) => {
     const value = values[j];
     if (value === null || value === undefined || value === hole) return;
-    const min = AT_LEAST.exec(hole);
-    const got = min ? /\d+(?:[.,]\d+)?/.exec(value) : null;
-    const low = min && got && toNum(got[0]) < toNum(min[1]);
+    const hint = parseHint(hole);
+    const problem = hint ? hintProblem(hint, value) : null;
     out.push({
       ...base,
       key: `${base.key}:done:${j}`,
       label: hole.slice(1, -1),
       kind: "manual",
-      status: low ? "invalid" : "filled",
+      status: problem ? "invalid" : "filled",
       value: value.trim(),
       required: true,
-      ...(low && { problem: `${got![0]} — по ТЗ не меньше ${min![1]}` }),
+      ...(problem && { problem }),
     });
   });
   return out;
+}
+
+// Значения, которые ИИ подставил за участника сам: число с границы требования заказчика в черновике, составленном до того, как
+// это стало запрещено (или вне охраны tp-guard.ts). Такое значение остаётся в тексте, но в заявку идёт только по подтверждению участника.
+function guessedFields(
+  base: { key: string; doc: string; part: TpPart; context: string; source: string; quote: string },
+  draftText: string | undefined,
+  requirement: string,
+  confirmed: Set<string>
+): ApplicationField[] {
+  if (!draftText || !base.quote) return [];
+  const { hits } = guardOffer(draftText, ownConditions(base.quote, requirement), guardContext([base.quote]));
+  if (hits.length === 0) return [];
+  const key = `confirm:guess:${base.key.replace(/^tp:/, "")}`;
+  const bounds = [...new Set(hits.map((h) => h.bound).filter(Boolean))];
+  return [
+    {
+      ...base,
+      key,
+      label: "Значение подобрал ИИ",
+      kind: "confirm",
+      status: confirmed.has(key) ? "filled" : "needs_confirmation",
+      value: hits.map((h) => [h.value, h.unit].filter(Boolean).join(" ")).join(", "),
+      required: true,
+      problem: `По ТЗ ${bounds.length ? bounds.join("; ") : "у заказчика граница"}. ИИ взял её как ваше значение — подтвердите, что готовы предложить именно это (иначе поправьте в файле Word)`,
+    },
+  ];
 }
 
 // Строки анкеты заказчика со значениями, которые участник вписал, — для файла Word.
@@ -184,24 +211,14 @@ export function fieldsOf({ purchase: p, profile, profileSources = {}, evidence =
   if (tp) {
     const draft = p.tpDraft;
     const doc = PART_TITLES.tp;
-    tp.goods.forEach((g, i) =>
-      out.push(
-        ...textFields(
-          { key: `tp:good:${i}`, doc, part: "tp", context: g.name, source: g.source || "ТЗ", quote: g.quote },
-          g.characteristics,
-          draft?.goods[i]?.characteristics
-        )
-      )
-    );
-    tp.items.forEach((it, i) =>
-      out.push(
-        ...textFields(
-          { key: `tp:item:${i}`, doc, part: "tp", context: it.topic, source: it.clause ? `ТЗ, п. ${it.clause}` : "ТЗ", quote: it.quote },
-          it.offer,
-          draft?.items[i]?.offer
-        )
-      )
-    );
+    tp.goods.forEach((g, i) => {
+      const base = { key: `tp:good:${i}`, doc, part: "tp" as const, context: g.name, source: g.source || "ТЗ", quote: g.quote };
+      out.push(...textFields(base, g.characteristics, draft?.goods[i]?.characteristics), ...guessedFields(base, draft?.goods[i]?.characteristics, g.name, confirmed));
+    });
+    tp.items.forEach((it, i) => {
+      const base = { key: `tp:item:${i}`, doc, part: "tp" as const, context: it.topic, source: it.clause ? `ТЗ, п. ${it.clause}` : "ТЗ", quote: it.quote };
+      out.push(...textFields(base, it.offer, draft?.items[i]?.offer), ...guessedFields(base, draft?.items[i]?.offer, it.requirement, confirmed));
+    });
     if (needsFill(tp.form.consent)) {
       out.push(...textFields({ key: "tp:consent", doc, part: "tp", context: "Согласие участника", source: tp.form.source || "Форма заказчика" }, tp.form.consent, undefined));
     }

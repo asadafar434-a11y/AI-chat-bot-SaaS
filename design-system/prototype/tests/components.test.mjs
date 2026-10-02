@@ -28,6 +28,8 @@ before(async () => {
   mods.ui = await server.ssrLoadModule('/src/components/ui.tsx');
   mods.upload = await server.ssrLoadModule('/src/components/StepUpload.tsx');
   mods.changed = await server.ssrLoadModule('/src/components/DocsChanged.tsx');
+  mods.requirements = await server.ssrLoadModule('/src/components/RequirementsList.tsx');
+  mods.requirements = await server.ssrLoadModule('/src/components/RequirementsList.tsx');
 });
 
 after(async () => {
@@ -154,4 +156,99 @@ test('«документы закупки изменились»: вредная
   assert.match(out, /&lt;img src=x onerror=alert\(1\)&gt;\.pdf/);
   assert.match(out, /Д{300}\.docx/);
   assert.match(out, /break-words/, 'длинное имя без пробелов не должно раздвигать строку');
+});
+
+const reqRow = (over = {}) => ({
+  id: 'scope-0',
+  group: 'scope',
+  text: 'Зал от 150 мест',
+  mandatory: { text: 'Обязательно', tone: 'neutral' },
+  type: 'Работы и услуги',
+  conditions: [{ text: 'не менее 150 мест', kind: 'choice' }, { text: 'срок не более 5 рабочих дней', kind: 'term' }],
+  deadline: '',
+  status: 'open',
+  statusText: 'Нужны ваши данные',
+  source: 'ТЗ, п. 2.1',
+  quote: 'зал вместимостью не менее 150 мест',
+  quoteFound: true,
+  where: '«ТЗ.docx» — стр. 2, п. 2.1',
+  check: 'в предложении участника — вместимость зала: не менее 150 мест',
+  evidence: [],
+  issues: [],
+  ...over,
+});
+const requirementsList = (rows, props = {}) => html(h(mods.requirements.RequirementsList, { rows, onFix: () => {}, ...props }));
+
+test('требования заказчика: обязательность, тип, числа и статус у каждой строки, группы с числом пунктов', () => {
+  const out = requirementsList([
+    reqRow(),
+    reqRow({ id: 'who-0', group: 'who', text: 'Только малый бизнес', type: 'К участнику', conditions: [], status: 'info', statusText: 'Условие заказчика' }),
+  ]);
+  assert.match(out, /<h2[^>]*>Требования заказчика<\/h2>/);
+  assert.match(out, /aria-pressed="true"[^>]*>Все<span[^>]*>2<\/span>/);
+  assert.match(out, />Кто участвует<span[^>]*>1<\/span>/);
+  assert.match(out, />ТЗ<span[^>]*>1<\/span>/);
+  assert.doesNotMatch(out, />Оценка<span/, 'пустой группы нет');
+  assert.match(out, /Обязательно/);
+  assert.match(out, /Работы и услуги/);
+  assert.match(out, /не менее 150 мест/);
+  assert.match(out, /срок не более 5 рабочих дней/);
+  assert.match(out, /Нужны ваши данные/);
+  assert.match(out, /Ждут ваших данных: 1\./);
+  assert.match(out, /aria-expanded="false"/);
+});
+
+test('требования заказчика: границу заказчика видно отдельно от предложения участника; пустые места в предложении выделены', () => {
+  const out = requirementsList(
+    [reqRow({ offer: { text: 'Обеспечим зал на [число, не меньше 150] мест.', note: 'ждёт вашего значения: 1', problems: [] } })],
+    { initialOpen: 'scope-0' }
+  );
+  assert.match(out, /aria-expanded="true"/);
+  assert.match(out, /Требует заказчик/);
+  assert.match(out, /Предлагаете вы/);
+  assert.match(out, /<mark class="highlight">\[число, не меньше 150\]<\/mark>/);
+  assert.match(out, /ждёт вашего значения: 1/);
+  assert.match(out, /Статус: <\/span>Нужны ваши данные — /, 'на телефоне значок статуса скрыт — слово о статусе есть в раскрытой строке');
+  assert.match(out, /Где написано: <\/span>ТЗ, п\. 2\.1/);
+  assert.match(out, /Место в файле: <\/span>«ТЗ\.docx» — стр\. 2, п\. 2\.1/);
+  assert.match(out, /Как проверят: <\/span>в предложении участника/);
+  assert.match(out, /<button[^>]*>Вписать своё значение →<\/button>/);
+});
+
+test('требования заказчика: без ТП и без строки в ТП сказано, чего нет; не найденная цитата и сомнения — предупреждением', () => {
+  const none = requirementsList([reqRow({ status: 'open', offer: undefined })], { initialOpen: 'scope-0' });
+  assert.match(none, /В ТП нет строки по этому требованию/);
+  const early = requirementsList([reqRow({ status: 'info', statusText: 'Условие заказчика' })], { initialOpen: 'scope-0' });
+  assert.match(early, /ТП ещё не составлено/);
+  const doubt = requirementsList(
+    [reqRow({ status: 'unverified', statusText: 'Сверьте с документом', quoteFound: false, issues: ['в пункте есть число 7, которого нет в цитате: сверьте с документом'] })],
+    { initialOpen: 'scope-0' }
+  );
+  assert.match(doubt, /цитата не найдена в документах дословно — сверьте вручную/);
+  assert.match(doubt, /в пункте есть число 7, которого нет в цитате/);
+  assert.match(doubt, /Сверить с документом: 1\./);
+  assert.doesNotMatch(requirementsList([reqRow({ status: 'met', statusText: 'Подходит' })], { initialOpen: 'scope-0' }), /Вписать своё значение/);
+});
+
+test('требования заказчика: вредная разметка и очень длинный текст — только текст, перенос по словам; пустой список ничего не рисует', () => {
+  const evil = '<img src=x onerror=alert(1)>';
+  const out = requirementsList(
+    [reqRow({ text: evil + 'Д'.repeat(300), quote: evil, source: evil, offer: { text: evil, note: evil, problems: [evil] } })],
+    { initialOpen: 'scope-0' }
+  );
+  assert.doesNotMatch(out, /<img/i);
+  assert.match(out, /&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.match(out, /Д{300}/);
+  assert.match(out, /break-words/);
+  assert.equal(requirementsList([]), '');
+});
+
+test('требования заказчика: много пунктов — показаны первые, остальные по кнопке', () => {
+  const rows = Array.from({ length: 40 }, (_, i) => reqRow({ id: 'scope-' + i, text: 'Требование номер ' + i }));
+  const out = requirementsList(rows);
+  assert.equal((out.match(/Требование номер /g) ?? []).length, 15);
+  assert.match(out, /Показать ещё 15[^<]*\(осталось 25\)/);
+  const last = requirementsList(rows.slice(0, 20));
+  assert.match(last, /Показать ещё 5(?!\d)/);
+  assert.doesNotMatch(last, /осталось/, 'остаток помещается в один шаг — «осталось» не пишем');
 });

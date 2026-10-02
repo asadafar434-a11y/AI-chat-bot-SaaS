@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CheckCircle2, AlertTriangle, XCircle, Sparkles, ChevronRight, Info } from '../lib/icons';
 import { Button, Card, Badge, Dot, Tooltip } from './ui';
 import type { CheckStatus } from '../lib/data';
+import { RequirementsList, type RequirementRowView } from './RequirementsList';
 
 const statusMeta: Record<
   CheckStatus,
@@ -38,6 +39,7 @@ export type AnalysisRow = {
 
 export function StepAnalysis({
   rows,
+  requirements = [],
   kindText,
   fromPlatform,
   hidden,
@@ -46,6 +48,8 @@ export function StepAnalysis({
   onFix,
 }: {
   rows: AnalysisRow[];
+  // Все требования заказчика со сроком, числами, обязательностью, проверкой и предложением участника.
+  requirements?: RequirementRowView[];
   // «на электронный аукцион» — способ закупки для описания; пусто, если не определён.
   kindText: string;
   // 44-ФЗ, электронная процедура: сведения об участнике передаёт площадка.
@@ -210,6 +214,8 @@ export function StepAnalysis({
           «м»–«п» п. 1, пп. «а»–«в» п. 2 и п. 5 ч. 1 ст. 43, остальное площадка передаёт сама.
         </p>
       )}
+
+      <RequirementsList rows={requirements} onFix={() => onFix('review')} />
 
       <div className="flex justify-between">
         <Button variant="ghost" onClick={onBack}>

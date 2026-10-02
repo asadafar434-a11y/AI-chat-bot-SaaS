@@ -5,7 +5,7 @@ import type { Purchase } from "@/lib/purchase";
 import { listPurchases, savePurchaseWithDocuments } from "@/lib/purchase-store";
 import { quoteFound } from "@/lib/quotes";
 import type { SentDocument } from "@/lib/read-documents";
-import { REQ_GROUP_KEYS, type ReqGroups } from "@/lib/requirements";
+import { refineGroups } from "@/lib/requirement-engine";
 import { SAMPLE_CRITERIA, SAMPLE_GROUPS, SAMPLE_SUMMARY } from "@/lib/requirements-sample";
 import { NO_ANTI_DUMPING, PLAIN_FORM, type TpResult } from "@/lib/tp";
 import { SAMPLE_CAST, SAMPLE_ITEMS } from "@/lib/tp-sample";
@@ -113,13 +113,14 @@ export const sampleTp = (): TpResult => ({
 
 // Версия примера. Выросла — пример, уже сохранённый в браузере, при открытии получает новые документы
 // и требования, а составленный черновик ТП — заново по новому образцу.
-const SAMPLE_VERSION = 3;
+const SAMPLE_VERSION = 5;
 
 // Расходы вымышленного участника: в примере «До какой цены снижаться» сразу показывает расчёт.
 export const SAMPLE_PRICE_CALC: Partial<PriceCalc> = { costs: 420_000, extra: 2_000, taxPct: 6, guaranteeRatePct: 3, days: 90 };
 
 function samplePurchase(): Purchase {
-  const requirements = Object.fromEntries(REQ_GROUP_KEYS.map((key) => [key, checked(SAMPLE_GROUPS[key])])) as ReqGroups;
+  // Пункты примера идут тем же кодом, что и ответ модели: цитата — из документов, числа и срок — из цитаты.
+  const requirements = refineGroups({ ...SAMPLE_GROUPS, price: SAMPLE_SUMMARY.price }, (quote) => quoteFound(quote, TEXTS));
   return {
     ...SAMPLE_SUMMARY,
     id: crypto.randomUUID(),
@@ -147,6 +148,8 @@ export async function upgradeSample(p: Purchase): Promise<Purchase> {
       criteria: fresh.criteria,
       sampleVersion: SAMPLE_VERSION,
       tp: p.tp ? sampleTp() : undefined,
+      // Черновик — то, что написал бы ИИ: по нему видно, что участник вписал сам. Старый черновик остался бы с прежними значениями.
+      tpDraft: p.tp ? sampleTp() : undefined,
       // Документы примера обновились вместе с ним, а ТП составлено заново по ним — пометки «требует проверки» нет.
       tpDocs: p.tp ? stampsOf(SAMPLE_DOCUMENTS) : undefined,
     },

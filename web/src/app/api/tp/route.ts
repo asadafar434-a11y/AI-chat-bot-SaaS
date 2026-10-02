@@ -5,6 +5,7 @@ import { askJson, cleanSamples, ModelStop, sampleBlocks } from "@/lib/claude-req
 import { MAX_CONTEXT_CHARS } from "@/lib/chat-types";
 import { quoteChecker } from "@/lib/quotes";
 import { SAMPLES_LIMIT, TpDraftSchema, type TpResponse } from "@/lib/tp";
+import { guardContext, guardOffer, ownConditions } from "@/lib/tp-guard";
 import { SAMPLES_NOTE, TP_INSTRUCTIONS } from "@/lib/tp-prompt";
 import { badRequest, readJson, sentDocuments } from "@/lib/read-json";
 
@@ -44,10 +45,29 @@ export async function POST(request: Request) {
 
     const found = quoteChecker(documents.map((d) => d.text));
     const checked = <T extends { quote: string }>(item: T) => ({ ...item, verified: found(item.quote) });
+
+    // Заказчик требует — участник предлагает: число, которое повторяет границу заказчика или придумано рядом с ней, в предложении
+    // участника не остаётся — на его месте пустое место «[число, не меньше N]» (tp-guard.ts). Что ответит модель, неизвестно,
+    // поэтому это делает код, а не только инструкция.
+    const guard = guardContext(documents.map((d) => d.text));
+    let blanked = 0;
+    const own = <T extends { offer: string; quote: string; requirement: string }>(item: T): T => {
+      const result = guardOffer(item.offer, ownConditions(item.quote, item.requirement), guard);
+      blanked += result.hits.length;
+      return { ...item, offer: result.text };
+    };
+    const goods = draft.goods.map((g) => {
+      const result = guardOffer(g.characteristics, ownConditions(g.quote, g.name), guard);
+      blanked += result.hits.length;
+      return { ...g, characteristics: result.text };
+    });
+    const items = draft.items.map(own);
+    if (blanked > 0) console.log(`[ТП] значений участника оставлено пустыми: ${blanked} — ИИ взял их с границы требования заказчика`);
+
     const body: TpResponse = {
       form: draft.form,
-      goods: draft.goods.map(checked),
-      items: draft.items.map(checked),
+      goods: goods.map(checked),
+      items: items.map(checked),
       antiDumping: draft.antiDumping.rule
         ? checked(draft.antiDumping)
         : { ...draft.antiDumping, verified: false },
