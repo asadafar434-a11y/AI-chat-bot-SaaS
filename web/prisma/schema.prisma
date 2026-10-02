@@ -1,13 +1,13 @@
-// Stage 11 — S1: фундамент PostgreSQL.
+// Stage 11 — S1 (фундамент) + S2 (аутентификация, роли, tenancy).
 //
-// ЭТАП S1 ТОЛЬКО. Схема не подключена ни к одному route handler: приложение по-прежнему
-// читает и пишет IndexedDB. Назначение этого файла — зафиксировать целевую модель данных
-// и создать её аддитивной миграцией.
+// S2 добавляет аддитивно: Session, Account, VerificationToken (стандартная модель Auth.js)
+// и Invitation (собственная таблица приглашений). Бизнес-данные по-прежнему читаются из
+// IndexedDB: подключение серверных чтений — отдельный, более поздний шаг. Схема S1 не
+// изменяется, только дополняется.
 //
 // Чего в схеме НЕТ сознательно (создаётся на следующих этапах):
-//   Session, Account, VerificationToken, Invitation  — Auth.js и tenancy, этап S2
-//   Payment                                             — ЮKassa, этап S10
-//   схема pgboss                                       — фоновые задачи, этап S8
+//   Payment                        — ЮKassa, этап S10
+//   схема pgboss                   — фоновые задачи, этап S8
 //
 // Ключевые инварианты (см. docs/stage-11/data-model.md):
 //   1. organizationId присутствует в каждой организации-скоупленной таблице;
@@ -75,6 +75,7 @@ model Organization {
   samples             Sample[]
   auditEvents         AuditEvent[]
   legacyImportBatches LegacyImportBatch[]
+  invitations         Invitation[]
 
   @@index([deletedAt])
   @@map("Organization")
@@ -99,10 +100,13 @@ model User {
   updatedAt     DateTime  @updatedAt @db.Timestamptz(3)
   deletedAt     DateTime? @db.Timestamptz(3)
 
-  memberships Membership[]
-  userProfile UserProfile?
-  purchases   Purchase[]   @relation("PurchaseCreatedBy")
-  auditEvents AuditEvent[] @relation("AuditEventActor")
+  memberships     Membership[]
+  userProfile     UserProfile?
+  purchases       Purchase[]   @relation("PurchaseCreatedBy")
+  auditEvents     AuditEvent[] @relation("AuditEventActor")
+  accounts        Account[]
+  sessions        Session[]
+  invitationsSent Invitation[] @relation("InvitationInvitedBy")
 
   @@index([deletedAt])
   @@map("User")
@@ -332,21 +336,21 @@ model AuditEvent {
 /// копии в одну организацию — это один батч, повторный запуск продолжает его, а не
 /// создаёт новый.
 model LegacyImportBatch {
-  id                  String    @id @default(cuid())
+  id                  String            @id @default(cuid())
   /// Ключ идемпотентности конкретного запуска.
-  batchKey            String    @unique @db.VarChar(200)
+  batchKey            String            @unique @db.VarChar(200)
   /// sha256 файла копии формата tender-lawyer-backup.
-  backupHash          String    @db.VarChar(64)
+  backupHash          String            @db.VarChar(64)
   /// Версия формата копии: 1 на текущий момент.
-  backupFormatVersion Int       @default(1)
-  organizationId      String   @db.VarChar(25)
+  backupFormatVersion Int               @default(1)
+  organizationId      String            @db.VarChar(25)
   status              ImportBatchStatus @default(started)
   /// Вход/выход по каждому хранилищу.
   counts              Json?
   /// sha256 по экспортированным объектам.
   checksums           Json?
-  startedAt           DateTime  @default(now()) @db.Timestamptz(3)
-  finishedAt          DateTime? @db.Timestamptz(3)
+  startedAt           DateTime          @default(now()) @db.Timestamptz(3)
+  finishedAt          DateTime?         @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
 
@@ -354,4 +358,92 @@ model LegacyImportBatch {
   @@index([organizationId, startedAt])
   @@index([organizationId, status])
   @@map("LegacyImportBatch")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// S2: аутентификация, сессии, приглашения
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Account / Session / VerificationToken — стандартная модель Auth.js: поля совпадают с
+// ожиданиями @auth/prisma-adapter, чтобы адаптер не приходилось переопределять. Два
+// требования поверх стандарта:
+//   1. используется именно `Session` (серверные сессии в БД, D4), а не JWT;
+//   2. `VerificationToken.token` и `Invitation.tokenHash` хранят ХЕШ токена, а не токен:
+//      похищение таблицы не даёт возможности сбросить чужой пароль или принять приглашение.
+
+/// Связь внешней учётной записи с пользователем. На S2 внешний провайдер не подключается,
+/// но таблица создаётся заранее: это стандартная модель Auth.js, и её отсутствие сломало бы
+/// `PrismaAdapter`. Точка расширения, а не рабочий поток.
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("Account")
+}
+
+/// Серверная сессия. Cookie хранит `sessionToken`; сама строка проверяется на сервере при
+/// каждом защищённом обращении. Отзыв — удаление строки, поэтому выход и смена пароля
+/// действуют немедленно (D4).
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expires])
+  @@map("Session")
+}
+
+/// Одноразовый токен подтверждения email и сброса пароля. `token` — хеш, не сам токен.
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime @db.Timestamptz(3)
+
+  @@unique([identifier, token])
+  @@index([expires])
+  @@map("VerificationToken")
+}
+
+/// Одноразовое приглашение `owner` → `member`. Несёт организацию и роль, поэтому не может
+/// быть сведено к стандартному `VerificationToken`. Анонимный доступ возможен только к
+/// операции «принять приглашение» и только по одноразовому токену.
+model Invitation {
+  id              String    @id @default(cuid())
+  /// sha256 одноразового токена. Сам токен нигде не хранится.
+  tokenHash       String    @unique @db.VarChar(64)
+  organizationId  String    @db.VarChar(25)
+  /// Нормализованный lowercase.
+  email           String    @db.VarChar(320)
+  role            Role      @default(member)
+  invitedByUserId String    @db.VarChar(25)
+  expiresAt       DateTime  @db.Timestamptz(3)
+  /// null, пока приглашение не принято; проставляется в одной транзакции с созданием Membership.
+  acceptedAt      DateTime? @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  invitedBy    User         @relation("InvitationInvitedBy", fields: [invitedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, email])
+  @@index([organizationId, createdAt])
+  @@index([expiresAt])
+  @@map("Invitation")
 }

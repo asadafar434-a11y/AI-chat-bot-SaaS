@@ -17,7 +17,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const schemaPath = join(here, "..", "..", "..", "prisma", "schema.prisma");
 const schema = readFileSync(schemaPath, "utf8");
 
-/** Таблицы, зафиксированные контрактом для этапа S1. */
+/** Таблицы приложения, зафиксированные контрактом для этапа S1. */
 const S1_MODELS = [
   "Organization",
   "User",
@@ -32,15 +32,12 @@ const S1_MODELS = [
   "LegacyImportBatch",
 ] as const;
 
-/** Таблицы, которые заведены в более поздних этапах и не должны появляться в S1. */
-const LATER_STAGE_MODELS = [
-  "Session",
-  "Account",
-  "VerificationToken",
-  "Invitation",
-  "Payment",
-  "pgboss",
-] as const;
+/** Стандартные таблицы Auth.js и таблица приглашений — добавляются на этапе S2. */
+const AUTH_MODELS = ["Account", "Session", "VerificationToken"] as const;
+const S2_MODELS = [...AUTH_MODELS, "Invitation"] as const;
+
+/** Таблицы, которые заведены в более поздних этапах и не должны появляться сейчас. */
+const LATER_STAGE_MODELS = ["Payment", "pgboss"] as const;
 
 function modelBlock(name: string): string {
   const start = schema.indexOf(`model ${name} {`);
@@ -54,23 +51,24 @@ function modelNames(): string[] {
   return [...schema.matchAll(/^model\s+(\w+)\s*\{/gm)].map((match) => match[1]);
 }
 
-test("в схеме ровно 11 моделей S1", () => {
-  assert.deepEqual(modelNames().sort(), [...S1_MODELS].sort());
+test("в схеме ровно 15 моделей: 11 приложения (S1) и 4 аутентификации (S2)", () => {
+  assert.deepEqual(modelNames().sort(), [...S1_MODELS, ...S2_MODELS].sort());
 });
 
-test("моделей поздних этапов в схеме S1 нет", () => {
+test("моделей более поздних этапов в схеме нет", () => {
   const present = modelNames();
   for (const name of LATER_STAGE_MODELS) {
-    assert.equal(present.includes(name), false, `${name} не должна появляться на этапе S1`);
+    assert.equal(present.includes(name), false, `${name} не должна появляться на этом этапе`);
   }
 });
 
 /**
  * Таблицы без `organizationId` — по умыслу, а не по недосмотру.
  * `Organization` сама является корнем скоупа, `User` может состоять в нескольких
- * организациях, `UserProfile` принадлежит пользователю, а не арендатору.
+ * организациях, `UserProfile` принадлежит пользователю, а не арендатору. Таблицы Auth.js
+ * привязаны к `userId` текущей сессии, а не к арендатору (data-model.md §7).
  */
-const TABLES_WITHOUT_ORG_ID = ["Organization", "User", "UserProfile"];
+const TABLES_WITHOUT_ORG_ID = ["Organization", "User", "UserProfile", ...AUTH_MODELS];
 
 /**
  * Таблицы, у которых вместо `createdAt`/`updatedAt` собственные отметки времени:
@@ -122,8 +120,13 @@ test("удаление организации не каскадит в арен�
   }
 });
 
-test("у каждой таблицы есть отметки времени создания и изменения", () => {
+test("у каждой таблицы приложения есть отметки времени создания и изменения", () => {
   for (const name of modelNames()) {
+    // Стандартные таблицы Auth.js не несут прикладных отметок времени: их форма задана
+    // Auth.js, а не продуктом. Менять её — значит разойтись с адаптером.
+    if ((AUTH_MODELS as readonly string[]).includes(name)) {
+      continue;
+    }
     const block = modelBlock(name);
     const own = TABLES_WITH_OWN_TIMESTAMPS[name];
     const created = own ? own.created : "createdAt";
@@ -131,8 +134,9 @@ test("у каждой таблицы есть отметки времени со
 
     assert.match(block, new RegExp(`${created}\\s+DateTime`), `${name}: нет ${created}`);
 
-    if (name === "AuditEvent" || own) {
-      // Аудит и пакет импорта только дополняются — метка правки у них не нужна.
+    // Аудит, пакет импорта и приглашение только дополняются — метка правки им не нужна:
+    // приглашение фиксирует принятие через `acceptedAt`, а не через `updatedAt`.
+    if (name === "AuditEvent" || name === "Invitation" || own) {
       assert.doesNotMatch(block, /updatedAt\s+DateTime/, `${name}: не должен обновляться, поэтому updatedAt не нужен`);
       continue;
     }
@@ -142,6 +146,11 @@ test("у каждой таблицы есть отметки времени со
 
 test("все идентификаторы непрозрачные и генерируются на стороне Prisma", () => {
   for (const name of modelNames()) {
+    // У `VerificationToken` составной ключ `@@unique([identifier, token])` вместо `id`:
+    // такова стандартная модель Auth.js, и собственный `id` здесь ничего не улучшает.
+    if (name === "VerificationToken") {
+      continue;
+    }
     assert.match(modelBlock(name), /id\s+String\s+@id\s+@default\(cuid\(\)\)/, `${name}: id должен быть cuid()`);
   }
 });
@@ -216,4 +225,54 @@ test("удаление пользователя мягкое: в таблице 
 
 test("у документа есть составной индекс по организации и закупке", () => {
   assert.match(modelBlock("Document"), /@@index\(\[organizationId,\s*purchaseId\]\)/);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Инварианты S2: аутентификация, сессии, приглашения
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("Session: уникальный серверный токен и срок действия", () => {
+  const block = modelBlock("Session");
+  // Cookie хранит sessionToken, поэтому по нему должен быть уникальный поиск.
+  assert.match(block, /sessionToken\s+String\s+@unique/);
+  assert.match(block, /expires\s+DateTime/);
+  assert.match(block, /userId\s+String/);
+  // Сессия не переживает удаление пользователя: каскад по userId.
+  assert.match(block, /user\s+User\s+@relation\(fields:\s*\[userId\],\s*references:\s*\[id\],\s*onDelete:\s*Cascade\)/);
+});
+
+test("VerificationToken: составной ключ по identifier и token", () => {
+  const block = modelBlock("VerificationToken");
+  assert.match(block, /@@unique\(\[identifier,\s*token\]\)/);
+  assert.match(block, /expires\s+DateTime/);
+});
+
+test("Account: внешняя учётная запись уникальна по провайдеру", () => {
+  assert.match(modelBlock("Account"), /@@unique\(\[provider,\s*providerAccountId\]\)/);
+});
+
+test("Invitation хранит хеш токена, а не сам токен", () => {
+  const block = modelBlock("Invitation");
+  assert.match(block, /tokenHash\s+String\s+@unique/);
+  // Сырое поле token отсутствует: иначе похищение таблицы позволяло бы принять приглашение.
+  assert.doesNotMatch(block, /\btoken\s+String/);
+});
+
+test("Invitation несёт организацию и роль, срок и признак принятия", () => {
+  const block = modelBlock("Invitation");
+  assert.match(block, /organizationId\s+String/);
+  assert.match(block, /role\s+Role\s+@default\(member\)/);
+  assert.match(block, /expiresAt\s+DateTime/);
+  assert.match(block, /acceptedAt\s+DateTime\?/);
+  assert.match(block, /invitedByUserId\s+String/);
+  assert.match(block, /@@index\(\[organizationId,\s*email\]\)/);
+});
+
+test("Invitation ссылается на организацию и пригласившего без каскада", () => {
+  const block = modelBlock("Invitation");
+  assert.match(block, /organization\s+Organization\s+@relation\(fields:\s*\[organizationId\],\s*references:\s*\[id\],\s*onDelete:\s*Restrict\)/);
+  assert.match(
+    block,
+    /invitedBy\s+User\s+@relation\("InvitationInvitedBy",\s*fields:\s*\[invitedByUserId\],\s*references:\s*\[id\],\s*onDelete:\s*Restrict\)/,
+  );
 });

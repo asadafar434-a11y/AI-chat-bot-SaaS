@@ -21,6 +21,7 @@ import { PrismaClient } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
 import type { DbClient } from "./db-client.ts";
 import { assertDbClient } from "./db-client.ts";
+import type { TransactionRunner } from "../auth/transaction.ts";
 
 /** Тип реального клиента Prisma — тот же, что использует сгенерированный код. */
 export type PrismaDbClient = PrismaClient;
@@ -68,4 +69,15 @@ export async function disconnectPrisma(): Promise<void> {
     await cached.$disconnect();
     cached = null;
   }
+}
+
+/**
+ * Граница интерактивной транзакции для операций, которые обязаны быть атомарными:
+ * принятие приглашения и сброс пароля. Клиент передаётся в колбэк уже как `DbClient`,
+ * поэтому доменный код не знает про Prisma, а транзакция открывается здесь.
+ */
+export function getTransactionRunner(): TransactionRunner {
+  const prisma = getPrismaClient();
+  return <T>(fn: (db: DbClient) => Promise<T>): Promise<T> =>
+    prisma.$transaction((tx) => fn(tx as unknown as DbClient));
 }

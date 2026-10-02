@@ -42,6 +42,12 @@ export type DbClient = {
   sample: ModelDelegate;
   auditEvent: ModelDelegate;
   legacyImportBatch: ModelDelegate;
+  // S2: аутентификация и приглашения. Делегаты входят в тот же структурный клиент,
+  // чтобы сессии и приглашения проверялись теми же средствами, что и бизнес-таблицы.
+  account: ModelDelegate;
+  session: ModelDelegate;
+  verificationToken: ModelDelegate;
+  invitation: ModelDelegate;
 };
 
 /** Имена делегатов, которые обязаны присутствовать в клиенте. */
@@ -57,6 +63,10 @@ export const DB_DELEGATES = [
   "sample",
   "auditEvent",
   "legacyImportBatch",
+  "account",
+  "session",
+  "verificationToken",
+  "invitation",
 ] as const satisfies readonly (keyof DbClient)[];
 
 export type DbDelegateName = (typeof DB_DELEGATES)[number];

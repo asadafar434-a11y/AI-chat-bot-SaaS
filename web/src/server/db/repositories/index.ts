@@ -39,6 +39,14 @@ export type ImportBatchRow = {
 };
 export type User = { id: string; email: string; name: string | null };
 export type Membership = { id: string; organizationId: string; userId: string; role: "owner" | "member" };
+export type InvitationRow = {
+  id: string;
+  organizationId: string;
+  email: string;
+  role: "owner" | "member";
+  expiresAt: Date;
+  acceptedAt: Date | null;
+};
 
 /** Операции над таблицами с `organizationId`. Скоуп обязателен.
  *
@@ -55,6 +63,7 @@ export type OrgRepos = {
   sample: ScopedRepo<Sample>;
   auditEvent: ScopedRepo<AuditEventRow>;
   legacyImportBatch: ScopedRepo<ImportBatchRow>;
+  invitation: ScopedRepo<InvitationRow>;
 };
 
 /**
@@ -70,6 +79,7 @@ export function orgRepositories(db: DbClient, scope: OrgScope): OrgRepos {
     sample: scopedRepository<Sample>(db, "sample", scope, "sample"),
     auditEvent: scopedRepository<AuditEventRow>(db, "auditEvent", scope, "auditEvent"),
     legacyImportBatch: scopedRepository<ImportBatchRow>(db, "legacyImportBatch", scope, "legacyImportBatch"),
+    invitation: scopedRepository<InvitationRow>(db, "invitation", scope, "invitation"),
   };
 }
 
