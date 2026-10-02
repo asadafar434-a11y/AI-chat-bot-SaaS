@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
-import { AlertTriangle, Archive, Check, Clock, CreditCard, Download, Eye, FileText, Loader2, PenLine, RefreshCw, ShieldCheck, UserCheck } from '../lib/icons';
+import { AlertTriangle, Archive, Check, CheckCircle2, Clock, CreditCard, Download, Eye, FileText, HelpCircle, Info, Loader2, PenLine, RefreshCw, ShieldCheck, UserCheck, XCircle } from '../lib/icons';
 import { AIDisclaimer, Badge, Button, Card, Checkbox, HelpTip, IconButton, Modal, Soon, Tooltip, cx, type Tone } from './ui';
+import { categorySummary, CATEGORY_TITLES, type ValidationReport, type ValidationCategory } from '@/lib/validation-engine';
 import { FinalCheck } from './StepReview';
 import type { SubmitItem } from '@/lib/application-files';
 import type { Completeness } from '@/lib/fields';
@@ -55,6 +56,120 @@ const FORMATS: { id: FileFormat; ext: string; label: string }[] = [
 ];
 const EXT: Record<FileFormat, string> = { docx: 'DOCX', pdf: 'PDF', odt: 'ODT' };
 const NAME: Record<FileFormat, string> = { docx: 'Word', pdf: 'PDF', odt: 'ODT' };
+
+// ——— Детерминированная проверка ———
+
+const STATUS_ICON: Record<string, ReactNode> = {
+  PASS: <CheckCircle2 className="size-3.5 text-success" />,
+  FAIL: <XCircle className="size-3.5 text-danger" />,
+  NEEDS_HUMAN_REVIEW: <HelpCircle className="size-3.5 text-warn" />,
+};
+const STATUS_LABEL: Record<string, string> = {
+  PASS: 'Пройдено',
+  FAIL: 'Нарушение',
+  NEEDS_HUMAN_REVIEW: 'Решает человек',
+};
+const STATUS_TONE: Record<string, Tone> = {
+  PASS: 'success',
+  FAIL: 'danger',
+  NEEDS_HUMAN_REVIEW: 'warn',
+};
+
+const CATEGORY_ORDER: ValidationCategory[] = [
+  'required_documents',
+  'required_fields',
+  'numeric_constraints',
+  'dates',
+  'validity_periods',
+  'requisite_matching',
+  'characteristic_matching',
+  'evidence_presence',
+  'document_contradictions',
+];
+
+function ValidationPanel({ report }: { report: ValidationReport }) {
+  const [expanded, setExpanded] = useState<ValidationCategory | null>(null);
+  const summary = categorySummary(report);
+
+  if (summary.length === 0) {
+    return (
+      <Card className="flex items-center gap-2.5 p-4">
+        <CheckCircle2 className="size-4 shrink-0 text-success" />
+        <p className="text-[13px] text-muted-foreground">Детерминированных нарушений не найдено.</p>
+      </Card>
+    );
+  }
+
+  const sorted = CATEGORY_ORDER.filter((c) => summary.some((s) => s.category === c))
+    .map((c) => summary.find((s) => s.category === c)!)
+    .concat(summary.filter((s) => !CATEGORY_ORDER.includes(s.category)));
+
+  return (
+    <Card className="p-0">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+        <div className="flex items-center gap-2">
+          {report.status === 'PASS' ? (
+            <CheckCircle2 className="size-4 text-success" />
+          ) : report.status === 'FAIL' ? (
+            <XCircle className="size-4 text-danger" />
+          ) : (
+            <HelpCircle className="size-4 text-warn" />
+          )}
+          <span className="text-sm font-medium">Детерминированная проверка</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          {report.fail > 0 && <Badge tone="danger">{report.fail} нарушение</Badge>}
+          {report.needsHuman > 0 && <Badge tone="warn">{report.needsHuman} на проверку</Badge>}
+          {report.fail === 0 && report.needsHuman === 0 && <Badge tone="success">Всё в порядке</Badge>}
+        </div>
+      </div>
+      <ul className="divide-y divide-border">
+        {sorted.map((s) => {
+          const isOpen = expanded === s.category;
+          const findings = report.findings.filter((f) => f.category === s.category && f.status !== 'PASS');
+          return (
+            <li key={s.category}>
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                disabled={findings.length === 0}
+                onClick={() => setExpanded(isOpen ? null : s.category)}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary/50 disabled:cursor-default disabled:hover:bg-transparent"
+              >
+                {STATUS_ICON[s.status]}
+                <span className="min-w-0 flex-1 text-[13px]">{CATEGORY_TITLES[s.category]}</span>
+                <Badge tone={STATUS_TONE[s.status]}>{STATUS_LABEL[s.status]}</Badge>
+              </button>
+              {isOpen && findings.length > 0 && (
+                <ul className="border-t border-border bg-secondary/30 px-4 py-2 space-y-3">
+                  {findings.map((f) => (
+                    <li key={f.id} className="space-y-0.5">
+                      <div className="flex items-start gap-2">
+                        <span className="mt-0.5 shrink-0">{STATUS_ICON[f.status]}</span>
+                        <span className="text-[13px] font-medium">{f.title}</span>
+                      </div>
+                      <ul className="pl-5 space-y-0.5">
+                        {f.reasons.map((r, i) => (
+                          <li key={i} className="text-[12px] text-muted-foreground">{r}</li>
+                        ))}
+                      </ul>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <div className="flex items-start gap-2 border-t border-border px-4 py-3">
+        <Info className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+        <p className="text-[11px] text-muted-foreground">
+          Критические проверки — без ИИ: числа, сроки, реквизиты, обязательные поля. ИИ интерпретирует текст, правила считают факты.
+        </p>
+      </div>
+    </Card>
+  );
+}
 
 function FileRow({
   row,
@@ -184,6 +299,7 @@ export function StepPackage({
   onFix,
   onTariffs,
   onBack,
+  validation,
 }: {
   hasTp: boolean;
   // Блок под заголовком шага — например, «документы закупки изменились».
@@ -211,6 +327,8 @@ export function StepPackage({
   onFix: () => void;
   onTariffs: () => void;
   onBack: () => void;
+  // Результат детерминированной проверки (validation-engine.ts): если не задан, блок не показывается.
+  validation?: ValidationReport;
 }) {
   const [openPart, setOpenPart] = useState<TpPart | null>(null);
   const [redo, setRedo] = useState(false);
@@ -398,6 +516,8 @@ export function StepPackage({
               </ul>
             )}
           </Card>
+          {/* Детерминированная проверка */}
+          {validation && <ValidationPanel report={validation} />}
         </div>
 
         {/* Проверка специалистом — пока не работает */}
