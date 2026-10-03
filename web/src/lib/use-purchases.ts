@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { onDataChanged } from "@/lib/data-events";
 import { NewerDataError } from "@/lib/data-format";
-import { onDataChanged } from "@/lib/db";
 import { byUrgency } from "@/lib/deadline";
 import type { Purchase } from "@/lib/purchase";
 import { listPurchases } from "@/lib/purchase-store";

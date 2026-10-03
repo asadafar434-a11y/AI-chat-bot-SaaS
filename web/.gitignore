@@ -43,3 +43,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# EIS Collector v1: dataset (RAW/SILVER) никогда не коммитится — может содержать
+# персональные данные и большие бинарные файлы. Хранится локально или в РФ-хранилище.
+/data/

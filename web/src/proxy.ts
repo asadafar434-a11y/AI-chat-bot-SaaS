@@ -63,10 +63,13 @@ export async function proxy(request: NextRequest) {
   // Политика, согласие, условия и контакты открыты всем: их нужно прочитать до входа.
   // Маршруты Auth.js (`/api/auth/*`) открыты: они сами решают, есть ли сессия, и нужны для
   // входа и выхода. Собственные обработчики приглашений/сброса проверяют права по БД.
+  // Локальная раздача файлов (`/api/storage/local/*`, только fs-бэкенд dev/test):
+  // bearer-ссылка с HMAC и коротким TTL, роут сам проверяет подпись, срок и строку.
   if (
     pathname === "/login" ||
     pathname === "/api/login" ||
     pathname.startsWith("/api/auth/") ||
+    pathname.startsWith("/api/storage/local/") ||
     isLegalPath(pathname)
   ) {
     return tooMany(request) ?? NextResponse.next();

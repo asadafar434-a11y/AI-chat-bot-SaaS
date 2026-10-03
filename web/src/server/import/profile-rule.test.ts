@@ -140,13 +140,13 @@ test("без членства импорт запрещён до первой з
   }
 });
 
-test("profile-meta переносится только как version, sources/suggestions — не данные", async () => {
+test("profile-meta: version + sources/suggestions сохраняются как метаданные, не как поля", async () => {
   const ctx = makeCtx();
   const run = await runLegacyImport(
     ctx.input(
       rawBackup([
         ["profile", { inn: "7700000000" }],
-        ["profile-meta", { sources: { inn: "Файл.pdf" }, suggestions: [{ what: "x" }] }],
+        ["profile-meta", { sources: { inn: "Файл.pdf" }, suggestions: [{ key: "kpp", value: "1", source: "Файл.pdf" }, { what: "x" }] }],
       ]),
       ORG_A,
       U1,
@@ -160,6 +160,10 @@ test("profile-meta переносится только как version, sources/s
   assert.equal(org.version, 1);
   assert.equal(user.version, 1);
   assert.ok(!JSON.stringify([org.fields, user.fields]).includes("Файл.pdf"), "источники подсказок не попали в поля");
+  // S11-R0: метаданные профиля не теряются — сохраняются в `meta` строки организации.
+  const meta = org.meta as { sources: Record<string, string>; suggestions: unknown[] };
+  assert.equal(meta.sources.inn, "Файл.pdf");
+  assert.deepEqual(meta.suggestions, [{ key: "kpp", value: "1", source: "Файл.pdf" }], "битый element отброшен, форма сохранена");
 });
 
 test("номер формата записи наследуется в version (правило versionOfRaw)", async () => {

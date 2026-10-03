@@ -46,6 +46,26 @@ pipeline на чистой in-memory БД и сравнивает подмнож
   (`{ name, text }`), а не копии реальных файлов.
 - Копия обязана читаться существующим `parseBackup` без ошибок.
 
+## Server reads (этап S4)
+
+Необязательная секция `expected.reads` той же пары сверяет server read services
+после импорта (`web/src/server/read/golden-reads.test.ts`, только с
+`TEST_DATABASE_URL`; без секции case пропускается):
+
+```json
+{
+  "reads": {
+    "purchases": { "count": 1, "ids": ["p1"] },
+    "facts": { "count": 1 },
+    "samples": { "count": 1 },
+    "profile": { "fullName": "…" }
+  }
+}
+```
+
+Все поля необязательны и сверяются как подмножество. Документы и образцы
+сверяются только метаданными: текстов в PostgreSQL нет до S6.
+
 ## Текущий статус
 
 Эталонов: 0. Модульные фикстуры (`src/server/import/testing/fixtures.ts`)

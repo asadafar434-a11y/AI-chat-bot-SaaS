@@ -20,7 +20,7 @@ import {
   WalletIcon,
   type IconComponent,
 } from "@/components/icons";
-import { onDataChanged } from "@/lib/db";
+import { onDataChanged } from "@/lib/data-events";
 import { LEGAL_PAGES } from "@/lib/legal";
 import { getProfile } from "@/lib/me-store";
 import type { Profile } from "@/lib/profile";

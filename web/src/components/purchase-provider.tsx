@@ -7,8 +7,8 @@ import { Note } from "@/components/note";
 import { NewerDataError } from "@/lib/data-format";
 import { stampsOf } from "@/lib/doc-changes";
 import type { Purchase } from "@/lib/purchase";
-import { deletePurchase, getDocuments, getPurchase, savePurchase, savePurchaseWithDocuments, scansOf } from "@/lib/purchase-store";
-import type { SentDocument } from "@/lib/read-documents";
+import { deletePurchase, getPurchase, loadDocuments, savePurchase, savePurchaseWithDocuments, scansOf } from "@/lib/purchase-store";
+import type { FailedFile, SentDocument } from "@/lib/read-documents";
 import { isStaleSample, SAMPLE_DOCUMENTS, upgradeSample } from "@/lib/sample-purchase";
 
 type PurchaseContextValue = {
@@ -36,6 +36,16 @@ type Loaded =
 
 const SAVE_DELAY = 400;
 
+// Документы, текст которых не найден на сервере, показываются в предупреждении
+// «не получилось прочитать» — без подмены пустым текстом (S11 Final Read Cutover).
+function mergeUnreadable(purchase: Purchase, extra: FailedFile[]): Purchase {
+  if (extra.length === 0) {
+    return purchase;
+  }
+  const known = new Set((purchase.unreadable ?? []).map((f) => f.name));
+  return { ...purchase, unreadable: [...(purchase.unreadable ?? []), ...extra.filter((f) => !known.has(f.name))] };
+}
+
 export function PurchaseProvider({ id, children }: { id: string; children: ReactNode }) {
   const [loaded, setLoaded] = useState<Loaded>({ status: "loading" });
   const [saveError, setSaveError] = useState(false);
@@ -45,17 +55,19 @@ export function PurchaseProvider({ id, children }: { id: string; children: React
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getPurchase(id), getDocuments(id)]).then(
-      async ([saved, savedDocuments]) => {
+    Promise.all([getPurchase(id), loadDocuments(id)]).then(
+      async ([saved, loaded]) => {
         // Пример из старой версии приложения обновляется при открытии; не вышло — открывается как был.
         const upgraded = saved && isStaleSample(saved) ? await upgradeSample(saved).catch(() => null) : null;
+        const savedDocuments = loaded.documents;
         const stored = upgraded ?? saved;
         const documents = upgraded ? SAMPLE_DOCUMENTS : savedDocuments;
         if (cancelled) return;
         // Список сканов у старой закупки появится с первым же сохранением. Так же — снимок документов: ТП старой закупки
         // считается составленным по ним, что изменится дальше — будет видно (lib/doc-changes.ts).
         const docs = stored?.docs ?? stampsOf(documents);
-        const purchase = stored && { ...stored, scans: stored.scans ?? scansOf(documents), docs, ...(stored.tp && !stored.tpDocs && { tpDocs: docs }) };
+        const base = stored && { ...stored, scans: stored.scans ?? scansOf(documents), docs, ...(stored.tp && !stored.tpDocs && { tpDocs: docs }) };
+        const purchase = base && mergeUnreadable(base, loaded.unreadable);
         latest.current = purchase ?? null;
         setLoaded(purchase ? { status: "ready", purchase, documents } : { status: "missing" });
       },

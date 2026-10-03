@@ -7,6 +7,7 @@
  * пользователя: смена пароля выкидывает старые устройства.
  */
 
+import { auditEvent } from "../audit/service.ts";
 import type { DbClient } from "../db/db-client.ts";
 import { tryNormalizeEmail } from "./email.ts";
 import { AuthError } from "./errors.ts";
@@ -83,6 +84,20 @@ export async function resetPasswordWithToken(
     const passwordHash = await hashPassword(newPassword as string);
     await db.user.updateMany({ where: { id: user.id }, data: { passwordHash } });
     await db.session.deleteMany({ where: { userId: user.id } });
+
+    // Учётка общая для всех организаций пользователя: событие пишется в журнал
+    // каждой из них (actor — сам пользователь, утечки между арендаторами нет).
+    const memberships = (await db.membership.findMany({ where: { userId: user.id } })) as {
+      organizationId: string;
+    }[];
+    for (const membership of memberships) {
+      await auditEvent(db, { organizationId: membership.organizationId }, {
+        actorUserId: user.id,
+        action: "auth.password_reset",
+        entityType: "user",
+        entityId: user.id,
+      });
+    }
 
     return { userId: user.id };
   });

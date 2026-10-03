@@ -28,6 +28,9 @@ import { BACKUP_VERSION, parseBackup, type Dump } from "@/lib/backup-format";
 import type { TransactionRunner } from "../auth/transaction.ts";
 import type { DbClient } from "../db/db-client.ts";
 import { withOrgScope, type OrgScope } from "../db/org-scope.ts";
+import { putObjectJson, putObjectText } from "../storage/content.ts";
+import { documentObjectKey, sampleObjectKey } from "../storage/keys.ts";
+import type { StorageAdapter } from "../storage/types.ts";
 import {
   findImportBatchByKey,
   findMembership,
@@ -42,6 +45,7 @@ import {
   mapFact,
   mapPurchase,
   mapSample,
+  normalizeProfileMeta,
   splitProfile,
   type UnreadableEntry,
 } from "./mapping.ts";
@@ -678,11 +682,29 @@ export async function importStage(
   userId: string,
   normalized: NormalizedBackup,
   orphanDocIds: Set<string>,
+  storage?: StorageAdapter,
 ): Promise<EntityImportResult[]> {
   const repos = orgRepositories(txDb, scope);
   const results: EntityImportResult[] = [];
   const pushResult = (entity: BackupEntity, created: number, skippedExists: number, conflicts: string[]): void => {
     results.push({ entity, created, skippedExists, conflicts });
+  };
+
+  /**
+   * Источник сверяется только по полям своего представления. Строка БД несёт
+   * ещё `id`, `organizationId`, штампы и (после S11-R0) ключи S6 — их в источнике
+   * нет; сравнение целой строки всегда давало ложный конфликт и блокировало
+   * инкрементальный backfill.
+   */
+  const projectView = (row: DbRow, view: unknown): unknown => {
+    if (view === null || typeof view !== "object" || Array.isArray(view)) {
+      return row;
+    }
+    const out: DbRow = {};
+    for (const key of Object.keys(view as Record<string, unknown>)) {
+      out[key] = row[key];
+    }
+    return out;
   };
 
   const upsert = async (
@@ -695,7 +717,7 @@ export async function importStage(
       await create();
       return { created: true, conflict: false };
     }
-    if (rows.length > 1 || !sameView(rows[0], sourceView)) {
+    if (rows.length > 1 || !sameView(projectView(rows[0], sourceView), sourceView)) {
       return { created: false, conflict: true };
     }
     return { created: false, conflict: false };
@@ -755,30 +777,70 @@ export async function importStage(
         purchaseId = found[0].id as string;
         purchaseIdByLegacy.set(r.purchaseLegacyId, purchaseId);
       }
-      const outcome = await upsert(
-        documentView(r),
-        () => findByLegacy(txDb.document, r.legacyId),
-        () =>
-          repos.document.create({
-            legacyId: r.legacyId,
-            purchaseId,
-            fileName: r.fileName,
-            mimeType: r.mimeType,
-            sizeBytes: r.sizeBytes,
-            sha256: r.sha256,
-            storageKey: null,
-            textKey: null,
-            pageCount: null,
-            ocr: r.ocr,
-            readError: r.readError,
-          }),
-      );
-      if (outcome.created) {
+      // Сравнение ведём по канонической форме строки: `purchaseLegacyId` в
+      // таблице не хранится и восстанавливается из `purchaseId`, поэтому общий
+      // `upsert` здесь не подходит (S11-R0).
+      const existing = await findByLegacy(txDb.document, r.legacyId);
+      let conflict = false;
+      if (existing.length === 0) {
+        await repos.document.create({
+          legacyId: r.legacyId,
+          purchaseId,
+          fileName: r.fileName,
+          mimeType: r.mimeType,
+          sizeBytes: r.sizeBytes,
+          sha256: r.sha256,
+          storageKey: null,
+          textKey: null,
+          mapKey: null,
+          pageCount: null,
+          ocr: r.ocr,
+          readError: r.readError,
+        });
         created += 1;
-      } else if (outcome.conflict) {
+      } else if (existing.length > 1) {
+        conflict = true;
         conflicts.push(r.legacyId);
       } else {
-        skippedExists += 1;
+        const row = existing[0];
+        const target = {
+          legacyId: row.legacyId,
+          purchaseLegacyId: r.purchaseLegacyId,
+          fileName: row.fileName,
+          mimeType: row.mimeType ?? null,
+          sizeBytes: row.sizeBytes,
+          sha256: row.sha256,
+          pageCount: row.pageCount ?? null,
+          ocr: row.ocr ?? false,
+          readError: row.readError ?? null,
+        };
+        if (row.purchaseId !== purchaseId || !sameView(target, documentView(r))) {
+          conflict = true;
+          conflicts.push(r.legacyId);
+        } else {
+          skippedExists += 1;
+        }
+      }
+      // Backfill содержимого: если строка есть, а текста/карты в S6 ещё нет —
+      // заполняем. Повторный прогон видит непустые ключи и ничего не делает.
+      if (!conflict && storage) {
+        const row = existing[0] ?? (await findByLegacy(txDb.document, r.legacyId))[0];
+        if (row) {
+          const patch: DbRow = {};
+          if (typeof row.textKey !== "string" || !row.textKey) {
+            const textKey = documentObjectKey(scope.organizationId, row.id as string);
+            await putObjectText(storage, textKey, r.text);
+            patch.textKey = textKey;
+          }
+          if ((typeof row.mapKey !== "string" || !row.mapKey) && r.map) {
+            const mapKey = documentObjectKey(scope.organizationId, row.id as string);
+            await putObjectJson(storage, mapKey, r.map);
+            patch.mapKey = mapKey;
+          }
+          if (Object.keys(patch).length > 0) {
+            await repos.document.update(row.id as string, patch);
+          }
+        }
       }
     }
     pushResult("documents", created, skippedExists, conflicts);
@@ -828,9 +890,13 @@ export async function importStage(
         () =>
           repos.sample.create({
             legacyId: r.legacyId,
+            name: r.name,
             kinds: r.kinds,
             about: r.about,
+            addedAt: r.addedAt ? new Date(r.addedAt) : null,
+            scan: r.scan,
             textKey: null,
+            mapKey: null,
           }),
       );
       if (outcome.created) {
@@ -839,6 +905,42 @@ export async function importStage(
         conflicts.push(r.legacyId);
       } else {
         skippedExists += 1;
+      }
+      // Дозаполнение legacy-полей `MyDocument` (S11-R0): имя, историческая дата,
+      // признак скана и содержимое S6. Существующее ненулевое значение не
+      // перезаписывается; расхождение имени — конфликт, а не тихая замена.
+      if (!outcome.conflict) {
+        const row = (await findByLegacy(txDb.sample, r.legacyId))[0];
+        if (row) {
+          const patch: DbRow = {};
+          const currentName = typeof row.name === "string" && row.name ? row.name : null;
+          if (currentName === null && r.name !== null) {
+            patch.name = r.name;
+          } else if (currentName !== null && currentName !== r.name) {
+            conflicts.push(r.legacyId);
+          }
+          if ((row.addedAt ?? null) === null && r.addedAt) {
+            patch.addedAt = new Date(r.addedAt);
+          }
+          if (r.scan === true && row.scan !== true) {
+            patch.scan = true;
+          }
+          if (storage) {
+            if (typeof row.textKey !== "string" || !row.textKey) {
+              const textKey = sampleObjectKey(scope.organizationId, row.id as string);
+              await putObjectText(storage, textKey, r.text);
+              patch.textKey = textKey;
+            }
+            if ((typeof row.mapKey !== "string" || !row.mapKey) && r.map) {
+              const mapKey = sampleObjectKey(scope.organizationId, row.id as string);
+              await putObjectJson(storage, mapKey, r.map);
+              patch.mapKey = mapKey;
+            }
+          }
+          if (Object.keys(patch).length > 0) {
+            await repos.sample.update(row.id as string, patch);
+          }
+        }
       }
     }
     pushResult("samples", created, skippedExists, conflicts);
@@ -850,9 +952,11 @@ export async function importStage(
     const conflicts: string[] = [];
     const profiles = normalized.profiles;
     if (profiles && !profiles.empty) {
+      const meta = profiles.meta;
+      const metaEmpty = Object.keys(meta.sources).length === 0 && meta.suggestions.length === 0;
       const orgRows = (await repos.organizationProfile.list()) as DbRow[];
       if (orgRows.length === 0) {
-        await repos.organizationProfile.create({ fields: profiles.orgFields, version: profiles.orgVersion });
+        await repos.organizationProfile.create({ fields: profiles.orgFields, version: profiles.orgVersion, meta });
         created += 1;
       } else if (orgRows.length > 1) {
         conflicts.push("profile");
@@ -860,6 +964,16 @@ export async function importStage(
         sameView({ fields: orgRows[0].fields, version: orgRows[0].version }, { fields: profiles.orgFields, version: profiles.orgVersion })
       ) {
         skippedExists += 1;
+        // Метаданные профиля (S11-R0): если на сервере их ещё нет, а в копии
+        // есть — дозаполняем; если есть и отличаются — не перезаписываем.
+        const currentMeta = normalizeProfileMeta(orgRows[0].meta);
+        const currentEmpty =
+          Object.keys(currentMeta.sources).length === 0 && currentMeta.suggestions.length === 0;
+        if (currentEmpty && !metaEmpty) {
+          await repos.organizationProfile.update(orgRows[0].id as string, { meta });
+        } else if (!currentEmpty && !sameView(currentMeta, meta)) {
+          conflicts.push("profile");
+        }
       } else {
         conflicts.push("profile");
       }
@@ -1034,6 +1148,13 @@ export type LegacyImportInput = {
   raw: string;
   batchKey?: string;
   dryRun?: boolean;
+  /**
+   * S6-хранилище. Если задано — backfill дописывает текст/карту документов и
+   * образцов в объектное хранилище и проставляет `textKey`/`mapKey` (S11-R0).
+   * Без него переносится только метаданные: содержимое не теряется молча,
+   * а остаётся в IndexedDB до прогона с хранилищем.
+   */
+  storage?: StorageAdapter;
 };
 
 export type LegacyImportRun = {
@@ -1307,7 +1428,7 @@ export async function runLegacyImport(input: LegacyImportInput): Promise<LegacyI
 
   let result: EntityImportResult[];
   try {
-    result = await run((txDb) => importStage(txDb, scope, userId, normalized, orphanDocIds));
+    result = await run((txDb) => importStage(txDb, scope, userId, normalized, orphanDocIds, input.storage));
   } catch (error) {
     try {
       await finishImportBatch(db, scope, batchId, {
@@ -1362,6 +1483,7 @@ export async function runLegacyImport(input: LegacyImportInput): Promise<LegacyI
   const { verification, targetAggregates } = await verifyStage(db, scope, normalized, userId);
   const hardMismatch =
     verification.some((v) => !v.checksumMatch || v.missing.length > 0 || v.duplicates.length > 0) ||
+    result.some((r) => r.conflicts.length > 0) ||
     plan.entities.some((e) => e.conflicts > 0 || e.unimportable > 0) ||
     parsed.malformed.some((m) => !BENIGN_MALFORMED.has(m.reason)) ||
     sha256Hex(stableStringify(sourceAggregates)) !== sha256Hex(stableStringify(targetAggregates));

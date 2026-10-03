@@ -53,9 +53,10 @@ export type NormalizedPurchase = {
 };
 
 /**
- * Нормализованный документ — только метаданные. Текст документа в PostgreSQL
- * не хранится (этап S6): от него остаётся `sha256` и `sizeBytes`, а сам текст
- * покрывается контрольной суммой батча.
+ * Нормализованный документ: метаданные + содержимое. В PostgreSQL идут метаданные
+ * и `sha256`; текст и карта кладутся в S6 (`textKey`/`mapKey`) во время backfill,
+ * если передан `StorageAdapter`. Без хранилища переносится только метаданные —
+ * ровно как до S11-R0, без частичной молчаливой потери.
  */
 export type NormalizedDocument = {
   legacyId: string;
@@ -67,16 +68,21 @@ export type NormalizedDocument = {
   pageCount: null;
   ocr: boolean;
   readError: string | null;
+  text: string;
+  map: import("@/lib/doc-source").DocMap | null;
 };
 
-/** Нормализованный образец. Текст — только в контрольной сумме (этап S6). */
+/** Нормализованный образец: полная форма `MyDocument` (S11-R0). */
 export type NormalizedSample = {
   legacyId: string;
+  name: string | null;
   kinds: string[];
   about: string;
+  addedAt: string | null;
+  scan: boolean;
+  text: string;
+  map: import("@/lib/doc-source").DocMap | null;
   textChecksum: string;
-  /** Поля `MyDocument` без целевых колонок (`name`, `addedAt`, `scan`, `map`): зафиксированная потеря. */
-  dropped: string[];
 };
 
 /** Нормализованный факт — все поля ложатся в колонки `Fact` один к одному. */
@@ -104,6 +110,8 @@ export type NormalizedProfiles = {
   orgVersion: number;
   userFields: Record<string, string>;
   userVersion: number;
+  /** `ProfileMeta` (sources/suggestions) — часть данных профиля (S11-R0). */
+  meta: { sources: Record<string, string>; suggestions: { key: string; value: string; source: string }[] };
   filledOrg: number;
   filledUser: number;
   unknownKeys: string[];

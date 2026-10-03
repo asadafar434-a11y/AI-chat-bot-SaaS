@@ -106,6 +106,69 @@ export function standardBackupJson(): string {
   });
 }
 
+/**
+ * Копия для backfill S11-R0: документы и образцы с картой, исторической датой,
+ * признаком скана и `profile-meta.sources/suggestions`. Поля, которые до S11-R0
+ * не переносились, — здесь нарочно заполнены.
+ */
+export function contentBackupJson(): string {
+  return raw({
+    purchases: [
+      {
+        id: "cp1",
+        v: 2,
+        subject: "Закупка с картой",
+        createdAt: "2026-09-20T10:00:00.000Z",
+        files: ["ТЗ.pdf"],
+        scans: ["ТЗ.pdf"],
+        unreadable: [],
+        requirements: {},
+      },
+    ],
+    documents: [
+      [
+        "cp1",
+        [
+          {
+            name: "ТЗ.pdf",
+            text: "Текст с картой",
+            scan: true,
+            map: { spans: [{ from: 0, to: 4, page: 1 }, { from: 4, to: 14, table: 1, row: 1, col: 1 }] },
+          },
+        ],
+      ],
+    ],
+    settings: [
+      ["profile", { fullName: "ООО Карта", inn: "7700000000" }],
+      ["profile-meta", { sources: { inn: "ТЗ.pdf" }, suggestions: [{ key: "kpp", value: "1", source: "ТЗ.pdf" }] }],
+    ],
+    samples: [
+      {
+        id: "cs1",
+        name: "Образец.pdf",
+        text: "Образец с картой",
+        addedAt: "2026-09-03T10:00:00.000Z",
+        kinds: ["tp"],
+        about: "образец",
+        scan: true,
+        map: { spans: [{ from: 0, to: 7, page: 1 }] },
+      },
+    ],
+    facts: [],
+  });
+}
+
+/** Копия из `contentBackupJson` с другим именем образца: конфликт по `name`. */
+export function contentConflictBackupJson(): string {
+  const parsed = JSON.parse(contentBackupJson()) as { samples: { id: string; name?: string }[] } & Record<string, unknown>;
+  for (const sample of parsed.samples) {
+    if (sample.id === "cs1") {
+      sample.name = "Другое имя.pdf";
+    }
+  }
+  return JSON.stringify(parsed);
+}
+
 /** Та же стандартная копия с изменённым заголовком факта: другой хеш, конфликт `f1`. */
 export function changedBackupJson(): string {
   const parsed = JSON.parse(standardBackupJson()) as { facts: { id: string; title?: string }[] } & Record<string, unknown>;

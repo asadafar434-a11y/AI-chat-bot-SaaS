@@ -81,3 +81,21 @@ export function getTransactionRunner(): TransactionRunner {
   return <T>(fn: (db: DbClient) => Promise<T>): Promise<T> =>
     prisma.$transaction((tx) => fn(tx as unknown as DbClient));
 }
+
+/**
+ * Раннер транзакции с доступом к «сырому» клиенту Prisma.
+ *
+ * Нужен там, где доменную мутацию и постановку фоновой задачи (S8) требуется
+ * закоммитить вместе: pg-boss принимает именно транзакционный клиент Prisma
+ * (`fromPrisma(tx)`). В отличие от `getTransactionRunner`, второй аргумент —
+ * не структурный `DbClient`, а `Prisma.TransactionClient`.
+ */
+export type RawTransactionRunner = <T>(
+  fn: (db: DbClient, tx: Prisma.TransactionClient) => Promise<T>,
+) => Promise<T>;
+
+export function getRawTransactionRunner(): RawTransactionRunner {
+  const prisma = getPrismaClient();
+  return <T>(fn: (db: DbClient, tx: Prisma.TransactionClient) => Promise<T>): Promise<T> =>
+    prisma.$transaction((tx) => fn(tx as unknown as DbClient, tx));
+}

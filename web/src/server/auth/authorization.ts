@@ -9,6 +9,7 @@
  * удаление владельца сначала считают владельцев и отклоняют операцию, если он последний.
  */
 
+import { auditEvent } from "../audit/service.ts";
 import type { DbClient } from "../db/db-client.ts";
 import type { OrgScope } from "../db/org-scope.ts";
 import { orgRepositories } from "../db/repositories/index.ts";
@@ -96,7 +97,15 @@ export async function changeMemberRole(
   }
 
   const repos = orgRepositories(db, scope);
-  return repos.membership.update(target.id, { role: input.role });
+  const updated = await repos.membership.update(target.id, { role: input.role });
+  await auditEvent(db, scope, {
+    actorUserId: input.actorUserId,
+    action: "member.role_changed",
+    entityType: "member",
+    entityId: input.targetUserId,
+    metadata: { from: target.role, to: input.role },
+  });
+  return updated;
 }
 
 /** Удаление участника из организации. Инициатор обязан быть owner. */
@@ -113,5 +122,12 @@ export async function removeMember(
   await assertNotLastOwner(db, organizationId, input.targetUserId);
 
   const repos = orgRepositories(db, scope);
-  return repos.membership.remove(target.id);
+  const removed = await repos.membership.remove(target.id);
+  await auditEvent(db, scope, {
+    actorUserId: input.actorUserId,
+    action: "member.removed",
+    entityType: "member",
+    entityId: input.targetUserId,
+  });
+  return removed;
 }

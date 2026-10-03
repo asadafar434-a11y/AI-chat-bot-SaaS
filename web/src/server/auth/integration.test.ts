@@ -116,12 +116,21 @@ test("S2: приглашение принимается один раз и со�
     assert.equal(membership?.role, "member");
     assert.ok(await prisma.userProfile.findUnique({ where: { userId: accepted.userId } }), "профиль создан");
 
+    const joined = await prisma.auditEvent.findMany({ where: { organizationId: orgId, action: "member.joined" } });
+    assert.equal(joined.length, 1, "принятие зафиксировано событием");
+    assert.equal(joined[0].actorUserId, accepted.userId);
+    assert.equal(joined[0].entityId, accepted.userId);
+    const invited = await prisma.auditEvent.findMany({ where: { organizationId: orgId, action: "invitation.created" } });
+    assert.equal(invited.length, 1, "создание приглашения зафиксировано");
+    assert.equal(invited[0].actorUserId, ownerId);
+
     await assert.rejects(
       () => acceptInvitation(getTransactionRunner(), token, { password: "invitee-pass-1" }),
       /already|принято|invalid_invitation/,
       "повторное принятие отвергается",
     );
   } finally {
+    await prisma.auditEvent.deleteMany({ where: { organizationId: orgId } });
     await prisma.invitation.deleteMany({ where: { organizationId: orgId } });
     if (invitedUserId) {
       await prisma.userProfile.deleteMany({ where: { userId: invitedUserId } });
@@ -229,7 +238,19 @@ test("S2: роли, последний владелец и изоляция ор
       /conflict|последнего владельца/,
       "последнего владельца удалить нельзя",
     );
+
+    const roleEvents = await prisma.auditEvent.findMany({
+      where: { organizationId: org1, action: "member.role_changed" },
+    });
+    assert.equal(roleEvents.length, 2, "обе смены роли зафиксированы");
+    assert.ok(roleEvents.every((e) => e.actorUserId === ownerId && e.entityId === memberId));
+    const transitions = roleEvents
+      .map((e) => e.metadata as { from: string; to: string })
+      .map((m) => `${m.from}->${m.to}`)
+      .sort();
+    assert.deepEqual(transitions, ["member->owner", "owner->member"]);
   } finally {
+    await prisma.auditEvent.deleteMany({ where: { organizationId: { in: [org1, org2] } } });
     await prisma.membership.deleteMany({ where: { organizationId: { in: [org1, org2] } } });
     await prisma.user.deleteMany({ where: { id: { in: [ownerId, memberId] } } });
     await prisma.organization.deleteMany({ where: { id: { in: [org1, org2] } } });
@@ -370,7 +391,12 @@ test("S2: HTTP-принятие приглашения — setup-flow, одно�
     const weakRes = await accept({ token: weak.token, password: "weak-pass-1234" });
     assert.equal(weakRes.status, 200, "после отказа приглашение остаётся действительным");
     createdUserIds.push(((await weakRes.json()) as { userId: string }).userId);
+
+    const joinedEvents = await prisma.auditEvent.findMany({ where: { organizationId: orgA, action: "member.joined" } });
+    assert.equal(joinedEvents.length, 3, "три принятия зафиксированы");
+    assert.ok(joinedEvents.every((e) => typeof e.actorUserId === "string" && e.entityId === e.actorUserId));
   } finally {
+    await prisma.auditEvent.deleteMany({ where: { organizationId: { in: [orgA, orgB] } } });
     await prisma.invitation.deleteMany({ where: { organizationId: { in: [orgA, orgB] } } });
     await prisma.session.deleteMany({ where: { userId: { in: createdUserIds } } });
     await prisma.userProfile.deleteMany({ where: { userId: { in: createdUserIds } } });

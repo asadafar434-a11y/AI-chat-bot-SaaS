@@ -1,3 +1,4 @@
+import { notifyDataChanged } from "@/lib/data-events";
 import { fromStore, toStore } from "@/lib/data-format";
 import { STORES, transaction } from "@/lib/db";
 import { createLocator, describeLocation } from "@/lib/doc-locate";
@@ -21,6 +22,8 @@ import {
   type SortedDoc,
 } from "@/lib/my-docs";
 import { EMPTY_PROFILE, type Profile, type ProfileKey } from "@/lib/profile";
+import { fetchProfile, fetchSamples, serverReadsEnabled, type ServerSampleMeta } from "@/lib/server-reads";
+import { deleteServerWrite, postServerWrite, serverWritesEnabled } from "@/lib/server-writes";
 import type { SentDocument } from "@/lib/read-documents";
 import { SAMPLES_LIMIT } from "@/lib/tp";
 
@@ -37,6 +40,9 @@ export type MyDocument = {
   // Откуда в тексте какой кусок — страница, таблица, лист (doc-source.ts): по ней у факта базы доказательств видно место в файле.
   // У документов, добавленных до карты, её нет.
   map?: DocMap;
+  // Состояние содержимого на сервере (S11 Final Read Cutover). `missing` — текста в S6 нет;
+  // тогда документ не годится как образец, но из списка «Мои документы» не пропадает.
+  textStatus?: "available" | "missing";
 };
 
 // Откуда взялись реквизиты. Поле, заполненное из документа, обновляется, когда приходят новые документы;
@@ -55,20 +61,48 @@ const readSetting = async (key: string) =>
   transaction<unknown>([STORES.settings], "readonly", (tx) => tx.objectStore(STORES.settings).get(key));
 
 export async function getProfile(): Promise<Profile> {
+  if (serverReadsEnabled()) {
+    return (await fetchProfile()).profile;
+  }
   const stored = await readSetting(PROFILE_KEY);
   return { ...EMPTY_PROFILE, ...(stored === undefined ? {} : fromStore<Partial<Profile>>("profile", stored)) };
 }
 
 export async function getProfileMeta(): Promise<ProfileMeta> {
+  if (serverReadsEnabled()) {
+    const { meta } = await fetchProfile();
+    return { sources: meta.sources, suggestions: meta.suggestions };
+  }
   const stored = await readSetting(META_KEY);
   return { ...EMPTY_META, ...(stored === undefined ? {} : fromStore<Partial<ProfileMeta>>("profileMeta", stored)) };
 }
 
-export const saveProfile = (profile: Profile, meta?: ProfileMeta) =>
-  transaction<void>([STORES.settings], "readwrite", (tx) => {
+export const saveProfile = async (profile: Profile, meta?: ProfileMeta): Promise<void> => {
+  await transaction<void>([STORES.settings], "readwrite", (tx) => {
     tx.objectStore(STORES.settings).put(toStore("profile", profile), PROFILE_KEY);
     if (meta) tx.objectStore(STORES.settings).put(toStore("profileMeta", meta), META_KEY);
   });
+  // Dual-write S5: ошибка сервера бросается наружу, legacy уже записан.
+  if (serverWritesEnabled()) {
+    await postServerWrite("/api/writes/profile", "PUT", { profile, ...(meta && { meta }) });
+  }
+  notifyDataChanged();
+};
+
+/** Серверный образец → форма `MyDocument`. `name`/`text`/`addedAt` нормализуются явно: null допустим. */
+function toMyDocument(sample: ServerSampleMeta): MyDocument {
+  return {
+    id: sample.id,
+    name: sample.name ?? "",
+    text: sample.text ?? "",
+    addedAt: sample.addedAt ?? "",
+    kinds: [...new Set(sample.kinds.map((kind) => (kind in DOC_KINDS ? (kind as DocKind) : "other")))],
+    about: sample.about,
+    ...(sample.scan && { scan: true }),
+    ...(sample.map && { map: sample.map }),
+    textStatus: sample.textStatus,
+  };
+}
 
 // Документ участника в текущем формате. Вид, которого в приложении уже нет, — «Другое»: файл не пропадает из раздела.
 export function readMyDocument(raw: unknown): MyDocument {
@@ -76,49 +110,60 @@ export function readMyDocument(raw: unknown): MyDocument {
   return { ...doc, kinds: [...new Set(doc.kinds.map((kind) => (kind in DOC_KINDS ? kind : "other")))] };
 }
 
-export const listMyDocuments = async () =>
-  (await transaction<unknown[]>([STORES.samples], "readonly", (tx) => tx.objectStore(STORES.samples).getAll()))
+// Сервер отдаёт образцы в порядке создания; видимый порядок — по исторической дате
+// `addedAt` убыванию, как в legacy-чтении. Сортировка сохраняется на клиенте.
+export const listMyDocuments = async (): Promise<MyDocument[]> => {
+  if (serverReadsEnabled()) {
+    return (await fetchSamples()).map(toMyDocument).sort((a, b) => b.addedAt.localeCompare(a.addedAt));
+  }
+  return (await transaction<unknown[]>([STORES.samples], "readonly", (tx) => tx.objectStore(STORES.samples).getAll()))
     .map(readMyDocument)
     .sort((a, b) => b.addedAt.localeCompare(a.addedAt));
+};
 
 // Сколько документов каждого вида — для острова «Данные компании» на главной. Тексты документов, иногда
 // многостраничные сканы, главная в памяти не держит: документы идут по одному и сразу отбрасываются.
 // Запись новее приложения считается без вида.
 export async function countMyDocumentKinds(): Promise<{ total: number; kinds: Partial<Record<DocKind, number>> }> {
+  const docs = await listMyDocuments();
   const kinds: Partial<Record<DocKind, number>> = {};
-  let total = 0;
-  await transaction<void>([STORES.samples], "readonly", (tx) => {
-    const cursor = tx.objectStore(STORES.samples).openCursor();
-    cursor.onsuccess = () => {
-      const current = cursor.result;
-      if (!current) return;
-      total++;
-      try {
-        for (const kind of readMyDocument(current.value).kinds) kinds[kind] = (kinds[kind] ?? 0) + 1;
-      } catch {
-        // Новее приложения — вид не знаем, но документ есть.
-      }
-      current.continue();
-    };
-  });
-  return { total, kinds };
+  for (const doc of docs) {
+    for (const kind of doc.kinds) kinds[kind] = (kinds[kind] ?? 0) + 1;
+  }
+  return { total: docs.length, kinds };
 }
 
-export const saveMyDocuments = (docs: MyDocument[]) =>
-  transaction<void>([STORES.samples], "readwrite", (tx) => {
+export const saveMyDocuments = async (docs: MyDocument[]): Promise<void> => {
+  await transaction<void>([STORES.samples], "readwrite", (tx) => {
     for (const doc of docs) tx.objectStore(STORES.samples).put(toStore("myDocument", doc));
   });
+  // Dual-write S5: массив пишется поэлементно (как legacy put каждого);
+  // первая же ошибка сервера бросается, частичное состояние видит reconciliation.
+  if (serverWritesEnabled()) {
+    for (const doc of docs) {
+      await postServerWrite(`/api/writes/samples/${encodeURIComponent(doc.id)}`, "PUT", { sample: doc });
+    }
+  }
+  notifyDataChanged();
+};
 
-export const deleteMyDocument = (id: string) =>
-  transaction<void>([STORES.samples], "readwrite", (tx) => {
+export const deleteMyDocument = async (id: string): Promise<void> => {
+  await transaction<void>([STORES.samples], "readwrite", (tx) => {
     tx.objectStore(STORES.samples).delete(id);
   });
+  if (serverWritesEnabled()) {
+    await deleteServerWrite(`/api/writes/samples/${encodeURIComponent(id)}`);
+  }
+  notifyDataChanged();
+};
 
 // Образцы для запроса: самые свежие документы нужного вида, пока хватает места.
+// Документ без текста в S6 (`textStatus: "missing"`) образцом быть не может.
 export function samplesOf(docs: MyDocument[], kind: DocKind, limit = SAMPLES_LIMIT): MyDocument[] {
   const picked: MyDocument[] = [];
   let total = 0;
   for (const doc of docs) {
+    if (doc.textStatus === "missing") continue;
     if (!doc.kinds.includes(kind) || total + doc.text.length > limit) continue;
     picked.push(doc);
     total += doc.text.length;
@@ -131,6 +176,7 @@ export function evidenceOf(docs: MyDocument[], kind: DocKind): MyDocument[] {
   const picked: MyDocument[] = [];
   let total = 0;
   for (const doc of docs) {
+    if (doc.textStatus === "missing") continue;
     if (!doc.kinds.includes(kind)) continue;
     const text = clipEvidence(doc.text);
     if (total + text.length > EVIDENCE_LIMIT) continue;

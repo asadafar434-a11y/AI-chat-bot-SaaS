@@ -14,13 +14,14 @@
  * | `samples[]` (`MyDocument`) | `Sample`: `kinds` (с правилом `readMyDocument`: неизвестный вид → `"other"`), `about`; `textKey` — `null` до S6 | исходный `id` |
  * | `facts[]` | `Fact`: поля один к одному | исходный `id` |
  * | `settings["profile"]` | `OrganizationProfile.fields` (15 ключей) + `UserProfile.fields` (5 ключей) | ключ `"profile"` |
- * | `settings["profile-meta"]` | только `version` обоих профилей; `sources`/`suggestions` — пересчитываемый кеш подсказок, не данные | — |
+ * | `settings["profile-meta"]` | `OrganizationProfile.version` + `meta` (`sources`/`suggestions`), S11-R0 | — |
  *
- * Зафиксированные потери (нет целевых колонок до следующих этапов):
- * - тексты документов и образцов — только `sha256` в строке и в сводке батча (G);
- * - `Sample`: `name`, `addedAt`, `scan`, `map` — перечисляются в `dropped`;
- * - `Document`: `map` (карта мест в файле) — колонки нет;
- * - ключи профиля вне `PROFILE_KEYS` — в `unknownKeys` отчёта.
+ * S11-R0: содержимое больше не теряется. Текст и карта документов/образцов
+ * возвращаются в `NormalizedDocument`/`NormalizedSample` и — при переданном
+ * `StorageAdapter` — кладутся в S6 (`textKey`/`mapKey`); `Sample.name`/`addedAt`/
+ * `scan` и `ProfileMeta.sources`/`suggestions` пишутся в колонки. Без хранилища
+ * переносится только метаданные (текст/карта остаются в IndexedDB), а не
+ * теряются молча. Ключи профиля вне `PROFILE_KEYS` по-прежнему в `unknownKeys`.
  *
  * Правило отсутствующих/неверных значений: отсутствующее необязательное поле —
  * default домена; присутствующее, но неверного типа — запись в `unimportable`,
@@ -28,6 +29,7 @@
  */
 
 import { fromStore } from "@/lib/data-format";
+import type { DocMap, DocSpan } from "@/lib/doc-source";
 import { cleanAnswers } from "@/lib/evidence-base";
 import { DOC_KINDS } from "@/lib/my-docs";
 import { EMPTY_PROFILE, PROFILE_KEYS } from "@/lib/profile";
@@ -158,6 +160,9 @@ export function mapDocument(
   if (raw.text !== undefined && typeof raw.text !== "string") {
     return { ok: false, reason: "bad-text" };
   }
+  if (raw.map !== undefined && normalizeDocMap(raw.map) === null) {
+    return { ok: false, reason: "bad-map" };
+  }
   const text = typeof raw.text === "string" ? raw.text : "";
   const reason = unreadable.find((u) => u.name === raw.name)?.reason;
   return {
@@ -172,11 +177,30 @@ export function mapDocument(
       pageCount: null,
       ocr: raw.scan === true,
       readError: typeof reason === "string" ? reason : null,
+      text,
+      map: normalizeDocMap(raw.map),
     },
   };
 }
 
-const SAMPLE_DROPPED = ["name", "addedAt", "scan", "map"];
+/**
+ * Карта документа из IndexedDB: либо `DocMap`, либо `null`. Битый объект не
+ * «исправляется» — он отвергается (`bad-map`), как и остальные неверные значения.
+ * Структурная проверка повторяет `DocSpan` (doc-source.ts): диапазоны и поля-метки.
+ */
+export function normalizeDocMap(value: unknown): DocMap | null {
+  if (!isObject(value) || !Array.isArray(value.spans)) {
+    return null;
+  }
+  const spans: DocSpan[] = [];
+  for (const item of value.spans) {
+    if (!isObject(item) || typeof item.from !== "number" || typeof item.to !== "number") {
+      return null;
+    }
+    spans.push(item as unknown as DocSpan);
+  }
+  return value.pagesApprox === true ? { spans, pagesApprox: true } : { spans };
+}
 
 /**
  * Образец → `Sample`. Нормализация видов — правилом `readMyDocument`
@@ -202,15 +226,29 @@ export function mapSample(raw: unknown, hashText: (text: string) => string): Map
   if (raw.text !== undefined && typeof raw.text !== "string") {
     return { ok: false, reason: "bad-text" };
   }
+  if (migrated.addedAt !== undefined && migrated.addedAt !== null && typeof migrated.addedAt !== "string") {
+    return { ok: false, reason: "bad-added-at" };
+  }
+  if (migrated.scan !== undefined && typeof migrated.scan !== "boolean") {
+    return { ok: false, reason: "bad-scan" };
+  }
+  if (migrated.map !== undefined && normalizeDocMap(migrated.map) === null) {
+    return { ok: false, reason: "bad-map" };
+  }
   const text = typeof raw.text === "string" ? raw.text : "";
+  const addedAt = typeof migrated.addedAt === "string" && migrated.addedAt ? migrated.addedAt : null;
   return {
     ok: true,
     record: {
       legacyId: raw.id,
+      name: typeof migrated.name === "string" && migrated.name ? migrated.name : null,
       kinds: unique,
       about: typeof migrated.about === "string" ? migrated.about : "",
+      addedAt,
+      scan: migrated.scan === true,
+      text,
+      map: normalizeDocMap(migrated.map),
       textChecksum: hashText(text),
-      dropped: SAMPLE_DROPPED.filter((key) => Object.hasOwn(raw, key)),
     },
   };
 }
@@ -351,12 +389,44 @@ export function splitProfile(profileRaw: unknown, metaRaw: unknown): Mapped<Norm
       orgVersion: versionOfRaw(metaRaw ?? profileRaw),
       userFields,
       userVersion: versionOfRaw(metaRaw ?? profileRaw),
+      meta: normalizeProfileMeta(metaRaw),
       filledOrg,
       filledUser,
       unknownKeys: [...unknownKeys, ...invalidKeys].sort(),
       empty: filledOrg + filledUser === 0,
     },
   };
+}
+
+/**
+ * `ProfileMeta` из IndexedDB: `sources`/`suggestions` — часть данных профиля,
+ * до S11-R0 не переносилась. Битые элементы отбрасываются по одному, форма
+ * сохраняется; значения полей не логируются и в отчёт не попадают.
+ */
+export function normalizeProfileMeta(value: unknown): {
+  sources: Record<string, string>;
+  suggestions: { key: string; value: string; source: string }[];
+} {
+  const record = isObject(value) ? value : {};
+  const sources: Record<string, string> = {};
+  const rawSources = isObject(record.sources) ? record.sources : {};
+  for (const [key, source] of Object.entries(rawSources)) {
+    if (typeof source === "string" && source) {
+      sources[key] = source;
+    }
+  }
+  const suggestions: { key: string; value: string; source: string }[] = [];
+  if (Array.isArray(record.suggestions)) {
+    for (const item of record.suggestions) {
+      if (!isObject(item)) {
+        continue;
+      }
+      if (typeof item.key === "string" && typeof item.value === "string" && typeof item.source === "string") {
+        suggestions.push({ key: item.key, value: item.value, source: item.source });
+      }
+    }
+  }
+  return { sources, suggestions };
 }
 
 /** Агрегаты сверки — те же пять чисел из сводки контракта (migration-and-rollback.md §7). */

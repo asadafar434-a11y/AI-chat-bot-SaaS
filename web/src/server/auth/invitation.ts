@@ -7,6 +7,7 @@
  * членство и профиль. Проигравшая параллельная попытка получает отказ.
  */
 
+import { auditEvent } from "../audit/service.ts";
 import type { DbClient } from "../db/db-client.ts";
 import type { OrgScope } from "../db/org-scope.ts";
 import { orgRepositories } from "../db/repositories/index.ts";
@@ -50,6 +51,14 @@ export async function createInvitation(
     invitedByUserId: input.invitedByUserId,
     expiresAt,
   })) as InvitationRow;
+
+  await auditEvent(db, scope, {
+    actorUserId: input.invitedByUserId,
+    action: "invitation.created",
+    entityType: "invitation",
+    entityId: invitation.id,
+    metadata: { role: input.role },
+  });
 
   return { invitation, token, expiresAt };
 }
@@ -136,6 +145,14 @@ export async function acceptInvitation(
     if (!profile) {
       await db.userProfile.create({ data: { userId, fields: {} } });
     }
+
+    await auditEvent(db, { organizationId: invitation.organizationId }, {
+      actorUserId: userId,
+      action: "member.joined",
+      entityType: "member",
+      entityId: userId,
+      metadata: { role: invitation.role },
+    });
 
     return { userId, organizationId: invitation.organizationId, role: invitation.role };
   });

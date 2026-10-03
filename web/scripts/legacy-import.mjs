@@ -14,6 +14,7 @@ import { readFile } from "node:fs/promises";
 import { getDb, getTransactionRunner } from "../src/server/db/client.ts";
 import { orgScope } from "../src/server/db/org-scope.ts";
 import { runLegacyImport } from "../src/server/import/pipeline.ts";
+import { optionalStorageAdapter } from "../src/server/storage/config.ts";
 import { ImportError } from "../src/server/import/types.ts";
 
 function usage() {
@@ -45,6 +46,8 @@ if (!process.env.DATABASE_URL) {
 
 try {
   const raw = await readFile(file, "utf8");
+  // S11-R0: с настроенным S6 переносится и содержимое (текст/карта), иначе —
+  // только метаданные. dry-run ничего не пишет.
   const run = await runLegacyImport({
     db: getDb(),
     run: getTransactionRunner(),
@@ -53,6 +56,7 @@ try {
     raw,
     batchKey,
     dryRun,
+    storage: dryRun ? undefined : optionalStorageAdapter(),
   });
   console.log(run.reconciliation.summary);
   if (asJson) {

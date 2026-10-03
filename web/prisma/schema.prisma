@@ -139,6 +139,11 @@ model OrganizationProfile {
   id             String   @id @default(cuid())
   organizationId String   @unique @db.VarChar(25)
   fields         Json     @default("{}")
+  /// Метаданные профиля (`ProfileMeta`): `sources` — из какого документа взято
+  /// поле, `suggestions` — другие найденные значения. Хранится целиком на строке
+  /// организации: сборка доменного `Profile` — единственная точка встречи двух
+  /// профилей (data-model.md §4.3). До S11-R0 терялось при переносе.
+  meta           Json     @default("{}")
   version        Int      @default(1)
   createdAt      DateTime @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime @updatedAt @db.Timestamptz(3)
@@ -217,6 +222,10 @@ model Document {
   storageKey     String?  @db.VarChar(500)
   /// Ключ извлечённого текста в S3.
   textKey        String?  @db.VarChar(500)
+  /// Ключ карты документа (`DocMap`) в S3: для каждого куска текста — страница,
+  /// таблица, ячейка. Производная от текста, но у legacy-документов, попавших в
+  /// PostgreSQL из IndexedDB, восстанавливается только сохранением (S11-R0).
+  mapKey         String?  @db.VarChar(500)
   pageCount      Int?
   ocr            Boolean  @default(false)
   /// Причина непрочтения — для существующей логики `unreadable`.
@@ -234,6 +243,7 @@ model Document {
   @@index([purchaseId])
   @@index([legacyId])
   @@index([storageKey])
+  @@index([mapKey])
   @@map("Document")
 }
 
@@ -282,10 +292,19 @@ model Fact {
 model Sample {
   id             String   @id @default(cuid())
   organizationId String   @db.VarChar(25)
+  /// Имя файла образца (`MyDocument.name`). Не уникально; колонки не было до S11-R0.
+  name           String?  @db.VarChar(500)
   /// Массив DocKind из DOC_KINDS.
   kinds          Json     @default("[]")
   about          String   @db.Text
+  /// Исходная отметка `MyDocument.addedAt` из IndexedDB. Не заменяется `createdAt`:
+  /// при backfill историческое значение сохраняется как есть.
+  addedAt        DateTime? @db.Timestamptz(3)
+  /// `MyDocument.scan` — документ распознан со скана. Default только для новых записей.
+  scan           Boolean  @default(false)
   textKey        String?  @db.VarChar(500)
+  /// Карта образца (`DocMap`) в S3 — см. Document.mapKey.
+  mapKey         String?  @db.VarChar(500)
   legacyId       String?  @db.VarChar(200)
   createdAt      DateTime @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime @updatedAt @db.Timestamptz(3)
@@ -298,6 +317,7 @@ model Sample {
   /// запроса — см. TODO у Fact.validity.
   @@index([organizationId, kinds])
   @@index([legacyId])
+  @@index([mapKey])
   @@map("Sample")
 }
 
