@@ -102,3 +102,16 @@ test("загрузка файлов — свой лимит", async () => {
     assert.equal((await proxy(post("/api/chat", ip))).status, 200);
   });
 });
+
+test("health-пробы открыты без входа и без пароля (P1)", async () => {
+  // С паролем: без метки входа health всё равно доступен.
+  await withEnv({ NODE_ENV: "production", ACCESS_PASSWORD: "секрет", OPEN_ACCESS: undefined }, async () => {
+    assert.equal((await proxy(new NextRequest("http://localhost/api/health"))).status, 200);
+    assert.equal((await proxy(new NextRequest("http://localhost/api/health/ready"))).status, 200);
+  });
+  // Без пароля на хостинге: остальные /api закрыты 503, health — нет.
+  await withEnv({ NODE_ENV: "production", ACCESS_PASSWORD: undefined, OPEN_ACCESS: undefined }, async () => {
+    assert.equal((await proxy(new NextRequest("http://localhost/api/health"))).status, 200);
+    assert.notEqual((await proxy(new NextRequest("http://localhost/api/health/ready"))).status, 503);
+  });
+});

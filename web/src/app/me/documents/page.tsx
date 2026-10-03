@@ -93,7 +93,7 @@ export default function MyDocumentsPage() {
   const [confirm, setConfirm] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
 
-  const reload = () => listMyDocuments().then(setDocs, () => setError("Браузер не дал открыть ваши документы. Обновите страницу."));
+  const reload = () => listMyDocuments().then(setDocs, () => setError("Не удалось загрузить ваши документы. Обновите страницу."));
   useEffect(() => {
     void reload();
   }, []);

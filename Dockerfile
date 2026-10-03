@@ -41,6 +41,9 @@ WORKDIR /app
 COPY design-system/prototype ./design-system/prototype
 WORKDIR /app/web
 RUN npm run build:host
+# Drop devDependencies (typescript, eslint, prisma CLI, tailwind) to shrink the runtime image.
+# The generated Prisma client (.prisma/client) is a build artifact and is kept.
+RUN npm prune --omit=dev
 
 FROM node:22-bookworm-slim AS runner
 # Prisma's query engine needs OpenSSL, which the slim image does not ship; without it Prisma

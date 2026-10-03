@@ -52,6 +52,9 @@ export const AUDIT_ACTIONS = [
   // S8: события фоновых задач.
   "document.extracted",
   "storage.reconciled",
+  // P1: удаление данных пользователем (owner — данные организации, member — личные).
+  "organization.wiped",
+  "user.data_wiped",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

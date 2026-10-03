@@ -50,6 +50,7 @@ import {
 import { DuplicateLegacyIdError } from "../read/services.ts";
 import { putObjectJson, putObjectText } from "../storage/content.ts";
 import { documentObjectKey, sampleObjectKey } from "../storage/keys.ts";
+import { deleteRowObjects } from "../storage/objects.ts";
 import type { StorageAdapter } from "../storage/types.ts";
 
 /**
@@ -106,23 +107,6 @@ async function requireMember(db: DbClient, scope: OrgScope, userId: string): Pro
     throw new NotFoundInScopeError("write.requireMember");
   }
   return membership;
-}
-
-/**
- * Удаляет объекты S6, привязанные к строке (исходник, текст, карта), best-effort.
- * Нужно перед удалением/заменой строк: иначе объекты становятся сиротами и
- * ломают сверку S8 и валидацию backup S9. Вызывается только там, где строка
- * действительно уходит.
- */
-async function deleteRowObjects(ctx: WriteContext, row: Row): Promise<void> {
-  if (!ctx.storage) {
-    return;
-  }
-  for (const key of [row.storageKey, row.textKey, row.mapKey]) {
-    if (typeof key === "string" && key) {
-      await ctx.storage.deleteObject(key);
-    }
-  }
 }
 
 function unreadableOf(payload: Record<string, unknown>): UnreadableEntry[] {
@@ -266,7 +250,7 @@ export async function deletePurchase(ctx: WriteContext, id: string): Promise<{ d
     const docs = (await repos.document.list({ where: { purchaseId: target.id } })) as unknown as Row[];
     let removed = 0;
     for (const doc of docs) {
-      await deleteRowObjects(ctx, doc);
+      await deleteRowObjects(ctx.storage, doc);
       removed += await repos.document.remove(doc.id as string);
     }
     await repos.purchase.remove(target.id as string);
@@ -350,7 +334,7 @@ export async function replacePurchaseDocuments(
     }
     const previous = (await repos.document.list({ where: { purchaseId: rowId } })) as unknown as Row[];
     for (const doc of previous) {
-      await deleteRowObjects(ctx, doc);
+      await deleteRowObjects(ctx.storage, doc);
       await repos.document.remove(doc.id as string);
     }
     // readError подтягивается из unreadable закупки — присланной либо уже
@@ -542,7 +526,7 @@ export async function replaceSample(ctx: WriteContext, id: string, raw: unknown)
     if (ctx.storage) {
       // Старые объекты строки убираются до записи новых: иначе текст и карта
       // копятся сиротами при каждом сохранении.
-      await deleteRowObjects(ctx, existing[0]);
+      await deleteRowObjects(ctx.storage, existing[0]);
       Object.assign(patch, await sampleContentPatch(ctx, existing[0].id as string, r));
     }
     await repos.sample.update(existing[0].id as string, patch);
@@ -573,7 +557,7 @@ export async function deleteSample(ctx: WriteContext, id: string): Promise<{ del
     if (!target) {
       throw new NotFoundInScopeError("write.deleteSample");
     }
-    await deleteRowObjects(ctx, target);
+    await deleteRowObjects(ctx.storage, target);
     await repos.sample.remove(target.id as string);
     await auditEvent(db, ctx.scope, {
       actorUserId: ctx.userId,

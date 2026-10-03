@@ -19,6 +19,10 @@ const aiPerIp = createLimiter(AI_PER_IP);
 const aiTotal = createLimiter(AI_TOTAL);
 const filesPerIp = createLimiter(FILES_PER_IP);
 
+// Liveness/readiness probes должны отвечать без входа: их опрашивает балансировщик,
+// а не человек. Данные они не отдают — только состояние процесса/БД.
+const isHealthPath = (pathname: string) => pathname === "/api/health" || pathname.startsWith("/api/health/");
+
 // Запросы, которые тратят бюджет ИИ или силы сервера, — не чаще лимита. Файл Word, PDF или ODT части заявки собирается без ИИ, вход — свой лимит.
 function tooMany(request: NextRequest): NextResponse | null {
   const { pathname } = request.nextUrl;
@@ -53,7 +57,8 @@ export async function proxy(request: NextRequest) {
       closedWithoutPassword() &&
       pathname.startsWith("/api/") &&
       pathname !== "/api/login" &&
-      !pathname.startsWith("/api/auth/")
+      !pathname.startsWith("/api/auth/") &&
+      !isHealthPath(pathname)
     ) {
       return text("Сервис закрыт: владелец не задал пароль входа. Напишите ему — контакты на странице «Контакты».", 503);
     }
@@ -70,6 +75,7 @@ export async function proxy(request: NextRequest) {
     pathname === "/api/login" ||
     pathname.startsWith("/api/auth/") ||
     pathname.startsWith("/api/storage/local/") ||
+    isHealthPath(pathname) ||
     isLegalPath(pathname)
   ) {
     return tooMany(request) ?? NextResponse.next();
