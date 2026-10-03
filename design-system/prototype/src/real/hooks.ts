@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { onDataChanged } from '@/lib/db';
+import { onDataChanged } from '@/lib/data-events';
 import type { Fact } from '@/lib/evidence-base';
 import { listFacts } from '@/lib/evidence-store';
 import { listMyDocuments, type MyDocument } from '@/lib/me-store';

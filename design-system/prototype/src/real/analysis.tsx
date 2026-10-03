@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { describeCondition } from '@/lib/conditions';
-import { onDataChanged } from '@/lib/db';
+import { onDataChanged } from '@/lib/data-events';
 import { createLocator, describeSource, type Located } from '@/lib/doc-locate';
 import { fieldsOf } from '@/lib/fields';
 import { fulfillmentOf, type PlanStatus } from '@/lib/fulfillment';
