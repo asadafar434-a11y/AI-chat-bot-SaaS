@@ -213,3 +213,73 @@ HTTP-контракты, — сначала добавляются новые, �
 3. Секреты только через переменные окружения/Docker secrets, `.env.example` — с плейсхолдерами.
 4. Никогда не хранить сырые данные карт; секреты ЮKassa — только на сервере.
 5. Ключ `ANTHROPIC_API_KEY` — серверная переменная, в клиентский бандл не попадает.
+
+## RF Production Boundary
+Production target for the Russian market is designed around a Russian-hosted
+data plane.
+
+### Canonical production data plane
+
+```text
+Internet
+   ↓
+HTTPS reverse proxy (RF)
+   ↓
+Next.js / Node.js application (RF)
+   ├── PostgreSQL (RF)
+   ├── private object storage (RF)
+   └── backup storage (RF)
+```
+
+The PostgreSQL database, production object storage and backups are the
+canonical stores for production personal data and must be hosted in the
+Russian Federation, subject to applicable statutory exceptions.
+
+External services are not part of the canonical Russian data plane.
+
+### External-service gate
+
+Any external provider that may receive, process, store or access personal
+data requires a documented data-flow review before implementation.
+
+The review must identify:
+
+* exact data categories;
+* recipient;
+* recipient country;
+* purpose;
+* legal/technical basis;
+* localization impact;
+* cross-border transfer implications;
+* minimization/masking strategy;
+* approved alternative, where available.
+
+### AI boundary
+
+AI calls MUST pass through a backend adapter/data-minimization boundary.
+
+Production personal data MUST NOT be sent to an external AI provider by default.
+
+### Payment boundary
+
+Payments use a backend-only `PaymentAdapter`.
+
+The application does not store raw bank-card data.
+
+Payment webhooks are authoritative, validated and idempotent.
+
+### Compliance boundary
+
+This architecture is an engineering baseline for Russian production.
+It is NOT by itself a legal conclusion or a Roskomnadzor approval.
+
+Production launch additionally requires review of:
+
+* operator status and notification obligations;
+* purposes/categories/legal bases of processing;
+* policies and internal documents;
+* processor/assignment agreements;
+* cross-border transfers, if any;
+* security requirements and threat model;
+* incident response;
+* applicable cash-register/receipt requirements for payments.

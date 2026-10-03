@@ -239,3 +239,302 @@ Be conservative with data and aggressive with tests.
 
 Do not optimize for speed at the expense of reversibility.
 Do not say “migration complete” unless verification evidence exists.
+
+## РФ PRODUCTION / PERSONAL DATA / PAYMENTS — NON-NEGOTIABLE
+This project is intended for production use in the Russian Federation.
+
+These are engineering constraints. They do not replace legal advice or the operator's
+obligations under Russian law.
+
+### 1. Data localization
+
+For production processing of personal data of Russian citizens:
+
+* Primary application database MUST be hosted in the Russian Federation.
+* PostgreSQL production data MUST be hosted in the Russian Federation.
+* Production object/file storage containing personal data MUST be hosted in the Russian Federation.
+* Production backups containing personal data MUST be stored in the Russian Federation.
+* Application servers processing such personal data MUST use infrastructure hosted in the Russian Federation unless a separately approved architecture/legal basis permits otherwise.
+* Do not introduce a foreign database as the primary or canonical store for Russian personal data.
+* Do not introduce a foreign object store as the primary or canonical store for Russian personal data.
+
+The system MUST distinguish between:
+
+1. primary/localized storage in the Russian Federation;
+2. external processors/services;
+3. legally permitted cross-border transfers.
+
+Never assume that a user consent alone makes any foreign processing or transfer lawful.
+
+### 2. Cross-border data transfer
+
+Before introducing any service outside the Russian Federation that receives,
+processes, stores or can access personal data:
+
+* STOP implementation.
+* Identify exactly what data is transferred.
+* Identify the recipient/service and country.
+* Identify the legal basis and applicable transfer requirements.
+* Document the transfer in `docs/stage-11/`.
+* Obtain explicit approval from the project owner before implementation.
+
+Do not send the following to an external provider unless explicitly approved:
+
+* names;
+* phone numbers;
+* email addresses;
+* passport data;
+* bank/payment data;
+* company employee personal data;
+* document contents containing personal data;
+* chat contents containing personal data;
+* OCR images containing personal data.
+
+### 3. AI providers
+
+AI providers are external processors/services.
+
+The backend MUST NOT send production personal data to an AI provider by default.
+
+Any AI integration MUST use a dedicated adapter and data-minimization boundary.
+
+Before sending data to an AI provider:
+
+* classify the data;
+* minimize it;
+* apply the project's approved personal-data masking/sanitization rules;
+* document what leaves the Russian infrastructure;
+* use only an explicitly approved provider and processing configuration.
+
+Never expose:
+
+* `ANTHROPIC_API_KEY`;
+* payment secrets;
+* database credentials;
+* production `.env`;
+* production access tokens;
+* session secrets
+
+to the model, browser, logs or client-side code.
+
+### 4. Production infrastructure
+
+Production MUST be designed as:
+
+Internet
+→ HTTPS reverse proxy
+→ Next.js/Node.js application
+→ PostgreSQL in RF
+→ private object storage in RF
+→ backup storage in RF
+
+Required properties:
+
+* HTTPS only;
+* private database network;
+* database not publicly reachable;
+* private object bucket;
+* no public document URLs;
+* short-lived signed download URLs;
+* server-side authorization before every file access;
+* organization/tenant scoping enforced server-side;
+* secrets stored outside source code;
+* production credentials never committed to Git.
+
+### 5. Multi-tenant security
+
+Every organization-scoped read/write/delete MUST be authorized on the server.
+
+Never trust:
+
+* `organizationId` supplied by browser;
+* `userId` supplied by browser;
+* object-storage key supplied by browser;
+* payment ownership supplied by browser;
+* role supplied by browser.
+
+Organization identity MUST come from authenticated server session +
+membership.
+
+Cross-organization access MUST fail closed.
+
+Add regression tests for every tenant-scoped repository and route.
+
+### 6. Authentication
+
+Production authentication MUST provide:
+
+* individual user accounts;
+* database-backed sessions;
+* password hashing;
+* invitation flow for members;
+* password reset;
+* logout/session revocation;
+* deleted-user session invalidation;
+* role enforcement (`owner`, `member`);
+* login/reset/invitation rate limits.
+
+Never use a shared application password as the long-term production
+authentication mechanism.
+
+### 7. Files and documents
+
+Uploaded documents MUST NOT be publicly accessible.
+
+Every file access MUST verify:
+
+1. authenticated user;
+2. active membership;
+3. organization ownership;
+4. document ownership/reference;
+5. authorization for the requested operation.
+
+Object keys MUST be opaque and organization-scoped.
+
+Do not expose internal database IDs or predictable object paths unnecessarily.
+
+### 8. Audit and observability
+
+Security-relevant events MUST be auditable.
+
+Audit events SHOULD include:
+
+* actor;
+* organization;
+* action;
+* entity;
+* timestamp;
+* request/correlation ID;
+* minimal metadata.
+
+Audit logs MUST NOT contain:
+
+* passwords;
+* tokens;
+* API keys;
+* full payment card data;
+* document contents;
+* unnecessary personal data.
+
+Monitoring/logging MUST minimize personal data.
+
+Before connecting any external monitoring/analytics service, perform a
+data-flow/privacy review.
+
+### 9. Payments / acquiring
+
+Payment processing MUST happen through an approved payment provider adapter.
+
+Current target:
+
+* `PaymentAdapter`
+* YooKassa integration
+* webhook processing
+* idempotency
+* server-side payment state
+
+The application MUST NOT store raw bank-card details.
+
+Payment state MUST be authoritative on the server/database.
+
+Never trust:
+
+* client-side "payment successful" flags;
+* client-side amount;
+* client-side organization ownership;
+* client-side payment status.
+
+Payment webhooks MUST be:
+
+* validated;
+* idempotently processed;
+* associated with the correct organization/payment;
+* protected against replay/duplicate processing.
+
+If cash-register requirements apply to the business model, implement the
+required receipt/KKT flow as a separate reviewed component.
+
+### 10. Backups and recovery
+
+Production MUST have:
+
+* automated database backups;
+* point-in-time recovery where available;
+* separate backup copy;
+* object-storage backup/versioning;
+* documented retention;
+* restore testing.
+
+A backup is not considered valid until a restore has been successfully tested.
+
+Backups containing personal data MUST remain within the approved Russian
+infrastructure unless a separately approved legal/technical architecture exists.
+
+### 11. Security incidents
+
+The production system MUST support incident investigation.
+
+Keep enough audit/operational information to determine:
+
+* what happened;
+* when it happened;
+* which organization/user was affected;
+* which data/process was involved;
+* what remediation occurred.
+
+Incident response procedures MUST account for Russian personal-data
+requirements and applicable notification deadlines.
+
+### 12. Secrets and environments
+
+The repository may contain:
+
+* `.env.example`
+* configuration schemas
+* placeholders
+
+The repository MUST NOT contain:
+
+* `.env`
+* production credentials;
+* API keys;
+* payment secrets;
+* passwords;
+* session secrets;
+* database passwords.
+
+Tests MUST use disposable/local/test credentials only.
+
+### 13. Architecture change gate
+
+Before adding ANY external service, ask:
+
+1. Does it receive personal data?
+2. Does it store personal data?
+3. Can it access personal data?
+4. Where is it physically hosted?
+5. Does it create a cross-border transfer?
+6. Is there a Russian-hosted alternative?
+7. What is the minimum data that must leave the RF infrastructure?
+
+If these questions are not answered, STOP and do not implement the integration.
+
+### 14. Stage 11 implementation gate
+
+Do not mark Stage 11 complete until:
+
+* production primary DB is in the RF;
+* production file storage is in the RF;
+* production backups are in the RF;
+* auth and tenant isolation pass integration tests;
+* migration reconciliation passes;
+* restore has been tested;
+* payment webhooks are idempotent and tested;
+* external service data flows are documented;
+* personal-data processing boundaries are documented;
+* security review is complete.
+
+Never claim "152-ФЗ compliant" or "approved by Roskomnadzor"
+based only on passing software tests. Legal compliance requires review
+of the operator, purposes, data categories, legal bases, documents,
+contracts, transfers and actual infrastructure.
