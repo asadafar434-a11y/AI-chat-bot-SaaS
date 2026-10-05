@@ -75,19 +75,45 @@ const signature = (profile: Profile | null): Para[] => [
   para([run("М.П. (при наличии)          «____» ________________ 20___ г.")], { before: 6 }),
 ];
 
+// Таблица товаров: если заказчик дал свои заголовки столбцов — используем их; иначе — стандартные 4 столбца.
+// Правило: заголовки столбцов из form.goodsTableHeaders воспроизводятся дословно и в том же порядке.
+// goods.characteristics — только предложение участника; колонки заказчика (характеристика по ТЗ) участник заполняет сам из документации.
+function goodsTableOf(goods: TpDocx["goods"], headers: string[]): Table {
+  if (!headers.length) {
+    return table([
+      headerRow([["№ п/п", 7], ["Наименование товара", 25], ["Характеристики товара", 50], ["Количество", 18]]),
+      ...goods.map((g, i): Row => ({
+        cells: [textCell(String(i + 1), 7), textCell(g.name, 25), cell(paragraphs(g.characteristics), 50), textCell(g.quantity, 18)],
+      })),
+    ]);
+  }
+  const numWidth = 7;
+  const hasNum = /^№/.test(headers[0]);
+  const dataHeaders = hasNum ? headers.slice(1) : headers;
+  const colW = Math.max(8, Math.floor((100 - (hasNum ? numWidth : 0)) / dataHeaders.length));
+  const widths: [string, number][] = headers.map((h) => [h, /^№/.test(h) ? numWidth : colW]);
+  const fillCol = (h: string, g: { name: string; characteristics: string; quantity: string }): Cell => {
+    if (/наименован/i.test(h)) return textCell(g.name, colW);
+    if (/предложен|предлагаем|участник.*хар|хар.*участ|значен.*участ/i.test(h)) return cell(paragraphs(g.characteristics), colW);
+    if (/количеств|кол[-.\s]?во/i.test(h)) return textCell(g.quantity, colW);
+    if (/единиц|ед[-.\s]?изм/i.test(h)) return textCell(g.quantity.replace(/^\s*[\d,.]+\s*/, "").trim() || g.quantity, colW);
+    if (/характеристик|требован|параметр|спецификац/i.test(h)) return cell([para(withFields("[характеристика из ТЗ]"))], colW);
+    return cell([para(withFields("[заполните]"))], colW);
+  };
+  return table([
+    headerRow(widths),
+    ...goods.map((g, i): Row => ({
+      cells: headers.map((h) => (/^№/.test(h) ? textCell(String(i + 1), numWidth) : fillCol(h, g))),
+    })),
+  ]);
+}
+
 function tpBody({ form, goods, items, cast }: TpDocx): Block[] {
   const body: Block[] = [];
   // Согласие из формы показывается всегда: для заявки-анкеты (Запрос котировок) оно — весь документ.
   if (form.consent) body.push(...paragraphs(form.consent, { indent: true }));
   if (goods.length) {
-    body.push(
-      table([
-        headerRow([["№ п/п", 7], ["Наименование товара", 25], ["Характеристики товара", 50], ["Количество", 18]]),
-        ...goods.map(
-          (g, i): Row => ({ cells: [textCell(String(i + 1), 7), textCell(g.name, 25), cell(paragraphs(g.characteristics), 50), textCell(g.quantity, 18)] })
-        ),
-      ])
-    );
+    body.push(goodsTableOf(goods, form.goodsTableHeaders ?? []));
   }
   if (items.length) {
     if (goods.length) body.push(para([], { before: 12 }));
@@ -272,15 +298,17 @@ function genericApplicationBody({ form, goods, items, price, profile }: TpDocx):
     body.push(appHeading(`${sectionNum}. Согласие участника`));
     body.push(...paragraphs(fillFromProfile(form.consent, profile), { indent: true }));
   }
-  if (goods.length || items.length) {
+  if (goods.length) {
+    // Таблица товаров: воспроизводим структуру формы заказчика когда она есть.
+    body.push(goodsTableOf(goods, form.goodsTableHeaders ?? []));
+  }
+  if (items.length) {
+    if (goods.length) body.push(para([], { before: 8 }));
     body.push(
       table([
-        headerRow([["№ п/п", 7], ["Наименование", 25], ["Характеристики", 50], ["Количество", 18]]),
-        ...goods.map((g, i): Row => ({
-          cells: [textCell(`${i + 1}.`, 7), textCell(g.name, 25), cell(paragraphs(g.characteristics), 50), textCell(g.quantity, 18)],
-        })),
+        headerRow([["№ п/п", 7], ["Требование заказчика", 43], ["Предложение участника закупки", 50]]),
         ...items.map((it, i): Row => ({
-          cells: [textCell(`${goods.length + i + 1}.`, 7), textCell(it.requirement, 25), cell(paragraphs(it.offer), 50), textCell("", 18)],
+          cells: [textCell(`${i + 1}.`, 7), textCell(it.requirement, 43), cell(paragraphs(it.offer), 50)],
         })),
       ])
     );
