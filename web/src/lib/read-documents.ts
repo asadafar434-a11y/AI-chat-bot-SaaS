@@ -1,4 +1,5 @@
 import type { ChatDocument } from "@/lib/chat-types";
+import { classifyDoc, DOC_KIND_LABELS, isCustomerForm } from "@/lib/doc-classify";
 import { summaryOf } from "@/lib/doc-source";
 import { errorText } from "@/lib/http-error";
 import { readScanOcr } from "./scan-setting.ts";
@@ -35,8 +36,11 @@ export function fileProblem(file: { size: number }): string | null {
 export function docMeta(d: SentDocument): string {
   const ext = d.name.includes(".") ? d.name.split(".").pop()!.toUpperCase() : "";
   const s = summaryOf(d.map);
+  const kind = classifyDoc(d.name, d.text);
+  const kindLabel = kind !== "other" ? DOC_KIND_LABELS[kind] : "";
   return [
     ext,
+    kindLabel,
     `${d.text.length.toLocaleString("ru-RU")} симв.`,
     s.pages ? `${s.approx ? "≈ " : ""}${s.pages} стр.` : "",
     s.tables ? `таблиц: ${s.tables}` : "",
@@ -45,6 +49,11 @@ export function docMeta(d: SentDocument): string {
   ]
     .filter(Boolean)
     .join(" · ");
+}
+
+/** Возвращает документы, которые классификатор определил как формы/бланки заказчика. */
+export function customerFormsIn(documents: SentDocument[]): SentDocument[] {
+  return documents.filter((d) => isCustomerForm(classifyDoc(d.name, d.text)));
 }
 
 // Какие файлы закупки распознаны со скана или фото: ошибка в цифре ТЗ перейдёт в требования и ТП.

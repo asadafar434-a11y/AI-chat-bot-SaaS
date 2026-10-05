@@ -86,8 +86,8 @@ test("карта документа доходит до браузера; в з�
 });
 
 test("строка под названием файла: тип, знаки, страницы (у Word — примерно), таблицы, листы, скан", () => {
-  assert.equal(docMeta({ name: "Извещение.pdf", text: "а".repeat(1234), map: { spans: [{ from: 0, to: 5, page: 1 }, { from: 5, to: 9, page: 12, table: 1, row: 1, col: 1 }, { from: 9, to: 12, page: 12, table: 2, row: 1, col: 1 }] } }), "PDF · 1\u00a0234 симв. · 12 стр. · таблиц: 2 · прочитан");
-  assert.equal(docMeta({ name: "ТЗ.docx", text: "текст", map: { spans: [{ from: 0, to: 5, page: 3 }], pagesApprox: true } }), "DOCX · 5 симв. · ≈ 3 стр. · прочитан");
+  assert.equal(docMeta({ name: "Извещение.pdf", text: "а".repeat(1234), map: { spans: [{ from: 0, to: 5, page: 1 }, { from: 5, to: 9, page: 12, table: 1, row: 1, col: 1 }, { from: 9, to: 12, page: 12, table: 2, row: 1, col: 1 }] } }), "PDF · Извещение · 1 234 симв. · 12 стр. · таблиц: 2 · прочитан");
+  assert.equal(docMeta({ name: "ТЗ.docx", text: "текст", map: { spans: [{ from: 0, to: 5, page: 3 }], pagesApprox: true } }), "DOCX · Техническое задание · 5 симв. · ≈ 3 стр. · прочитан");
   assert.equal(docMeta({ name: "Смета.xlsx", text: "текст", map: { spans: [{ from: 0, to: 2, sheet: "Смета" }, { from: 2, to: 4, sheet: "Итоги" }] } }), "XLSX · 5 симв. · листов: 2 · прочитан");
   assert.equal(docMeta({ name: "Скан.pdf", text: "текст", scan: true }), "PDF · 5 симв. · со скана — сверьте цифры");
   assert.equal(docMeta({ name: "без расширения", text: "т" }), "1 симв. · прочитан");

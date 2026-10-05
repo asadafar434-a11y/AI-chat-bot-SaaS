@@ -4,6 +4,7 @@ import * as z from "zod/v4";
 import { BUDGET_TEXT, budgetOver, chargeAi, dedup } from "@/lib/ai-guard";
 import { requestKey } from "@/lib/ai-meter";
 import { CLAUDE_MODEL } from "@/lib/claude";
+import { classifyDoc, DOC_KIND_LABELS, isCustomerForm } from "@/lib/doc-classify";
 import { PD_MASK_NOTE, PD_MASK_ON, PdMasker } from "@/lib/pd-mask";
 import type { SentDocument } from "@/lib/read-documents";
 
@@ -29,6 +30,19 @@ export const baseRequest = {
 // Пометка в описании документа (context): модель её учитывает, но не цитирует как текст документа.
 const SCAN_CONTEXT = "Текст распознан ИИ со скана или фото: в цифрах, датах и реквизитах возможны ошибки распознавания.";
 
+// Тип документа — контекстная подсказка для модели: ищи формы/шаблоны именно в этом файле.
+function docContext(doc: SentDocument): string | undefined {
+  const kind = classifyDoc(doc.name, doc.text);
+  const parts: string[] = [];
+  if (doc.scan) parts.push(SCAN_CONTEXT);
+  if (isCustomerForm(kind)) {
+    parts.push(`Тип документа: ${DOC_KIND_LABELS[kind]}. Этот файл может содержать обязательные формы и шаблоны, которые участник должен заполнить. Внимательно ищи в нём приложения-бланки, таблицы характеристик и поля для заполнения.`);
+  } else if (kind !== "other") {
+    parts.push(`Тип документа: ${DOC_KIND_LABELS[kind]}.`);
+  }
+  return parts.length ? parts.join(" ") : undefined;
+}
+
 // Персональные данные в документах — метками, см. pd-mask.ts. Документы маскируются первыми в запросе,
 // поэтому одни и те же документы всегда дают один и тот же текст — и читаются из кеша.
 export const maskDocuments = (masker: PdMasker, documents: SentDocument[]): SentDocument[] =>
@@ -50,13 +64,16 @@ function maskBlock(masker: PdMasker, block: Anthropic.Beta.BetaContentBlockParam
 // Метка кеша на последнем документе: всё до неё — общая часть всех разделов, хранится час.
 // Для разовых запросов кеш не нужен: запись в часовой кеш стоит вдвое дороже обычного чтения.
 export const documentBlocks = (documents: SentDocument[], cache = true): Anthropic.Beta.BetaRequestDocumentBlock[] =>
-  documents.map((doc, i) => ({
-    type: "document",
-    source: { type: "text", media_type: "text/plain", data: doc.text },
-    title: doc.name,
-    ...(doc.scan && { context: SCAN_CONTEXT }),
-    ...(cache && i === documents.length - 1 && { cache_control: { type: "ephemeral", ttl: "1h" } }),
-  }));
+  documents.map((doc, i) => {
+    const context = docContext(doc);
+    return {
+      type: "document",
+      source: { type: "text", media_type: "text/plain", data: doc.text },
+      title: doc.name,
+      ...(context && { context }),
+      ...(cache && i === documents.length - 1 && { cache_control: { type: "ephemeral", ttl: "1h" } }),
+    };
+  });
 
 // Образцы участника идут после документов закупки, со своей меткой кеша на пять минут:
 // при «Составить заново» они не читаются второй раз по полной цене.
