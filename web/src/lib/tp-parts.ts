@@ -34,12 +34,13 @@ export function criteriaRowsFor(criteria: Criteria | undefined, part: "experienc
 // Техническое предложение нужно всегда. Анкета — кроме 44-ФЗ: там сведения об участнике передаёт площадка
 // (решение владельца 30.09.2026, п. 2 ч. 6 ст. 43 44-ФЗ); kind — закон и способ закупки. Декларация и цена — если их
 // требует форма заказчика; сведения об опыте и о специалистах — если за них дают баллы по порядку оценки.
-// Заявка (application) — единый бланк Приложения № 1: для запроса котировок (223-ФЗ и 44-ФЗ).
+// Заявка (application) — единый бланк формы заказчика: ИИ нашёл форму в документах (form.source непустой)
+// или вид закупки — запрос котировок (тогда форма типовая ЕАИСТ и источник появится после анализа).
 export const partsOf = (form: TpForm, criteria?: Criteria, kind?: string): TpPart[] => [
   "tp",
   ...(participantFromPlatform(kind) ? [] : (["participant"] as const)),
   ...(form.smeDeclaration ? (["declaration"] as const) : []),
   ...(form.hasPrice ? (["price"] as const) : []),
   ...EVIDENCE_RULES.filter(([part]) => criteriaRowsFor(criteria, part).length > 0).map(([part]) => part),
-  ...(/запрос котировок/i.test(kind ?? "") ? (["application"] as const) : []),
+  ...((form.source.trim() || /запрос котировок/i.test(kind ?? "")) ? (["application"] as const) : []),
 ];

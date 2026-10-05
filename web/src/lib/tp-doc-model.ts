@@ -198,9 +198,9 @@ const staffBody = ({ profile }: TpDocx): Block[] => [
   ...signature(profile),
 ];
 
-// «ЗАЯВКА на участие в запросе котировок в электронной форме» — Приложение № 1 к информационной карте заказчика, слово в слово
-// по типовой форме (запрос котировок только для МСП, ЕАИСТ Москвы): сведения об участнике, согласие и товар, цена, декларация МСП.
-// Пропуски «____» в форме остаются, но жёлтые; то, что известно из реквизитов и цены, вписано, а подсказка в скобках убрана.
+// Форма заказчика — единый бланк, который заменяет или дополняет ТП.
+// Два пути: ЕАИСТ-форма для запроса котировок (структура фиксирована) и произвольная форма по данным ИИ.
+// Пропуски «____» из бланка остаются жёлтыми; что известно из профиля и цены — вписывается автоматически.
 const withBlanks = (text: string): Run[] =>
   text
     .split(/(_{3,})/)
@@ -220,7 +220,102 @@ const appRow = (num: string, label: string, value: string, mark = true): Row => 
 });
 const appNote = (text: string): Row => ({ cells: [textCell("", APP_COLS[0]), cell([para([run(text)], { align: "center" })], APP_COLS[1]), textCell("", APP_COLS[2])] });
 
-function applicationBody({ form, goods, price, profile }: TpDocx): Block[] {
+// Произвольная форма заказчика: структура из данных, которые ИИ вытащил при анализе документов.
+// Подходит для любого бланка, где заказчик прописал разделы о сведениях участника, согласии, цене и декларации МСП.
+function genericApplicationBody({ form, goods, items, price, profile }: TpDocx): Block[] {
+  const body: Block[] = [];
+  const name = profile?.fullName.trim() ?? "";
+
+  // Шапка: ссылка на приложение (откуда форма) и название документа
+  if (form.source.trim()) {
+    body.push(para([run(form.source.trim())], { align: "right", after: 12 }));
+  }
+  body.push(para([run(form.title || "ЗАЯВКА НА УЧАСТИЕ В ЗАКУПКЕ", { bold: true })], { align: "center", after: 12 }));
+
+  // Раздел: сведения об участнике — поля, которые ИИ нашёл в форме заказчика.
+  if (form.participantFields.length > 0) {
+    body.push(appHeading("1. Сведения об участнике закупки"));
+    // Автозаполнение: если метка поля совпадает с известным реквизитом — вставляем значение из профиля.
+    const bank = profile
+      ? [profile.account, profile.bankName, profile.bik ? `БИК ${profile.bik}` : "", profile.corrAccount ? `к/с ${profile.corrAccount}` : ""].filter(Boolean).join(", ")
+      : "";
+    const KNOWN: [RegExp, () => string][] = [
+      [/наименован/i, () => name],
+      [/фирменн/i, () => name],
+      [/место нахожден/i, () => profile?.legalAddress.trim() ?? ""],
+      [/юридическ.*адрес|адрес.*нахожден/i, () => profile?.legalAddress.trim() ?? ""],
+      [/\bинн\b/i, () => profile?.inn.trim() ?? ""],
+      [/\bкпп\b/i, () => profile?.kpp.trim() ?? ""],
+      [/\bогрн\b/i, () => profile?.ogrn.trim() ?? ""],
+      [/банковск/i, () => bank],
+      [/расчётн.*счёт|р\/с/i, () => profile?.account.trim() ?? ""],
+      [/контактн.*телефон|телефон/i, () => profile?.phone.trim() ?? ""],
+      [/электронн.*почт|e-?mail/i, () => profile?.email.trim() ?? ""],
+      [/руководитель|директор|единолично/i, () => profile?.head.trim() ?? ""],
+    ];
+    body.push(
+      table([
+        headerRow([["Наименование сведений", 50], ["Сведения об участнике", 50]]),
+        ...form.participantFields.map((field): Row => {
+          const value = KNOWN.find(([re]) => re.test(field))?.[1]() ?? "";
+          return {
+            cells: [textCell(field, 50), cell([para(value ? [run(value)] : withFields("[заполните]"))], 50)],
+          };
+        }),
+      ])
+    );
+  }
+
+  // Раздел: согласие и предмет (товар/услуга) — из формы заказчика.
+  const sectionNum = form.participantFields.length > 0 ? 2 : 1;
+  if (form.consent) {
+    body.push(appHeading(`${sectionNum}. Согласие участника`));
+    body.push(...paragraphs(fillFromProfile(form.consent, profile), { indent: true }));
+  }
+  if (goods.length || items.length) {
+    body.push(
+      table([
+        headerRow([["№ п/п", 7], ["Наименование", 25], ["Характеристики", 50], ["Количество", 18]]),
+        ...goods.map((g, i): Row => ({
+          cells: [textCell(`${i + 1}.`, 7), textCell(g.name, 25), cell(paragraphs(g.characteristics), 50), textCell(g.quantity, 18)],
+        })),
+        ...items.map((it, i): Row => ({
+          cells: [textCell(`${goods.length + i + 1}.`, 7), textCell(it.requirement, 25), cell(paragraphs(it.offer), 50), textCell("", 18)],
+        })),
+      ])
+    );
+  }
+
+  // Раздел: предложение о цене.
+  if (form.hasPrice) {
+    const nextNum = sectionNum + (form.consent || goods.length || items.length ? 1 : 0);
+    const amount = price
+      ? `${formatRubles(Math.floor(price)).replace(/,00$/, "")} руб. (${rublesInWords(Math.floor(price)).replace(/ 00 копеек$/, "")})`
+      : "[цена договора цифрами] руб. ([цена прописью])";
+    body.push(
+      appHeading(`${nextNum}. Предложение о цене`),
+      ...paragraphs(
+        `Предлагаемая цена договора: ${amount}.${form.priceNote.trim() ? " " + form.priceNote.trim() : ""}`,
+        { indent: true }
+      )
+    );
+  }
+
+  // Раздел: декларация МСП.
+  if (form.smeDeclaration) {
+    body.push(
+      appHeading("Декларация о принадлежности к субъектам малого и среднего предпринимательства"),
+      ...paragraphs(fillFromProfile(form.smeDeclaration, profile), { indent: true })
+    );
+  }
+
+  body.push(...signature(profile));
+  return body;
+}
+
+// ЕАИСТ Москвы: стандартная форма Приложения № 1 для запроса котировок только для МСП.
+// Структура фиксирована и воспроизводится слово в слово по типовому бланку.
+function eaistApplicationBody({ form, goods, price, profile }: TpDocx): Block[] {
   const bank = profile
     ? [profile.account, profile.bankName, profile.bik ? `БИК ${profile.bik}` : "", profile.corrAccount ? `к/с ${profile.corrAccount}` : ""].filter(Boolean).join(", ")
     : "";
@@ -324,6 +419,17 @@ function applicationBody({ form, goods, price, profile }: TpDocx): Block[] {
   return body;
 }
 
+// Диспетчер: ЕАИСТ-форма — для запроса котировок и по умолчанию (до ИИ source пуст);
+// произвольная форма — когда ИИ нашёл форму с другим источником.
+function applicationBody(data: TpDocx): Block[] {
+  const { form } = data;
+  // Generic — только если ИИ явно указал источник, не связанный с запросом котировок.
+  if (form.source.trim() && !/запрос котировок/i.test(form.title) && !/информационной карте/i.test(form.source)) {
+    return genericApplicationBody(data);
+  }
+  return eaistApplicationBody(data);
+}
+
 const BODIES: Record<TpPart, (data: TpDocx) => Block[]> = {
   tp: tpBody,
   participant: participantBody,
@@ -339,7 +445,15 @@ const docTitle = (text: string): Para => para([run(text, { bold: true, size: 14 
 // Часть заявки из данных закупки и реквизитов: техническое предложение, анкета, декларация, цена, опыт, специалисты.
 export function modelOfTp(part: TpPart, data: TpDocx): DocModel {
   // Бланк заказчика начинается со своей шапки — общий заголовок и «Предмет закупки» к нему не добавляем.
-  if (part === "application") return { title: PART_TITLES[part], blocks: applicationBody(data) };
+  // Для произвольной (не ЕАИСТ) формы — заголовок из form.title; для ЕАИСТ и дефолта — стандартный.
+  if (part === "application") {
+    const isGeneric =
+      data.form.source.trim() &&
+      !/запрос котировок/i.test(data.form.title) &&
+      !/информационной карте/i.test(data.form.source);
+    const title = isGeneric ? data.form.title || PART_TITLES[part] : PART_TITLES[part];
+    return { title, blocks: applicationBody(data) };
+  }
   return {
     title: PART_TITLES[part],
     blocks: [
