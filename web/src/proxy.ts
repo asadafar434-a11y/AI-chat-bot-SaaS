@@ -2,6 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { ACCESS_COOKIE, accessPassword, accessToken, closedWithoutPassword, sameToken } from "@/lib/access";
 import { isLegalPath } from "@/lib/legal";
 import { AI_PER_IP, AI_TOTAL, clientIp, createLimiter, FILES_PER_IP, waitText } from "@/lib/rate-limit";
+import { SECURE_SESSION_COOKIE_NAME, SESSION_COOKIE_NAME } from "@/server/auth/session";
+
+// Cookie серверной сессии Auth.js. Наличие проверяется «оптимистично»: реальная проверка
+// сессии — в обработчиках по БД. Прокси лишь не пускает заведомо анонимного посетителя и
+// не является границей безопасности.
+const AUTH_SESSION_COOKIES = [SESSION_COOKIE_NAME, SECURE_SESSION_COOKIE_NAME];
 
 const text = (message: string, status: number, retryAfter?: number) =>
   new NextResponse(message, {
@@ -13,10 +19,14 @@ const aiPerIp = createLimiter(AI_PER_IP);
 const aiTotal = createLimiter(AI_TOTAL);
 const filesPerIp = createLimiter(FILES_PER_IP);
 
+// Liveness/readiness probes должны отвечать без входа: их опрашивает балансировщик,
+// а не человек. Данные они не отдают — только состояние процесса/БД.
+const isHealthPath = (pathname: string) => pathname === "/api/health" || pathname.startsWith("/api/health/");
+
 // Запросы, которые тратят бюджет ИИ или силы сервера, — не чаще лимита. Файл Word, PDF или ODT части заявки собирается без ИИ, вход — свой лимит.
 function tooMany(request: NextRequest): NextResponse | null {
   const { pathname } = request.nextUrl;
-  if (request.method !== "POST" || !pathname.startsWith("/api/") || pathname === "/api/login" || pathname === "/api/tp/docx" || pathname === "/api/tp/pdf" || pathname === "/api/tp/odt") {
+  if (request.method !== "POST" || !pathname.startsWith("/api/") || pathname === "/api/login" || pathname === "/api/auth/login" || pathname === "/api/tp/docx" || pathname === "/api/tp/pdf" || pathname === "/api/tp/odt") {
     return null;
   }
   const ip = clientIp(request.headers.get("x-forwarded-for"));
@@ -43,19 +53,44 @@ export async function proxy(request: NextRequest) {
   const password = accessPassword();
   const { pathname, search } = request.nextUrl;
   if (!password) {
-    if (closedWithoutPassword() && pathname.startsWith("/api/") && pathname !== "/api/login") {
+    if (
+      closedWithoutPassword() &&
+      pathname.startsWith("/api/") &&
+      pathname !== "/api/login" &&
+      !pathname.startsWith("/api/auth/") &&
+      !isHealthPath(pathname)
+    ) {
       return text("Сервис закрыт: владелец не задал пароль входа. Напишите ему — контакты на странице «Контакты».", 503);
     }
     return tooMany(request) ?? NextResponse.next();
   }
 
   // Политика, согласие, условия и контакты открыты всем: их нужно прочитать до входа.
-  if (pathname === "/login" || pathname === "/api/login" || isLegalPath(pathname)) return NextResponse.next();
+  // Маршруты Auth.js (`/api/auth/*`) открыты: они сами решают, есть ли сессия, и нужны для
+  // входа и выхода. Собственные обработчики приглашений/сброса проверяют права по БД.
+  // Локальная раздача файлов (`/api/storage/local/*`, только fs-бэкенд dev/test):
+  // bearer-ссылка с HMAC и коротким TTL, роут сам проверяет подпись, срок и строку.
+  if (
+    pathname === "/login" ||
+    pathname === "/api/login" ||
+    pathname.startsWith("/api/auth/") ||
+    pathname.startsWith("/api/storage/local/") ||
+    isHealthPath(pathname) ||
+    isLegalPath(pathname)
+  ) {
+    return tooMany(request) ?? NextResponse.next();
+  }
 
   const token = request.cookies.get(ACCESS_COOKIE)?.value;
   if (token && sameToken(token, await accessToken(password))) return tooMany(request) ?? NextResponse.next();
 
-  if (pathname.startsWith("/api/")) return text("Нужно снова войти по паролю — обновите страницу.", 401);
+  // Переходный период: вход по общему паролю работает наравне с серверной сессией. Наличие
+  // cookie здесь проверяется оптимистично; реальная проверка сессии — в обработчиках.
+  if (AUTH_SESSION_COOKIES.some((name) => request.cookies.get(name)?.value)) {
+    return tooMany(request) ?? NextResponse.next();
+  }
+
+  if (pathname.startsWith("/api/")) return text("Нужно снова войти — обновите страницу.", 401);
   const login = new URL("/login", request.url);
   if (pathname !== "/") login.searchParams.set("next", pathname + search);
   return NextResponse.redirect(login);

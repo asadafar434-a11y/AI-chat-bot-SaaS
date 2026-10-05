@@ -21,8 +21,8 @@ function contents({ purchases, samples, profile }: { purchases: number; samples:
   return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} и ${parts.at(-1)}` : (parts[0] ?? "");
 }
 
-// Данные живут только в этом браузере: копия файлом — единственный способ вернуть их, если браузер их стёр,
-// и перенести на другой компьютер.
+// Копия файлом: способ выгрузить данные организации (PostgreSQL + S6), перенести их
+// и восстановить после удаления.
 export function BackupIsland({ onRestored }: { onRestored?: () => void }) {
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
@@ -35,14 +35,14 @@ export function BackupIsland({ onRestored }: { onRestored?: () => void }) {
       const { backup, ...counts } = await exportBackup();
       const inside = contents(counts);
       if (!inside) {
-        setOutcome({ tone: "info", text: "Сохранять пока нечего: в этом браузере нет ни закупок, ни образцов, ни реквизитов." });
+        setOutcome({ tone: "info", text: "Сохранять пока нечего: в организации нет ни закупок, ни образцов, ни реквизитов." });
         return;
       }
       const name = `Тендерный юрист — копия ${new Date(backup.savedAt).toLocaleDateString("ru-RU")}.json`;
       saveFile(new Blob([JSON.stringify(backup)], { type: "application/json" }), name);
       setOutcome({ tone: "ok", text: `Копия сохранена — файл «${name}» в загрузках браузера. В нём ${inside}.` });
     } catch {
-      setOutcome({ tone: "warn", text: "Браузер не дал прочитать данные — копия не сохранилась. Обновите страницу и попробуйте ещё раз." });
+      setOutcome({ tone: "warn", text: "Не удалось прочитать данные — копия не сохранилась. Обновите страницу и попробуйте ещё раз." });
     } finally {
       setBusy(false);
     }
@@ -66,12 +66,12 @@ export function BackupIsland({ onRestored }: { onRestored?: () => void }) {
       const added = contents(await restoreBackup(parsed.dump));
       setOutcome(
         added
-          ? { tone: "ok", text: `Из копии добавлено: ${added}. То, что уже было в браузере, не тронуто.` }
-          : { tone: "info", text: "Всё из копии уже есть в этом браузере — ничего не менял." }
+          ? { tone: "ok", text: `Из копии добавлено: ${added}. То, что уже было, не тронуто.` }
+          : { tone: "info", text: "Всё из копии уже есть — ничего не менял." }
       );
       onRestored?.();
     } catch {
-      setOutcome({ tone: "warn", text: "Браузер не дал записать данные — возможно, на диске кончилось место. Освободите место и загрузите копию ещё раз." });
+      setOutcome({ tone: "warn", text: "Не удалось записать данные — возможно, на диске кончилось место. Освободите место и загрузите копию ещё раз." });
     } finally {
       setBusy(false);
     }
@@ -81,9 +81,9 @@ export function BackupIsland({ onRestored }: { onRestored?: () => void }) {
     <Island id="backup" title="Копия данных" sub="Закупки, документы, реквизиты и образцы">
       <div className="grid gap-3 px-[var(--pad)] pb-4 pt-1">
         <p className="max-w-[70ch] text-[var(--ink-2)]">
-          Всё это хранится только в этом браузере. Если очистить браузер — пропадёт, а Safari может стереть данные сам, если
-          сервис не открывать неделю. Сохраняйте копию файлом: из неё всё вернётся, и так же данные переносятся на другой
-          компьютер. В файле реквизиты и тексты документов — храните его так же бережно, как сами документы.
+          Данные хранятся на сервере, в вашей организации. Копия файлом — способ выгрузить их, перенести в другую
+          организацию или восстановить после удаления. В файле реквизиты и тексты документов — храните его так же
+          бережно, как сами документы.
         </p>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => void save()} disabled={busy} className="btn btn-line">

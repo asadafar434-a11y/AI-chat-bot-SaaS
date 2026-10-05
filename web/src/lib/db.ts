@@ -52,15 +52,11 @@ function open(name: DbName): Promise<IDBDatabase> {
   return promise;
 }
 
-// Сайдбар показывает закупки и «Мои данные» и перечитывает их после каждой записи.
-const CHANGED = "tender-data-changed";
-
-export function onDataChanged(listener: () => void) {
-  window.addEventListener(CHANGED, listener);
-  return () => window.removeEventListener(CHANGED, listener);
-}
-
 // Все хранилища одной транзакции должны лежать в одной базе.
+// Событие «данные изменились» здесь больше не рассылается: после S11 Final Read
+// Cutover экраны читают сервер, и обновление запускается явным `notifyDataChanged()`
+// после завершённой мутации (IndexedDB dual-write + серверная запись), а не фактом
+// записи в IndexedDB — иначе refetch мог бы обогнать серверную запись.
 export async function transaction<T>(
   stores: StoreName[],
   mode: IDBTransactionMode,
@@ -70,10 +66,7 @@ export async function transaction<T>(
   return new Promise<T>((resolve, reject) => {
     const tx = db.transaction(stores, mode);
     const request = run(tx);
-    tx.oncomplete = () => {
-      resolve(request ? request.result : (undefined as T));
-      if (mode === "readwrite") window.dispatchEvent(new Event(CHANGED));
-    };
+    tx.oncomplete = () => resolve(request ? request.result : (undefined as T));
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error);
   });

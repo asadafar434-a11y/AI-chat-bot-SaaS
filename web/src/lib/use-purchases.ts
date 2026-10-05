@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { onDataChanged } from "@/lib/data-events";
 import { NewerDataError } from "@/lib/data-format";
-import { onDataChanged } from "@/lib/db";
 import { byUrgency } from "@/lib/deadline";
 import type { Purchase } from "@/lib/purchase";
 import { listPurchases } from "@/lib/purchase-store";
 
 export const STORAGE_ERROR =
-  "Браузер не дал открыть хранилище закупок. Обновите страницу; если не поможет — проверьте, что сайту разрешено хранить данные.";
+  "Не удалось загрузить закупки с сервера. Обновите страницу; если не поможет — проверьте соединение и повторите позже.";
 
 // error — текст для человека: хранилище не открылось или закупки сохранила более новая версия приложения.
 type PurchaseList = { purchases: Purchase[] | null; error: string | null };

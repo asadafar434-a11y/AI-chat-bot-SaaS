@@ -81,6 +81,16 @@ test("лимит запросов к ИИ с одного адреса: свер
   });
 });
 
+test("bearer-ссылки локальной раздачи открыты прокси, остальное хранилище — за входом", async () => {
+  await withEnv({ NODE_ENV: "production", ACCESS_PASSWORD: "секрет", OPEN_ACCESS: undefined }, async () => {
+    // Подписанная ссылка проверяет себя сама (HMAC + срок в роуте): прокси её пропускает.
+    const bearer = await proxy(new NextRequest("http://localhost/api/storage/local/abc.def.0123456789abcdef"));
+    assert.equal(bearer.status, 200);
+    // Остальные файловые маршруты — только со входом.
+    assert.equal((await proxy(post("/api/storage/documents", nextIp()))).status, 401);
+  });
+});
+
 test("загрузка файлов — свой лимит", async () => {
   await withEnv({ NODE_ENV: "development", ACCESS_PASSWORD: undefined }, async () => {
     const ip = nextIp();
@@ -90,5 +100,18 @@ test("загрузка файлов — свой лимит", async () => {
     assert.match(await over.text(), /Слишком много файлов подряд/);
     // Запросы к ИИ с того же адреса лимит файлов не трогает.
     assert.equal((await proxy(post("/api/chat", ip))).status, 200);
+  });
+});
+
+test("health-пробы открыты без входа и без пароля (P1)", async () => {
+  // С паролем: без метки входа health всё равно доступен.
+  await withEnv({ NODE_ENV: "production", ACCESS_PASSWORD: "секрет", OPEN_ACCESS: undefined }, async () => {
+    assert.equal((await proxy(new NextRequest("http://localhost/api/health"))).status, 200);
+    assert.equal((await proxy(new NextRequest("http://localhost/api/health/ready"))).status, 200);
+  });
+  // Без пароля на хостинге: остальные /api закрыты 503, health — нет.
+  await withEnv({ NODE_ENV: "production", ACCESS_PASSWORD: undefined, OPEN_ACCESS: undefined }, async () => {
+    assert.equal((await proxy(new NextRequest("http://localhost/api/health"))).status, 200);
+    assert.notEqual((await proxy(new NextRequest("http://localhost/api/health/ready"))).status, 503);
   });
 });

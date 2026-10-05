@@ -1,9 +1,13 @@
+import { notifyDataChanged } from "@/lib/data-events";
 import { fromStore, toStore } from "@/lib/data-format";
 import { STORES, transaction } from "@/lib/db";
 import { cleanAnswers, FACT_KINDS, type Fact } from "@/lib/evidence-base";
+import { fetchFacts, serverReadsEnabled } from "@/lib/server-reads";
+import { deleteServerWrite, postServerWrite, serverWritesEnabled } from "@/lib/server-writes";
 
-// База доказательств лежит в IndexedDB этого браузера, как и всё остальное: сервер её не хранит. Записи читаются и пишутся через
-// data-format.ts: старые догоняют текущий формат при чтении. Что считать подходящим фактом — в evidence-match.ts, здесь — хранение.
+// База доказательств: чтение — с сервера (S11 Final Read Cutover), IndexedDB остаётся
+// только для S5 dual-write и совместимости. Что считать подходящим фактом — в
+// evidence-match.ts, здесь — хранение и чтение.
 
 // Факт из базы в текущем виде: недостающее заполняется «по умолчанию», запись с неизвестным видом (её записала более новая версия
 // приложения) не читается и не теряется — она остаётся в базе.
@@ -29,21 +33,38 @@ export function readFact(raw: unknown): Fact | null {
   };
 }
 
-export const listFacts = async (): Promise<Fact[]> =>
-  (await transaction<unknown[]>([STORES.facts], "readonly", (tx) => tx.objectStore(STORES.facts).getAll()))
+export const listFacts = async (): Promise<Fact[]> => {
+  if (serverReadsEnabled()) {
+    return fetchFacts();
+  }
+  return (await transaction<unknown[]>([STORES.facts], "readonly", (tx) => tx.objectStore(STORES.facts).getAll()))
     .map(readFact)
     .filter((f): f is Fact => f !== null)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+};
 
-export const saveFacts = (facts: Fact[]) =>
-  transaction<void>([STORES.facts], "readwrite", (tx) => {
+export const saveFacts = async (facts: Fact[]): Promise<void> => {
+  await transaction<void>([STORES.facts], "readwrite", (tx) => {
     for (const fact of facts) tx.objectStore(STORES.facts).put(toStore("fact", fact));
   });
+  // Dual-write S5: поэлементные PUT (как legacy put каждого).
+  if (serverWritesEnabled()) {
+    for (const fact of facts) {
+      await postServerWrite(`/api/writes/facts/${encodeURIComponent(fact.id)}`, "PUT", { fact });
+    }
+  }
+  notifyDataChanged();
+};
 
-export const deleteFact = (id: string) =>
-  transaction<void>([STORES.facts], "readwrite", (tx) => {
+export const deleteFact = async (id: string): Promise<void> => {
+  await transaction<void>([STORES.facts], "readwrite", (tx) => {
     tx.objectStore(STORES.facts).delete(id);
   });
+  if (serverWritesEnabled()) {
+    await deleteServerWrite(`/api/writes/facts/${encodeURIComponent(id)}`);
+  }
+  notifyDataChanged();
+};
 
 // ———— Один и тот же факт ————
 

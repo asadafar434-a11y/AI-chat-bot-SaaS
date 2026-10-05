@@ -1,0 +1,43 @@
+# Локальная БД для Stage 11. Только для разработки на машине разработчика.
+# Production-инфраструктура здесь не описывается и не создаётся этим файлом.
+#
+# Запуск:  docker compose -f docker-compose.postgres.yml up -d
+# Останов: docker compose -f docker-compose.postgres.yml down
+# Удалить данные: docker compose -f docker-compose.postgres.yml down -v
+#
+# Учётные данные ниже — локальные, только для контейнера на localhost. Это не секрет
+# и не production-реквизиты: порт не публикуется наружу, доступ только с этой машины.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tender-lawyer-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: tender_lawyer
+      # Инициализировать кластер со временем в UTC и со строгим режимом:
+      # метки времени в БД должны быть однозначными, иначе сроки закупок «плавают».
+      TZ: UTC
+      PGTZ: UTC
+      POSTGRES_INITDB_ARGS: "--locale=C.UTF-8 --encoding=UTF8"
+    ports:
+      # Слушаем только loopback: из внешней сети порт недоступен.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    command:
+      - postgres
+      # scram-sha-256 вместо устаревшего md5.
+      - -c
+      - password_encryption=scram-sha-256
+      # Логи медленных запросов — понадобятся при отладке миграции.
+      - -c
+      - log_min_duration_statement=500
+      # Не даём планировщику уходить в OOM killer на этой машине.
+      - -c
+      - shared_buffers=128MB
+
+volumes:
+  postgres-data:

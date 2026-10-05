@@ -11,7 +11,7 @@ import { PriceTeaser } from "@/components/price-teaser";
 import { SourceQuote } from "@/components/purchase-bits";
 import { usePurchase } from "@/components/purchase-provider";
 import { TabBody } from "@/components/purchase-view";
-import { onDataChanged } from "@/lib/db";
+import { onDataChanged } from "@/lib/data-events";
 import { fieldsOf } from "@/lib/fields";
 import { fulfillmentOf, planSummary, type FulfillMode, type FulfillmentPlan, type PlanStatus } from "@/lib/fulfillment";
 import { getProfile } from "@/lib/me-store";

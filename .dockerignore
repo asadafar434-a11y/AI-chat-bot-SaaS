@@ -1,0 +1,38 @@
+# Docker build context = repository root (see Dockerfile).
+
+# VCS / CI
+.git
+.github
+.gitignore
+
+# Dependencies and build output — rebuilt inside the image
+**/node_modules
+**/.next
+**/out
+**/dist
+**/build
+**/coverage
+**/.turbo
+**/.cache
+
+# Secrets and env files (never in the image; runtime supplies real values)
+.env
+.env.*
+**/.env
+**/.env.*
+*.pem
+
+# Generated / local artifacts
+web/tsconfig.tsbuildinfo
+web/next-env.d.ts
+web/public/product
+data
+
+# Documentation and large binaries not needed to build
+docs
+*.docx
+*.log
+
+# Prototype build leftovers
+design-system/prototype/dist
+design-system/prototype/.vite

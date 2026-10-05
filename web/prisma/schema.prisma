@@ -1,0 +1,469 @@
+// Stage 11 — S1 (фундамент) + S2 (аутентификация, роли, tenancy).
+//
+// S2 добавляет аддитивно: Session, Account, VerificationToken (стандартная модель Auth.js)
+// и Invitation (собственная таблица приглашений). Бизнес-данные по-прежнему читаются из
+// IndexedDB: подключение серверных чтений — отдельный, более поздний шаг. Схема S1 не
+// изменяется, только дополняется.
+//
+// Чего в схеме НЕТ сознательно (создаётся на следующих этапах):
+//   Payment                        — ЮKassa, этап S10
+//   схема pgboss                   — фоновые задачи, этап S8
+//
+// Ключевые инварианты (см. docs/stage-11/data-model.md):
+//   1. organizationId присутствует в каждой организации-скоупленной таблице;
+//   2. идентификаторы — cuid(), они не раскрывают последовательные внутренние номера;
+//   3. тело закупки и содержимое профилей хранятся как Json (JSONB) с сохранением формы
+//      доменных типов — домен не переписывается (docs/stage-11/decisions-and-risks.md D2);
+//   4. большие тексты документов в PostgreSQL не хранятся: только метаданные и ссылки
+//      на объектное хранилище (D3, этап S6);
+//   5. onDelete Cascade не используется для ссылок на Organization: удаление организации
+//      не должно каскадно сносить данные — это отдельный server-side workflow.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Роль пользователя в организации. Набор значений зафиксирован контрактом ролей;
+/// добавление значения — ALTER TYPE, поэтому новые роли не добавляются «по мере надобности».
+enum Role {
+  owner
+  member
+}
+
+/// Состояние закупки. Соответствует сегодняшнему `submitted?: boolean` и разделам
+/// «В работе» / «Поданы» / «Архив».
+enum PurchaseStatus {
+  draft
+  submitted
+  archived
+}
+
+/// Состояние пакета импорта. Значения зафиксированы: started — пакет создан,
+/// running — перенос идёт (возобновление, этап S4), completed/failed — финал.
+/// Добавление значения — ALTER TYPE, зеркалится в IMPORT_BATCH_STATUS_VALUES
+/// (src/server/db/repositories/index.ts).
+enum ImportBatchStatus {
+  started
+  running
+  completed
+  failed
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Организация и люди
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Организация-участник. Корень tenant-скоупинга: на неё ссылаются все бизнес-данные.
+model Organization {
+  id        String    @id @default(cuid())
+  name      String    @db.VarChar(200)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @db.Timestamptz(3)
+  /// Мягкое удаление: журнал аудита и ссылки на автора сохраняются.
+  deletedAt DateTime? @db.Timestamptz(3)
+
+  memberships         Membership[]
+  organizationProfile OrganizationProfile?
+  purchases           Purchase[]
+  documents           Document[]
+  facts               Fact[]
+  samples             Sample[]
+  auditEvents         AuditEvent[]
+  legacyImportBatches LegacyImportBatch[]
+  invitations         Invitation[]
+
+  @@index([deletedAt])
+  @@map("Organization")
+}
+
+/// Человек. Персональные данные и личные настройки — здесь; корпоративные реквизиты
+/// — в OrganizationProfile (D11a). Смешивать их в одной таблице нельзя.
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique @db.VarChar(320)
+  emailVerified DateTime? @db.Timestamptz(3)
+  name          String?   @db.VarChar(200)
+  image         String?   @db.VarChar(1000)
+  /// Хеш пароля. Поле создаётся на S1, чтобы не менять схему на S2; аутентификация
+  /// на S1 не реализуется и пароли здесь не проверяются (D13, этап S2).
+  passwordHash  String?   @db.VarChar(255)
+  /// Личные настройки человека, переносимые между устройствами. Настройки устройства
+  /// (тема, отметки уведомлений, включённый разбор сканов) сюда НЕ входят: они
+  /// остаются в браузере (D11a, риск R11).
+  preferences   Json      @default("{}")
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @db.Timestamptz(3)
+  deletedAt     DateTime? @db.Timestamptz(3)
+
+  memberships     Membership[]
+  userProfile     UserProfile?
+  purchases       Purchase[]   @relation("PurchaseCreatedBy")
+  auditEvents     AuditEvent[] @relation("AuditEventActor")
+  accounts        Account[]
+  sessions        Session[]
+  invitationsSent Invitation[] @relation("InvitationInvitedBy")
+
+  @@index([deletedAt])
+  @@map("User")
+}
+
+/// Роль пользователя в организации. Вынесена из User: человек может состоять
+/// в нескольких организациях.
+model Membership {
+  id             String   @id @default(cuid())
+  organizationId String   @db.VarChar(25)
+  userId         String   @db.VarChar(25)
+  role           Role     @default(member)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@index([organizationId, role])
+  @@map("Membership")
+}
+
+/// Корпоративные реквизиты организации: 15 полей из доменного `Profile`
+/// (fullName, shortName, inn, kpp, ogrn, okved, smeCategory, taxSystem, vatNote,
+/// legalAddress, postalAddress, account, bankName, bik, corrAccount).
+/// Одинаковы для всех участников организации.
+model OrganizationProfile {
+  id             String   @id @default(cuid())
+  organizationId String   @unique @db.VarChar(25)
+  fields         Json     @default("{}")
+  /// Метаданные профиля (`ProfileMeta`): `sources` — из какого документа взято
+  /// поле, `suggestions` — другие найденные значения. Хранится целиком на строке
+  /// организации: сборка доменного `Profile` — единственная точка встречи двух
+  /// профилей (data-model.md §4.3). До S11-R0 терялось при переносе.
+  meta           Json     @default("{}")
+  version        Int      @default(1)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@map("OrganizationProfile")
+}
+
+/// Персональные данные пользователя: 5 полей из доменного `Profile`
+/// (head, signer, contactPerson, phone, email). У разных участников одной
+/// организации они различаются, поэтому профиль принадлежит человеку (D11a).
+model UserProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique @db.VarChar(25)
+  fields    Json     @default("{}")
+  version   Int      @default(1)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@map("UserProfile")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Закупки и документы
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Закупка целиком. Тело хранится в `payload` как JSONB без изменения формы доменного
+/// типа Purchase: requirements, tp, tpDraft, parts, check, chat, priceCalc, fieldValues
+/// и остальное остаются объектом с теми же ключами, что и сейчас в IndexedDB (D2).
+model Purchase {
+  id                    String         @id @default(cuid())
+  organizationId        String         @db.VarChar(25)
+  /// null для записей, перенесённых из IndexedDB: автора на стороне браузера не было.
+  createdByUserId       String?        @db.VarChar(25)
+  payload               Json
+  status                PurchaseStatus @default(draft)
+  /// Значение `v` из IndexedDB, для трассировки происхождения (D7).
+  originalFormatVersion Int?
+  /// Исходный идентификатор из IndexedDB. НЕ уникален: перенос повторяем, коллизия
+  /// разрешается сверкой, а не падением (docs/stage-11/migration-and-rollback.md §6).
+  legacyId              String?        @db.VarChar(200)
+  createdAt             DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime       @updatedAt @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy    User?        @relation("PurchaseCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  documents    Document[]
+
+  @@index([organizationId, updatedAt])
+  @@index([organizationId, status])
+  @@index([organizationId, createdAt])
+  @@index([legacyId])
+  @@index([createdByUserId])
+  @@map("Purchase")
+}
+
+/// Метаданные документа закупки. Большие тексты здесь НЕ хранятся: извлечённый текст
+/// достигает сотен тысяч знаков и лежит в объектном хранилище (S3, этап S6).
+/// `storageKey` и `textKey` создаются nullable уже на S1, чтобы подключение S3
+/// не требовало отдельной миграции; заполняются они на этапе S6.
+model Document {
+  id             String   @id @default(cuid())
+  organizationId String   @db.VarChar(25)
+  /// null для документов раздела «Мои данные», не привязанных к закупке.
+  purchaseId     String?  @db.VarChar(25)
+  fileName       String   @db.VarChar(500)
+  mimeType       String?  @db.VarChar(200)
+  sizeBytes      Int?
+  /// Отпечаток содержимого; используется существующим fingerprint.ts.
+  sha256         String?  @db.VarChar(64)
+  /// Непрозратый ключ объекта в S3, вида org/{organizationId}/doc/{documentId}/{random}.
+  /// Формируется сервером; ключ от клиента не принимается ни в каком виде.
+  storageKey     String?  @db.VarChar(500)
+  /// Ключ извлечённого текста в S3.
+  textKey        String?  @db.VarChar(500)
+  /// Ключ карты документа (`DocMap`) в S3: для каждого куска текста — страница,
+  /// таблица, ячейка. Производная от текста, но у legacy-документов, попавших в
+  /// PostgreSQL из IndexedDB, восстанавливается только сохранением (S11-R0).
+  mapKey         String?  @db.VarChar(500)
+  pageCount      Int?
+  ocr            Boolean  @default(false)
+  /// Причина непрочтения — для существующей логики `unreadable`.
+  readError      String?  @db.VarChar(500)
+  legacyId       String?  @db.VarChar(200)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  purchase     Purchase?    @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, purchaseId])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, sha256])
+  @@index([purchaseId])
+  @@index([legacyId])
+  @@index([storageKey])
+  @@index([mapKey])
+  @@map("Document")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// База доказательств и образцы участника
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Факт базы доказательств компании. Форма полей совпадает с доменным типом Fact:
+/// kind, title, fields, measures, validity, source, origin, confirmed, answers.
+model Fact {
+  id             String   @id @default(cuid())
+  organizationId String   @db.VarChar(25)
+  kind           String   @db.VarChar(60)
+  title          String   @db.VarChar(500)
+  fields         Json     @default("{}")
+  measures       Json     @default("[]")
+  validity       Json     @default("{}")
+  /// union { type:"document", docId, docName, quote, where? } | { type:"manual", note? }.
+  /// Хранится как Json, а не разбивается на nullable-колонки, чтобы форма осталась
+  /// совместимой с evidence-match.ts и evidence-need.ts.
+  source         Json
+  /// "ai" | "human" — происхождение факта.
+  origin         String   @db.VarChar(20)
+  confirmed      Boolean  @default(false)
+  /// Тексты требований, под которые факт подобран.
+  answers        Json?
+  legacyId       String?  @db.VarChar(200)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, kind])
+  @@index([organizationId, confirmed])
+  @@index([organizationId, createdAt])
+  /// TODO(S4): btree по JSONB покрывает только равенство всего документа; для запросов
+  /// внутрь validity (например, «действует на дату») понадобится GIN. Не менять без
+  /// реального запроса — индекс безвреден, но и бесполезен для таких выборок.
+  @@index([organizationId, validity])
+  @@index([legacyId])
+  @@map("Fact")
+}
+
+/// Образцы документов участника. Используются для сборки частей заявки, живут дольше
+/// одной закупки. Текст образца — в S3 (`textKey`), заполняется на этапе S6.
+model Sample {
+  id             String   @id @default(cuid())
+  organizationId String   @db.VarChar(25)
+  /// Имя файла образца (`MyDocument.name`). Не уникально; колонки не было до S11-R0.
+  name           String?  @db.VarChar(500)
+  /// Массив DocKind из DOC_KINDS.
+  kinds          Json     @default("[]")
+  about          String   @db.Text
+  /// Исходная отметка `MyDocument.addedAt` из IndexedDB. Не заменяется `createdAt`:
+  /// при backfill историческое значение сохраняется как есть.
+  addedAt        DateTime? @db.Timestamptz(3)
+  /// `MyDocument.scan` — документ распознан со скана. Default только для новых записей.
+  scan           Boolean  @default(false)
+  textKey        String?  @db.VarChar(500)
+  /// Карта образца (`DocMap`) в S3 — см. Document.mapKey.
+  mapKey         String?  @db.VarChar(500)
+  legacyId       String?  @db.VarChar(200)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, createdAt])
+  /// TODO(S4): btree по JSONB-массиву покрывает только равенство всего массива; для
+  /// запросов «образец вида X» (contains) понадобится GIN. Не менять без реального
+  /// запроса — см. TODO у Fact.validity.
+  @@index([organizationId, kinds])
+  @@index([legacyId])
+  @@index([mapKey])
+  @@map("Sample")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Аудит и учёт переноса
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Неизменяемый журнал важных изменений. На S1 создаётся только схема: реальная запись
+/// событий включается на этапе S7. На S1 нет `updatedAt` — записи не изменяются.
+model AuditEvent {
+  id             String   @id @default(cuid())
+  organizationId String   @db.VarChar(25)
+  /// null для системных событий.
+  actorUserId    String?  @db.VarChar(25)
+  action         String   @db.VarChar(100)
+  entityType     String   @db.VarChar(60)
+  entityId       String?  @db.VarChar(100)
+  /// Без персональных данных и без содержимого документов.
+  metadata       Json?
+  requestId      String?  @db.VarChar(100)
+  /// Хеш адреса, не сам адрес.
+  ipHash         String?  @db.VarChar(64)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  actor        User?        @relation("AuditEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, entityType, entityId])
+  @@index([actorUserId])
+  @@index([action])
+  @@map("AuditEvent")
+}
+
+/// Учёт прогонов переноса из IndexedDB. Обеспечивает идемпотентность: один и тот же файл
+/// копии в одну организацию — это один батч, повторный запуск продолжает его, а не
+/// создаёт новый.
+model LegacyImportBatch {
+  id                  String            @id @default(cuid())
+  /// Ключ идемпотентности конкретного запуска.
+  batchKey            String            @unique @db.VarChar(200)
+  /// sha256 файла копии формата tender-lawyer-backup.
+  backupHash          String            @db.VarChar(64)
+  /// Версия формата копии: 1 на текущий момент.
+  backupFormatVersion Int               @default(1)
+  organizationId      String            @db.VarChar(25)
+  status              ImportBatchStatus @default(started)
+  /// Вход/выход по каждому хранилищу.
+  counts              Json?
+  /// sha256 по экспортированным объектам.
+  checksums           Json?
+  startedAt           DateTime          @default(now()) @db.Timestamptz(3)
+  finishedAt          DateTime?         @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@unique([backupHash, organizationId])
+  @@index([organizationId, startedAt])
+  @@index([organizationId, status])
+  @@map("LegacyImportBatch")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// S2: аутентификация, сессии, приглашения
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Account / Session / VerificationToken — стандартная модель Auth.js: поля совпадают с
+// ожиданиями @auth/prisma-adapter, чтобы адаптер не приходилось переопределять. Два
+// требования поверх стандарта:
+//   1. используется именно `Session` (серверные сессии в БД, D4), а не JWT;
+//   2. `VerificationToken.token` и `Invitation.tokenHash` хранят ХЕШ токена, а не токен:
+//      похищение таблицы не даёт возможности сбросить чужой пароль или принять приглашение.
+
+/// Связь внешней учётной записи с пользователем. На S2 внешний провайдер не подключается,
+/// но таблица создаётся заранее: это стандартная модель Auth.js, и её отсутствие сломало бы
+/// `PrismaAdapter`. Точка расширения, а не рабочий поток.
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("Account")
+}
+
+/// Серверная сессия. Cookie хранит `sessionToken`; сама строка проверяется на сервере при
+/// каждом защищённом обращении. Отзыв — удаление строки, поэтому выход и смена пароля
+/// действуют немедленно (D4).
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expires])
+  @@map("Session")
+}
+
+/// Одноразовый токен подтверждения email и сброса пароля. `token` — хеш, не сам токен.
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime @db.Timestamptz(3)
+
+  @@unique([identifier, token])
+  @@index([expires])
+  @@map("VerificationToken")
+}
+
+/// Одноразовое приглашение `owner` → `member`. Несёт организацию и роль, поэтому не может
+/// быть сведено к стандартному `VerificationToken`. Анонимный доступ возможен только к
+/// операции «принять приглашение» и только по одноразовому токену.
+model Invitation {
+  id              String    @id @default(cuid())
+  /// sha256 одноразового токена. Сам токен нигде не хранится.
+  tokenHash       String    @unique @db.VarChar(64)
+  organizationId  String    @db.VarChar(25)
+  /// Нормализованный lowercase.
+  email           String    @db.VarChar(320)
+  role            Role      @default(member)
+  invitedByUserId String    @db.VarChar(25)
+  expiresAt       DateTime  @db.Timestamptz(3)
+  /// null, пока приглашение не принято; проставляется в одной транзакции с созданием Membership.
+  acceptedAt      DateTime? @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  invitedBy    User         @relation("InvitationInvitedBy", fields: [invitedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, email])
+  @@index([organizationId, createdAt])
+  @@index([expiresAt])
+  @@map("Invitation")
+}
