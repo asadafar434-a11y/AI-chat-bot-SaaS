@@ -1,4 +1,6 @@
 import "server-only";
+import { currentSession } from "@/server/auth/guards";
+import { isSameOrigin } from "@/server/auth/request";
 import { costUsd, rubOf, usdText, type AiUsage } from "@/lib/ai-cost";
 import { createBudget, createDedup } from "@/lib/ai-meter";
 
@@ -13,6 +15,26 @@ const budgetRub = Number(process.env.AI_BUDGET_RUB) || 250;
 const budget = usdRub > 0 && budgetRub > 0 ? createBudget(budgetRub / usdRub) : null;
 
 export const dedup = createDedup();
+
+/**
+ * CSRF + сессионная проверка для AI-маршрутов.
+ * Возвращает Response(401) при отказе, null при успехе.
+ * Сессия требуется только когда AUTH_SECRET задан (production/dev с DB):
+ * в dev без БД пропускаем, чтобы не сломать тестирование.
+ */
+export async function requireAiAuth(request: Request): Promise<Response | null> {
+  if (!isSameOrigin(request)) {
+    return new Response("Требуется вход", { status: 401 });
+  }
+  if (process.env.AUTH_SECRET) {
+    try {
+      if (!(await currentSession())) return new Response("Требуется вход", { status: 401 });
+    } catch {
+      // БД недоступна (dev без миграций) — пропускаем; rate-limit всё равно работает
+    }
+  }
+  return null;
+}
 
 // Номер заявки приходит от браузера в заголовке: закупка — это и есть заявка. Без номера — только общий журнал.
 export const appIdOf = (request: Request) => (request.headers.get("x-application-id") ?? "").trim().slice(0, 100) || null;

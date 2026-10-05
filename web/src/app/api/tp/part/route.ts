@@ -1,4 +1,4 @@
-import { appIdOf } from "@/lib/ai-guard";
+import { appIdOf, requireAiAuth } from "@/lib/ai-guard";
 import { claudeErrorText, NO_KEY_TEXT } from "@/lib/claude-errors";
 import { askJson, cleanSamples, ModelStop, sampleBlocks } from "@/lib/claude-request";
 import { MAX_CONTEXT_CHARS } from "@/lib/chat-types";
@@ -41,6 +41,8 @@ const fail = (message: string, status: number) => new Response(message, { status
 // Сведения об опыте и о специалистах — по форме заказчика из договоров и документов сотрудников участника.
 // Документы закупки идут первыми, как в требованиях и ТП, поэтому читаются из общего кеша.
 export async function POST(request: Request) {
+  const denied = await requireAiAuth(request);
+  if (denied) return denied;
   const body = await readJson(request);
   if (!body) return badRequest();
   const part = PARTS.find((p) => p === body.part);

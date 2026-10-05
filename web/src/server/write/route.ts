@@ -41,7 +41,7 @@ export async function requireWriteScope(request: Request): Promise<WriteScope | 
     userId = (await requireSession()).userId;
   } catch (error) {
     if (error instanceof AuthError) {
-      return new Response(error.message, { status: error.status });
+      return new Response("Требуется вход", { status: error.status });
     }
     throw error;
   }
@@ -74,7 +74,13 @@ export function writeJson(data: unknown, status = 200): Response {
  */
 export function writeError(error: unknown): Response {
   if (error instanceof AuthError) {
-    return new Response(error.message, { status: error.status });
+    const msg =
+      error.code === "unauthenticated" || error.code === "invalid_credentials"
+        ? "Требуется вход"
+        : error.code === "forbidden"
+          ? "Нет доступа"
+          : "Некорректный запрос";
+    return new Response(msg, { status: error.status });
   }
   if (error instanceof Error && error.name === "NotFoundInScopeError") {
     return new Response("Не найдено", { status: 404 });
@@ -83,7 +89,7 @@ export function writeError(error: unknown): Response {
     return new Response("Конфликт данных", { status: 409 });
   }
   if (error instanceof Error && error.name === "InvalidArgumentError") {
-    return new Response(error.message, { status: 400 });
+    return new Response("Некорректный запрос", { status: 400 });
   }
   throw error;
 }

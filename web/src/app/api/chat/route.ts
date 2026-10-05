@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
-import { appIdOf, BUDGET_TEXT, budgetOver, chargeAi } from "@/lib/ai-guard";
+import { appIdOf, BUDGET_TEXT, budgetOver, chargeAi, requireAiAuth } from "@/lib/ai-guard";
 import { MAX_CONTEXT_CHARS, type ChatDocument, type ChatMessage } from "@/lib/chat-types";
 import { claudeErrorText, WRITE_OWNER } from "@/lib/claude-errors";
 import { baseRequest, documentBlocks, maskDocuments, usageLine } from "@/lib/claude-request";
@@ -105,6 +105,8 @@ async function* stubAnswer(
 }
 
 export async function POST(request: Request) {
+  const denied = await requireAiAuth(request);
+  if (denied) return denied;
   // Вопрос по закупке считается в бюджет ИИ её заявки. Бюджет кончился — к модели не обращаемся.
   const appId = appIdOf(request);
   if (budgetOver(appId)) return new Response(BUDGET_TEXT, { status: 429 });

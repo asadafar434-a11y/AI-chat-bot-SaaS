@@ -127,12 +127,17 @@ export function listZipEntries(bytes: Uint8Array): EisArchiveEntry[] {
     }
     const method = view.getUint16(cdOffset + 10, true);
     const compressedSize = view.getUint32(cdOffset + 20, true);
+    const uncompressedSize = view.getUint32(cdOffset + 24, true);
     const nameLen = view.getUint16(cdOffset + 28, true);
     const extraLen = view.getUint16(cdOffset + 30, true);
     const commentLen = view.getUint16(cdOffset + 32, true);
     const localHeaderOffset = view.getUint32(cdOffset + 42, true);
     const nameBytes = bytes.subarray(cdOffset + 46, cdOffset + 46 + nameLen);
     const fileName = decoder.decode(nameBytes);
+    // ZIP-bomb: 512 МБ на запись достаточно для любого тендерного документа
+    if (uncompressedSize > 512 * 1024 * 1024) {
+      throw new EisError("DOCUMENT_ERROR", `Запись ${fileName} слишком велика после распаковки (${uncompressedSize} байт)`);
+    }
     cdOffset += 46 + nameLen + extraLen + commentLen;
     if (fileName.endsWith("/")) continue; // каталог
     if (view.getUint32(localHeaderOffset, true) !== 0x04034b50) {

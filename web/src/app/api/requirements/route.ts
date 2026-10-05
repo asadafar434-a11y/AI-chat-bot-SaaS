@@ -1,4 +1,4 @@
-import { appIdOf } from "@/lib/ai-guard";
+import { appIdOf, requireAiAuth } from "@/lib/ai-guard";
 import { claudeErrorText, NO_KEY_TEXT } from "@/lib/claude-errors";
 import { askJson, ModelStop } from "@/lib/claude-request";
 import { MAX_CONTEXT_CHARS } from "@/lib/chat-types";
@@ -13,6 +13,8 @@ export const maxDuration = 300;
 const fail = (message: string, status: number) => new Response(message, { status });
 
 export async function POST(request: Request) {
+  const denied = await requireAiAuth(request);
+  if (denied) return denied;
   const body = await readJson(request);
   if (!body) return badRequest();
   const documents = sentDocuments(body.documents);
