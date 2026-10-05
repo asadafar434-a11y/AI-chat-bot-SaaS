@@ -3,6 +3,7 @@ import { CheckCircle2, AlertTriangle, XCircle, Sparkles, ChevronRight, Info } fr
 import { Button, Card, Badge, Dot, Tooltip } from './ui';
 import type { CheckStatus } from '../lib/data';
 import { RequirementsList, type RequirementRowView } from './RequirementsList';
+import { DocSnippetToggle, type DocSnippet } from './StepReview';
 
 const statusMeta: Record<
   CheckStatus,
@@ -43,6 +44,7 @@ export function StepAnalysis({
   kindText,
   fromPlatform,
   hidden,
+  snippetOf,
   onNext,
   onBack,
   onFix,
@@ -56,6 +58,8 @@ export function StepAnalysis({
   fromPlatform: boolean;
   // Сколько пунктов для этой заявки не требуется — в список не входят.
   hidden: number;
+  // Контекст цитаты в документе: до, сама цитата, после — для кнопки «Показать в тексте».
+  snippetOf?: (quote: string) => DocSnippet | undefined;
   onNext: () => void;
   onBack: () => void;
   onFix: (at: 'review' | 'package') => void;
@@ -167,11 +171,8 @@ export function StepAnalysis({
                         <span className="text-warn-foreground"> · цитата не найдена в документах дословно — сверьте вручную</span>
                       )}
                     </p>
-                    {doc.where && (
-                      <p className="break-words text-muted-foreground">
-                        <span className="font-medium text-foreground">Место в файле: </span>
-                        {doc.where}
-                      </p>
+                    {doc.quote && (
+                      <DocSnippetToggle where={doc.where} snippet={snippetOf?.(doc.quote)} />
                     )}
                     <div
                       className={

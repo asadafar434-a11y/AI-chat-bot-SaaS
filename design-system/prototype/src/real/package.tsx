@@ -12,6 +12,7 @@ import type { FileFormat } from '@/lib/file-format';
 import type { PartDoc } from '@/lib/part-doc';
 import { filledCount, PROFILE_KEYS } from '@/lib/profile';
 import { fulfillmentOf } from '@/lib/fulfillment';
+import type { PartKey } from '@/lib/my-docs';
 import { PART_TITLES, partsOf, type TpPart } from '@/lib/tp-parts';
 import { useApplicationFilesOf } from '@/lib/use-application-files';
 import { ApplicationText, MarkedText } from '../components/ApplicationPreview';
@@ -148,12 +149,15 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
         foot: ['без названия и реквизитов участника', 'первая часть заявки'],
       };
     }
-    const made = purchase.parts?.[part];
+    // application — бланк заказчика, не AI-документ: предпросмотра нет.
+    if (part === 'application') return null;
+    const key = part as PartKey;
+    const made = purchase.parts?.[key];
     if (!made) return null;
     const basis = made.doc.basis.trim().replace(/\.$/, '');
     const note = [
       basis ? `Составлено ${basis}.` : '',
-      files.isFresh(tp, part) ? '' : 'Реквизиты, цена или образцы изменились с тех пор — при скачивании документ будет составлен заново.',
+      files.isFresh(tp, key) ? '' : 'Реквизиты, цена или образцы изменились с тех пор — при скачивании документ будет составлен заново.',
     ]
       .filter(Boolean)
       .join(' ');
@@ -177,7 +181,7 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
   }).map((row) => ({
     ...row,
     preview: previewOf(row.part),
-    canRedo: row.part !== 'tp' && !purchase.sample && purchase.parts?.[row.part] !== undefined,
+    canRedo: row.part !== 'tp' && row.part !== 'application' && !purchase.sample && purchase.parts?.[row.part as PartKey] !== undefined,
   }));
 
   // Документы закупки изменились после составления ТП — участник проверяет и подтверждает, как на шаге «Проверка».

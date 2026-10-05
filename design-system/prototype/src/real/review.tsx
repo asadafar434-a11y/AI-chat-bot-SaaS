@@ -123,6 +123,21 @@ export function PurchaseReview({
     const place = quote ? locator.locate(quote) : null;
     return place ? describeSource(place) : undefined;
   };
+  const snippetOf = useMemo(
+    () => (quote: string) => {
+      if (!quote) return undefined;
+      for (const doc of documents) {
+        const idx = doc.text.indexOf(quote);
+        if (idx < 0) continue;
+        const C = 120;
+        const from = Math.max(0, idx - C);
+        const to = Math.min(doc.text.length, idx + quote.length + C);
+        return { name: doc.name, before: doc.text.slice(from, idx), match: quote, after: doc.text.slice(idx + quote.length, to) };
+      }
+      return undefined;
+    },
+    [documents],
+  );
 
   const fields = useMemo(
     () =>
@@ -171,6 +186,7 @@ export function PurchaseReview({
       warnings={warnings}
       notice={changes && <DocsChanged changes={changes} onConfirm={() => update({ tpDocs: purchase.docs })} />}
       whereOf={whereOf}
+      snippetOf={snippetOf}
       before={
         tp?.cast ? (
           <CastCard

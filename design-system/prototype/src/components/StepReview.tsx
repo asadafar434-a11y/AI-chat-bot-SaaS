@@ -52,6 +52,44 @@ function Snippet({ text, hole }: { text: string; hole: number }) {
   );
 }
 
+export type DocSnippet = { name: string; before: string; match: string; after: string };
+
+// Показывает адрес цитаты и кнопку «Показать в тексте» — раскрывает фрагмент с выделенной цитатой.
+export function DocSnippetToggle({ snippet, where }: { snippet?: DocSnippet; where?: string }) {
+  const [open, setOpen] = useState(false);
+  if (!where && !snippet) return null;
+  return (
+    <div className="space-y-1">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+        {where && (
+          <p className="break-words text-[11px] text-muted-foreground">
+            Место в файле: <span className="font-mono">{where}</span>
+          </p>
+        )}
+        {snippet && (
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            className="shrink-0 whitespace-nowrap text-[11px] text-info underline-offset-2 hover:underline"
+          >
+            {open ? 'Скрыть ↑' : 'Показать в тексте ↓'}
+          </button>
+        )}
+      </div>
+      {open && snippet && (
+        <div className="rounded-md bg-secondary/60 px-3 py-2 text-[12px] leading-relaxed">
+          <p className="mb-1 text-[11px] font-medium text-muted-foreground">{snippet.name}</p>
+          <p className="whitespace-pre-wrap break-words text-muted-foreground">
+            {snippet.before}
+            <mark className="highlight">{snippet.match}</mark>
+            {snippet.after}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Вес открытого пункта в «риске отклонения»: ошибка — 35, не определено — 18, пустое обязательное — 10, подтвердить — 7, остальное — 3.
 const weightOf = (f: ApplicationField) =>
   f.status === 'invalid' ? 35 : f.kind === 'unknown' ? 18 : f.status === 'needs_input' ? (f.required ? 10 : 3) : f.status === 'needs_confirmation' ? 7 : 0;
@@ -77,6 +115,7 @@ export function StepReview({
   before,
   after,
   whereOf,
+  snippetOf,
   onFocus,
   onSave,
   onGo,
@@ -98,6 +137,8 @@ export function StepReview({
   focusKey: string | null;
   // Где в файлах закупки стоит цитата поля: файл, страница, таблица, пункт (lib/doc-locate.ts). Нет — адреса не показываем.
   whereOf?: (quote: string) => string | undefined;
+  // Контекст цитаты в документе: текст до, сама цитата, текст после — для кнопки «Показать в тексте».
+  snippetOf?: (quote: string) => DocSnippet | undefined;
   onFocus: (key: string | null) => void;
   // Вписать значение в жёлтое место или строку анкеты; для подтверждения значение пустое.
   onSave: (key: string, value: string) => void;
@@ -265,7 +306,7 @@ export function StepReview({
           )}
           {before}
           {filter === 'auto' ? (
-            <AutoList fields={fields.filter((f) => f.kind === 'auto' && f.status === 'filled')} whereOf={whereOf} />
+            <AutoList fields={fields.filter((f) => f.kind === 'auto' && f.status === 'filled')} whereOf={whereOf} snippetOf={snippetOf} />
           ) : filter === 'sign' ? (
             <SignRow />
           ) : (
@@ -279,6 +320,7 @@ export function StepReview({
                     field={f}
                     purchase={purchase}
                     whereOf={whereOf}
+                    snippetOf={snippetOf}
                     expanded={focusKey === f.key}
                     onToggle={() => onFocus(focusKey === f.key ? null : f.key)}
                     onSave={onSave}
@@ -314,7 +356,7 @@ export function StepReview({
                   <CheckCircle2 className="size-4" /> Всё заполнено. Осталось подписать заявку электронной подписью и подать на площадке.
                 </p>
               )}
-              {filter === 'all' && <AutoList fields={fields.filter((f) => f.kind === 'auto' && f.status === 'filled')} collapsed whereOf={whereOf} />}
+              {filter === 'all' && <AutoList fields={fields.filter((f) => f.kind === 'auto' && f.status === 'filled')} collapsed whereOf={whereOf} snippetOf={snippetOf} />}
             </>
           )}
         </div>
@@ -376,6 +418,7 @@ function FieldRow({
   field,
   purchase,
   whereOf,
+  snippetOf,
   expanded,
   onToggle,
   onSave,
@@ -386,6 +429,7 @@ function FieldRow({
   field: ApplicationField;
   purchase: Purchase;
   whereOf?: (quote: string) => string | undefined;
+  snippetOf?: (quote: string) => DocSnippet | undefined;
   expanded: boolean;
   onToggle: () => void;
   onSave: (key: string, value: string) => void;
@@ -407,9 +451,9 @@ function FieldRow({
       <button onClick={onToggle} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left">
         {stateIcon(field)}
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             {where && <span className="max-w-[45%] shrink-0 truncate font-mono text-[11px] text-muted-foreground">{where}</span>}
-            <span className="truncate text-[13px] font-medium">{field.label}</span>
+            <span className="min-w-0 truncate text-[13px] font-medium">{field.label}</span>
           </div>
           {field.status === 'filled' && field.value && <p className="mt-0.5 truncate text-[12px] text-success">{field.value}</p>}
           {field.problem && <p className={cx('mt-0.5 truncate text-[12px]', field.status === 'invalid' ? 'text-danger' : 'text-warn-foreground')}>{field.problem}</p>}
@@ -426,10 +470,8 @@ function FieldRow({
               Откуда: <span className="font-mono">{field.source}</span>
             </p>
           )}
-          {field.quote && whereOf?.(field.quote) && (
-            <p className="break-words text-[11px] text-muted-foreground">
-              Место в файле: <span className="font-mono">{whereOf(field.quote)}</span>
-            </p>
+          {field.quote && (
+            <DocSnippetToggle where={whereOf?.(field.quote)} snippet={snippetOf?.(field.quote)} />
           )}
           <Control field={field} purchase={purchase} onSave={onSave} onGo={onGo} onOpenProfile={onOpenProfile} />
         </div>
@@ -573,7 +615,7 @@ function Control({
   return null;
 }
 
-function AutoList({ fields, collapsed, whereOf }: { fields: ApplicationField[]; collapsed?: boolean; whereOf?: (quote: string) => string | undefined }) {
+function AutoList({ fields, collapsed, whereOf, snippetOf }: { fields: ApplicationField[]; collapsed?: boolean; whereOf?: (quote: string) => string | undefined; snippetOf?: (quote: string) => DocSnippet | undefined }) {
   const [open, setOpen] = useState(!collapsed);
   if (fields.length === 0) return null;
   return (
@@ -593,7 +635,7 @@ function AutoList({ fields, collapsed, whereOf }: { fields: ApplicationField[]; 
                 <span className="max-w-[55%] truncate text-right font-mono text-[12px]">{f.value}</span>
               </div>
               {f.source && <p className="mt-0.5 text-[11px] text-muted-foreground">Источник: {f.source}</p>}
-              {f.quote && whereOf?.(f.quote) && <p className="mt-0.5 break-words text-[11px] text-muted-foreground">Место в файле: {whereOf(f.quote)}</p>}
+              {f.quote && <DocSnippetToggle where={whereOf?.(f.quote)} snippet={snippetOf?.(f.quote)} />}
             </div>
           ))}
           {fields.length > 40 && <p className="px-3 py-2 text-[11px] text-muted-foreground">И ещё {fields.length - 40} — все видны в документах пакета.</p>}

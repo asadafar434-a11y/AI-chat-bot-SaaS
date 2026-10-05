@@ -72,6 +72,21 @@ export function PurchaseAnalysis({ onNext, onBack, onFix }: { onNext: () => void
   const profile = useProfile();
   // Где в файлах закупки стоит цитата каждого пункта — страница, таблица, строка, пункт (lib/doc-locate.ts).
   const locator = useMemo(() => createLocator(documents), [documents]);
+  const snippetOf = useMemo(
+    () => (quote: string) => {
+      if (!quote) return undefined;
+      for (const doc of documents) {
+        const idx = doc.text.indexOf(quote);
+        if (idx < 0) continue;
+        const C = 120;
+        const from = Math.max(0, idx - C);
+        const to = Math.min(doc.text.length, idx + quote.length + C);
+        return { name: doc.name, before: doc.text.slice(from, idx), match: quote, after: doc.text.slice(idx + quote.length, to) };
+      }
+      return undefined;
+    },
+    [documents],
+  );
   const { rows, hidden, requirements } = useMemo(() => {
     const fields = fieldsOf({ purchase, profile });
     const plans = fulfillmentOf(purchase, { profile, fields });
@@ -116,6 +131,7 @@ export function PurchaseAnalysis({ onNext, onBack, onFix }: { onNext: () => void
       kindText={way}
       fromPlatform={participantFromPlatform(purchase.kind)}
       hidden={hidden}
+      snippetOf={snippetOf}
       onNext={onNext}
       onBack={onBack}
       onFix={onFix}
