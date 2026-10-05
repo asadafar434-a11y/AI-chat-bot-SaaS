@@ -174,7 +174,8 @@ test("анкету по 44-ФЗ не составляем: сведения об
   assert.deepEqual(partsOf(PLAIN_FORM, undefined, "44-ФЗ · электронный аукцион"), ["tp"]);
   assert.deepEqual(partsOf(PLAIN_FORM, undefined, "44-ФЗ · открытый конкурс"), ["tp"]);
   assert.deepEqual(partsOf(PLAIN_FORM, undefined, "44-ФЗ · закрытый конкурс"), ["tp", "participant"]);
-  assert.deepEqual(partsOf(PLAIN_FORM, undefined, "223-ФЗ · запрос котировок"), ["tp", "participant"]);
+  // Запрос котировок: заказчик даёт единый бланк заявки (Приложение № 1) — он идёт отдельным файлом.
+  assert.deepEqual(partsOf(PLAIN_FORM, undefined, "223-ФЗ · запрос котировок"), ["tp", "participant", "application"]);
   assert.deepEqual(partsOf(PLAIN_FORM), ["tp", "participant"]);
 });
 

@@ -17,7 +17,6 @@ export type ChecklistStatus =
 export type ChecklistRow = {
   id: string;
   requirement: string;     // текст требования
-  article: string | null;  // статья закона
   mandatory: Mandatory;    // required/optional/conditional/scored/unclear
   kind: ReqType;
   quote: string | null;    // цитата из ТЗ
@@ -91,9 +90,8 @@ export function buildChecklist(
     return {
       id,
       requirement: req.text,
-      article: req.article ?? null,
-      mandatory: req.mandatory,
-      kind: req.type,
+      mandatory: req.mandatory ?? "unclear",
+      kind: req.type ?? "other",
       quote: req.quote ?? null,
       quoteVerified: req.verified,
       inApplication,

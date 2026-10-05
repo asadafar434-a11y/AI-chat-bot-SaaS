@@ -25,6 +25,8 @@ export default defineConfig(({ mode }) => {
         }
       : // Картинки (логотип) и шрифты — внутрь сборки: прототип публикуется одной страницей.
         { assetsInlineLimit: 100_000 },
+    // Прототип всегда хранит закупки в браузере (IndexedDB), а не на сервере — серверные чтения не нужны.
+    define: { 'process.env.NEXT_PUBLIC_SERVER_READS': JSON.stringify('0') },
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: [

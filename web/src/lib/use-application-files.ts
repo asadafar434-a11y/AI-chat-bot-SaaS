@@ -90,7 +90,7 @@ export function useApplicationFilesOf({ purchase, documents, update }: Applicati
     items: current.items.map(({ clause, requirement, offer }) => ({ clause, requirement, offer })),
     // Фамилии исполнителей нужны только в самом ТП.
     cast: part === "tp" ? castLines(current.cast) : undefined,
-    price: current.form.hasPrice ? purchase.tpPrice : undefined,
+    price: current.form.hasPrice || part === "application" ? purchase.tpPrice : undefined,
     // Реквизиты — только в анкету, декларацию и цену; техническое предложение подают анонимно.
     profile: part === "tp" ? undefined : profile,
     // Строки анкеты заказчика сверх реквизитов — со значениями, вписанными для этой закупки.
@@ -100,7 +100,8 @@ export function useApplicationFilesOf({ purchase, documents, update }: Applicati
   // Что уйдёт в файл части: готовый документ, шаблон или документ, который ИИ напишет сейчас.
   // parts — готовые части на этот момент: при скачивании архивом они пишутся одна за другой.
   async function payloadOf(current: TpResult, part: TpPart, parts: Purchase["parts"], redo = false) {
-    if (part === "tp" || purchase.sample) return { payload: templatePayload(current, part), parts };
+    // "application" — детерминированный бланк (Приложение 1), не требует ИИ.
+    if (part === "tp" || part === "application" || purchase.sample) return { payload: templatePayload(current, part), parts };
     const basisKey = basisKeyOf(current, part);
     const made = parts?.[part];
     if (!redo && made?.basisKey === basisKey) return { payload: { doc: made.doc }, parts };

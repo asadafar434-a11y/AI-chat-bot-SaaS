@@ -107,11 +107,11 @@ function numericMatch(
   for (const cond of conditions) {
     const { op, value, value2 } = cond;
     let pass = false;
-    if (op === "ge") pass = offeredNum >= value;
-    else if (op === "le") pass = offeredNum <= value;
+    if (op === "min") pass = offeredNum >= value;
+    else if (op === "max") pass = offeredNum <= value;
     else if (op === "gt") pass = offeredNum > value;
     else if (op === "lt") pass = offeredNum < value;
-    else if (op === "eq") pass = offeredNum === value;
+    else if (op === "exact") pass = offeredNum === value;
     else if (op === "range" && value2 != null) pass = offeredNum >= value && offeredNum <= value2;
 
     if (!pass) {
@@ -194,11 +194,11 @@ function tokenize(s: string): string[] {
 }
 
 function opText(op: string, value: number, value2?: number): string {
-  if (op === "ge") return `не менее ${value}`;
-  if (op === "le") return `не более ${value}`;
+  if (op === "min") return `не менее ${value}`;
+  if (op === "max") return `не более ${value}`;
   if (op === "gt") return `больше ${value}`;
   if (op === "lt") return `меньше ${value}`;
-  if (op === "eq") return `ровно ${value}`;
+  if (op === "exact") return `ровно ${value}`;
   if (op === "range") return `от ${value} до ${value2}`;
   return String(value);
 }

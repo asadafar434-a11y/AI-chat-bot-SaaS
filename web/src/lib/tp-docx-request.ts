@@ -63,7 +63,9 @@ function sourceFromRequest(body: DocxRequest): SourceResult {
   const form = body.form ?? {};
   const goods = list<NonNullable<DocxRequest["goods"]>[number]>(body.goods);
   const items = list<NonNullable<DocxRequest["items"]>[number]>(body.items);
-  if (goods.length === 0 && items.length === 0) {
+  const formConsent = typeof form.consent === "string" ? form.consent.trim() : "";
+  // "application" — единый бланк заявки: он заполняется из реквизитов, товары не обязательны.
+  if (goods.length === 0 && items.length === 0 && !formConsent && part !== "application") {
     return { ok: false, status: 400, message: "В черновике нет пунктов для документа." };
   }
   const castRows = list<Loose<CastLine>>(body.cast?.rows).slice(0, 200);

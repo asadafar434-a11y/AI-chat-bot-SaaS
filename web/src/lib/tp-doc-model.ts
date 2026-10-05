@@ -77,8 +77,9 @@ const signature = (profile: Profile | null): Para[] => [
 
 function tpBody({ form, goods, items, cast }: TpDocx): Block[] {
   const body: Block[] = [];
+  // Согласие из формы показывается всегда: для заявки-анкеты (Запрос котировок) оно — весь документ.
+  if (form.consent) body.push(...paragraphs(form.consent, { indent: true }));
   if (goods.length) {
-    body.push(...paragraphs(form.consent, { indent: true }));
     body.push(
       table([
         headerRow([["№ п/п", 7], ["Наименование товара", 25], ["Характеристики товара", 50], ["Количество", 18]]),
@@ -197,6 +198,132 @@ const staffBody = ({ profile }: TpDocx): Block[] => [
   ...signature(profile),
 ];
 
+// «ЗАЯВКА на участие в запросе котировок в электронной форме» — Приложение № 1 к информационной карте заказчика, слово в слово
+// по типовой форме (запрос котировок только для МСП, ЕАИСТ Москвы): сведения об участнике, согласие и товар, цена, декларация МСП.
+// Пропуски «____» в форме остаются, но жёлтые; то, что известно из реквизитов и цены, вписано, а подсказка в скобках убрана.
+const withBlanks = (text: string): Run[] =>
+  text
+    .split(/(_{3,})/)
+    .filter(Boolean)
+    .map((part) => (/^_{3,}$/.test(part) ? run(part, { highlight: true }) : run(part)));
+
+const appPara = (text: string): Para => para(withBlanks(text), { align: "justify", after: 6 });
+const appHeading = (text: string): Para => para([run(text, { bold: true })], { align: "center", before: 12, after: 6 });
+
+const APP_COLS: [number, number, number] = [10, 45, 45];
+const appRow = (num: string, label: string, value: string, mark = true): Row => ({
+  cells: [
+    textCell(num, APP_COLS[0]),
+    textCell(label, APP_COLS[1]),
+    cell([para(value ? [run(value)] : mark ? withFields("[заполните]") : [])], APP_COLS[2]),
+  ],
+});
+const appNote = (text: string): Row => ({ cells: [textCell("", APP_COLS[0]), cell([para([run(text)], { align: "center" })], APP_COLS[1]), textCell("", APP_COLS[2])] });
+
+function applicationBody({ form, goods, price, profile }: TpDocx): Block[] {
+  const bank = profile
+    ? [profile.account, profile.bankName, profile.bik ? `БИК ${profile.bik}` : "", profile.corrAccount ? `к/с ${profile.corrAccount}` : ""].filter(Boolean).join(", ")
+    : "";
+  const name = profile?.fullName.trim() ?? "";
+  const body: Block[] = [];
+
+  // Шапка приложения — в правой половине листа, как в форме заказчика.
+  const msp = Boolean(form.smeDeclaration?.trim());
+  body.push(
+    para(
+      [
+        run(
+          `Приложение № 1 к информационной карте запроса котировок в электронной форме${msp ? ", участниками которой могут быть только субъекты малого и среднего предпринимательства" : ""}`
+        ),
+      ],
+      { left: 240, after: 18 }
+    ),
+    para([run("ЗАЯВКА", { bold: true })], { align: "center", after: 2 }),
+    para([run("на участие в запросе котировок в электронной форме")], { align: "center", after: 12 }),
+    para([run("Если участник закупки является юридическим лицом")], { align: "center", after: 6 })
+  );
+
+  // Пункт 1: сведения об участнике — одна таблица, внутри неё же вторая часть «для физического лица».
+  body.push(
+    table([
+      headerRow([["№ п/п", APP_COLS[0]], ["Название пункта", APP_COLS[1]], ["Информация", APP_COLS[2]]]),
+      appRow("1.", "Данные об участнике закупки, подавшем настоящую заявку в случае если участник закупки является юридическим лицом", "", false),
+      appRow("1.1", "Наименование", name),
+      appRow("1.2", "Место нахождения", profile?.legalAddress.trim() ?? ""),
+      appRow("1.3", "Банковские реквизиты", bank),
+      appRow("1.4.", "ИНН (при наличии) учредителей участника закупки", "", false),
+      appRow("1.5", "ИНН (при наличии) членов коллегиального исполнительного органа участника закупки", "", false),
+      appRow("1.6", "ИНН (при наличии) единоличного исполнительного органа участника закупки", "", false),
+      appRow("1.7", "ИНН участника закупки (при наличии)", profile?.inn.trim() ?? ""),
+      appNote("Если участник закупки является физическим лицом, в том числе индивидуальным предпринимателем"),
+      appRow("1.8", "Фамилия", "", false),
+      appRow("1.9", "Имя", "", false),
+      appRow("1.10", "Отчество (при наличии)", "", false),
+      appRow("1.11", "Место жительства", "", false),
+      appRow("1.12", "Банковские реквизиты", "", false),
+    ])
+  );
+
+  // Пункт 2: согласие и сведения о товаре.
+  body.push(
+    appHeading("2. Согласие участника закупки исполнить условия договора, сведения о товаре"),
+    appPara(
+      "Изучив извещение о проведении запроса котировок в электронной форме № __________ (номер извещения о проведении запроса котировок в электронной форме, который указан на официальном сайте единой информационной системы), выражаю согласие исполнить все условия договора, которые приведены в указанном извещении."
+    ),
+    appPara("Предлагаю поставить следующий товар (в случае поставки товара или выполнения работ, оказания услуг и использованием товара):"),
+    table([
+      headerRow([["№ п/п", 10], ["Наименование товара", 30], ["Характеристики товара", 60]]),
+      ...(goods.length
+        ? goods.map((g, i): Row => ({ cells: [textCell(`${i + 1}.`, 10), textCell(g.name, 30), cell(paragraphs(g.characteristics), 60)] }))
+        : [
+            {
+              cells: [
+                textCell("1.", 10),
+                cell([para(withFields("[наименование товара]"))], 30),
+                cell([para([run("Приводятся сведения по всем характеристикам товара, указанным в извещении о проведении запроса котировок в электронной форме")])], 60),
+              ],
+            } as Row,
+          ]),
+    ])
+  );
+
+  // Пункт 3: цена. Известна цена с шага «Цена» — вписана; нет — пропуски формы остаются.
+  const rub = price ? Math.floor(price) : 0;
+  const kop = price ? String(Math.round((price - rub) * 100)).padStart(2, "0") : "";
+  const priceText = price
+    ? `Предлагаемая цена договора составляет ${formatRubles(rub).replace(/,00$/, "")} руб. (${rublesInWords(rub).replace(/ 00 копеек$/, "")}) ${kop} коп., в том числе НДС (указывается, если участник является плательщиком НДС) по ставке ___% - _________ руб. (указывается цифрами и прописью) ___ коп. (указывается цифрами).`
+    : "Предлагаемая цена договора составляет ___________ руб. (указывается цифрами и прописью) ____ коп. (указывается цифрами), в том числе НДС (указывается, если участник является плательщиком НДС) по ставке ___% - _________ руб. (указывается цифрами и прописью) ___ коп. (указывается цифрами).";
+  body.push(
+    appHeading("3. Предложение о цене договора"),
+    appPara(priceText),
+    appPara(
+      "В указанную цену входят все расходы, необходимые для исполнения обязательств по договору в полном объеме и с надлежащим качеством. В нее включены все подлежащие к уплате налоги, сборы и другие обязательные платежи, а также иные расходы, связанные с поставкой товаров по договору."
+    )
+  );
+
+  // Пункт 4: декларация МСП — только если запрос котировок проводится для субъектов МСП.
+  if (msp) {
+    const category = profile?.smeCategory.trim();
+    body.push(
+      appHeading(
+        "4. Декларация о принадлежности к субъектам малого предпринимательства или социально ориентированным некоммерческим организациям (информация отражается в случае, если настоящий запрос котировок проводится только для указанных субъектов и организаций)"
+      ),
+      appPara(
+        `Настоящим подтверждаю принадлежность к субъектам малого предпринимательства (социально ориентированным некоммерческим организациям) ${category ? `— ${category}.` : "(указать соответствующую категорию лиц)."}`
+      ),
+      appPara(
+        name
+          ? `Участник запроса котировок в электронной форме ${name}.`
+          : "Участник запроса котировок в электронной форме _______________ (указывается наименование юридического лица либо фамилия, имя, отчество (при наличии) физического лица)."
+      ),
+      appPara(`Подпись, расшифровка подписи _________________________${profile?.signer.trim() ? ` / ${profile.signer.trim()} /` : ""}`)
+    );
+  } else {
+    body.push(appPara(`Подпись, расшифровка подписи _________________________${profile?.signer.trim() ? ` / ${profile.signer.trim()} /` : ""}`));
+  }
+  return body;
+}
+
 const BODIES: Record<TpPart, (data: TpDocx) => Block[]> = {
   tp: tpBody,
   participant: participantBody,
@@ -204,12 +331,15 @@ const BODIES: Record<TpPart, (data: TpDocx) => Block[]> = {
   price: priceBody,
   experience: experienceBody,
   staff: staffBody,
+  application: applicationBody,
 };
 
 const docTitle = (text: string): Para => para([run(text, { bold: true, size: 14 })], { align: "center", after: 6 });
 
 // Часть заявки из данных закупки и реквизитов: техническое предложение, анкета, декларация, цена, опыт, специалисты.
 export function modelOfTp(part: TpPart, data: TpDocx): DocModel {
+  // Бланк заказчика начинается со своей шапки — общий заголовок и «Предмет закупки» к нему не добавляем.
+  if (part === "application") return { title: PART_TITLES[part], blocks: applicationBody(data) };
   return {
     title: PART_TITLES[part],
     blocks: [
