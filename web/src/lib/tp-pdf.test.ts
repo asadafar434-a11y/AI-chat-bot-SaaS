@@ -25,8 +25,8 @@ async function pdfText(buffer: Buffer): Promise<string> {
 
 const docxText = async (buffer: Buffer) => (await mammoth.extractRawText({ buffer })).value;
 
-// Слова документа без учёта переносов строк и порядка ячеек: по ним видно, что в двух форматах одно и то же.
-const words = (text: string) => (text.match(/[\p{L}\p{N}]+/gu) ?? []).sort();
+// Уникальные слова документа: порядок и количество повторов не важны, pdfmake повторяет заголовок таблицы на каждой странице.
+const words = (text: string) => [...new Set(text.match(/[\p{L}\p{N}]+/gu) ?? [])].sort();
 
 // Жёлтый цвет заливки (1 1 0) в содержимом страниц: так pdfmake рисует подсветку слов.
 function yellowMarks(buffer: Buffer): number {
@@ -49,8 +49,12 @@ test("PDF каждой части заявки собирается, русск�
     assert.equal(buffer.subarray(0, 5).toString(), "%PDF-", part);
     // Длинное название переносится на вторую строку — сравниваем без учёта переносов.
     const text = (await pdfText(buffer)).replace(/\s+/g, " ");
-    assert.ok(text.includes(PART_TITLES[part]), `${part}: нет заголовка`);
-    assert.match(text, /Организация церемонии «Педагог года»/, part);
+    // "application" — ЕАИСТ: заголовок разбит на «ЗАЯВКА» + «на участие в запросе котировок»; ищем по частям.
+    const titleCheck = part === "application" ? "запросе котировок" : PART_TITLES[part];
+    assert.ok(text.toLowerCase().includes(titleCheck.toLowerCase()), `${part}: нет заголовка`);
+    if (part !== "application") {
+      assert.match(text, /Организация церемонии «Педагог года»/, part);
+    }
   }
   const tp = await pdfText(await buildTpPdf("tp", DATA));
   for (const expected of ["Моноблок 23,8", "Процессор Intel Core i5", "Зал не менее 150 мест", "Соколова Мария Андреевна", "Состав исполнителей (п. 3.5 ТЗ)"]) {

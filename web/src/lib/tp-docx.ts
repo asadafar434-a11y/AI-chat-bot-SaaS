@@ -20,7 +20,7 @@ const paragraph = (p: Para) =>
       p.before !== undefined || p.after !== undefined
         ? { ...(p.before !== undefined && { before: twips(p.before) }), ...(p.after !== undefined && { after: twips(p.after) }) }
         : undefined,
-    alignment: p.align === "center" ? AlignmentType.CENTER : p.align === "justify" ? AlignmentType.JUSTIFIED : undefined,
+    alignment: p.align === "center" ? AlignmentType.CENTER : p.align === "justify" ? AlignmentType.JUSTIFIED : p.align === "right" ? AlignmentType.RIGHT : undefined,
     indent:
       p.firstLine !== undefined || p.left !== undefined
         ? { ...(p.firstLine !== undefined && { firstLine: twips(p.firstLine) }), ...(p.left !== undefined && { left: twips(p.left) }) }

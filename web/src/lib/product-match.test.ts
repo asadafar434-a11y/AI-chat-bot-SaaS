@@ -30,7 +30,7 @@ test("нет данных о товаре → unknown", () => {
 test("числовое: предложено больше минимума → pass", () => {
   const offered: OfferedSpec[] = [{ name: "Гарантия", value: "36 месяцев" }];
   const r = req("Гарантия не менее 24 месяцев", {
-    numbers: [{ what: "гарантия", op: "ge", value: 24, parts: [] }],
+    numbers: [{ what: "гарантия", op: "min", value: 24, parts: [] }],
   } as unknown as Partial<ReqItem>);
   const result = matchProduct(offered, [r]);
   assert.equal(result.matches[0]!.status, "pass");
@@ -39,7 +39,7 @@ test("числовое: предложено больше минимума → p
 test("числовое: предложено меньше минимума → fail", () => {
   const offered: OfferedSpec[] = [{ name: "Гарантия", value: "12 месяцев" }];
   const r = req("Гарантия не менее 24 месяцев", {
-    numbers: [{ what: "гарантия", op: "ge", value: 24, parts: [] }],
+    numbers: [{ what: "гарантия", op: "min", value: 24, parts: [] }],
   } as unknown as Partial<ReqItem>);
   const result = matchProduct(offered, [r]);
   assert.equal(result.matches[0]!.status, "fail");
@@ -62,7 +62,7 @@ test("нет требований к продукту → пустой резу�
 test("overallStatus: есть fail → issues", () => {
   const offered: OfferedSpec[] = [{ name: "Гарантия", value: "6 месяцев" }];
   const r = req("Гарантия не менее 24 месяцев", {
-    numbers: [{ what: "гарантия", op: "ge", value: 24, parts: [] }],
+    numbers: [{ what: "гарантия", op: "min", value: 24, parts: [] }],
   } as unknown as Partial<ReqItem>);
   const result = matchProduct(offered, [r]);
   assert.equal(result.overallStatus, "issues");
@@ -74,7 +74,7 @@ test("score: 1 pass из 2 → 50", () => {
   ];
   const reqs = [
     req("Гарантия не менее 24 месяцев", {
-      numbers: [{ what: "гарантия", op: "ge", value: 24, parts: [] }],
+      numbers: [{ what: "гарантия", op: "min", value: 24, parts: [] }],
     } as unknown as Partial<ReqItem>),
     req("Сертификат ISO 9001"), // unknown — нет данных
   ];

@@ -19,6 +19,8 @@ export type DocxRequest = {
   form?: Loose<TpForm>;
   goods?: Loose<{ name: string; characteristics: string; quantity: string }>[];
   items?: Loose<{ clause: string; requirement: string; offer: string }>[];
+  // Дополнительные бланки заказчика, найденные ИИ в документах закупки.
+  detectedForms?: Loose<{ source: string; title: string; fields: Loose<{ label: string; value: string }>[] }>[];
   cast?: { clause?: unknown; rows?: Loose<CastLine>[] };
   price?: unknown;
   profile?: Record<string, unknown>;
@@ -86,7 +88,18 @@ function sourceFromRequest(body: DocxRequest): SourceResult {
       hasPrice: form.hasPrice === true,
       priceNote: text(form.priceNote, 4000),
       smeDeclaration: text(form.smeDeclaration, 4000),
+      // Заголовки столбцов таблицы предложения о поставке товара из формы заказчика.
+      goodsTableHeaders: list<unknown>(form.goodsTableHeaders).slice(0, 20).map((h) => text(h, 200)),
     },
+    detectedForms: list<NonNullable<DocxRequest["detectedForms"]>[number]>(body.detectedForms)
+      .slice(0, 20)
+      .map((df) => ({
+        source: text(df.source, 300),
+        title: text(df.title, 300),
+        fields: list<{ label?: unknown; value?: unknown }>(df.fields)
+          .slice(0, 100)
+          .map((f) => ({ label: text(f.label, 300), value: text(f.value, 2000) })),
+      })),
     goods: goods.map((g) => ({
       name: text(g.name, 500),
       characteristics: text(g.characteristics, 8000),

@@ -98,7 +98,7 @@ export function renderOdt(model: DocModel): Buffer {
 
   const para = (p: Para): string => {
     const props = [
-      p.align ? `fo:text-align="${p.align === "center" ? "center" : "justify"}"` : "",
+      p.align ? `fo:text-align="${p.align === "center" ? "center" : p.align === "right" ? "end" : "justify"}"` : "",
       p.firstLine !== undefined ? `fo:text-indent="${pt(p.firstLine)}"` : "",
       p.left !== undefined ? `fo:margin-left="${pt(p.left)}"` : "",
       p.before !== undefined ? `fo:margin-top="${pt(p.before)}"` : "",

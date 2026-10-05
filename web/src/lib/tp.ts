@@ -5,6 +5,23 @@ const quote = z
   .string()
   .describe("Короткая дословная цитата из ТЗ, на которой основана строка: одна фраза или фрагмент одной ячейки таблицы");
 
+// Дополнительный бланк из документов закупки — не главная форма заявки.
+// Каждый заполняемый шаблон (анкета, таблица сведений, список оборудования) — отдельным элементом.
+const DetectedFormSchema = z.object({
+  source: z.string().describe("Где в документах эта форма, например «Документация, приложение № 3»"),
+  title: z.string().describe("Название формы по документу, дословно"),
+  fields: z
+    .array(
+      z.object({
+        label: z.string().describe("Название строки или поля, дословно из бланка"),
+        value: z.string().describe("Значение если известно из документов закупки; пустая строка — участник вписывает сам"),
+      })
+    )
+    .describe("Строки бланка в том порядке, как они идут в документе"),
+});
+
+export type DetectedForm = z.infer<typeof DetectedFormSchema>;
+
 export const TpDraftSchema = z.object({
   form: z.object({
     title: z
@@ -65,6 +82,12 @@ export const TpDraftSchema = z.object({
       })
     )
     .describe("Предложение по требованиям к услугам и работам, если его требуют форма или документы; иначе пустой список"),
+  detectedForms: z
+    .array(DetectedFormSchema)
+    .default([])
+    .describe(
+      "Дополнительные заполняемые бланки из документов закупки, кроме главной формы заявки и бланка предложения о поставке товара: например «Приложение № 2 — сведения об опыте», «Приложение № 4 — декларация о добросовестности», таблица перечня оборудования. Каждый бланк — отдельным элементом с его строками дословно. Главная форма заявки и форма предложения о поставке товара сюда не попадают — они уже в form."
+    ),
   antiDumping: z.object({
     rule: z
       .string()
@@ -105,12 +128,13 @@ export const TpDraftSchema = z.object({
 
 export type TpDraft = z.infer<typeof TpDraftSchema>;
 export type TpForm = TpDraft["form"];
+export type TpDetectedForms = TpDraft["detectedForms"];
 export type TpGood = TpDraft["goods"][number] & { verified: boolean };
 export type TpItem = TpDraft["items"][number] & { verified: boolean };
 export type TpAntiDumping = TpDraft["antiDumping"] & { verified: boolean };
 
 // cast — состав исполнителей, если ТЗ требует назвать людей в заявке; в черновиках до него его нет.
-export type TpResult = { form: TpForm; goods: TpGood[]; items: TpItem[]; antiDumping: TpAntiDumping; cast?: TpCast };
+export type TpResult = { form: TpForm; goods: TpGood[]; items: TpItem[]; detectedForms?: TpDetectedForms; antiDumping: TpAntiDumping; cast?: TpCast };
 export type TpResponse = TpResult;
 
 // Документ без формы заказчика — обычное техническое предложение по пунктам ТЗ.

@@ -88,6 +88,8 @@ export function useApplicationFilesOf({ purchase, documents, update }: Applicati
     form: current.form,
     goods: current.goods.map(({ name, characteristics, quantity }) => ({ name, characteristics, quantity })),
     items: current.items.map(({ clause, requirement, offer }) => ({ clause, requirement, offer })),
+    // Дополнительные бланки заказчика попадают только в единый бланк заявки (application).
+    detectedForms: part === "application" ? (current.detectedForms ?? []) : undefined,
     // Фамилии исполнителей нужны только в самом ТП.
     cast: part === "tp" ? castLines(current.cast) : undefined,
     price: current.form.hasPrice || part === "application" ? purchase.tpPrice : undefined,

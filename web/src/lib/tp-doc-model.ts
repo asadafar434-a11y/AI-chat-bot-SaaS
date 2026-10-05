@@ -1,7 +1,7 @@
 import type { PartBlock, PartDoc } from "@/lib/part-doc";
 import { ANKETA, anketaExtraRows, fillFromProfile, type Profile } from "@/lib/profile";
 import { formatRubles, rublesInWords } from "@/lib/rub-words";
-import type { TpForm } from "@/lib/tp";
+import type { DetectedForm, TpForm } from "@/lib/tp";
 import { PART_TITLES, type TpPart } from "@/lib/tp-parts";
 
 // Что попадает в каждый файл заявки — и в Word, и в PDF. Сначала документ описывается здесь, одним для обоих форматов:
@@ -16,6 +16,8 @@ export type TpDocx = {
   form: TpForm;
   goods: { name: string; characteristics: string; quantity: string }[];
   items: { clause: string; requirement: string; offer: string }[];
+  // Дополнительные бланки, найденные ИИ в документах закупки (кроме главной формы).
+  detectedForms?: DetectedForm[];
   cast: { clause: string; rows: CastLine[] } | null;
   price: number | null;
   // Реквизиты участника; в техническое предложение не передаются.
@@ -27,7 +29,7 @@ export type TpDocx = {
 // Кусок текста. size — кегль в пунктах (по умолчанию 12); highlight — жёлтая подсветка: место, которое вписывает участник.
 export type Run = { text: string; bold?: boolean; italics?: boolean; highlight?: boolean; size?: number };
 // Абзац. Отступы — в пунктах: before и after — до и после абзаца, firstLine — красная строка, left — отступ слева.
-export type Para = { type: "p"; runs: Run[]; align?: "center" | "justify"; firstLine?: number; left?: number; before?: number; after?: number };
+export type Para = { type: "p"; runs: Run[]; align?: "center" | "justify" | "right"; firstLine?: number; left?: number; before?: number; after?: number };
 // Ячейка: width — доля ширины таблицы, в процентах.
 export type Cell = { width: number; paras: Para[] };
 // Строка таблицы; header — заголовок, на новой странице повторяется.
@@ -248,7 +250,7 @@ const appNote = (text: string): Row => ({ cells: [textCell("", APP_COLS[0]), cel
 
 // Произвольная форма заказчика: структура из данных, которые ИИ вытащил при анализе документов.
 // Подходит для любого бланка, где заказчик прописал разделы о сведениях участника, согласии, цене и декларации МСП.
-function genericApplicationBody({ form, goods, items, price, profile }: TpDocx): Block[] {
+function genericApplicationBody({ form, goods, items, detectedForms, price, profile }: TpDocx): Block[] {
   const body: Block[] = [];
   const name = profile?.fullName.trim() ?? "";
 
@@ -335,6 +337,26 @@ function genericApplicationBody({ form, goods, items, price, profile }: TpDocx):
       appHeading("Декларация о принадлежности к субъектам малого и среднего предпринимательства"),
       ...paragraphs(fillFromProfile(form.smeDeclaration, profile), { indent: true })
     );
+  }
+
+  // Дополнительные бланки из документов закупки — после основного содержания, каждый со своим заголовком.
+  // Правило: строки бланка воспроизводятся дословно и в том же порядке; пустое поле — жёлтым «[заполните]».
+  if (detectedForms?.length) {
+    for (const df of detectedForms) {
+      body.push(
+        para([run(df.source || df.title, { size: 10 })], { align: "right", after: 6 }),
+        para([run(df.title, { bold: true })], { align: "center", before: 18, after: 8 }),
+        table([
+          headerRow([["Наименование сведений", 60], ["Значение", 40]]),
+          ...df.fields.map((f): Row => ({
+            cells: [
+              textCell(f.label, 60),
+              cell([para(f.value ? [run(f.value)] : withFields("[заполните]"))], 40),
+            ],
+          })),
+        ])
+      );
+    }
   }
 
   body.push(...signature(profile));

@@ -70,6 +70,7 @@ export async function POST(request: Request) {
       form: draft.form,
       goods: goods.map(checked),
       items: items.map(checked),
+      detectedForms: draft.detectedForms,
       antiDumping: draft.antiDumping.rule
         ? checked(draft.antiDumping)
         : { ...draft.antiDumping, verified: false },
