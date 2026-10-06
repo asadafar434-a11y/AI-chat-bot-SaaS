@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
   const sort = sp.get('sort') ?? 'relevance';
   const pageSize = 8;
 
-  let results = TENDERS.filter((t) => {
+  const results = TENDERS.filter((t) => {
     if (q && !t.title.toLowerCase().includes(q) && !t.customer.toLowerCase().includes(q) &&
         !t.id.includes(q) && !t.okpd.startsWith(q)) return false;
     if (law !== 'all' && t.law !== law) return false;
