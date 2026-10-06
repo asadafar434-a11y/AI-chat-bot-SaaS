@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { localEmbedder } from "./kb-embed.ts";
 import { ingestDocument } from "./kb-ingest.ts";
 import { retrieveKnowledgeBlock, type RagLogEntry } from "./kb-rag.ts";
-import { CHECK_KB_QUERY, checkKnowledgeBlock, knowledgeForCheckEnabled } from "./kb-check.ts";
+import { CHECK_KB_QUERY, checkKnowledgeBlock, draftKnowledgeBlock, knowledgeEnabled, knowledgeForCheckEnabled, knowledgeTextBlock } from "./kb-check.ts";
 import { createMemoryKbStore } from "./kb-store.ts";
 
 const GLOBAL = { kind: "global" as const, approvedBy: "Евгений" };
@@ -76,4 +76,25 @@ test("журнал поиска для проверки: хэш запроса �
   );
   assert.equal(entries[0].event, "kb_retrieve");
   assert.ok(!JSON.stringify(entries[0]).includes("декларация о соответствии"));
+});
+
+test("ТП и требования без флага KB_DOCS базу не читают", async () => {
+  const saved = { flag: process.env.KB_DOCS, url: process.env.DATABASE_URL };
+  delete process.env.KB_DOCS;
+  process.env.DATABASE_URL = "postgresql://unused";
+  try {
+    assert.equal(knowledgeEnabled("KB_DOCS"), false);
+    assert.equal(await draftKnowledgeBlock("техническое предложение"), null);
+  } finally {
+    process.env.KB_DOCS = saved.flag;
+    process.env.DATABASE_URL = saved.url;
+  }
+});
+
+test("блок для модели несёт правило приоритета и сами фрагменты", () => {
+  const block = knowledgeTextBlock("[KB-1] Закон, ст. 44");
+  assert.equal(block.type, "text");
+  assert.match(block.text, /верны документы закупки/);
+  assert.match(block.text, /не подставлять вместо границ, которые задал заказчик/);
+  assert.match(block.text, /\[KB-1\] Закон, ст\. 44/);
 });

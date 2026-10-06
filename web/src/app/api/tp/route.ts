@@ -7,6 +7,7 @@ import { quoteChecker } from "@/lib/quotes";
 import { SAMPLES_LIMIT, TpDraftSchema, type TpResponse } from "@/lib/tp";
 import { guardContext, guardOffer, ownConditions } from "@/lib/tp-guard";
 import { SAMPLES_NOTE, TP_INSTRUCTIONS } from "@/lib/tp-prompt";
+import { DRAFT_TP_KB_QUERY, draftKnowledgeBlock, knowledgeTextBlock } from "@/lib/kb-check";
 import { badRequest, readJson, sentDocuments } from "@/lib/read-json";
 
 export const maxDuration = 300;
@@ -35,11 +36,13 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Фрагменты базы знаний — после образцов и только как справка (правило приоритета — в тексте блока).
+    const knowledge = await draftKnowledgeBlock(DRAFT_TP_KB_QUERY);
     const draft = await askJson({
       label: "tp",
       appId: appIdOf(request),
       documents,
-      extra: sampleBlocks(samples),
+      extra: [...sampleBlocks(samples), ...(knowledge ? [knowledgeTextBlock(knowledge)] : [])],
       instructions: samples.length ? SAMPLES_NOTE + TP_INSTRUCTIONS : TP_INSTRUCTIONS,
       schema: TpDraftSchema,
       signal: request.signal,

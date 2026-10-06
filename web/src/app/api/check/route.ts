@@ -8,7 +8,7 @@ import { CHECK_INSTRUCTIONS } from "@/lib/check-prompt";
 import { quoteChecker } from "@/lib/quotes";
 import type { SentDocument } from "@/lib/read-documents";
 import { badRequest, readJson, sentDocuments } from "@/lib/read-json";
-import { checkKnowledgeBlock } from "@/lib/kb-check";
+import { checkKnowledgeBlock, knowledgeTextBlock } from "@/lib/kb-check";
 
 export const maxDuration = 300;
 
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       label: "check",
       appId: appIdOf(request),
       documents,
-      extra: [...applicationBlocks(application), ...(knowledge ? [{ type: "text" as const, text: "Фрагменты базы знаний (справка, не документы закупки; при расхождении верны документы закупки):\n\n" + knowledge }] : [])],
+      extra: [...applicationBlocks(application), ...(knowledge ? [knowledgeTextBlock(knowledge)] : [])],
       instructions: CHECK_INSTRUCTIONS,
       schema: CheckSchema,
       signal: request.signal,

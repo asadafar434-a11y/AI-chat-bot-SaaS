@@ -7,6 +7,7 @@ import { refineGroups } from "@/lib/requirement-engine";
 import { RequirementsSchema, type RequirementsResponse } from "@/lib/requirements";
 import { REQ_INSTRUCTIONS } from "@/lib/requirements-prompt";
 import { badRequest, readJson, sentDocuments } from "@/lib/read-json";
+import { DRAFT_REQ_KB_QUERY, draftKnowledgeBlock, knowledgeTextBlock } from "@/lib/kb-check";
 
 export const maxDuration = 300;
 
@@ -30,10 +31,13 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Фрагменты базы знаний — после документов закупки и только как справка.
+    const knowledge = await draftKnowledgeBlock(DRAFT_REQ_KB_QUERY);
     const draft = await askJson({
       label: "requirements",
       appId: appIdOf(request),
       documents,
+      extra: knowledge ? [knowledgeTextBlock(knowledge)] : [],
       instructions: REQ_INSTRUCTIONS,
       schema: RequirementsSchema,
       signal: request.signal,
