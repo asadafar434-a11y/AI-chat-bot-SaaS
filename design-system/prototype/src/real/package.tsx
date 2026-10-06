@@ -16,6 +16,7 @@ import type { PartKey } from '@/lib/my-docs';
 import { PART_TITLES, partsOf, type TpPart } from '@/lib/tp-parts';
 import type { DetectedForm } from '@/lib/tp';
 import { formPages } from '@/lib/form-pages';
+import { fillBlank } from '@/lib/blank-fill';
 import { blankRequest } from '@/lib/blank-request';
 import { useApplicationFilesOf } from '@/lib/use-application-files';
 import { ApplicationText, MarkedText } from '../components/ApplicationPreview';
@@ -106,8 +107,8 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
   const locator = useMemo(() => createLocator(source.documents), [source.documents]);
   // Страницы каждого бланка — из текста документов (код), а не из ответа ИИ.
   const detectedForms = useMemo(
-    () => (tp?.detectedForms ?? []).map((df) => ({ ...df, pages: formPages(locator, df) })),
-    [tp?.detectedForms, locator],
+    () => (tp?.detectedForms ?? []).map((df) => fillBlank({ ...df, pages: formPages(locator, df) }, profile)),
+    [tp?.detectedForms, locator, profile],
   );
   const whereOf = (quote: string) => {
     const place = quote ? locator.locate(quote) : null;
