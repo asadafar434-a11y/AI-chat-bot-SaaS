@@ -15,6 +15,7 @@ import { fulfillmentOf } from '@/lib/fulfillment';
 import type { PartKey } from '@/lib/my-docs';
 import { PART_TITLES, partsOf, type TpPart } from '@/lib/tp-parts';
 import type { DetectedForm } from '@/lib/tp';
+import { formPage } from '@/lib/form-pages';
 import { useApplicationFilesOf } from '@/lib/use-application-files';
 import { ApplicationText, MarkedText } from '../components/ApplicationPreview';
 import { DocsChanged } from '../components/DocsChanged';
@@ -102,6 +103,11 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
   const fields = useMemo(() => fieldsOf({ purchase, profile, evidence }), [purchase, profile, evidence]);
   // Где в файлах закупки стоит цитата пункта «Что требует заказчик» (lib/doc-locate.ts).
   const locator = useMemo(() => createLocator(source.documents), [source.documents]);
+  // Страница заголовка каждого бланка — из текста документов (код), а не из ответа ИИ.
+  const detectedForms = useMemo(
+    () => (tp?.detectedForms ?? []).map((df) => ({ ...df, pages: formPage(locator, df.title) })),
+    [tp?.detectedForms, locator],
+  );
   const whereOf = (quote: string) => {
     const place = quote ? locator.locate(quote) : null;
     return place ? describeSource(place) : undefined;
@@ -142,6 +148,7 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
           part: 'application',
           subject: purchase.subject,
           form: { title: df.title, source: df.source, participantFields: [], consent: '', hasPrice: false, priceNote: '', smeDeclaration: '', goodsTableHeaders: [] },
+          blankOnly: true,
           detectedForms: [df],
           goods: [],
           items: [],
@@ -245,7 +252,7 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
       auditReport={appAuditReport}
       scoringReport={appScoringReport}
       tpForm={tp?.form}
-      detectedForms={tp?.detectedForms ?? []}
+      detectedForms={detectedForms}
       onDownloadForm={downloadDetectedForm}
     />
   );

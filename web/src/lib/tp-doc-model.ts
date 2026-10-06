@@ -18,6 +18,8 @@ export type TpDocx = {
   items: { clause: string; requirement: string; offer: string }[];
   // Дополнительные бланки, найденные ИИ в документах закупки (кроме главной формы).
   detectedForms?: DetectedForm[];
+  // Скачивание одного доп. бланка: файл только из него, без заявки.
+  blankOnly?: boolean;
   cast: { clause: string; rows: CastLine[] } | null;
   price: number | null;
   // Реквизиты участника; в техническое предложение не передаются.
@@ -250,6 +252,23 @@ const appNote = (text: string): Row => ({ cells: [textCell("", APP_COLS[0]), cel
 
 // Произвольная форма заказчика: структура из данных, которые ИИ вытащил при анализе документов.
 // Подходит для любого бланка, где заказчик прописал разделы о сведениях участника, согласии, цене и декларации МСП.
+// Строки одного доп. бланка: откуда он, название и таблица «Наименование сведений | Значение».
+function detectedFormBlocks(df: DetectedForm): Block[] {
+  return [
+    para([run([df.source || df.title, df.pages ? `стр. ${df.pages}` : ""].filter(Boolean).join(" · "), { size: 10 })], { align: "right", after: 6 }),
+    para([run(df.title, { bold: true })], { align: "center", before: 18, after: 8 }),
+    table([
+      headerRow([["Наименование сведений", 60], ["Значение", 40]]),
+      ...df.fields.map((f): Row => ({
+        cells: [
+          textCell(f.label, 60),
+          cell([para(f.value ? [run(f.value)] : withFields("[заполните]"))], 40),
+        ],
+      })),
+    ]),
+  ];
+}
+
 function genericApplicationBody({ form, goods, items, detectedForms, price, profile }: TpDocx): Block[] {
   const body: Block[] = [];
   const name = profile?.fullName.trim() ?? "";
@@ -341,23 +360,7 @@ function genericApplicationBody({ form, goods, items, detectedForms, price, prof
 
   // Дополнительные бланки из документов закупки — после основного содержания, каждый со своим заголовком.
   // Правило: строки бланка воспроизводятся дословно и в том же порядке; пустое поле — жёлтым «[заполните]».
-  if (detectedForms?.length) {
-    for (const df of detectedForms) {
-      body.push(
-        para([run([df.source || df.title, df.pages ? `стр. ${df.pages}` : ""].filter(Boolean).join(" · "), { size: 10 })], { align: "right", after: 6 }),
-        para([run(df.title, { bold: true })], { align: "center", before: 18, after: 8 }),
-        table([
-          headerRow([["Наименование сведений", 60], ["Значение", 40]]),
-          ...df.fields.map((f): Row => ({
-            cells: [
-              textCell(f.label, 60),
-              cell([para(f.value ? [run(f.value)] : withFields("[заполните]"))], 40),
-            ],
-          })),
-        ])
-      );
-    }
-  }
+  for (const df of detectedForms ?? []) body.push(...detectedFormBlocks(df));
 
   body.push(...signature(profile));
   return body;
@@ -496,6 +499,10 @@ const docTitle = (text: string): Para => para([run(text, { bold: true, size: 14 
 export function modelOfTp(part: TpPart, data: TpDocx): DocModel {
   // Бланк заказчика начинается со своей шапки — общий заголовок и «Предмет закупки» к нему не добавляем.
   // Для произвольной (не ЕАИСТ) формы — заголовок из form.title; для ЕАИСТ и дефолта — стандартный.
+  if (part === "application" && data.blankOnly && data.detectedForms?.[0]) {
+    const blank = data.detectedForms[0];
+    return { title: blank.title, blocks: detectedFormBlocks(blank) };
+  }
   if (part === "application") {
     const isGeneric =
       data.form.source.trim() &&

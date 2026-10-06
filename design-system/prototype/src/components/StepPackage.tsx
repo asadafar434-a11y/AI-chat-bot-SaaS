@@ -534,7 +534,7 @@ function FormsPanel({
                   </div>
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
                     {f.source && <span className="truncate max-w-[200px]">{f.source}</span>}
-                    {f.pages && <span className="font-mono shrink-0">стр. {f.pages}</span>}
+                    {f.pages && <span className="font-mono shrink-0">заголовок на стр. {f.pages}</span>}
                   </div>
                   {!done && (
                     <p className="mt-1 text-[11px] text-warn-foreground">

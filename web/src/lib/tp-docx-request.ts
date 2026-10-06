@@ -21,6 +21,8 @@ export type DocxRequest = {
   items?: Loose<{ clause: string; requirement: string; offer: string }>[];
   // Дополнительные бланки заказчика, найденные ИИ в документах закупки.
   detectedForms?: Loose<{ source: string; title: string; pages?: string; fields: Loose<{ label: string; value: string }>[] }>[];
+  // Скачивание одного доп. бланка — файл только из него.
+  blankOnly?: unknown;
   cast?: { clause?: unknown; rows?: Loose<CastLine>[] };
   price?: unknown;
   profile?: Record<string, unknown>;
@@ -91,6 +93,7 @@ function sourceFromRequest(body: DocxRequest): SourceResult {
       // Заголовки столбцов таблицы предложения о поставке товара из формы заказчика.
       goodsTableHeaders: list<unknown>(form.goodsTableHeaders).slice(0, 20).map((h) => text(h, 200)),
     },
+    blankOnly: body.blankOnly === true,
     detectedForms: list<NonNullable<DocxRequest["detectedForms"]>[number]>(body.detectedForms)
       .slice(0, 20)
       .map((df) => ({
