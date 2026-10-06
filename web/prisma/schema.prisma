@@ -290,24 +290,24 @@ model Fact {
 /// Образцы документов участника. Используются для сборки частей заявки, живут дольше
 /// одной закупки. Текст образца — в S3 (`textKey`), заполняется на этапе S6.
 model Sample {
-  id             String   @id @default(cuid())
-  organizationId String   @db.VarChar(25)
+  id             String    @id @default(cuid())
+  organizationId String    @db.VarChar(25)
   /// Имя файла образца (`MyDocument.name`). Не уникально; колонки не было до S11-R0.
-  name           String?  @db.VarChar(500)
+  name           String?   @db.VarChar(500)
   /// Массив DocKind из DOC_KINDS.
-  kinds          Json     @default("[]")
-  about          String   @db.Text
+  kinds          Json      @default("[]")
+  about          String    @db.Text
   /// Исходная отметка `MyDocument.addedAt` из IndexedDB. Не заменяется `createdAt`:
   /// при backfill историческое значение сохраняется как есть.
   addedAt        DateTime? @db.Timestamptz(3)
   /// `MyDocument.scan` — документ распознан со скана. Default только для новых записей.
-  scan           Boolean  @default(false)
-  textKey        String?  @db.VarChar(500)
+  scan           Boolean   @default(false)
+  textKey        String?   @db.VarChar(500)
   /// Карта образца (`DocMap`) в S3 — см. Document.mapKey.
-  mapKey         String?  @db.VarChar(500)
-  legacyId       String?  @db.VarChar(200)
-  createdAt      DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+  mapKey         String?   @db.VarChar(500)
+  legacyId       String?   @db.VarChar(200)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
 
@@ -466,4 +466,65 @@ model Invitation {
   @@index([organizationId, createdAt])
   @@index([expiresAt])
   @@map("Invitation")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// S12: база знаний (золотой стандарт и база знаний продукта — одна и та же папка документов)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Владелец документа — общая база («global») или организация («org:<id>»). Поэтому таблицы несут ownerKey,
+// а не внешний ключ на Organization: у общей базы организации нет, и ссылка на неё невозможна. Скоуп проверяется
+// в каждом запросе поиска (условие по ownerKey), а не через связь. Векторы — массивы Float[]; расширение pgvector
+// не подключено, при росте базы его стоит добавить отдельным решением.
+
+enum KnowledgeStatus {
+  active
+  deleted
+}
+
+/// Документ базы знаний: метаданные и исходный текст. У удалённого документа текст очищается.
+model KnowledgeDocument {
+  id         String          @id @default(cuid())
+  /// "global" или "org:<id>".
+  ownerKey   String          @db.VarChar(40)
+  /// Кто утвердил документ для общей базы. Для документов организации пусто.
+  approvedBy String?         @db.VarChar(120)
+  sourceKey  String          @db.VarChar(300)
+  name       String          @db.VarChar(500)
+  source     String          @db.VarChar(300)
+  meta       Json
+  version    Int             @default(1)
+  checksum   String          @db.VarChar(64)
+  status     KnowledgeStatus @default(active)
+  chunkCount Int             @default(0)
+  /// Исходный текст нужен для переиндексации. Пустой у удалённых документов.
+  sourceText String          @default("") @db.Text
+  createdAt  DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime        @updatedAt @db.Timestamptz(3)
+
+  chunks KnowledgeChunk[]
+
+  @@unique([ownerKey, sourceKey])
+  @@index([ownerKey, status])
+  @@map("KnowledgeDocument")
+}
+
+/// Фрагмент документа с вектором. Владелец продублирован сюда, чтобы поиск отбирал фрагменты в самом запросе.
+model KnowledgeChunk {
+  id             String   @id @default(cuid())
+  documentId     String
+  ownerKey       String   @db.VarChar(40)
+  chunkIndex     Int
+  heading        String?  @db.VarChar(500)
+  text           String   @db.Text
+  hash           String   @db.VarChar(64)
+  embedding      Float[]
+  embeddingModel String   @db.VarChar(60)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  document KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, chunkIndex])
+  @@index([ownerKey, hash, embeddingModel])
+  @@map("KnowledgeChunk")
 }

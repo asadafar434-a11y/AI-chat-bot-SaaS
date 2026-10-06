@@ -15,6 +15,7 @@ export interface KbStore {
   putDocument(doc: KbDocument, sourceText: string): Promise<void>;
   getSourceText(documentId: string): Promise<string | null>;
   replaceChunks(documentId: string, chunks: KbChunk[]): Promise<void>;
+  countChunks(documentId: string): Promise<number>;
   removeChunks(documentId: string): Promise<void>;
   /** Фрагменты активных документов указанных владельцев. Остальные владельцы сюда не попадают. */
   searchable(ownerKeys: string[]): Promise<{ document: KbDocument; chunk: KbChunk }[]>;
@@ -58,6 +59,9 @@ export function createMemoryKbStore(from?: KbSnapshot): KbStore & { snapshot(): 
     },
     async replaceChunks(documentId, rows) {
       chunks.set(documentId, rows);
+    },
+    async countChunks(documentId) {
+      return (chunks.get(documentId) ?? []).length;
     },
     async removeChunks(documentId) {
       chunks.delete(documentId);

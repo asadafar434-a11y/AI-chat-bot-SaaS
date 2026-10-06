@@ -36,6 +36,13 @@ const S1_MODELS = [
 const AUTH_MODELS = ["Account", "Session", "VerificationToken"] as const;
 const S2_MODELS = [...AUTH_MODELS, "Invitation"] as const;
 
+/**
+ * Таблицы базы знаний (S12). Владелец документа — общая база или организация, поэтому таблицы несут
+ * `ownerKey` («global» или «org:<id>»), а не `organizationId`: у общей базы организации нет, и связь
+ * с Organization невозможна. Скоуп проверяется в условии каждого запроса поиска.
+ */
+const KB_MODELS = ["KnowledgeDocument", "KnowledgeChunk"] as const;
+
 /** Таблицы, которые заведены в более поздних этапах и не должны появляться сейчас. */
 const LATER_STAGE_MODELS = ["Payment", "pgboss"] as const;
 
@@ -51,8 +58,8 @@ function modelNames(): string[] {
   return [...schema.matchAll(/^model\s+(\w+)\s*\{/gm)].map((match) => match[1]);
 }
 
-test("в схеме ровно 15 моделей: 11 приложения (S1) и 4 аутентификации (S2)", () => {
-  assert.deepEqual(modelNames().sort(), [...S1_MODELS, ...S2_MODELS].sort());
+test("в схеме ровно 17 моделей: 11 приложения (S1), 4 аутентификации (S2) и 2 базы знаний (S12)", () => {
+  assert.deepEqual(modelNames().sort(), [...S1_MODELS, ...S2_MODELS, ...KB_MODELS].sort());
 });
 
 test("моделей более поздних этапов в схеме нет", () => {
@@ -68,7 +75,7 @@ test("моделей более поздних этапов в схеме нет
  * организациях, `UserProfile` принадлежит пользователю, а не арендатору. Таблицы Auth.js
  * привязаны к `userId` текущей сессии, а не к арендатору (data-model.md §7).
  */
-const TABLES_WITHOUT_ORG_ID = ["Organization", "User", "UserProfile", ...AUTH_MODELS];
+const TABLES_WITHOUT_ORG_ID = ["Organization", "User", "UserProfile", ...AUTH_MODELS, ...KB_MODELS];
 
 /**
  * Таблицы, у которых вместо `createdAt`/`updatedAt` собственные отметки времени:
@@ -76,6 +83,8 @@ const TABLES_WITHOUT_ORG_ID = ["Organization", "User", "UserProfile", ...AUTH_MO
  */
 const TABLES_WITH_OWN_TIMESTAMPS: Record<string, { created: string; updated: string }> = {
   LegacyImportBatch: { created: "startedAt", updated: "finishedAt" },
+  // Фрагменты не правятся: при изменении документа они заменяются целиком.
+  KnowledgeChunk: { created: "createdAt", updated: "createdAt" },
 };
 
 test("модели без organizationId — только корень и таблицы пользователя", () => {
@@ -275,4 +284,31 @@ test("Invitation ссылается на организацию и пригла�
     block,
     /invitedBy\s+User\s+@relation\("InvitationInvitedBy",\s*fields:\s*\[invitedByUserId\],\s*references:\s*\[id\],\s*onDelete:\s*Restrict\)/,
   );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Инварианты S12: база знаний
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("база знаний: документ уникален по владельцу и ключу, фрагменты — по документу и номеру", () => {
+  assert.match(modelBlock("KnowledgeDocument"), /@@unique\(\[ownerKey,\s*sourceKey\]\)/);
+  assert.match(modelBlock("KnowledgeChunk"), /@@unique\(\[documentId,\s*chunkIndex\]\)/);
+});
+
+test("база знаний: фрагменты удаляются вместе с документом, а не остаются сиротами", () => {
+  assert.match(
+    modelBlock("KnowledgeChunk"),
+    /document\s+KnowledgeDocument\s+@relation\(fields:\s*\[documentId\],\s*references:\s*\[id\],\s*onDelete:\s*Cascade\)/,
+  );
+});
+
+test("база знаний: поиск по владельцу идёт по индексу, а владелец хранится у каждого фрагмента", () => {
+  assert.match(modelBlock("KnowledgeChunk"), /ownerKey\s+String/);
+  assert.match(modelBlock("KnowledgeChunk"), /@@index\(\[ownerKey,\s*hash,\s*embeddingModel\]\)/);
+  assert.match(modelBlock("KnowledgeDocument"), /@@index\(\[ownerKey,\s*status\]\)/);
+});
+
+test("база знаний: векторы — массив Float, текст документа хранится только для переиндексации", () => {
+  assert.match(modelBlock("KnowledgeChunk"), /embedding\s+Float\[\]/);
+  assert.match(modelBlock("KnowledgeDocument"), /sourceText\s+String/);
 });

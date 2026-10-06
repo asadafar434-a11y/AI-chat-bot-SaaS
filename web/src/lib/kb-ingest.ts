@@ -145,7 +145,9 @@ export async function ingestDocument(store: KbStore, embedder: Embedder, input: 
   const sameMeta = existing && JSON.stringify(existing.meta) === JSON.stringify(meta);
 
   if (existing && existing.status === "active" && existing.checksum === checksum) {
-    if (sameMeta && existing.name === name && existing.source === input.source) {
+    // Документ, у которого фрагментов меньше, чем записано, — след прерванной записи: переписываем его целиком.
+    const complete = (await store.countChunks(existing.id)) === existing.chunkCount;
+    if (complete && sameMeta && existing.name === name && existing.source === input.source) {
       return { status: "unchanged", document: existing, chunks: existing.chunkCount, embedded: 0, reused: 0 };
     }
     // Текст тот же — меняются только метаданные или название: фрагменты и векторы не трогаем.
@@ -171,6 +173,8 @@ export async function ingestDocument(store: KbStore, embedder: Embedder, input: 
     createdAt: existing?.createdAt ?? stamp,
     updatedAt: stamp,
   };
+  // Сначала строка документа, потом фрагменты: фрагменты ссылаются на документ.
+  await store.putDocument(doc, text);
   await store.replaceChunks(
     id,
     indexed.rows.map((row, chunkIndex) => ({
@@ -182,7 +186,6 @@ export async function ingestDocument(store: KbStore, embedder: Embedder, input: 
       createdAt: stamp,
     })),
   );
-  await store.putDocument(doc, text);
   return { status: existing ? "updated" : "created", document: doc, chunks: indexed.rows.length, embedded: indexed.embedded, reused: indexed.reused };
 }
 

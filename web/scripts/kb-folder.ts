@@ -1,22 +1,23 @@
-// База знаний из папки с документами: npm run kb:folder — отчёт по файлам; с флагом --ingest — запись в базу.
+// База знаний из папки с документами: npm run kb:folder — отчёт по файлам; с флагом --ingest — запись в PostgreSQL.
 //
 //   npm run kb:folder                                         отчёт, ничего не записывает
 //   npm run kb:folder -- --ingest --owner-org=<id>            записать в базу одной организации
 //   npm run kb:folder -- --ingest --global-approver=<имя>     записать в общую базу (только если это решено)
 //
+// Для записи нужна DATABASE_URL (локальная база: npm run db:up, затем npm run db:migrate:deploy).
 // Платного OCR здесь нет: сканы попадают в отчёт как «нужен OCR» и в базу не идут.
-// База — файл web/data/knowledge-base.json (в git не попадает, см. .gitignore).
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { GOLD_FOLDER } from "../src/lib/gold-folder.ts";
 import { deleteDocument, ingestDocument } from "../src/lib/kb-ingest.ts";
-import { dedupeByText, documentTypeOf, documentText, flattenReports, reportOf, summarize, type FileReport } from "../src/lib/kb-folder.ts";
+import { dedupeByText, documentText, documentTypeOf, flattenReports, reportOf, summarize, type FileReport } from "../src/lib/kb-folder.ts";
 import { localEmbedder } from "../src/lib/kb-embed.ts";
-import { createMemoryKbStore, type KbSnapshot } from "../src/lib/kb-store.ts";
+import { createDbKbStore } from "../src/lib/kb-store-db.ts";
 import { ownerKeyOf, type KbOwner } from "../src/lib/kb-types.ts";
+import { disconnectPrisma, getDb } from "../src/server/db/client.ts";
 import { extractDocument } from "../src/server/eis/extract/pipeline.ts";
 import { NoopOcrProvider } from "../src/server/eis/extract/ocr.ts";
 import type { EisNormalizedDocument } from "../src/server/eis/extract/types.ts";
@@ -29,7 +30,6 @@ const args = new Map(process.argv.slice(2).map((a) => {
 }));
 
 const folder = resolve(String(args.get("folder") ?? join(webRoot, "..", "Татьяна-Примеры документов")));
-const storePath = resolve(String(args.get("store") ?? join(webRoot, "data", "knowledge-base.json")));
 
 function walk(dir: string): string[] {
   return readdirSync(dir)
@@ -85,9 +85,9 @@ async function main() {
   }
   const owner = ownerFromArgs();
   if (!owner) throw new Error("для записи укажите владельца: --owner-org=<id> или --global-approver=<имя>");
+  if (!process.env.DATABASE_URL) throw new Error("для записи нужна DATABASE_URL (локальная база: npm run db:up, затем npm run db:migrate:deploy)");
 
-  const snapshot: KbSnapshot | undefined = existsSync(storePath) ? JSON.parse(readFileSync(storePath, "utf8")) : undefined;
-  const store = createMemoryKbStore(snapshot);
+  const store = createDbKbStore(getDb());
   const now = new Date();
   let created = 0;
   let updated = 0;
@@ -95,6 +95,7 @@ async function main() {
   let skipped = 0;
   let removed = 0;
 
+  // Элементы папки: сами файлы и вложения архивов (архив целиком в базу не идёт).
   const items = extracted.flatMap(({ path, doc }) => {
     const walkChildren = (p: string, d: EisNormalizedDocument): { path: string; doc: EisNormalizedDocument }[] =>
       (d.children ?? []).flatMap((c) => {
@@ -104,8 +105,6 @@ async function main() {
     return [{ path, doc }, ...walkChildren(path, doc)];
   });
 
-  // Одинаковые тексты (например, один и тот же файл в корне, в «архив 223» и в zip) — одна копия в базе.
-  // Копии, которые уже попали в базу раньше, снимаем с поиска.
   const withText = items
     .filter(({ doc }) => doc.document.format !== "zip" && doc.extraction.status !== "failed")
     .map(({ path, doc }) => ({ path, doc, text: documentText(doc) }))
@@ -113,6 +112,9 @@ async function main() {
       if (!item.text) skipped++;
       return !!item.text;
     });
+
+  // Одинаковые тексты (например, один и тот же файл в корне, в «архив 223» и в zip) — одна копия в базе.
+  // Копии, которые уже записаны раньше, снимаем с поиска.
   const { kept, duplicates } = dedupeByText(withText.map(({ path, text }) => ({ path, text })));
   const keep = new Set(kept);
   for (const dup of duplicates) {
@@ -145,13 +147,12 @@ async function main() {
     else unchanged++;
   }
 
-  mkdirSync(dirname(storePath), { recursive: true });
-  writeFileSync(storePath, JSON.stringify(store.snapshot()));
-  console.log(`\nВ базу: создано ${created}, обновлено ${updated}, без изменений ${unchanged}, пропущено (нет текста) ${skipped}, снято с поиска (старые копии) ${removed}.`);
-  console.log(`Файл базы: ${storePath}`);
+  console.log(`\nВ базу (PostgreSQL): создано ${created}, обновлено ${updated}, без изменений ${unchanged}, пропущено (нет текста) ${skipped}, снято с поиска (старые копии) ${removed}.`);
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+main()
+  .catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  })
+  .finally(() => disconnectPrisma());

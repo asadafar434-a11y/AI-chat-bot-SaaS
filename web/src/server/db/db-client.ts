@@ -48,6 +48,9 @@ export type DbClient = {
   session: ModelDelegate;
   verificationToken: ModelDelegate;
   invitation: ModelDelegate;
+  // S12: база знаний. Владелец — общая база или организация; таблицы несут ownerKey, а не organizationId.
+  knowledgeDocument: ModelDelegate;
+  knowledgeChunk: ModelDelegate;
 };
 
 /** Имена делегатов, которые обязаны присутствовать в клиенте. */
@@ -67,6 +70,8 @@ export const DB_DELEGATES = [
   "session",
   "verificationToken",
   "invitation",
+  "knowledgeDocument",
+  "knowledgeChunk",
 ] as const satisfies readonly (keyof DbClient)[];
 
 export type DbDelegateName = (typeof DB_DELEGATES)[number];
