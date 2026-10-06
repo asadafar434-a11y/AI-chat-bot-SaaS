@@ -22,13 +22,23 @@ export interface KbStore {
   findEmbedding(ownerKey: string, hash: string, model: string): Promise<number[] | null>;
 }
 
-export function createMemoryKbStore(): KbStore {
-  const documents = new Map<string, KbDocument>();
-  const sources = new Map<string, string>();
-  const chunks = new Map<string, KbChunk[]>();
+/** Всё содержимое базы одним куском: для сохранения в файл и загрузки обратно. */
+export type KbSnapshot = {
+  documents: KbDocument[];
+  sources: [string, string][];
+  chunks: [string, KbChunk[]][];
+};
+
+export function createMemoryKbStore(from?: KbSnapshot): KbStore & { snapshot(): KbSnapshot } {
+  const documents = new Map<string, KbDocument>((from?.documents ?? []).map((d) => [d.id, d]));
+  const sources = new Map<string, string>(from?.sources ?? []);
+  const chunks = new Map<string, KbChunk[]>(from?.chunks ?? []);
   const ownerOf = (doc: KbDocument) => (doc.owner.kind === "global" ? "global" : `org:${doc.owner.organizationId}`);
 
   return {
+    snapshot() {
+      return { documents: [...documents.values()], sources: [...sources.entries()], chunks: [...chunks.entries()] };
+    },
     async getDocument(ownerKey, sourceKey) {
       for (const doc of documents.values()) if (ownerOf(doc) === ownerKey && doc.sourceKey === sourceKey) return doc;
       return null;
