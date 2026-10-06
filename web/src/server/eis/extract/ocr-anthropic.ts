@@ -32,7 +32,8 @@ export class AnthropicOcrProvider implements OcrProvider {
         pages: [{ pageNumber: input.pages[0] ?? 1, text: (texts[0] ?? "").trim() }],
       };
     }
-    const parser = new PDFParse({ data: input.bytes });
+    // Копия: буфер, переданный парсеру, отсоединяется, а вызывающий код может читать его дальше.
+    const parser = new PDFParse({ data: input.bytes.slice() });
     try {
       const images = await ocr.renderPages(parser, input.pages);
       const texts = await ocr.transcribe(images);

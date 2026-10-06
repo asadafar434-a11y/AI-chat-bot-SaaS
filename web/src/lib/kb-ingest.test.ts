@@ -173,3 +173,17 @@ test("переиндексация после смены эмбеддера пе
   const again = await reindexAll(store, next.embedder);
   assert.equal(again.embedded, 0, "вторая переиндексация ничего не считает");
 });
+
+test("смена утверждающего обновляет владельца без пересчёта векторов", async () => {
+  const store = createMemoryKbStore();
+  const { embedder, state } = counting();
+  await ingestDocument(store, embedder, input());
+  const result = await ingestDocument(store, embedder, input({ owner: { kind: "global", approvedBy: "Евгений" } }));
+
+  assert.equal(result.status, "metadata_updated");
+  assert.equal(result.embedded, 0);
+  assert.deepEqual(result.document.owner, { kind: "global", approvedBy: "Евгений" });
+  assert.equal(state.texts, 3, "векторы не пересчитаны");
+  const stored = await store.getDocument("global", "doc:1");
+  assert.equal(stored?.owner.kind === "global" && stored.owner.approvedBy, "Евгений");
+});

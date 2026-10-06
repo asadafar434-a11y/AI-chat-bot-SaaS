@@ -57,7 +57,8 @@ export async function extractPdf(
   opts: { tables?: PdfTableSource; ocr?: OcrProvider; ocrPages?: number[] | "auto" },
 ): Promise<PdfExtractResult> {
   const { PDFParse } = await import("pdf-parse");
-  const parser = new PDFParse({ data: bytes });
+  // Копия: парсер передаёт буфер воркеру и отсоединяет его, а тем же байтам нужен OCR следом.
+  const parser = new PDFParse({ data: bytes.slice() });
   try {
     const result = await parser.getText();
     const qualities = result.pages.map((page) => pageQuality(page.text));

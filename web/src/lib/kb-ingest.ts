@@ -142,7 +142,7 @@ export async function ingestDocument(store: KbStore, embedder: Embedder, input: 
   const ownerKey = ownerKeyOf(input.owner);
   const checksum = sha256(text);
   const existing = await store.getDocument(ownerKey, input.sourceKey);
-  const sameMeta = existing && JSON.stringify(existing.meta) === JSON.stringify(meta);
+  const sameMeta = existing && JSON.stringify(existing.meta) === JSON.stringify(meta) && JSON.stringify(existing.owner) === JSON.stringify(input.owner);
 
   if (existing && existing.status === "active" && existing.checksum === checksum) {
     // Документ, у которого фрагментов меньше, чем записано, — след прерванной записи: переписываем его целиком.
@@ -151,7 +151,7 @@ export async function ingestDocument(store: KbStore, embedder: Embedder, input: 
       return { status: "unchanged", document: existing, chunks: existing.chunkCount, embedded: 0, reused: 0 };
     }
     // Текст тот же — меняются только метаданные или название: фрагменты и векторы не трогаем.
-    const doc: KbDocument = { ...existing, name, source: input.source, meta, updatedAt: now.toISOString() };
+    const doc: KbDocument = { ...existing, owner: input.owner, name, source: input.source, meta, updatedAt: now.toISOString() };
     await store.putDocument(doc, text);
     return { status: "metadata_updated", document: doc, chunks: doc.chunkCount, embedded: 0, reused: 0 };
   }

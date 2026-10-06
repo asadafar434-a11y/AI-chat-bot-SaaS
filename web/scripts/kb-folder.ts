@@ -19,7 +19,7 @@ import { createDbKbStore } from "../src/lib/kb-store-db.ts";
 import { ownerKeyOf, type KbOwner } from "../src/lib/kb-types.ts";
 import { disconnectPrisma, getDb } from "../src/server/db/client.ts";
 import { extractDocument } from "../src/server/eis/extract/pipeline.ts";
-import { NoopOcrProvider } from "../src/server/eis/extract/ocr.ts";
+import { NoopOcrProvider, resolveOcrProvider, type OcrProvider } from "../src/server/eis/extract/ocr.ts";
 import type { EisNormalizedDocument } from "../src/server/eis/extract/types.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -42,14 +42,23 @@ function walk(dir: string): string[] {
 
 const kindOf = (path: string) => GOLD_FOLDER.find((d) => d.path === path)?.kind;
 
-async function extractAll(): Promise<{ path: string; doc: EisNormalizedDocument }[]> {
+// --ocr=anthropic: сканы читает ИИ. Это платно (около 3 ₽ за страницу), поэтому без флага не запускается.
+async function ocrFromArgs(): Promise<OcrProvider> {
+  const kind = args.get("ocr");
+  if (!kind || kind === "true") return new NoopOcrProvider();
+  if (kind !== "anthropic") throw new Error("--ocr: поддерживается только anthropic");
+  if (!process.env.ANTHROPIC_API_KEY) throw new Error("--ocr=anthropic: нет ANTHROPIC_API_KEY в окружении (см. web/.env.local)");
+  return resolveOcrProvider("anthropic");
+}
+
+async function extractAll(ocrProvider: OcrProvider): Promise<{ path: string; doc: EisNormalizedDocument }[]> {
   const out: { path: string; doc: EisNormalizedDocument }[] = [];
   for (const file of walk(folder).sort()) {
     const path = relative(folder, file).split(sep).join("/");
     const bytes = new Uint8Array(readFileSync(file));
     const doc = await extractDocument(
       { id: createHash("sha1").update(path).digest("hex").slice(0, 12), tenderRegistryNumber: "folder", fileName: path.split("/").pop()!, documentType: "folder", bytes },
-      { ocrProvider: new NoopOcrProvider() },
+      { ocrProvider },
     );
     out.push({ path, doc });
   }
@@ -74,7 +83,7 @@ function ownerFromArgs(): KbOwner | null {
 }
 
 async function main() {
-  const extracted = await extractAll();
+  const extracted = await extractAll(await ocrFromArgs());
   const reports = extracted.map(({ path, doc }) => reportOf(path, doc));
   console.log(`Папка: ${folder}\n`);
   printReport(reports);
@@ -94,6 +103,7 @@ async function main() {
   let unchanged = 0;
   let skipped = 0;
   let removed = 0;
+  let metadataUpdated = 0;
 
   // Элементы папки: сами файлы и вложения архивов (архив целиком в базу не идёт).
   const items = extracted.flatMap(({ path, doc }) => {
@@ -144,10 +154,11 @@ async function main() {
     );
     if (result.status === "created") created++;
     else if (result.status === "updated") updated++;
+    else if (result.status === "metadata_updated") metadataUpdated++;
     else unchanged++;
   }
 
-  console.log(`\nВ базу (PostgreSQL): создано ${created}, обновлено ${updated}, без изменений ${unchanged}, пропущено (нет текста) ${skipped}, снято с поиска (старые копии) ${removed}.`);
+  console.log(`\nВ базу (PostgreSQL): создано ${created}, обновлено ${updated}, метаданные обновлены ${metadataUpdated}, без изменений ${unchanged}, пропущено (нет текста) ${skipped}, снято с поиска (старые копии) ${removed}.`);
 }
 
 main()
