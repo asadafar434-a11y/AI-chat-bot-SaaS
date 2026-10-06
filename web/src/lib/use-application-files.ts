@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { archiveName, fingerprint } from "@/lib/application-files";
+import { blankRequest } from "@/lib/blank-request";
 import { rowsOf } from "@/lib/cast";
 import { anketaExtraValues } from "@/lib/fields";
 import { FILE_FORMATS, type FileFormat } from "@/lib/file-format";
@@ -12,7 +13,7 @@ import type { PartDoc } from "@/lib/part-doc";
 import { aiHeaders, type Purchase } from "@/lib/purchase";
 import { forServer, type SentDocument } from "@/lib/read-documents";
 import { saveFile } from "@/lib/save-file";
-import type { TpResult } from "@/lib/tp";
+import type { DetectedForm, TpResult } from "@/lib/tp";
 import { criteriaRowsFor, PART_TITLES, partsOf, type TpPart } from "@/lib/tp-parts";
 import type { Profile } from "@/lib/profile";
 
@@ -158,7 +159,7 @@ export function useApplicationFilesOf({ purchase, documents, update }: Applicati
 
   // Все файлы заявки одним архивом: недостающие части пишутся по очереди, архив собирает сервер.
   // Формат один на весь архив: Word, PDF или ODT.
-  const downloadAll = (current: TpResult, format: FileFormat = "docx") =>
+  const downloadAll = (current: TpResult, format: FileFormat = "docx", blanks: DetectedForm[] = []) =>
     run("all", async () => {
       let parts = purchase.parts;
       const files: object[] = [];
@@ -167,6 +168,7 @@ export function useApplicationFilesOf({ purchase, documents, update }: Applicati
         parts = made.parts;
         files.push({ part, ...made.payload });
       }
+      for (const df of blanks) files.push(blankRequest(purchase.subject, df));
       const name = archiveName(purchase);
       saveFile(await fileFrom("/api/tp/zip", { name, files, format }, "Не удалось собрать архив."), `${name}.zip`);
     });

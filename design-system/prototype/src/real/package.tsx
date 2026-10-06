@@ -15,7 +15,8 @@ import { fulfillmentOf } from '@/lib/fulfillment';
 import type { PartKey } from '@/lib/my-docs';
 import { PART_TITLES, partsOf, type TpPart } from '@/lib/tp-parts';
 import type { DetectedForm } from '@/lib/tp';
-import { formPage } from '@/lib/form-pages';
+import { formPages } from '@/lib/form-pages';
+import { blankRequest } from '@/lib/blank-request';
 import { useApplicationFilesOf } from '@/lib/use-application-files';
 import { ApplicationText, MarkedText } from '../components/ApplicationPreview';
 import { DocsChanged } from '../components/DocsChanged';
@@ -103,9 +104,9 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
   const fields = useMemo(() => fieldsOf({ purchase, profile, evidence }), [purchase, profile, evidence]);
   // Где в файлах закупки стоит цитата пункта «Что требует заказчик» (lib/doc-locate.ts).
   const locator = useMemo(() => createLocator(source.documents), [source.documents]);
-  // Страница заголовка каждого бланка — из текста документов (код), а не из ответа ИИ.
+  // Страницы каждого бланка — из текста документов (код), а не из ответа ИИ.
   const detectedForms = useMemo(
-    () => (tp?.detectedForms ?? []).map((df) => ({ ...df, pages: formPage(locator, df.title) })),
+    () => (tp?.detectedForms ?? []).map((df) => ({ ...df, pages: formPages(locator, df) })),
     [tp?.detectedForms, locator],
   );
   const whereOf = (quote: string) => {
@@ -144,15 +145,7 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
       const res = await fetch(`/api/tp/${format}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          part: 'application',
-          subject: purchase.subject,
-          form: { title: df.title, source: df.source, participantFields: [], consent: '', hasPrice: false, priceNote: '', smeDeclaration: '', goodsTableHeaders: [] },
-          blankOnly: true,
-          detectedForms: [df],
-          goods: [],
-          items: [],
-        }),
+        body: JSON.stringify(blankRequest(purchase.subject, df)),
       });
       if (!res.ok) return;
       const blob = await res.blob();
@@ -232,7 +225,7 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
       onFormat={setFormat}
       final={final}
       rows={rows}
-      count={tp ? partsOf(tp.form, purchase.criteria, purchase.kind).length : 1}
+      count={(tp ? partsOf(tp.form, purchase.criteria, purchase.kind).length : 1) + detectedForms.length}
       items={submitItems(purchase, profile)}
       whereOf={whereOf}
       downloading={files.downloading}
@@ -243,7 +236,7 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
       onToggleReady={(text) => update({ submitReady: toggleReady(purchase, text) })}
       onDownload={(part) => tp && void files.downloadPart(tp, part, { format })}
       onRedo={(part) => tp && void files.downloadPart(tp, part, { redo: true, format })}
-      onDownloadAll={() => tp && void files.downloadAll(tp, format)}
+      onDownloadAll={() => tp && void files.downloadAll(tp, format, detectedForms)}
       onFix={onFix}
       onTariffs={onTariffs}
       onBack={onBack}
@@ -251,7 +244,6 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
       validation={validationResult}
       auditReport={appAuditReport}
       scoringReport={appScoringReport}
-      tpForm={tp?.form}
       detectedForms={detectedForms}
       onDownloadForm={downloadDetectedForm}
     />

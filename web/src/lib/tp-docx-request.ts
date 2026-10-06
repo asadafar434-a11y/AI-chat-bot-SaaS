@@ -32,7 +32,7 @@ export type DocxRequest = {
   doc?: unknown;
 };
 
-export type FileResult = { ok: true; part: TpPart; buffer: Buffer } | { ok: false; status: number; message: string };
+export type FileResult = { ok: true; part: TpPart; name: string; buffer: Buffer } | { ok: false; status: number; message: string };
 
 const text = (value: unknown, max: number) => String(value ?? "").slice(0, max);
 const list = <T,>(value: unknown): T[] => (Array.isArray(value) ? value.slice(0, 1000) : []);
@@ -148,7 +148,9 @@ async function render(source: Source, format: FileFormat): Promise<Buffer> {
 export async function fileFromRequest(body: DocxRequest, format: FileFormat = "docx"): Promise<FileResult> {
   const made = sourceFromRequest(body);
   if (!made.ok) return made;
-  return { ok: true, part: made.source.part, buffer: await render(made.source, format) };
+  const { source } = made;
+  const blank = source.kind === "data" && source.data.blankOnly ? source.data.detectedForms?.[0] : undefined;
+  return { ok: true, part: source.part, name: blank?.title ?? PART_TITLES[source.part], buffer: await render(source, format) };
 }
 
 // Имя файла в заголовке ответа: латиницей — для старых браузеров, по-русски — в filename*.
@@ -163,6 +165,6 @@ export async function fileRoute(request: Request, format: FileFormat): Promise<R
   if (!made.ok) return new Response(made.message, { status: made.status });
   const { ext, type } = FILE_FORMATS[format];
   return new Response(new Uint8Array(made.buffer), {
-    headers: { "Content-Type": type, "Content-Disposition": attachment(`${PART_TITLES[made.part]}.${ext}`, `proposal.${ext}`) },
+    headers: { "Content-Type": type, "Content-Disposition": attachment(`${made.name}.${ext}`, `proposal.${ext}`) },
   });
 }

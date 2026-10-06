@@ -1,12 +1,11 @@
 import JSZip from "jszip";
-import { PART_TITLES, type TpPart } from "@/lib/tp-parts";
 import { FILE_FORMATS, formatOf } from "@/lib/file-format";
 import { attachment, fileFromRequest, type DocxRequest } from "@/lib/tp-docx-request";
 import { badRequest, readJson } from "@/lib/read-json";
 
-// Все файлы заявки одним архивом: ТП и остальные части, каждая — отдельным файлом Word, PDF или ODT, по порядку.
-// Частей у заявки не больше шести, поэтому больше десяти файлов — это не наша заявка.
-const MAX_FILES = 10;
+// Все файлы заявки одним архивом: ТП и остальные части, каждая — отдельным файлом Word, PDF или ODT, по порядку, и бланки заказчика.
+// Частей не больше шести, бланков — не больше двадцати, поэтому больше тридцати файлов — это не наша заявка.
+const MAX_FILES = 30;
 
 // Название закупки идёт в имя архива: без символов, которые нельзя в имени файла.
 const cleanName = (name: string) =>
@@ -26,13 +25,13 @@ export async function POST(request: Request) {
   const format = formatOf(body.format);
 
   const zip = new JSZip();
-  const added = new Set<TpPart>();
+  const added = new Set<string>();
   for (const file of files) {
     const made = await fileFromRequest((file ?? {}) as DocxRequest, format);
     if (!made.ok) return new Response(`${made.message}`, { status: made.status });
-    if (added.has(made.part)) continue;
-    added.add(made.part);
-    zip.file(`${added.size}. ${PART_TITLES[made.part]}.${FILE_FORMATS[format].ext}`, made.buffer);
+    if (added.has(made.name)) continue;
+    added.add(made.name);
+    zip.file(`${added.size}. ${cleanName(made.name)}.${FILE_FORMATS[format].ext}`, made.buffer);
   }
   const archive = await zip.generateAsync({ type: "arraybuffer", compression: "DEFLATE" });
   const name = `${cleanName(String(body.name ?? "")) || "Заявка"}.zip`;

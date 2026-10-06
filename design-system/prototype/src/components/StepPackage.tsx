@@ -15,7 +15,7 @@ import { rubShort } from '@/lib/price-calc';
 import { PRICE_APP, PRICE_EXPERT } from '@/lib/pricing';
 import type { TpPart } from '@/lib/tp-parts';
 import type { Downloading } from '@/lib/use-application-files';
-import type { TpForm, DetectedForm } from '@/lib/tp';
+import type { DetectedForm } from '@/lib/tp';
 
 // Шаг «Пакет»: состав заявки — файлы по одному и архивом, что требует заказчик, оплата и проверка специалистом.
 // Разметка — прототипа; данные — настоящие (их собирает real/package.tsx). Оплаты и специалиста пока нет — «скоро».
@@ -451,116 +451,36 @@ function ScoringPanel({ report }: { report: ScoringReport }) {
   );
 }
 
-// ——— Формы заказчика: паспорт форм ———
-
-function FormsPanel({
-  form,
-  detectedForms,
-  format,
-  onDownloadForm,
-}: {
-  form: TpForm;
-  detectedForms: DetectedForm[];
-  format: FileFormat;
-  onDownloadForm?: (df: DetectedForm) => void;
-}) {
-  const hasMain = !!form.source || (form.title !== 'Техническое предложение' && !!form.title);
-  const hasGoods = form.goodsTableHeaders.length > 0;
-  const detected = detectedForms.map((f) => ({
-    raw: f,
-    title: f.title,
-    source: f.source,
-    pages: f.pages,
-    total: f.fields.length,
-    filled: f.fields.filter((fld) => fld.value.trim() !== '').length,
-  }));
-
-  if (!hasMain && !hasGoods && detected.length === 0) return null;
-
-  const totalForms = (hasMain || hasGoods ? 1 : 0) + detected.length;
-  const plural = totalForms === 1 ? 'форма' : totalForms < 5 ? 'формы' : 'форм';
-
+// Бланк заказчика — строкой в «Составе пакета»: сколько полей ждут участника и скачивание отдельным файлом.
+function BlankRow({ form, onDownload }: { form: DetectedForm; onDownload: () => void }) {
+  const empty = form.fields.filter((f) => f.value.trim() === '').length;
+  const sub = [form.source, form.pages].filter(Boolean).join(' · ');
   return (
-    <Card className="p-0">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-        <div className="flex items-center gap-2">
-          <FileText className="size-4" />
-          <span className="text-sm font-medium">Формы заказчика</span>
+    <div className="group flex items-start gap-3 border-b border-border px-4 py-3 last:border-0">
+      <FileText className="mt-0.5 size-4 shrink-0 self-start text-muted-foreground" />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <p className="text-sm font-medium">{form.title}</p>
+          {empty > 0 ? (
+            <Badge tone="warn">
+              <PenLine className="size-2.5" />
+              впишите {empty} {empty === 1 ? 'поле' : empty < 5 ? 'поля' : 'полей'}
+            </Badge>
+          ) : (
+            <Badge tone="success">
+              <Check className="size-2.5" />
+              готово
+            </Badge>
+          )}
         </div>
-        <span className="font-mono text-[11px] text-muted-foreground">{totalForms} {plural}</span>
+        {sub && <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{sub}</p>}
       </div>
-      <ul className="divide-y divide-border">
-        {(hasMain || hasGoods) && (
-          <li className="px-4 py-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-medium truncate">{form.title || 'Форма заявки'}</p>
-                {form.source && (
-                  <p className="mt-0.5 text-[11px] text-muted-foreground truncate">{form.source}</p>
-                )}
-              </div>
-              <Badge tone="neutral">Главная</Badge>
-            </div>
-            {(form.participantFields.length > 0 || hasGoods) && (
-              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-                {form.participantFields.length > 0 && (
-                  <span>{form.participantFields.length} полей участника</span>
-                )}
-                {hasGoods && (
-                  <span>
-                    таблица товаров
-                    {form.goodsTableHeaders.map((h, i) => (
-                      <span key={i} className="font-mono"> · {h}</span>
-                    ))}
-                  </span>
-                )}
-              </div>
-            )}
-          </li>
-        )}
-        {detected.map((f, i) => {
-          const empty = f.total - f.filled;
-          const done = f.total === 0 || empty === 0;
-          const emptyLabel = empty === 1 ? 'поле' : empty < 5 ? 'поля' : 'полей';
-          return (
-            <li key={i} className="px-4 py-3">
-              <div className="flex items-start gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-[13px] font-medium truncate">{f.title}</p>
-                    <Badge tone={done ? 'success' : 'warn'}>
-                      {f.total === 0 ? 'пусто' : `${f.filled}/${f.total}`}
-                    </Badge>
-                  </div>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
-                    {f.source && <span className="truncate max-w-[200px]">{f.source}</span>}
-                    {f.pages && <span className="font-mono shrink-0">заголовок на стр. {f.pages}</span>}
-                  </div>
-                  {!done && (
-                    <p className="mt-1 text-[11px] text-warn-foreground">
-                      {empty} {emptyLabel} — дописывает участник
-                    </p>
-                  )}
-                </div>
-                {onDownloadForm && (
-                  <Tooltip content={`Скачать бланк отдельным файлом ${EXT[format]}`} side="top">
-                    <IconButton label="Скачать бланк" onClick={() => onDownloadForm(f.raw)}>
-                      <Download className="size-4" />
-                    </IconButton>
-                  </Tooltip>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-      <div className="flex items-start gap-2 border-t border-border px-4 py-3">
-        <Info className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-        <p className="text-[11px] text-muted-foreground">
-          Формы взяты из документов закупки как есть. Где данные найдены — заполнены; жёлтые места в файле — вписывает участник.
-        </p>
+      <div className="flex shrink-0 items-center gap-1">
+        <IconButton label="Скачать бланк" onClick={onDownload}>
+          <Download className="size-4" />
+        </IconButton>
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -696,7 +616,6 @@ export function StepPackage({
   buildReport,
   auditReport: auditRep,
   scoringReport: scoringRep,
-  tpForm,
   detectedForms,
   onDownloadForm,
 }: {
@@ -734,10 +653,9 @@ export function StepPackage({
   auditReport?: AuditReport;
   // Оценка по критериям (scoring-engine.ts): если не задан или howWins ≠ points, блок не показывается.
   scoringReport?: ScoringReport;
-  // Формы заказчика — паспорт форм (FormsPanel): главная форма + доп. бланки из detectedForms.
-  tpForm?: TpForm;
+  // Бланки заказчика — строками в «Составе пакета».
   detectedForms?: DetectedForm[];
-  // Скачать отдельный бланк как файл (вызывается из FormsPanel).
+  // Скачать один бланк отдельным файлом.
   onDownloadForm?: (df: DetectedForm) => void;
 }) {
   const [openPart, setOpenPart] = useState<TpPart | null>(null);
@@ -895,18 +813,11 @@ export function StepPackage({
                   onCompose={onFix}
                 />
               ))}
+              {(detectedForms ?? []).map((df, i) => (
+                <BlankRow key={`blank:${i}`} form={df} onDownload={() => onDownloadForm?.(df)} />
+              ))}
             </div>
           </Card>
-
-          {/* Формы заказчика: паспорт форм */}
-          {tpForm && (
-            <FormsPanel
-              form={tpForm}
-              detectedForms={detectedForms ?? []}
-              format={format}
-              onDownloadForm={onDownloadForm}
-            />
-          )}
 
           {/* Сборка заявки по 7 шагам */}
           {buildReport && <BuildPanel report={buildReport} />}

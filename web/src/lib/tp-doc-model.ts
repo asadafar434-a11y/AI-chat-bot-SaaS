@@ -255,7 +255,7 @@ const appNote = (text: string): Row => ({ cells: [textCell("", APP_COLS[0]), cel
 // Строки одного доп. бланка: откуда он, название и таблица «Наименование сведений | Значение».
 function detectedFormBlocks(df: DetectedForm): Block[] {
   return [
-    para([run([df.source || df.title, df.pages ? `стр. ${df.pages}` : ""].filter(Boolean).join(" · "), { size: 10 })], { align: "right", after: 6 }),
+    para([run([df.source || df.title, df.pages ?? ""].filter(Boolean).join(" · "), { size: 10 })], { align: "right", after: 6 }),
     para([run(df.title, { bold: true })], { align: "center", before: 18, after: 8 }),
     table([
       headerRow([["Наименование сведений", 60], ["Значение", 40]]),

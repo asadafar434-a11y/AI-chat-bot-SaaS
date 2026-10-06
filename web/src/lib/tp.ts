@@ -10,7 +10,6 @@ const quote = z
 const DetectedFormSchema = z.object({
   source: z.string().describe("Где в документах эта форма, например «Документация, приложение № 3»"),
   title: z.string().describe("Название формы по документу, дословно"),
-  pages: z.string().optional().describe("Страницы формы в исходном документе, например «31–33» или «37»; пустая строка, если страницы неизвестны"),
   fields: z
     .array(
       z.object({
@@ -21,7 +20,8 @@ const DetectedFormSchema = z.object({
     .describe("Строки бланка в том порядке, как они идут в документе"),
 });
 
-export type DetectedForm = z.infer<typeof DetectedFormSchema>;
+// Страницы бланка добавляет код (form-pages.ts), ИИ их не пишет.
+export type DetectedForm = z.infer<typeof DetectedFormSchema> & { pages?: string };
 
 export const TpDraftSchema = z.object({
   form: z.object({

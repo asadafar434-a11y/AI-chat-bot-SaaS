@@ -4,6 +4,7 @@ import { test } from "node:test";
 import JSZip from "jszip";
 import mammoth from "mammoth";
 import { EMPTY_PROFILE, identityValues, type Profile } from "../../../../lib/profile.ts";
+import { blankRequest } from "../../../../lib/blank-request.ts";
 import { PLAIN_FORM } from "../../../../lib/tp.ts";
 import { POST } from "./route.ts";
 
@@ -44,14 +45,28 @@ test("архив: файлы по порядку частей, имя — по �
   assert.ok((await textOf(names[1])).includes(PROFILE.inn), "в анкете нет ИНН");
 });
 
+test("архив: бланк заказчика — отдельным файлом под своим названием", async () => {
+  const blank = { source: "Извещение, приложение № 2", title: "Декларация участника закупки", pages: "стр. 25", fields: [{ label: "Наименование участника", value: "" }] };
+  const res = await post({ name: "Заявка", files: [{ part: "tp", ...DRAFT }, blankRequest("Организация праздника", blank)] });
+  assert.equal(res.status, 200);
+
+  const zip = await JSZip.loadAsync(await res.arrayBuffer());
+  const names = Object.keys(zip.files);
+  assert.deepEqual(names, ["1. Техническое предложение.docx", "2. Декларация участника закупки.docx"]);
+  const text = (await mammoth.extractRawText({ buffer: await zip.file(names[1])!.async("nodebuffer") })).value;
+  assert.match(text, /Наименование участника/);
+  assert.match(text, /стр\. 25/);
+  assert.ok(!text.includes("ЗАЯВКА"));
+});
+
 test("архив: нет файлов, слишком много, часть без пунктов — отказ с понятным текстом", async () => {
   const noFiles = await post({ name: "Заявка", files: [] });
   assert.equal(noFiles.status, 400);
   assert.equal(await noFiles.text(), "Нет файлов для архива.");
 
-  const tooMany = await post({ files: Array.from({ length: 11 }, () => ({ part: "tp", ...DRAFT })) });
+  const tooMany = await post({ files: Array.from({ length: 31 }, () => ({ part: "tp", ...DRAFT })) });
   assert.equal(tooMany.status, 400);
-  assert.match(await tooMany.text(), /не больше 10 файлов/);
+  assert.match(await tooMany.text(), /не больше 30 файлов/);
 
   const empty = await post({ files: [{ part: "tp", subject: "Праздник", items: [] }] });
   assert.equal(empty.status, 400);

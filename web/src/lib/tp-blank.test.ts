@@ -5,7 +5,7 @@ import { modelOfTp, type TpDocx } from "./tp-doc-model.ts";
 
 const SOURCE = "Извещение, приложение № 2 к информационной карте";
 const TITLE = "Декларация участника закупки о принадлежности к субъектам малого предпринимательства";
-const blank = { source: SOURCE, title: TITLE, pages: "25", fields: [{ label: "Наименование участника", value: "" }] };
+const blank = { source: SOURCE, title: TITLE, pages: "стр. 25–27", fields: [{ label: "Наименование участника", value: "" }] };
 
 function data(extra: Partial<TpDocx> = {}): TpDocx {
   return {
@@ -26,7 +26,7 @@ test("скачивание одного бланка: в файле только
   const text = JSON.stringify(model.blocks);
   assert.equal(model.title, TITLE);
   assert.ok(text.includes("Наименование участника"));
-  assert.ok(text.includes("стр. 25"));
+  assert.ok(text.includes("стр. 25–27"));
   assert.ok(!text.includes("ЗАЯВКА"));
 });
 
