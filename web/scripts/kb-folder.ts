@@ -7,7 +7,9 @@
 // Для записи нужна DATABASE_URL (локальная база: npm run db:up, затем npm run db:migrate:deploy).
 // Платного OCR здесь нет: сканы попадают в отчёт как «нужен OCR» и в базу не идут.
 
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { copyFileSync, mkdtempSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
@@ -40,6 +42,20 @@ function walk(dir: string): string[] {
     });
 }
 
+// Старый .doc (Word 97–2003) читает antiword, если он установлен. Путь с кириллицей копируем во временный
+// файл с латинским именем: так antiword его открывает. Без antiword .doc остаётся нечитаемым, как и раньше.
+function antiwordText(file: string): string | null {
+  try {
+    const dir = mkdtempSync(join(tmpdir(), "kb-doc-"));
+    const copy = join(dir, "source.doc");
+    copyFileSync(file, copy);
+    const text = execFileSync("antiword", ["-m", "UTF-8.txt", copy], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }).trim();
+    return text || null;
+  } catch {
+    return null;
+  }
+}
+
 const kindOf = (path: string) => GOLD_FOLDER.find((d) => d.path === path)?.kind;
 
 // --ocr=anthropic: сканы читает ИИ. Это платно (около 3 ₽ за страницу), поэтому без флага не запускается.
@@ -51,6 +67,8 @@ async function ocrFromArgs(): Promise<OcrProvider> {
   return resolveOcrProvider("anthropic");
 }
 
+const docOverrides = new Map<string, string>();
+
 async function extractAll(ocrProvider: OcrProvider): Promise<{ path: string; doc: EisNormalizedDocument }[]> {
   const out: { path: string; doc: EisNormalizedDocument }[] = [];
   for (const file of walk(folder).sort()) {
@@ -60,6 +78,10 @@ async function extractAll(ocrProvider: OcrProvider): Promise<{ path: string; doc
       { id: createHash("sha1").update(path).digest("hex").slice(0, 12), tenderRegistryNumber: "folder", fileName: path.split("/").pop()!, documentType: "folder", bytes },
       { ocrProvider },
     );
+    if (file.toLowerCase().endsWith(".doc")) {
+      const text = antiwordText(file);
+      if (text) docOverrides.set(path, text);
+    }
     out.push({ path, doc });
   }
   return out;
@@ -84,7 +106,11 @@ function ownerFromArgs(): KbOwner | null {
 
 async function main() {
   const extracted = await extractAll(await ocrFromArgs());
-  const reports = extracted.map(({ path, doc }) => reportOf(path, doc));
+  const reports = extracted.map(({ path, doc }) => {
+    const report = reportOf(path, doc);
+    const text = docOverrides.get(path);
+    return text ? { ...report, status: "readable" as const, chars: text.length, note: "прочитан через antiword" } : report;
+  });
   console.log(`Папка: ${folder}\n`);
   printReport(reports);
 
@@ -116,8 +142,8 @@ async function main() {
   });
 
   const withText = items
-    .filter(({ doc }) => doc.document.format !== "zip" && doc.extraction.status !== "failed")
-    .map(({ path, doc }) => ({ path, doc, text: documentText(doc) }))
+    .filter(({ path, doc }) => doc.document.format !== "zip" && (doc.extraction.status !== "failed" || docOverrides.has(path)))
+    .map(({ path, doc }) => ({ path, doc, text: docOverrides.get(path) ?? documentText(doc) }))
     .filter((item) => {
       if (!item.text) skipped++;
       return !!item.text;
