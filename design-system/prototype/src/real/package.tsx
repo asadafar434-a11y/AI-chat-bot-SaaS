@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { buildReport, type BuildReport } from '@/lib/application-builder';
 import { auditReport, type AuditReport } from '@/lib/submission-audit';
 import { scoringReport, type ScoringReport } from '@/lib/scoring-engine';
@@ -8,12 +8,13 @@ import { fileRows, submitItems, toggleReady } from '@/lib/application-files';
 import { tpChanges } from '@/lib/doc-changes';
 import { createLocator, describeSource } from '@/lib/doc-locate';
 import { completeness, fieldsOf } from '@/lib/fields';
-import type { FileFormat } from '@/lib/file-format';
+import { FILE_FORMATS, type FileFormat } from '@/lib/file-format';
 import type { PartDoc } from '@/lib/part-doc';
 import { filledCount, PROFILE_KEYS } from '@/lib/profile';
 import { fulfillmentOf } from '@/lib/fulfillment';
 import type { PartKey } from '@/lib/my-docs';
 import { PART_TITLES, partsOf, type TpPart } from '@/lib/tp-parts';
+import type { DetectedForm } from '@/lib/tp';
 import { useApplicationFilesOf } from '@/lib/use-application-files';
 import { ApplicationText, MarkedText } from '../components/ApplicationPreview';
 import { DocsChanged } from '../components/DocsChanged';
@@ -130,6 +131,35 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
     [purchase.criteria, factsData.facts],
   );
 
+  // Скачать один доп. бланк отдельным файлом: POST к /api/tp/{format} с part=application и только этим бланком.
+  const downloadDetectedForm = useCallback(async (df: DetectedForm) => {
+    const ext = FILE_FORMATS[format];
+    try {
+      const res = await fetch(`/api/tp/${format}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          part: 'application',
+          subject: purchase.subject,
+          form: { title: df.title, source: df.source, participantFields: [], consent: '', hasPrice: false, priceNote: '', smeDeclaration: '', goodsTableHeaders: [] },
+          detectedForms: [df],
+          goods: [],
+          items: [],
+        }),
+      });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${df.title || 'Бланк'}.${ext.ext}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // скачивание упало — игнорируем тихо
+    }
+  }, [format, purchase.subject]);
+
   if (!my.ready || !files.meReady) return <p className="text-sm text-muted-foreground">Собираю пакет документов…</p>;
 
   const law = purchase.kind.match(/(?<!\d)(44|223)-ФЗ/)?.[0] ?? '';
@@ -216,6 +246,7 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
       scoringReport={appScoringReport}
       tpForm={tp?.form}
       detectedForms={tp?.detectedForms ?? []}
+      onDownloadForm={downloadDetectedForm}
     />
   );
 }

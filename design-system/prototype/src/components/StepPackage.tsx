@@ -453,12 +453,24 @@ function ScoringPanel({ report }: { report: ScoringReport }) {
 
 // ——— Формы заказчика: паспорт форм ———
 
-function FormsPanel({ form, detectedForms }: { form: TpForm; detectedForms: DetectedForm[] }) {
+function FormsPanel({
+  form,
+  detectedForms,
+  format,
+  onDownloadForm,
+}: {
+  form: TpForm;
+  detectedForms: DetectedForm[];
+  format: FileFormat;
+  onDownloadForm?: (df: DetectedForm) => void;
+}) {
   const hasMain = !!form.source || (form.title !== 'Техническое предложение' && !!form.title);
   const hasGoods = form.goodsTableHeaders.length > 0;
   const detected = detectedForms.map((f) => ({
+    raw: f,
     title: f.title,
     source: f.source,
+    pages: f.pages,
     total: f.fields.length,
     filled: f.fields.filter((fld) => fld.value.trim() !== '').length,
   }));
@@ -512,22 +524,32 @@ function FormsPanel({ form, detectedForms }: { form: TpForm; detectedForms: Dete
           const emptyLabel = empty === 1 ? 'поле' : empty < 5 ? 'поля' : 'полей';
           return (
             <li key={i} className="px-4 py-3">
-              <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-medium truncate">{f.title}</p>
-                  {f.source && (
-                    <p className="mt-0.5 text-[11px] text-muted-foreground truncate">{f.source}</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-[13px] font-medium truncate">{f.title}</p>
+                    <Badge tone={done ? 'success' : 'warn'}>
+                      {f.total === 0 ? 'пусто' : `${f.filled}/${f.total}`}
+                    </Badge>
+                  </div>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
+                    {f.source && <span className="truncate max-w-[200px]">{f.source}</span>}
+                    {f.pages && <span className="font-mono shrink-0">стр. {f.pages}</span>}
+                  </div>
+                  {!done && (
+                    <p className="mt-1 text-[11px] text-warn-foreground">
+                      {empty} {emptyLabel} — дописывает участник
+                    </p>
                   )}
                 </div>
-                <Badge tone={done ? 'success' : 'warn'}>
-                  {f.total === 0 ? 'пусто' : `${f.filled}/${f.total}`}
-                </Badge>
+                {onDownloadForm && (
+                  <Tooltip content={`Скачать бланк отдельным файлом ${EXT[format]}`} side="top">
+                    <IconButton label="Скачать бланк" onClick={() => onDownloadForm(f.raw)}>
+                      <Download className="size-4" />
+                    </IconButton>
+                  </Tooltip>
+                )}
               </div>
-              {!done && (
-                <p className="mt-1 text-[11px] text-warn-foreground">
-                  {empty} {emptyLabel} — дописывает участник
-                </p>
-              )}
             </li>
           );
         })}
@@ -676,6 +698,7 @@ export function StepPackage({
   scoringReport: scoringRep,
   tpForm,
   detectedForms,
+  onDownloadForm,
 }: {
   hasTp: boolean;
   // Блок под заголовком шага — например, «документы закупки изменились».
@@ -714,6 +737,8 @@ export function StepPackage({
   // Формы заказчика — паспорт форм (FormsPanel): главная форма + доп. бланки из detectedForms.
   tpForm?: TpForm;
   detectedForms?: DetectedForm[];
+  // Скачать отдельный бланк как файл (вызывается из FormsPanel).
+  onDownloadForm?: (df: DetectedForm) => void;
 }) {
   const [openPart, setOpenPart] = useState<TpPart | null>(null);
   const [redo, setRedo] = useState(false);
@@ -874,7 +899,14 @@ export function StepPackage({
           </Card>
 
           {/* Формы заказчика: паспорт форм */}
-          {tpForm && <FormsPanel form={tpForm} detectedForms={detectedForms ?? []} />}
+          {tpForm && (
+            <FormsPanel
+              form={tpForm}
+              detectedForms={detectedForms ?? []}
+              format={format}
+              onDownloadForm={onDownloadForm}
+            />
+          )}
 
           {/* Сборка заявки по 7 шагам */}
           {buildReport && <BuildPanel report={buildReport} />}

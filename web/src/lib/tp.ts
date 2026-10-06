@@ -10,6 +10,7 @@ const quote = z
 const DetectedFormSchema = z.object({
   source: z.string().describe("Где в документах эта форма, например «Документация, приложение № 3»"),
   title: z.string().describe("Название формы по документу, дословно"),
+  pages: z.string().optional().describe("Страницы формы в исходном документе, например «31–33» или «37»; пустая строка, если страницы неизвестны"),
   fields: z
     .array(
       z.object({

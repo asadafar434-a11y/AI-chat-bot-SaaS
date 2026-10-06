@@ -20,7 +20,7 @@ export type DocxRequest = {
   goods?: Loose<{ name: string; characteristics: string; quantity: string }>[];
   items?: Loose<{ clause: string; requirement: string; offer: string }>[];
   // Дополнительные бланки заказчика, найденные ИИ в документах закупки.
-  detectedForms?: Loose<{ source: string; title: string; fields: Loose<{ label: string; value: string }>[] }>[];
+  detectedForms?: Loose<{ source: string; title: string; pages?: string; fields: Loose<{ label: string; value: string }>[] }>[];
   cast?: { clause?: unknown; rows?: Loose<CastLine>[] };
   price?: unknown;
   profile?: Record<string, unknown>;
@@ -96,6 +96,7 @@ function sourceFromRequest(body: DocxRequest): SourceResult {
       .map((df) => ({
         source: text(df.source, 300),
         title: text(df.title, 300),
+        pages: typeof df.pages === "string" ? df.pages.slice(0, 40) : undefined,
         fields: list<{ label?: unknown; value?: unknown }>(df.fields)
           .slice(0, 100)
           .map((f) => ({ label: text(f.label, 300), value: text(f.value, 2000) })),

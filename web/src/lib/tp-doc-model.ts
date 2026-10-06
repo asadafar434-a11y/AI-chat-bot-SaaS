@@ -344,7 +344,7 @@ function genericApplicationBody({ form, goods, items, detectedForms, price, prof
   if (detectedForms?.length) {
     for (const df of detectedForms) {
       body.push(
-        para([run(df.source || df.title, { size: 10 })], { align: "right", after: 6 }),
+        para([run([df.source || df.title, df.pages ? `стр. ${df.pages}` : ""].filter(Boolean).join(" · "), { size: 10 })], { align: "right", after: 6 }),
         para([run(df.title, { bold: true })], { align: "center", before: 18, after: 8 }),
         table([
           headerRow([["Наименование сведений", 60], ["Значение", 40]]),
