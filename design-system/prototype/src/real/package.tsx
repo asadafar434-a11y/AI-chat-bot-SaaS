@@ -214,6 +214,8 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
       validation={validationResult}
       auditReport={appAuditReport}
       scoringReport={appScoringReport}
+      tpForm={tp?.form}
+      detectedForms={tp?.detectedForms ?? []}
     />
   );
 }
