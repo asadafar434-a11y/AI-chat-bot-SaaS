@@ -55,7 +55,7 @@ export function fileRows(p: Purchase, state: FilesState): FileRow[] {
   ];
   if (!p.tp) return rows;
 
-  for (const part of partsOf(p.tp.form, p.criteria, p.kind).filter((x) => x !== "tp")) {
+  for (const part of partsOf(p.tp.form, p.criteria, p.kind, p.tp.detectedForms).filter((x) => x !== "tp")) {
     const row = (sub: string, badge: BadgeInfo) =>
       rows.push({ part, title: PART_TITLES[part], sub, badge: state.writing === part ? WRITING : stale ? REVIEW : badge, action: "download" });
     if (p.sample) {

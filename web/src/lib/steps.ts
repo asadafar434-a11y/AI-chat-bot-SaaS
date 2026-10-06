@@ -62,7 +62,7 @@ export function stepsOf(p: Purchase, profile?: Profile): Step[] {
   // Только то, что держит подачу: площадка передаст сама, «не требуется» и «по желанию» отметки не ждут.
   const asked = requiredItems(p, profile);
   const ready = asked.filter((d) => (p.submitReady ?? []).includes(d.text)).length;
-  const files = p.tp ? partsOf(p.tp.form, p.criteria, p.kind).length : 0;
+  const files = p.tp ? partsOf(p.tp.form, p.criteria, p.kind, p.tp.detectedForms).length : 0;
   // Документы закупки изменились после составления ТП: сначала проверить, что оно актуально, потом вписывать (lib/doc-changes.ts).
   const stale = tpChanges(p) !== null;
 

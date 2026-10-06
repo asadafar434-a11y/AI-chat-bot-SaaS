@@ -36,11 +36,25 @@ export function criteriaRowsFor(criteria: Criteria | undefined, part: "experienc
 // требует форма заказчика; сведения об опыте и о специалистах — если за них дают баллы по порядку оценки.
 // Заявка (application) — единый бланк формы заказчика: ИИ нашёл форму в документах (form.source непустой)
 // или вид закупки — запрос котировок (тогда форма типовая ЕАИСТ и источник появится после анализа).
-export const partsOf = (form: TpForm, criteria?: Criteria, kind?: string): TpPart[] => [
+// Наши документы, которые заменяет бланк заказчика того же вида: свой документ тогда не пишем, а бланк заполняем нашими данными.
+const CUSTOMER_BLANK: Partial<Record<TpPart, (title: string) => boolean>> = {
+  participant: (t) => /анкет/i.test(t) && !/опыт|специалист|работник/i.test(t),
+  declaration: (t) => /декларац/i.test(t) && /малого|субъект/i.test(t),
+  price: (t) => /цен|финансов/i.test(t),
+  experience: (t) => /опыт/i.test(t),
+  staff: (t) => /специалист|работник|персонал|кадр|трудов/i.test(t),
+};
+
+export const blankReplaces = (part: TpPart, forms: { title: string }[] = []) => {
+  const test = CUSTOMER_BLANK[part];
+  return !!test && forms.some((f) => test(f.title));
+};
+
+export const partsOf = (form: TpForm, criteria?: Criteria, kind?: string, detectedForms?: { title: string }[]): TpPart[] => [
   "tp",
-  ...(participantFromPlatform(kind) ? [] : (["participant"] as const)),
-  ...(form.smeDeclaration ? (["declaration"] as const) : []),
-  ...(form.hasPrice ? (["price"] as const) : []),
-  ...EVIDENCE_RULES.filter(([part]) => criteriaRowsFor(criteria, part).length > 0).map(([part]) => part),
+  ...(participantFromPlatform(kind) || blankReplaces("participant", detectedForms) ? [] : (["participant"] as const)),
+  ...(form.smeDeclaration && !blankReplaces("declaration", detectedForms) ? (["declaration"] as const) : []),
+  ...(form.hasPrice && !blankReplaces("price", detectedForms) ? (["price"] as const) : []),
+  ...EVIDENCE_RULES.filter(([part]) => criteriaRowsFor(criteria, part).length > 0 && !blankReplaces(part, detectedForms)).map(([part]) => part),
   ...((form.source.trim() || /запрос котировок/i.test(kind ?? "")) ? (["application"] as const) : []),
 ];

@@ -163,7 +163,7 @@ export function useApplicationFilesOf({ purchase, documents, update }: Applicati
     run("all", async () => {
       let parts = purchase.parts;
       const files: object[] = [];
-      for (const part of partsOf(current.form, purchase.criteria, purchase.kind)) {
+      for (const part of partsOf(current.form, purchase.criteria, purchase.kind, current.detectedForms)) {
         const made = await payloadOf(current, part, parts);
         parts = made.parts;
         files.push({ part, ...made.payload });

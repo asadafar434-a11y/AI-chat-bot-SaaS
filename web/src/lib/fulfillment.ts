@@ -412,7 +412,7 @@ export function contextOf(p: Purchase, profile?: Profile): PlanContext {
     participant: participantOf(profile),
     headSigns: headSignsOf(profile),
     points: p.criteria?.howWins === "points",
-    parts: partsOf(p.tp?.form ?? PLAIN_FORM, p.criteria, p.kind),
+    parts: partsOf(p.tp?.form ?? PLAIN_FORM, p.criteria, p.kind, p.tp?.detectedForms),
   };
 }
 
