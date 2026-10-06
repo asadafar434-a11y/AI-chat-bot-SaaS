@@ -38,11 +38,11 @@ export function criteriaRowsFor(criteria: Criteria | undefined, part: "experienc
 // или вид закупки — запрос котировок (тогда форма типовая ЕАИСТ и источник появится после анализа).
 // Наши документы, которые заменяет бланк заказчика того же вида: свой документ тогда не пишем, а бланк заполняем нашими данными.
 const CUSTOMER_BLANK: Partial<Record<TpPart, (title: string) => boolean>> = {
-  participant: (t) => /анкет/i.test(t) && !/опыт|специалист|работник/i.test(t),
+  participant: (t) => /анкет|сведения об участнике/i.test(t) && !/опыт|специалист|работник/i.test(t),
   declaration: (t) => /декларац/i.test(t) && /малого|субъект/i.test(t),
   price: (t) => /цен|финансов/i.test(t),
   experience: (t) => /опыт/i.test(t),
-  staff: (t) => /специалист|работник|персонал|кадр|трудов/i.test(t),
+  staff: (t) => /специалист|работник|персонал(?!ьн)|кадров|трудов\S* ресурс/i.test(t),
 };
 
 export const blankReplaces = (part: TpPart, forms: { title: string }[] = []) => {

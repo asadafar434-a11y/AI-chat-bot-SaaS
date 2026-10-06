@@ -53,4 +53,6 @@ test("бланк заказчика заменяет наш документ т�
   assert.ok(blankReplaces("staff", [{ title: "Сведения о специалистах" }]));
   assert.ok(!blankReplaces("experience", [{ title: "Декларация о добросовестности" }]));
   assert.ok(!blankReplaces("tp", [{ title: "Техническое предложение" }]));
+  assert.ok(blankReplaces("participant", [{ title: "Сведения об участнике" }]));
+  assert.ok(!blankReplaces("staff", [{ title: "Согласие на обработку персональных данных" }]));
 });
