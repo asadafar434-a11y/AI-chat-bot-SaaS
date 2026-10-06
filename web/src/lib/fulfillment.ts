@@ -441,7 +441,9 @@ function statusOf(rule: RulePlan, ready: boolean, composed: boolean, part: "done
   if (rule.mode === "platform" || rule.mode === "not_required") return "none";
   if (rule.mode === "compose") {
     if (!composed || part === "todo") return "todo";
-    return ready && part === "done" ? "done" : "confirm";
+    if (ready && part === "done") return "done";
+    // Без приложенной декларации заявку отклоняют (протокол), поэтому не отмеченная — блокирует подачу.
+    return rule.part === "declaration" ? "todo" : "confirm";
   }
   if (ready) return "done";
   return rule.mode === "confirm" || !rule.mandatory ? "confirm" : "todo";
