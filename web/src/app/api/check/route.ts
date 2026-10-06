@@ -8,6 +8,7 @@ import { CHECK_INSTRUCTIONS } from "@/lib/check-prompt";
 import { quoteChecker } from "@/lib/quotes";
 import type { SentDocument } from "@/lib/read-documents";
 import { badRequest, readJson, sentDocuments } from "@/lib/read-json";
+import { checkKnowledgeBlock } from "@/lib/kb-check";
 
 export const maxDuration = 300;
 
@@ -48,11 +49,13 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Фрагменты базы знаний — после заявки и только как справка: документы закупки остаются главными.
+    const knowledge = await checkKnowledgeBlock();
     const draft = await askJson({
       label: "check",
       appId: appIdOf(request),
       documents,
-      extra: applicationBlocks(application),
+      extra: [...applicationBlocks(application), ...(knowledge ? [{ type: "text" as const, text: "Фрагменты базы знаний (справка, не документы закупки; при расхождении верны документы закупки):\n\n" + knowledge }] : [])],
       instructions: CHECK_INSTRUCTIONS,
       schema: CheckSchema,
       signal: request.signal,

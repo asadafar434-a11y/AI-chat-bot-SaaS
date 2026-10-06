@@ -176,3 +176,32 @@ export async function answerWithKnowledge(deps: RagDeps, input: RagInput): Promi
   });
   return { status: "answered", text: answer.text, model: answer.model, offered: block.snippets, used: cited.used, unknownCitations: cited.unknown };
 }
+
+/**
+ * Только поиск и сборка блока для модели, без вызова модели: для проверки заявки, где ответ модели
+ * уже получает свой запрос. Возвращает null, если подходящих фрагментов нет.
+ */
+export async function retrieveKnowledgeBlock(
+  deps: Pick<RagDeps, "store" | "embedder" | "log" | "now">,
+  input: { query: string; visibility: Visibility; topK?: number; maxChars?: number; label: string },
+): Promise<string | null> {
+  const log = deps.log ?? defaultLog;
+  const now = deps.now ?? Date.now;
+  const started = now();
+  const hits = await searchKnowledge(deps.store, deps.embedder, {
+    query: input.query,
+    visibility: input.visibility,
+    topK: input.topK ?? TOP_K_DEFAULT,
+  });
+  const block = buildKnowledgeBlock(hits, input.maxChars ?? KB_MAX_CHARS);
+  log({
+    event: "kb_retrieve",
+    label: input.label,
+    queryHash: shortHash(input.query),
+    scope: input.visibility.organizationId ? "org+global" : "global",
+    retrieved: hits.map((h) => ({ documentId: h.documentId, chunkId: h.chunkId, score: +h.score.toFixed(4) })),
+    used: block.snippets.map((s) => s.label),
+    latencyMs: now() - started,
+  });
+  return block.snippets.length ? block.text : null;
+}
