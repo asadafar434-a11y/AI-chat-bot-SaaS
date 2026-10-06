@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { EisNormalizedDocument } from "../server/eis/extract/types.ts";
-import { documentText, documentTypeOf, reportOf, summarize } from "./kb-folder.ts";
+import { dedupeByText, documentText, documentTypeOf, reportOf, summarize } from "./kb-folder.ts";
 import { localEmbedder } from "./kb-embed.ts";
 import { ingestDocument } from "./kb-ingest.ts";
 import { createMemoryKbStore } from "./kb-store.ts";
@@ -91,4 +91,18 @@ test("база сохраняется в файл и читается обрат
   assert.equal(hits[0]?.documentName, "Анкета");
   const other = await searchKnowledge(restored, localEmbedder, { query: "опыт оказания услуг", visibility: { organizationId: null } });
   assert.equal(other.length, 0, "документ организации не виден общей базе после загрузки из файла");
+});
+
+test("одинаковые тексты: одна копия, обычный файл важнее вложения архива и папки «архив»", () => {
+  const { kept, duplicates } = dedupeByText([
+    { path: "архив 223/Декларация.pdf", text: "Декларация" },
+    { path: "44/Декларация.pdf", text: "Декларация" },
+    { path: "44/x.zip!Декларация.pdf", text: "Декларация" },
+    { path: "44/Анкета.docx", text: "Анкета" },
+  ]);
+  assert.deepEqual(kept, ["44/Анкета.docx", "44/Декларация.pdf"]);
+  assert.deepEqual(duplicates, [
+    { path: "44/x.zip!Декларация.pdf", of: "44/Декларация.pdf" },
+    { path: "архив 223/Декларация.pdf", of: "44/Декларация.pdf" },
+  ]);
 });

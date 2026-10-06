@@ -12,11 +12,11 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { GOLD_FOLDER } from "../src/lib/gold-folder.ts";
-import { ingestDocument } from "../src/lib/kb-ingest.ts";
-import { documentTypeOf, documentText, flattenReports, reportOf, summarize, type FileReport } from "../src/lib/kb-folder.ts";
+import { deleteDocument, ingestDocument } from "../src/lib/kb-ingest.ts";
+import { dedupeByText, documentTypeOf, documentText, flattenReports, reportOf, summarize, type FileReport } from "../src/lib/kb-folder.ts";
 import { localEmbedder } from "../src/lib/kb-embed.ts";
 import { createMemoryKbStore, type KbSnapshot } from "../src/lib/kb-store.ts";
-import type { KbOwner } from "../src/lib/kb-types.ts";
+import { ownerKeyOf, type KbOwner } from "../src/lib/kb-types.ts";
 import { extractDocument } from "../src/server/eis/extract/pipeline.ts";
 import { NoopOcrProvider } from "../src/server/eis/extract/ocr.ts";
 import type { EisNormalizedDocument } from "../src/server/eis/extract/types.ts";
@@ -93,6 +93,7 @@ async function main() {
   let updated = 0;
   let unchanged = 0;
   let skipped = 0;
+  let removed = 0;
 
   const items = extracted.flatMap(({ path, doc }) => {
     const walkChildren = (p: string, d: EisNormalizedDocument): { path: string; doc: EisNormalizedDocument }[] =>
@@ -103,13 +104,28 @@ async function main() {
     return [{ path, doc }, ...walkChildren(path, doc)];
   });
 
-  for (const { path, doc } of items) {
-    if (doc.document.format === "zip") continue;
-    const text = documentText(doc);
-    if (!text || doc.extraction.status === "failed") {
-      skipped++;
-      continue;
+  // Одинаковые тексты (например, один и тот же файл в корне, в «архив 223» и в zip) — одна копия в базе.
+  // Копии, которые уже попали в базу раньше, снимаем с поиска.
+  const withText = items
+    .filter(({ doc }) => doc.document.format !== "zip" && doc.extraction.status !== "failed")
+    .map(({ path, doc }) => ({ path, doc, text: documentText(doc) }))
+    .filter((item) => {
+      if (!item.text) skipped++;
+      return !!item.text;
+    });
+  const { kept, duplicates } = dedupeByText(withText.map(({ path, text }) => ({ path, text })));
+  const keep = new Set(kept);
+  for (const dup of duplicates) {
+    const before = await store.getDocument(ownerKeyOf(owner), `folder:${dup.path}`);
+    if (before?.status === "active") {
+      await deleteDocument(store, owner, `folder:${dup.path}`, now);
+      removed++;
     }
+  }
+  if (duplicates.length) console.log(`\nОдинаковые копии (в базу не берём): ${duplicates.length}`, duplicates.map((d) => `\n  ${d.path}  =  ${d.of}`).join(""));
+
+  for (const { path, text } of withText) {
+    if (!keep.has(path)) continue;
     const topPath = path.split("!")[0];
     const result = await ingestDocument(
       store,
@@ -131,7 +147,7 @@ async function main() {
 
   mkdirSync(dirname(storePath), { recursive: true });
   writeFileSync(storePath, JSON.stringify(store.snapshot()));
-  console.log(`\nВ базу: создано ${created}, обновлено ${updated}, без изменений ${unchanged}, пропущено (нет текста) ${skipped}.`);
+  console.log(`\nВ базу: создано ${created}, обновлено ${updated}, без изменений ${unchanged}, пропущено (нет текста) ${skipped}, снято с поиска (старые копии) ${removed}.`);
   console.log(`Файл базы: ${storePath}`);
 }
 

@@ -5,6 +5,7 @@
 // повторил бы те же строки. Скан (PDF без текстового слоя) не читается без OCR, а OCR платный — такие файлы
 // в отчёте помечаются и в базу не попадают, пока не будет разрешения.
 
+import { createHash } from "node:crypto";
 import type { EisNormalizedDocument } from "../server/eis/extract/types.ts";
 import type { GoldKind } from "./gold-folder.ts";
 import type { DocumentType } from "./kb-types.ts";
@@ -67,3 +68,24 @@ const KIND_TYPE: Partial<Record<GoldKind, DocumentType>> = {
 };
 
 export const documentTypeOf = (kind: GoldKind | undefined): DocumentType => (kind && KIND_TYPE[kind]) || "other";
+
+/**
+ * Одинаковые тексты в разных местах папки — одна копия. Какая остаётся: обычный файл важнее вложения архива,
+ * а из архива — важнее папки «архив 223»; при равенстве — по алфавиту пути.
+ */
+export function dedupeByText(items: { path: string; text: string }[]): { kept: string[]; duplicates: { path: string; of: string }[] } {
+  const rank = (path: string) => (path.includes("!") ? 2 : 0) + (path.startsWith("архив") ? 1 : 0);
+  const groups = new Map<string, string[]>();
+  for (const item of items) {
+    const key = createHash("sha256").update(item.text, "utf8").digest("hex");
+    groups.set(key, [...(groups.get(key) ?? []), item.path]);
+  }
+  const kept: string[] = [];
+  const duplicates: { path: string; of: string }[] = [];
+  for (const paths of groups.values()) {
+    const sorted = [...paths].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+    kept.push(sorted[0]);
+    for (const path of sorted.slice(1)) duplicates.push({ path, of: sorted[0] });
+  }
+  return { kept: kept.sort(), duplicates: duplicates.sort((a, b) => a.path.localeCompare(b.path)) };
+}
