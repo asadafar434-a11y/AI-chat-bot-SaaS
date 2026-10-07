@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { titleOf } from '@/lib/purchase';
-import { X, Send, Paperclip, FileText, UserCheck, AlertTriangle } from '../lib/icons';
+import { X, Send, Paperclip, FileText, UserCheck, AlertTriangle, Copy, Check } from '../lib/icons';
 import { AIDisclaimer, IconButton, cx } from './ui';
 import { BotMark } from './BotMark';
 import { Markdown } from './Markdown';
@@ -62,7 +62,7 @@ export function ChatAssistant({
     void chat.send(q, files);
   };
 
-  const place = chat.purchase ? `по закупке «${titleOf(chat.purchase)}»` : 'общие вопросы по 44-ФЗ и 223-ФЗ';
+  const place = chat.purchase ? `по закупке «${titleOf(chat.purchase)}»` : 'спросите о чём угодно';
   const suggestions = SUGGESTIONS[chat.mode];
 
   return (
@@ -125,7 +125,7 @@ export function ChatAssistant({
                 <div className="max-w-[85%] rounded-2xl rounded-bl-sm bg-secondary px-3.5 py-2 text-[13px] leading-snug text-foreground">
                   {chat.purchase
                     ? 'Здравствуйте! Спросите о чём угодно в этой закупке — отвечу по её документам со ссылкой на пункт и статью закона.'
-                    : 'Здравствуйте! Я ИИ-ассистент по тендерам. Отвечу на вопрос по 44-ФЗ и 223-ФЗ со ссылкой на статью закона. Можно приложить файл любого вида — прочитаю, если пойму формат.'}
+                    : 'Здравствуйте! Спросите о чём угодно, не только про тендеры — отвечу на вопрос по 44-ФЗ и 223-ФЗ со ссылкой на статью закона, а на остальное по своим знаниям. Живого поиска в интернете у меня нет: про актуальные цены и организации могу ошибиться. Можно приложить файл любого вида — прочитаю, если пойму формат.'}
                 </div>
               </div>
             )}
@@ -153,6 +153,7 @@ export function ChatAssistant({
                     )}
                     {m.role === 'assistant' ? <Markdown text={m.text} /> : <span className="whitespace-pre-wrap">{m.text}</span>}
                   </div>
+                  {m.role === 'assistant' && <CopyButton text={m.text} />}
                 </div>
               );
             })}
@@ -298,5 +299,25 @@ export function ChatAssistant({
         </div>
       )}
     </>
+  );
+}
+
+// Копирует ответ ассистента в буфер обмена. Буфер недоступен (нет разрешения, небезопасный контекст) —
+// молча ничего не показываем: не выдаём неудачу за успех.
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // буфер обмена недоступен
+    }
+  };
+  return (
+    <IconButton label={copied ? 'Скопировано' : 'Скопировать сообщение'} onClick={copy} side="top" className="mb-0.5 self-end">
+      {copied ? <Check className="size-4 text-success" /> : <Copy className="size-4" />}
+    </IconButton>
   );
 }

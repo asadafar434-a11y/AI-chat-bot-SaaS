@@ -39,6 +39,13 @@ export const Check = (p: IconProps) => (
   </Svg>
 );
 
+export const Copy = (p: IconProps) => (
+  <Svg {...p}>
+    <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+  </Svg>
+);
+
 export const Upload = (p: IconProps) => (
   <Svg {...p}>
     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
