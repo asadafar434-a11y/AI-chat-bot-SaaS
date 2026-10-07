@@ -32,6 +32,7 @@ before(async () => {
   mods.evidence = await server.ssrLoadModule('/src/components/EvidenceBase.tsx');
   mods.base = await server.ssrLoadModule('@/lib/evidence-base.ts');
   mods.form = await server.ssrLoadModule('@/lib/evidence-form.ts');
+  mods.history = await server.ssrLoadModule('/src/components/BidHistory.tsx');
 });
 
 after(async () => {
@@ -39,6 +40,37 @@ after(async () => {
 });
 
 const html = (element) => renderToStaticMarkup(element);
+
+test('история заявок: только настоящие поданные закупки, без примеров; наши цены суммируются; пустой список — подсказка', () => {
+  const base = {
+    files: [],
+    unreadable: [],
+    requirements: {},
+    createdAt: '2026-10-01T10:00:00.000Z',
+    kind: '44-ФЗ · электронный аукцион',
+    deadline: { date: '2026-11-01', time: '10:00', zone: 'МСК' },
+  };
+  const purchases = [
+    { ...base, id: 'a', short: 'Поставка ноутбуков', customer: 'Заказчик Один', price: '1 000 000', submitted: true, tpPrice: 900_000 },
+    { ...base, id: 'b', short: 'Услуги уборки', customer: 'Заказчик Два', price: '500 000', submitted: true },
+    { ...base, id: 'c', short: 'Черновик закупки', customer: 'Заказчик Три', price: '1', submitted: false },
+    { ...base, id: 'd', short: 'Пример закупки', customer: 'Пример', price: '1', submitted: true, sample: true },
+  ];
+  const out = html(h(mods.history.BidHistory, { purchases }));
+  assert.match(out, /Поставка ноутбуков/);
+  assert.match(out, /Услуги уборки/);
+  assert.doesNotMatch(out, /Черновик закупки/, 'не поданная закупка — не в истории');
+  assert.doesNotMatch(out, /Пример закупки/, 'пример — не в истории');
+  assert.match(out, /01\.11\.2026/, 'срок подачи выведен датой');
+  assert.match(out, /900\D+000/, 'наша цена видна в строке');
+  assert.doesNotMatch(out, /Победа|Проигрыш|Место победителя|winnerPrice/i, 'итогов, которых нет, не выдумываем');
+
+  const empty = html(h(mods.history.BidHistory, { purchases: [] }));
+  assert.match(empty, /Пока ни одной поданной заявки/);
+
+  const loading = html(h(mods.history.BidHistory, { purchases: null }));
+  assert.doesNotMatch(loading, /Пока ни одной поданной заявки/, 'пока закупки не загружены, пустой подсказки ещё нет');
+});
 
 test('ответ ассистента: чужой HTML, скрипты и опасные ссылки не попадают на страницу', () => {
   const answer = [

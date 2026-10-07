@@ -1,6 +1,6 @@
 // Справочники интерфейса: статусы и способы закупки, виды полей заявки, формат сумм. Всё, что раньше было здесь
 // выдуманным примером закупки, теперь берётся из настоящей закупки (web/src/lib). Остались только примеры экранов
-// «Поиск закупок» и «История заявок»: они помечены «скоро» и показывают пример.
+// «Поиск закупок»: он помечен «скоро» и показывает пример. История заявок — из настоящих закупок (BidHistory.tsx).
 
 export type CheckStatus = 'ok' | 'warn' | 'missing';
 
@@ -97,96 +97,6 @@ export const foundTenders: FoundTender[] = [
   { id: '0173200001326000011', title: 'Поставка телекоммуникационного оборудования для центра обработки данных', customer: 'ФСО России', region: 'Москва', nmck: 22_400_000, law: '44-ФЗ', procedure: 'single', platform: 'ЕИС', okpd: '26.30.22', deadline: '2026-10-20', publishedAt: '2026-09-29', relevance: 62 },
   { id: '0162300001526000007', title: 'Поставка медицинского оборудования для диагностики', customer: 'ФГБУ «НМИЦ онкологии»', region: 'Санкт-Петербург', nmck: 18_700_000, law: '44-ФЗ', procedure: 'auction', platform: 'Сбербанк-АСТ', okpd: '32.50.13', deadline: '2026-11-15', publishedAt: '2026-09-30', relevance: 43 },
   { id: '0173200001326000008', title: 'Поставка офисной мебели для государственных учреждений', customer: 'Минтруд России', region: 'Москва', nmck: 5_200_000, law: '44-ФЗ', procedure: 'auction', platform: 'РТС-тендер', okpd: '31.01.11', deadline: '2026-10-22', publishedAt: '2026-10-02', relevance: 31 },
-];
-
-// История поданных заявок с результатами. Итоги с площадок — в разработке, это пример.
-export type BidResult = 'won' | 'lost' | 'pending';
-export type BidRecord = {
-  id: string;
-  title: string;
-  customer: string;
-  date: string;
-  law: string;
-  procedure: Procedure;
-  ourPrice: number;
-  winnerPrice: number;
-  result: BidResult;
-  rank: number;
-  participants: number;
-};
-
-export const bidResultMeta: Record<BidResult, { label: string; tone: 'success' | 'danger' | 'warn' }> = {
-  won: { label: 'Победа', tone: 'success' },
-  lost: { label: 'Проигрыш', tone: 'danger' },
-  pending: { label: 'На рассмотрении', tone: 'warn' },
-};
-
-export const bidHistory: BidRecord[] = [
-  {
-    id: '0173200001325001501',
-    title: 'Поставка компьютерной техники для АУ «МФЦ»',
-    customer: 'ГБУ «МФЦ города Москвы»',
-    date: '12 сен 2026',
-    law: '44-ФЗ',
-    procedure: 'auction',
-    ourPrice: 3_120_000,
-    winnerPrice: 3_120_000,
-    result: 'won',
-    rank: 1,
-    participants: 4,
-  },
-  {
-    id: '0173200001325001777',
-    title: 'Поставка серверного оборудования и СХД',
-    customer: 'Департамент ИТ г. Москвы',
-    date: '05 сен 2026',
-    law: '44-ФЗ',
-    procedure: 'auction',
-    ourPrice: 11_800_000,
-    winnerPrice: 11_800_000,
-    result: 'pending',
-    rank: 1,
-    participants: 6,
-  },
-  {
-    id: '32100031122',
-    title: 'Обслуживание оргтехники',
-    customer: 'ПАО «МТС»',
-    date: '28 авг 2026',
-    law: '223-ФЗ',
-    procedure: 'contest',
-    ourPrice: 1_490_000,
-    winnerPrice: 1_355_000,
-    result: 'lost',
-    rank: 3,
-    participants: 7,
-  },
-  {
-    id: '0173200001325001320',
-    title: 'Поставка расходных материалов для печати',
-    customer: 'ГБУЗ «ГКБ №52» ДЗМ',
-    date: '19 авг 2026',
-    law: '44-ФЗ',
-    procedure: 'quotation',
-    ourPrice: 640_000,
-    winnerPrice: 640_000,
-    result: 'won',
-    rank: 1,
-    participants: 3,
-  },
-  {
-    id: '32100029004',
-    title: 'Поставка сетевого оборудования',
-    customer: 'АО «Ростелеком»',
-    date: '07 авг 2026',
-    law: '223-ФЗ',
-    procedure: 'auction',
-    ourPrice: 2_780_000,
-    winnerPrice: 2_610_000,
-    result: 'lost',
-    rank: 2,
-    participants: 5,
-  },
 ];
 
 // Карта полей заявки (Manual Input Engine): что заполнено само, что подтвердить, что вписать, что нельзя

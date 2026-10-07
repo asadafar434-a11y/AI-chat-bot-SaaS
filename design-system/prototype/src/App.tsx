@@ -114,7 +114,7 @@ function Product() {
               />
             )}
             {view === 'search' && <TenderSearch onAdd={() => {}} />}
-            {view === 'history' && <BidHistory />}
+            {view === 'history' && <BidHistory purchases={purchases} />}
             {view === 'profile' && <Profile />}
             {view === 'tariffs' && <Tariffs />}
             {view === 'workflow' &&
