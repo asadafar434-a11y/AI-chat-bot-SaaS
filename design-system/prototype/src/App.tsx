@@ -33,6 +33,47 @@ const steps = [
   { label: 'Пакет', icon: PackageCheck, hint: 'Скачать документы и отправить специалисту' },
 ];
 
+// Текущий экран читается из адреса (после #) и пишется туда же — обновление страницы и кнопка «назад»
+// браузера не сбрасывают на список закупок, а остаются на том же месте.
+const STEP_KEYS = ['upload', 'analysis', 'price', 'review', 'package'] as const;
+
+function parseHash(): { view: View; activeId: string | null; step: number } {
+  const path = window.location.hash.replace(/^#\/?/, '');
+  const [first, second, third] = path.split('/').filter(Boolean);
+  if (first === 'p' && second) {
+    const idx = STEP_KEYS.indexOf(third as (typeof STEP_KEYS)[number]);
+    return { view: 'workflow', activeId: second, step: idx >= 0 ? idx : 0 };
+  }
+  if (first === 'new') return { view: 'workflow', activeId: null, step: 0 };
+  if (first === 'search' || first === 'history' || first === 'profile' || first === 'tariffs') {
+    return { view: first, activeId: null, step: 0 };
+  }
+  return { view: 'tenders', activeId: null, step: 0 };
+}
+
+function hashFor(view: View, activeId: string | null, step: number): string {
+  if (view === 'workflow') return activeId ? `#/p/${activeId}/${STEP_KEYS[step] ?? 'upload'}` : '#/new';
+  return view === 'tenders' ? '#/' : `#/${view}`;
+}
+
+// Выбор темы переживает перезагрузку (localStorage), а без сохранённого выбора — следует системной теме.
+const THEME_KEY = 'theme';
+
+function readStoredTheme(): boolean | null {
+  try {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved === 'dark') return true;
+    if (saved === 'light') return false;
+  } catch {
+    // недоступно (приватный режим и т.п.) — не страшно, останется системная тема
+  }
+  return null;
+}
+
+function systemPrefersDark(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches === true;
+}
+
 export default function App() {
   return (
     <ConsentGate>
@@ -42,11 +83,11 @@ export default function App() {
 }
 
 function Product() {
-  const [view, setView] = useState<View>('tenders');
+  const [view, setView] = useState<View>(() => parseHash().view);
   // null — новая закупка, документы ещё не загружены.
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [step, setStep] = useState(0);
-  const [dark, setDark] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(() => parseHash().activeId);
+  const [step, setStep] = useState(() => parseHash().step);
+  const [dark, setDark] = useState(() => readStoredTheme() ?? systemPrefersDark());
   const [chatOpen, setChatOpen] = useState(false);
   const { purchases } = usePurchases();
   const profile = useProfile();
@@ -55,7 +96,29 @@ function Product() {
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
+    try {
+      localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light');
+    } catch {
+      // недоступно — тема просто не переживёт перезагрузку
+    }
   }, [dark]);
+
+  // Текущий экран — в адресе, чтобы обновление страницы, кнопка «назад» и прямая ссылка возвращали на то же место.
+  useEffect(() => {
+    const next = hashFor(view, activeId, step);
+    if (window.location.hash !== next) window.location.hash = next;
+  }, [view, activeId, step]);
+
+  useEffect(() => {
+    const onHashChange = () => {
+      const parsed = parseHash();
+      setView(parsed.view);
+      setActiveId(parsed.activeId);
+      setStep(parsed.step);
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
 
   // Просим браузер не стирать данные сайта при нехватке места; не разрешит — остаётся копия файлом в «Профиле компании».
   useEffect(() => {
