@@ -12,7 +12,7 @@ export type Notice = { id: string; title: string; status: 'sent' | 'replied'; re
 
 const nav: { id: View; label: string; icon: typeof Briefcase; soon?: string }[] = [
   { id: 'tenders', label: 'Мои закупки', icon: Briefcase },
-  { id: 'search', label: 'Поиск закупок', icon: Search },
+  { id: 'search', label: 'Поиск закупок', icon: Search, soon: 'Поиск по площадкам — в разработке. Сейчас на экране пример.' },
   { id: 'history', label: 'История заявок', icon: History },
   { id: 'profile', label: 'Профиль компании', icon: User },
   { id: 'tariffs', label: 'Тарифы', icon: Wallet },

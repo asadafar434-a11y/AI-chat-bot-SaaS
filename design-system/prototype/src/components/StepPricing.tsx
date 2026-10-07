@@ -3,7 +3,7 @@ import { TrendingDown, Info, ChevronDown, AlertTriangle, CheckCircle2 } from '..
 import { Button, Card, HelpTip, Tooltip, cx } from './ui';
 import { priceFloor, type PriceCalc } from '@/lib/price-floor';
 
-const MAX = 30; // шкала ползунка, % снижения
+const MAX = 99; // шкала ползунка, % снижения — закон потолок не ставит, антидемпинг свой, независимо от шкалы
 const ANTI_DUMPING = 25; // ч. 1–2 ст. 37 44-ФЗ
 
 // Где на дорожке значение: центр бегунка ходит от 12 px до «ширина − 12 px».
@@ -122,7 +122,7 @@ export function StepPricing({
                 </span>
               </Tooltip>
             </div>
-            <span className="absolute right-0 top-0">30%</span>
+            <span className="absolute right-0 top-0">{MAX}%</span>
           </div>
 
           <div className="mt-3 space-y-2.5 text-sm">

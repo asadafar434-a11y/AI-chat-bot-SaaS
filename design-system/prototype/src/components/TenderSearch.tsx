@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Calendar, Check, ChevronLeft, ChevronRight, ExternalLink, Plus, Search, Sparkles, X } from '../lib/icons';
-import { Button, Card, Badge, Tooltip } from './ui';
+import { Button, Card, Badge, Soon, Tooltip } from './ui';
 import { foundTenders, procedureMeta, rub, type FoundTender, type Procedure } from '../lib/data';
 
 const REGIONS = [
@@ -84,7 +84,6 @@ export function TenderSearch({ onAdd }: { onAdd: (id: string) => void }) {
   const [sort, setSort] = useState<Sort>('relevance');
   const [page, setPage] = useState(1);
   const [added, setAdded] = useState<Record<string, boolean>>({});
-  const [eisNumber, setEisNumber] = useState('');
 
   const setFilter = <K extends keyof Filters>(k: K, v: Filters[K]) => {
     setFilters((f) => ({ ...f, [k]: v }));
@@ -113,10 +112,13 @@ export function TenderSearch({ onAdd }: { onAdd: (id: string) => void }) {
     <div className="animate-fade-up space-y-6">
       {/* Заголовок */}
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Поиск закупок</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-semibold tracking-tight">Поиск закупок</h1>
+          <Soon />
+        </div>
         <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
-          Актуальные лоты из ЕИС, РТС-тендер, Сбербанк-АСТ и Газпромбанка — отсортированы по совпадению
-          с вашими кодами ОКПД и профилем компании.
+          Поиск по площадкам — в разработке. Сейчас на экране пример: так будут выглядеть лоты из ЕИС,
+          РТС-тендер, Сбербанк-АСТ и Газпромбанка, отсортированные по совпадению с вашими кодами ОКПД и профилем компании.
         </p>
       </div>
 
@@ -284,27 +286,26 @@ export function TenderSearch({ onAdd }: { onAdd: (id: string) => void }) {
         <Pagination page={page} total={totalPages} onChange={(p) => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
       )}
 
-      {/* Загрузить по номеру ЕИС */}
+      {/* Загрузить по номеру ЕИС — скоро, как и такое же поле на шаге «Загрузка» */}
       <Card className="p-4">
-        <p className="text-[13px] font-medium">Загрузить по реестровому номеру ЕИС</p>
-        <p className="mt-0.5 text-[12px] text-muted-foreground">
-          Найдите закупку на zakupki.gov.ru и вставьте её номер — документы загрузятся автоматически
+        <p className="flex items-center gap-2 text-[13px] font-medium">
+          Загрузить по реестровому номеру ЕИС
+          <Soon />
         </p>
-        <form
-          className="mt-3 flex items-center gap-2"
-          onSubmit={(e) => { e.preventDefault(); /* TODO: real import */ }}
-        >
+        <p className="mt-0.5 text-[12px] text-muted-foreground">
+          Найдите закупку на zakupki.gov.ru и вставьте её номер — документы загрузятся автоматически.
+        </p>
+        <div className="mt-3 flex items-center gap-2 opacity-70">
           <input
-            value={eisNumber}
-            onChange={(e) => setEisNumber(e.target.value)}
+            disabled
+            aria-label="Реестровый номер закупки — скоро"
             placeholder="0173200001326000001"
-            aria-label="Реестровый номер закупки"
-            className="h-9 min-w-[200px] flex-1 rounded-md border border-border bg-background px-3 font-mono text-[13px] outline-none focus:border-foreground placeholder:text-muted-foreground"
+            className="h-9 min-w-[200px] flex-1 cursor-not-allowed rounded-md border border-border bg-background px-3 font-mono text-[13px] outline-none placeholder:text-muted-foreground"
           />
-          <Button type="submit" variant="secondary" disabled={!eisNumber.trim()}>
+          <Button type="button" variant="secondary" disabled>
             Загрузить
           </Button>
-        </form>
+        </div>
       </Card>
     </div>
   );
