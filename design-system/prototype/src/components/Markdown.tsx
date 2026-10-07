@@ -22,7 +22,7 @@ function Inline({ text }: { text: string }) {
         const link = /^\[([^\]]+)\]\(([^)\s]+)\)$/.exec(part);
         if (link)
           return isSafeLink(link[2]) ? (
-            <a key={i} href={link[2]} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+            <a key={i} href={link[2]} target="_blank" rel="noreferrer" className="text-blue-600 underline underline-offset-2 dark:text-blue-400">
               {link[1]}
             </a>
           ) : (
@@ -35,7 +35,7 @@ function Inline({ text }: { text: string }) {
           const [, href, trail] = m;
           return isSafeLink(href) ? (
             <Fragment key={i}>
-              <a href={href} target="_blank" rel="noreferrer" className="break-all underline underline-offset-2">
+              <a href={href} target="_blank" rel="noreferrer" className="break-all text-blue-600 underline underline-offset-2 dark:text-blue-400">
                 {href}
               </a>
               {trail}
