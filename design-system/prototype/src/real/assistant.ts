@@ -3,7 +3,7 @@ import { MAX_CONTEXT_CHARS, type ChatMessage } from '@/lib/chat-types';
 import { streamEvents } from '@/lib/chat-stream';
 import { errorMessage, errorText } from '@/lib/http-error';
 import { aiHeaders } from '@/lib/purchase';
-import { forServer, readDocuments, type SentDocument } from '@/lib/read-documents';
+import { forServer, MAX_FILES, readDocuments, type SentDocument } from '@/lib/read-documents';
 import { useActivePurchase } from './active-purchase';
 
 // Ассистент в окне чата: вопросы к ИИ. Открыта закупка — отвечает по её документам, а переписка хранится в ней
@@ -56,6 +56,11 @@ export function useAssistant() {
     let attached: string[] = [];
 
     if (!purchase && files.length > 0) {
+      if (files.length > MAX_FILES) {
+        setNotice(`За один раз можно приложить не больше ${MAX_FILES} файлов — остальные добавьте следующим разом.`);
+        setStatus('idle');
+        return;
+      }
       setStatus('reading');
       try {
         const result = await readDocuments(files);
@@ -65,9 +70,8 @@ export function useAssistant() {
         setDocuments(docs);
         if (result.failed.length) setNotice(`Не прочитаны: ${result.failed.map((f) => `${f.name} — ${f.reason}`).join('; ')}.`);
       } catch (e) {
+        // Ни один файл не прочитался (например, видео — такой формат пока не поддержан) — вопрос всё равно отправляем.
         setNotice(errorMessage(e));
-        setStatus('idle');
-        return;
       }
     }
 

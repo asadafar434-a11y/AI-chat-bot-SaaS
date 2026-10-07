@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { titleOf } from '@/lib/purchase';
-import { ACCEPTED_FILES } from '@/lib/read-documents';
 import { X, Send, Paperclip, FileText, UserCheck, AlertTriangle } from '../lib/icons';
 import { AIDisclaimer, IconButton, cx } from './ui';
 import { BotMark } from './BotMark';
@@ -126,7 +125,7 @@ export function ChatAssistant({
                 <div className="max-w-[85%] rounded-2xl rounded-bl-sm bg-secondary px-3.5 py-2 text-[13px] leading-snug text-foreground">
                   {chat.purchase
                     ? 'Здравствуйте! Спросите о чём угодно в этой закупке — отвечу по её документам со ссылкой на пункт и статью закона.'
-                    : 'Здравствуйте! Я ИИ-ассистент по тендерам. Отвечу на вопрос по 44-ФЗ и 223-ФЗ со ссылкой на статью закона. Приложите документ — отвечу и по нему.'}
+                    : 'Здравствуйте! Я ИИ-ассистент по тендерам. Отвечу на вопрос по 44-ФЗ и 223-ФЗ со ссылкой на статью закона. Можно приложить файл любого вида — прочитаю, если пойму формат.'}
                 </div>
               </div>
             )}
@@ -253,7 +252,6 @@ export function ChatAssistant({
                   ref={fileRef}
                   type="file"
                   multiple
-                  accept={ACCEPTED_FILES}
                   className="hidden"
                   onChange={(e) => {
                     const files = e.target.files ? [...e.target.files] : [];
@@ -261,7 +259,7 @@ export function ChatAssistant({
                     if (files.length) setAttached((a) => [...a, ...files]);
                   }}
                 />
-                <IconButton label="Приложить документ, скан или фото" onClick={() => fileRef.current?.click()} align="start" className="size-9 border border-border">
+                <IconButton label="Приложить файл — документ, фото, видео, что угодно" onClick={() => fileRef.current?.click()} align="start" className="size-9 border border-border">
                   <Paperclip className="size-4" />
                 </IconButton>
               </>
