@@ -160,10 +160,15 @@ export async function POST(request: Request) {
         }
 
         const client = new Anthropic();
+        // Живой поиск — только в общем чате (не по конкретной закупке): там ответ должен опираться
+        // только на её документы и закон, а не на посторонние страницы из интернета.
+        const tools: Anthropic.Beta.BetaWebSearchTool20260209[] | undefined = general
+          ? [{ type: "web_search_20260209", name: "web_search", max_uses: 5 }]
+          : undefined;
         // Потолок ответа вместе с размышлениями модели: хватает на развёрнутый ответ, а случайный бесконечный ответ
         // стоит вдвое меньше. Упёрся — пользователь увидит «Попросите продолжить».
         const response = client.beta.messages.stream(
-          { ...baseRequest, max_tokens: 32000, cache_control: { type: "ephemeral" }, messages: claudeMessages },
+          { ...baseRequest, max_tokens: 32000, cache_control: { type: "ephemeral" }, messages: claudeMessages, ...(tools && { tools }) },
           { signal: request.signal }
         );
 

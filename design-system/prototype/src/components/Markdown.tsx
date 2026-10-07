@@ -6,7 +6,9 @@ import { isSafeLink } from '@/lib/safe-link';
 
 // **жирный**, _курсив_ и *курсив*, `код`, [текст](ссылка)
 function Inline({ text }: { text: string }) {
-  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)\s]+\)|(?<![\w*])_[^_]+_(?![\w*])|(?<![\w*])\*[^*\s][^*]*\*(?![\w*]))/g).filter(Boolean);
+  const parts = text
+    .split(/(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)\s]+\)|https?:\/\/[^\s<>"'\])]+|(?<![\w*])_[^_]+_(?![\w*])|(?<![\w*])\*[^*\s][^*]*\*(?![\w*]))/g)
+    .filter(Boolean);
   return (
     <>
       {parts.map((part, i) => {
@@ -26,6 +28,22 @@ function Inline({ text }: { text: string }) {
           ) : (
             <Fragment key={i}>{link[1]}</Fragment>
           );
+        // Голый адрес без разметки [текст](ссылка) — модель так тоже пишет; делаем кликабельным отдельно.
+        // Конечную пунктуацию предложения («.», «,» …) из адреса не берём — это не часть ссылки.
+        if (/^https?:\/\//.test(part)) {
+          const m = /^(.*?)([.,;:!?]*)$/.exec(part)!;
+          const [, href, trail] = m;
+          return isSafeLink(href) ? (
+            <Fragment key={i}>
+              <a href={href} target="_blank" rel="noreferrer" className="break-all underline underline-offset-2">
+                {href}
+              </a>
+              {trail}
+            </Fragment>
+          ) : (
+            <Fragment key={i}>{part}</Fragment>
+          );
+        }
         if ((part.startsWith('_') && part.endsWith('_') && part.length > 2) || (part.startsWith('*') && part.endsWith('*') && part.length > 2))
           return <em key={i}>{part.slice(1, -1)}</em>;
         return <Fragment key={i}>{part}</Fragment>;

@@ -92,6 +92,20 @@ test('ответ ассистента: чужой HTML, скрипты и опа
   assert.match(out, /<a href="https:\/\/zakupki\.gov\.ru\/epz" target="_blank" rel="noreferrer"/);
 });
 
+test('ответ ассистента: голый адрес (без разметки [текст](ссылка)) тоже кликабелен; точка в конце предложения — не часть ссылки', () => {
+  const out = html(
+    h(mods.markdown.Markdown, {
+      text: 'Смотрите https://zakupki.gov.ru/epz/order. Ещё источник: https://example.com/a,b — и в скобках (https://example.com/c).',
+    }),
+  );
+  assert.match(out, /<a href="https:\/\/zakupki\.gov\.ru\/epz\/order" target="_blank" rel="noreferrer"/, 'голый адрес стал ссылкой');
+  assert.doesNotMatch(out, /href="https:\/\/zakupki\.gov\.ru\/epz\/order\."/, 'точка в конце предложения не ушла в адрес');
+  assert.match(out, /order<\/a>\./, 'точка осталась обычным текстом после ссылки');
+  assert.match(out, /<a href="https:\/\/example\.com\/a,b"/, 'запятая внутри адреса — часть ссылки, не конец предложения');
+  assert.match(out, /<a href="https:\/\/example\.com\/c"/, 'адрес в скобках стал ссылкой без скобки внутри href');
+  assert.match(out, /<\/a>\)\.<\/p>/, 'закрывающая скобка и точка остались обычным текстом после ссылки');
+});
+
 test('ответ ассистента: разметка по делу — жирный, список, таблица, цитата, код; пустой текст не ломает', () => {
   const out = html(h(mods.markdown.Markdown, { text: '## Итог\n\n**Важно:** `ч. 1 ст. 43`\n\n- первое\n- второе\n\n> цитата закона\n\n| а | б |\n|---|---|\n| 1 | 2 |' }));
   assert.match(out, /<strong[^>]*>Важно:<\/strong>/);
