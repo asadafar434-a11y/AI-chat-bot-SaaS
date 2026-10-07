@@ -89,3 +89,18 @@ export function dedupeByText(items: { path: string; text: string }[]): { kept: s
   }
   return { kept: kept.sort(), duplicates: duplicates.sort((a, b) => a.path.localeCompare(b.path)) };
 }
+
+// Папка «База знаний (нормативная)» — дополняющие источники права, не из эталона конкретной закупки:
+// подзаконные акты и кодексы — нормативный ранг, письма министерств и ФАС — ранг инструкции (разъяснение, не норма).
+const NORMATIVE_FOLDER = "База знаний (нормативная)/";
+const NORMATIVE_SUBFOLDER_TYPE: Record<string, DocumentType> = {
+  "Подзаконные акты": "regulation",
+  "Кодексы и специальные законы": "law",
+  "Письма Минфина и ФАС": "instruction",
+};
+
+export function normativeDocumentType(path: string): DocumentType | null {
+  if (!path.startsWith(NORMATIVE_FOLDER)) return null;
+  const subfolder = path.slice(NORMATIVE_FOLDER.length).split("/")[0];
+  return NORMATIVE_SUBFOLDER_TYPE[subfolder] ?? null;
+}

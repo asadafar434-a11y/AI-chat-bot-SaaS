@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { GOLD_FOLDER } from "../src/lib/gold-folder.ts";
 import { deleteDocument, ingestDocument } from "../src/lib/kb-ingest.ts";
-import { dedupeByText, documentText, documentTypeOf, flattenReports, reportOf, summarize, type FileReport } from "../src/lib/kb-folder.ts";
+import { dedupeByText, documentText, documentTypeOf, flattenReports, normativeDocumentType, reportOf, summarize, type FileReport } from "../src/lib/kb-folder.ts";
 import { localEmbedder } from "../src/lib/kb-embed.ts";
 import { createDbKbStore } from "../src/lib/kb-store-db.ts";
 import { ownerKeyOf, type KbOwner } from "../src/lib/kb-types.ts";
@@ -142,7 +142,8 @@ async function main() {
   });
 
   const withText = items
-    .filter(({ path, doc }) => doc.document.format !== "zip" && (doc.extraction.status !== "failed" || docOverrides.has(path)))
+    // README — пояснение для человека, не знание для базы.
+    .filter(({ path, doc }) => doc.document.format !== "zip" && path.split("/").pop() !== "README.txt" && (doc.extraction.status !== "failed" || docOverrides.has(path)))
     .map(({ path, doc }) => ({ path, doc, text: docOverrides.get(path) ?? documentText(doc) }))
     .filter((item) => {
       if (!item.text) skipped++;
@@ -174,7 +175,7 @@ async function main() {
         name: path.split("/").pop()!.split("!").pop()!,
         source: "папка «Татьяна-Примеры документов»",
         text,
-        meta: { documentType: documentTypeOf(kindOf(topPath)), reliability: "unverified" },
+        meta: { documentType: normativeDocumentType(topPath) ?? documentTypeOf(kindOf(topPath)), reliability: "unverified" },
       },
       now,
     );

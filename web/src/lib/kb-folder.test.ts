@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { EisNormalizedDocument } from "../server/eis/extract/types.ts";
-import { dedupeByText, documentText, documentTypeOf, reportOf, summarize } from "./kb-folder.ts";
+import { dedupeByText, documentText, documentTypeOf, normativeDocumentType, reportOf, summarize } from "./kb-folder.ts";
 import { localEmbedder } from "./kb-embed.ts";
 import { ingestDocument } from "./kb-ingest.ts";
 import { createMemoryKbStore } from "./kb-store.ts";
@@ -105,4 +105,12 @@ test("одинаковые тексты: одна копия, обычный ф�
     { path: "44/x.zip!Декларация.pdf", of: "44/Декларация.pdf" },
     { path: "архив 223/Декларация.pdf", of: "44/Декларация.pdf" },
   ]);
+});
+
+test("нормативная папка: подпапка задаёт тип документа — акты и кодексы нормативны, письма — инструкция", () => {
+  assert.equal(normativeDocumentType("База знаний (нормативная)/Подзаконные акты/ПП № 1352.txt"), "regulation");
+  assert.equal(normativeDocumentType("База знаний (нормативная)/Кодексы и специальные законы/КоАП.txt"), "law");
+  assert.equal(normativeDocumentType("База знаний (нормативная)/Письма Минфина и ФАС/Письмо.txt"), "instruction");
+  assert.equal(normativeDocumentType("База знаний (нормативная)/README.txt"), null, "корень папки — не подпапка с типом");
+  assert.equal(normativeDocumentType("44/Декларация.pdf"), null, "вне нормативной папки — не трогаем");
 });
