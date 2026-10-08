@@ -1,4 +1,4 @@
-import { type ReactNode, type ButtonHTMLAttributes, type RefObject, useEffect, useId, useRef } from 'react';
+import { type ReactNode, type ButtonHTMLAttributes, type KeyboardEvent as ReactKeyboardEvent, type RefObject, useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Info, Bell, Check } from '../lib/icons';
 import { tabTarget } from '@/lib/focus-trap';
@@ -290,6 +290,110 @@ export function Checkbox({
       </span>
       <span className="min-w-0 flex-1">{children}</span>
     </label>
+  );
+}
+
+// Сегментированный контрол: разводит один длинный экран по разделам (вместо «всё в кучу»), разделы не теряются —
+// только прячутся, пока не выбраны (role=tabpanel с hidden), поэтому переключение не сбрасывает их состояние.
+// Клавиатура — как в WAI-ARIA Tabs: стрелки влево/вправо и Home/End двигают фокус и выбор вместе.
+export function Tabs({
+  idPrefix,
+  items,
+  active,
+  onChange,
+  className,
+}: {
+  idPrefix: string;
+  items: { key: string; label: string; badge?: ReactNode }[];
+  active: string;
+  onChange: (key: string) => void;
+  className?: string;
+}) {
+  const refs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  const go = (key: string) => {
+    onChange(key);
+    refs.current[key]?.focus();
+  };
+
+  const onKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    const i = items.findIndex((it) => it.key === active);
+    if (i < 0) return;
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      go(items[(i + 1) % items.length].key);
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      go(items[(i - 1 + items.length) % items.length].key);
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      go(items[0].key);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      go(items[items.length - 1].key);
+    }
+  };
+
+  return (
+    <div
+      role="tablist"
+      onKeyDown={onKeyDown}
+      className={cx('inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-lg border border-border bg-card p-1 shadow-sm', className)}
+    >
+      {items.map((item) => {
+        const selected = item.key === active;
+        return (
+          <button
+            key={item.key}
+            ref={(el) => {
+              refs.current[item.key] = el;
+            }}
+            type="button"
+            role="tab"
+            id={`${idPrefix}-tab-${item.key}`}
+            aria-selected={selected}
+            aria-controls={`${idPrefix}-panel-${item.key}`}
+            tabIndex={selected ? 0 : -1}
+            onClick={() => onChange(item.key)}
+            className={cx(
+              'flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              selected ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {item.label}
+            {item.badge}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function TabPanel({
+  idPrefix,
+  tabKey,
+  active,
+  className,
+  children,
+}: {
+  idPrefix: string;
+  tabKey: string;
+  active: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  const selected = active === tabKey;
+  return (
+    <div
+      role="tabpanel"
+      id={`${idPrefix}-panel-${tabKey}`}
+      aria-labelledby={`${idPrefix}-tab-${tabKey}`}
+      hidden={!selected}
+      tabIndex={0}
+      className={selected ? cx('space-y-6', className) : undefined}
+    >
+      {children}
+    </div>
   );
 }
 

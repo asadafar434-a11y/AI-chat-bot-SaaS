@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { exportBackup, restoreBackup } from '@/lib/backup';
 import { parseBackup } from '@/lib/backup-format';
 import {
@@ -38,7 +38,15 @@ import {
   Upload,
 } from '../lib/icons';
 import { EvidenceBase } from './EvidenceBase';
-import { Badge, Button, Card, HelpTip, IconButton, Tooltip, cx } from './ui';
+import { Badge, Button, Card, HelpTip, IconButton, TabPanel, Tabs, Tooltip, cx } from './ui';
+
+type TabKey = 'profile' | 'evidence' | 'docs' | 'data';
+const TAB_LABELS: Record<TabKey, string> = {
+  profile: 'Реквизиты',
+  evidence: 'База доказательств',
+  docs: 'Образцы и документы',
+  data: 'Данные',
+};
 
 // «Профиль компании»: реквизиты для анкеты, декларации и цены, база доказательств (лицензии, договоры, сотрудники, оборудование,
 // финансы — с источником и сроком), образцы прошлых заявок и копия данных. Вид — прототипа,
@@ -197,6 +205,8 @@ function KindEditor({ doc, onSave, onCancel }: { doc: MyDocument; onSave: (kinds
 }
 
 export function Profile() {
+  const tabId = useId();
+  const [tab, setTab] = useState<TabKey>('profile');
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [meta, setMeta] = useState<ProfileMeta>({ sources: {}, suggestions: [] });
   const [docs, setDocs] = useState<MyDocument[]>([]);
@@ -473,377 +483,407 @@ export function Profile() {
 
   return (
     <div className="animate-fade-up space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Профиль компании</h1>
-          <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
-            Заполните реквизиты один раз — ИИ будет автоматически подставлять их в каждую заявку, декларацию и контракт. Не придётся
-            вводить одни и те же данные для каждой закупки. В техническое предложение реквизиты не попадают никогда: его подают анонимно.
-          </p>
-          <p className="mt-1 font-mono text-[12px] text-muted-foreground">
-            заполнено {profile ? filledCount(profile) : 0} из {PROFILE_KEYS.length}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {saveText && (
-            <span aria-live="polite" className={cx('inline-flex items-center gap-1.5 text-xs', save === 'failed' ? 'text-warn-foreground' : 'text-success')}>
-              {save === 'saved' && <Check className="size-3.5" />} {saveText}
-            </span>
-          )}
-          {sourceDocs.length > 0 && (
-            <Tooltip content="ИИ найдёт реквизиты в ваших анкетах и карточке предприятия и впишет пустые поля." align="end">
-              <Button variant="secondary" onClick={() => void fillFromDocuments()} disabled={filling || !profile}>
-                {filling ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-                {filling ? 'Ищу реквизиты…' : 'Заполнить из документов'}
-              </Button>
-            </Tooltip>
-          )}
-          {editing ? (
-            <>
-              <Button variant="secondary" onClick={cancelEdit}>
-                Отмена
-              </Button>
-              <Button onClick={finishEdit}>
-                <Check className="size-4" /> Сохранить изменения
-              </Button>
-            </>
-          ) : (
-            <Button onClick={startEdit} disabled={!profile}>
-              <Pencil className="size-4" /> Редактировать профиль
-            </Button>
-          )}
-        </div>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Профиль компании</h1>
+        <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
+          Реквизиты для заявок, база доказательств компании, образцы прошлых документов и хранение данных.
+        </p>
       </div>
 
-      {fillNote && <Notice tone={fillNote.tone}>{fillNote.text}</Notice>}
       {loadError && <Notice tone="warn">Браузер не дал открыть сохранённые реквизиты. Обновите страницу.</Notice>}
-      {save === 'failed' && <Notice tone="warn">Не получилось сохранить реквизиты — не закрывайте страницу и попробуйте ещё раз.</Notice>}
 
-      {profile && (
-        <>
-          {/* Company header card */}
-          <Card className="flex flex-wrap items-center gap-4 p-5">
-            <div className="flex size-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Building2 className="size-6" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-base font-semibold">{profile.shortName.trim() || profile.fullName.trim() || 'Название компании не указано'}</p>
-              <p className="font-mono text-[12px] text-muted-foreground">
-                {profile.inn.trim() ? `ИНН ${profile.inn.trim()}` : 'ИНН не указан'}
-                {profile.kpp.trim() ? ` · КПП ${profile.kpp.trim()}` : ''}
+      <Tabs
+        idPrefix={tabId}
+        active={tab}
+        onChange={(key) => setTab(key as TabKey)}
+        items={[
+          { key: 'profile', label: TAB_LABELS.profile },
+          { key: 'evidence', label: TAB_LABELS.evidence },
+          { key: 'docs', label: TAB_LABELS.docs, badge: docs.length > 0 ? <Badge>{docs.length}</Badge> : undefined },
+          { key: 'data', label: TAB_LABELS.data },
+        ]}
+      />
+
+      <TabPanel idPrefix={tabId} tabKey="profile" active={tab}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            {/* Подсказка нужна, пока реквизиты не заполнены целиком — дальше она только занимает место. */}
+            {!(profile && filledCount(profile) >= PROFILE_KEYS.length) && (
+              <p className="max-w-2xl text-sm text-muted-foreground">
+                Заполните реквизиты один раз — ИИ будет автоматически подставлять их в каждую заявку, декларацию и контракт. Не придётся
+                вводить одни и те же данные для каждой закупки. В техническое предложение реквизиты не попадают никогда: его подают анонимно.
               </p>
-            </div>
-            {profile.smeCategory.trim() && (
-              <Tooltip content="Категория субъекта МСП — из профиля. Нужна для закупок только у малого бизнеса." align="end">
-                <Badge tone="success">
-                  <ShieldCheck className="size-3" /> {profile.smeCategory.trim()}
-                </Badge>
+            )}
+            <p className="mt-1 font-mono text-[12px] text-muted-foreground">
+              заполнено {profile ? filledCount(profile) : 0} из {PROFILE_KEYS.length}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {saveText && (
+              <span aria-live="polite" className={cx('inline-flex items-center gap-1.5 text-xs', save === 'failed' ? 'text-warn-foreground' : 'text-success')}>
+                {save === 'saved' && <Check className="size-3.5" />} {saveText}
+              </span>
+            )}
+            {sourceDocs.length > 0 && (
+              <Tooltip content="ИИ найдёт реквизиты в ваших анкетах и карточке предприятия и впишет пустые поля." align="end">
+                <Button variant="secondary" onClick={() => void fillFromDocuments()} disabled={filling || !profile}>
+                  {filling ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                  {filling ? 'Ищу реквизиты…' : 'Заполнить из документов'}
+                </Button>
               </Tooltip>
             )}
-          </Card>
-
-          {/* How it works */}
-          <Card className="flex gap-3 bg-secondary/40 p-4">
-            <Sparkles className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-            <p className="text-[13px] leading-snug text-muted-foreground">
-              <span className="font-medium text-foreground">Как это работает: </span>
-              когда ИИ составляет документы заявки, он берёт эти реквизиты и вставляет их в нужные поля автоматически — у каждого поля
-              на шаге «Проверка» видно, что оно взято из профиля. Если данные изменятся (например, новый расчётный счёт) — обновите их
-              здесь один раз, и все будущие заявки подхватят новое значение.
-            </p>
-          </Card>
-
-          {meta.suggestions.length > 0 && <Suggestions items={meta.suggestions} onAccept={accept} onDismiss={dismiss} />}
-
-          {/* Fields by group */}
-          <div className="space-y-4">
-            {SECTIONS.map((section) => (
-              <Card key={section.title} className="overflow-hidden">
-                <div className="flex items-center justify-between border-b border-border px-4 py-3">
-                  <span className="text-sm font-medium">{section.title}</span>
-                  <span className="hidden font-mono text-[11px] text-muted-foreground sm:block">{section.hint}</span>
-                </div>
-                <div className="divide-y divide-border">
-                  {PROFILE_GROUPS.filter((g) => section.groups.includes(g.title))
-                    .flatMap((g) => g.fields)
-                    .map((field) => {
-                      const value = profile[field.key];
-                      const hint = focused === field.key ? undefined : problems[field.key];
-                      return (
-                        <div key={field.key} className="grid grid-cols-1 gap-1 px-4 py-3 sm:grid-cols-[220px_1fr] sm:items-start sm:gap-4">
-                          <span className="flex items-start gap-1 text-[13px] text-muted-foreground">
-                            <label htmlFor={`pf-${field.key}`}>{field.label}</label>
-                            {field.help && <HelpTip content={field.help} />}
-                          </span>
-                          <div className="min-w-0">
-                            {editing ? (
-                              <input
-                                id={`pf-${field.key}`}
-                                value={value}
-                                onChange={(e) => change(field.key, e.target.value)}
-                                onFocus={() => setFocused(field.key)}
-                                onBlur={() => setFocused(null)}
-                                placeholder={field.example}
-                                autoComplete="off"
-                                aria-invalid={hint ? true : undefined}
-                                aria-describedby={hint ? `pf-${field.key}-hint` : undefined}
-                                className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground focus:ring-2 focus:ring-ring/20"
-                              />
-                            ) : (
-                              <span className={cx('break-words font-mono text-[13px] tabular-nums', !value.trim() && 'text-muted-foreground')}>{value.trim() || '—'}</span>
-                            )}
-                            {hint && <p id={`pf-${field.key}-hint`} className="mt-1 text-[12px] text-warn-foreground">{hint}</p>}
-                            {meta.sources[field.key] && <p className="mt-1 text-[11px] text-muted-foreground">из «{meta.sources[field.key]}»</p>}
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              </Card>
-            ))}
+            {editing ? (
+              <>
+                <Button variant="secondary" onClick={cancelEdit}>
+                  Отмена
+                </Button>
+                <Button onClick={finishEdit}>
+                  <Check className="size-4" /> Сохранить изменения
+                </Button>
+              </>
+            ) : (
+              <Button onClick={startEdit} disabled={!profile}>
+                <Pencil className="size-4" /> Редактировать профиль
+              </Button>
+            )}
           </div>
-
-          {/* База доказательств: факты о компании с источником и сроком; что требуют закупки и чего не хватает */}
-          <EvidenceBase profile={profile} sources={meta.sources} docs={docs} />
-        </>
-      )}
-
-      {/* Образцы и документы компании */}
-      <Card className="overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-          <div>
-            <span className="text-sm font-medium">
-              Образцы и документы{docs.length > 0 && <span className="ml-1.5 font-mono text-[11px] text-muted-foreground">{docs.length}</span>}
-            </span>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
-              Прошлые заявки, анкеты, карточка предприятия, исполненные договоры. По ним ИИ пишет новые документы так же, как ваши, и заполняет реквизиты.
-            </p>
-          </div>
-          <Button size="sm" variant="secondary" disabled={stage !== null} onClick={() => fileInput.current?.click()}>
-            <Plus className="size-3.5" /> Добавить
-          </Button>
-          <input
-            ref={fileInput}
-            type="file"
-            multiple
-            accept={ACCEPTED_FILES}
-            className="hidden"
-            onChange={(e) => {
-              const files = e.currentTarget.files ? [...e.currentTarget.files] : [];
-              e.currentTarget.value = '';
-              if (files.length) void add(files);
-            }}
-          />
         </div>
 
-        <div className="space-y-2 px-4 pt-3 empty:hidden" aria-live="polite">
-          {error && <Notice tone="warn">{error}</Notice>}
-          {report && (
-            <>
-              {report.added.length > 0 && (
-                <Notice tone="ok">
-                  Добавил {report.added.length} {plural(report.added.length, 'документ', 'документа', 'документов')}:{' '}
-                  {DOC_KIND_KEYS.map((kind) => [kind, report.added.filter((d) => d.kinds.includes(kind)).length] as const)
-                    .filter(([, n]) => n > 0)
-                    .map(([kind, n]) => `${DOC_KINDS[kind].few} — ${n}`)
-                    .join(', ')}
-                  .
-                </Notice>
-              )}
-              {report.sortError && (
-                <Notice tone="warn">Разложил по названиям файлов, без ИИ. Проверьте виды и поправьте, где нужно. {report.sortError}</Notice>
-              )}
-              {report.filled !== undefined && (
-                <Notice tone={report.filled ? 'ok' : 'info'}>
-                  {report.filled
-                    ? `Реквизиты: заполнил ${report.filled} ${plural(report.filled, 'поле', 'поля', 'полей')} из ваших документов — проверьте их выше.`
-                    : 'Реквизиты: нового в документах не нашлось.'}
-                  {report.suggestions ? ' Есть расхождения между документами — они показаны подсказками в реквизитах.' : ''}
-                </Notice>
-              )}
-              {report.profileError && <Notice tone="warn">Реквизиты заполнить не получилось: {report.profileError}</Notice>}
-              {report.failed.length > 0 && (
-                <Notice tone="warn">Не получилось прочитать: {report.failed.map((f) => `${f.name} — ${f.reason}`).join('; ')}.</Notice>
-              )}
-            </>
-          )}
-        </div>
+        {fillNote && <Notice tone={fillNote.tone}>{fillNote.text}</Notice>}
+        {save === 'failed' && <Notice tone="warn">Не получилось сохранить реквизиты — не закрывайте страницу и попробуйте ещё раз.</Notice>}
 
-        {stage && (
-          <div className="px-4 py-6" aria-live="polite">
-            <p className="flex items-center gap-2 text-sm font-medium">
-              <Loader2 className="size-4 animate-spin" /> {STAGE_TEXT[stage]}
-            </p>
-            <p className="mt-1 text-[12px] text-muted-foreground">Сканы и фото распознаются дольше — примерно минута на каждые 10 страниц.</p>
-          </div>
-        )}
-
-        <div className="divide-y divide-border">
-          {docs.map((d) => {
-            const first = d.kinds[0];
-            const others = d.kinds.filter((k) => k !== first);
-            const unused = used.get(first) && !used.get(first)!.has(d.id);
-            const meta = [
-              `≈ ${pages(d.text)} ${plural(pages(d.text), 'страница', 'страницы', 'страниц')}`,
-              `добавлен ${new Date(d.addedAt).toLocaleDateString('ru-RU')}`,
-              ...(d.scan ? ['распознан со скана — сверьте цифры'] : []),
-              ...(unused ? ['не используется: образцов уже достаточно'] : []),
-            ].join(' · ');
-            return (
-              <div key={d.id} className="space-y-2 px-4 py-3">
-                <div className="flex items-start gap-3">
-                  <FileText className={cx('mt-0.5 size-4 shrink-0', d.scan ? 'text-warn' : 'text-muted-foreground')} />
-                  <div className="min-w-0 flex-1">
-                    <p className="break-words text-sm font-medium">{d.name}</p>
-                    {d.about && <p className="mt-0.5 text-[12px] text-muted-foreground">{d.about}</p>}
-                    <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{meta}</p>
-                  </div>
-                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-                    <Badge>{DOC_KINDS[first].few}</Badge>
-                    {others.map((k) => (
-                      <Badge key={k}>{DOC_KINDS[k].few}</Badge>
-                    ))}
-                    <IconButton
-                      label="Изменить вид"
-                      onClick={() => {
-                        setConfirmDoc(null);
-                        setEditingDoc(editingDoc === d.id ? null : d.id);
-                      }}
-                    >
-                      <Pencil className="size-4" />
-                    </IconButton>
-                    <IconButton
-                      label="Удалить"
-                      tone="danger"
-                      align="end"
-                      onClick={() => {
-                        setEditingDoc(null);
-                        setConfirmDoc(confirmDoc === d.id ? null : d.id);
-                      }}
-                    >
-                      <Trash2 className="size-4" />
-                    </IconButton>
-                  </div>
-                </div>
-                {editingDoc === d.id && <KindEditor doc={d} onSave={(kinds) => void saveKinds(d, kinds)} onCancel={() => setEditingDoc(null)} />}
-                {confirmDoc === d.id && (
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pl-7 text-[13px]">
-                    <span>{others.length ? 'Удалить файл целиком, из всех групп?' : 'Удалить документ?'}</span>
-                    <Button size="sm" variant="danger" onClick={() => void removeDoc(d.id)}>
-                      Удалить
-                    </Button>
-                    <Button size="sm" variant="secondary" onClick={() => setConfirmDoc(null)}>
-                      Отмена
-                    </Button>
-                  </div>
-                )}
+        {profile && (
+          <>
+            {/* Company header card */}
+            <Card className="flex flex-wrap items-center gap-4 p-5">
+              <div className="flex size-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <Building2 className="size-6" />
               </div>
-            );
-          })}
-        </div>
-
-        {!stage && (
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDrag(true);
-            }}
-            onDragLeave={() => setDrag(false)}
-            onDrop={onDrop}
-            className="p-3"
-          >
-            <button
-              type="button"
-              onClick={() => fileInput.current?.click()}
-              className={cx(
-                'flex w-full flex-col items-center gap-1.5 rounded-lg border border-dashed px-4 py-6 text-center transition-colors',
-                drag ? 'border-foreground bg-secondary' : 'border-border hover:bg-secondary/50',
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-base font-semibold">{profile.shortName.trim() || profile.fullName.trim() || 'Название компании не указано'}</p>
+                <p className="font-mono text-[12px] text-muted-foreground">
+                  {profile.inn.trim() ? `ИНН ${profile.inn.trim()}` : 'ИНН не указан'}
+                  {profile.kpp.trim() ? ` · КПП ${profile.kpp.trim()}` : ''}
+                </p>
+              </div>
+              {profile.smeCategory.trim() && (
+                <Tooltip content="Категория субъекта МСП — из профиля. Нужна для закупок только у малого бизнеса." align="end">
+                  <Badge tone="success">
+                    <ShieldCheck className="size-3" /> {profile.smeCategory.trim()}
+                  </Badge>
+                </Tooltip>
               )}
-            >
-              <Upload className="size-5 text-muted-foreground" />
-              <span className="text-sm font-medium">{docs.length ? 'Добавить документы' : 'Загрузить документы'}</span>
-              <span className="max-w-[60ch] text-[12px] text-muted-foreground">
-                {docs.length === 0 && 'Документов пока нет — загрузите прошлые заявки и карточку предприятия. '}
-                Перетащите сюда свои документы — PDF, Word, Excel, ZIP, сканы и фото. Можно сразу все.
-              </span>
-            </button>
-          </div>
-        )}
-      </Card>
+            </Card>
 
-      {/* Копия данных */}
-      <Card className="space-y-3 p-5">
-        <div>
-          <span className="text-sm font-medium">Копия данных</span>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">Закупки, документы, реквизиты, образцы и база доказательств</p>
-        </div>
-        <p className="max-w-[70ch] text-[13px] leading-snug text-muted-foreground">
-          Всё это хранится только в этом браузере. Если очистить браузер — пропадёт, а Safari может стереть данные сам, если сервис не
-          открывать неделю. Сохраняйте копию файлом: из неё всё вернётся, и так же данные переносятся на другой компьютер. В файле
-          реквизиты и тексты документов — храните его так же бережно, как сами документы.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" disabled={backupBusy} onClick={() => void saveBackup()}>
-            <Download className="size-4" /> Сохранить копию
-          </Button>
-          <Button variant="secondary" disabled={backupBusy} onClick={() => backupInput.current?.click()}>
-            <Upload className="size-4" /> Загрузить копию
-          </Button>
-          <input
-            ref={backupInput}
-            type="file"
-            accept=".json,application/json"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.currentTarget.files?.[0];
-              e.currentTarget.value = '';
-              if (file) void loadBackup(file);
-            }}
-          />
-        </div>
-        <div aria-live="polite" className="empty:hidden">
-          {backupNote && <Notice tone={backupNote.tone}>{backupNote.text}</Notice>}
-        </div>
-      </Card>
+            {/* How it works */}
+            <Card className="flex gap-3 bg-secondary/40 p-4">
+              <Sparkles className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+              <p className="text-[13px] leading-snug text-muted-foreground">
+                <span className="font-medium text-foreground">Как это работает: </span>
+                когда ИИ составляет документы заявки, он берёт эти реквизиты и вставляет их в нужные поля автоматически — у каждого поля
+                на шаге «Проверка» видно, что оно взято из профиля. Если данные изменятся (например, новый расчётный счёт) — обновите их
+                здесь один раз, и все будущие заявки подхватят новое значение.
+              </p>
+            </Card>
 
-      {/* Удалить все данные */}
-      <Card className="space-y-3 p-5">
-        <div>
-          <span className="text-sm font-medium">Удалить все данные</span>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">Из этого браузера — всё сразу</p>
-        </div>
-        <p className="max-w-[70ch] text-[13px] leading-snug text-muted-foreground">
-          Удалятся все закупки с документами и черновиками, реквизиты, образцы, база доказательств, настройки и отметка о согласии. Вернуть их можно будет
-          только из копии — сохраните её выше. На сервере данные не хранятся; то, что уже отправлено ИИ, хранится у Anthropic по её
-          условиям — подробнее в{' '}
-          <a href="/privacy" target="_blank" rel="noreferrer" className="underline underline-offset-4 hover:text-foreground">
-            политике
-          </a>
-          .
-        </p>
-        {wipe === 'confirm' || wipe === 'wiping' ? (
-          <div className="space-y-2.5">
-            <p className="text-[13px] font-medium">Удалить всё? Вернуть данные можно будет только из копии.</p>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="danger" size="sm" disabled={wipe === 'wiping'} onClick={() => void wipeAllData()}>
-                {wipe === 'wiping' ? 'Удаляю…' : 'Удалить всё'}
-              </Button>
-              {/* Фокус — на безопасном ответе: случайный Enter ничего не удалит. */}
-              <Button variant="secondary" size="sm" autoFocus disabled={wipe === 'wiping'} onClick={() => setWipe('idle')}>
-                Отмена
-              </Button>
+            {meta.suggestions.length > 0 && <Suggestions items={meta.suggestions} onAccept={accept} onDismiss={dismiss} />}
+
+            {/* Fields by group */}
+            <div className="space-y-4">
+              {SECTIONS.map((section) => (
+                <Card key={section.title} className="overflow-hidden">
+                  <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                    <span className="text-sm font-medium">{section.title}</span>
+                    <span className="hidden font-mono text-[11px] text-muted-foreground sm:block">{section.hint}</span>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {PROFILE_GROUPS.filter((g) => section.groups.includes(g.title))
+                      .flatMap((g) => g.fields)
+                      .map((field) => {
+                        const value = profile[field.key];
+                        const hint = focused === field.key ? undefined : problems[field.key];
+                        return (
+                          <div key={field.key} className="grid grid-cols-1 gap-1 px-4 py-3 sm:grid-cols-[220px_1fr] sm:items-start sm:gap-4">
+                            <span className="flex items-start gap-1 text-[13px] text-muted-foreground">
+                              <label htmlFor={`pf-${field.key}`}>{field.label}</label>
+                              {field.help && <HelpTip content={field.help} />}
+                            </span>
+                            <div className="min-w-0">
+                              {editing ? (
+                                <input
+                                  id={`pf-${field.key}`}
+                                  value={value}
+                                  onChange={(e) => change(field.key, e.target.value)}
+                                  onFocus={() => setFocused(field.key)}
+                                  onBlur={() => setFocused(null)}
+                                  placeholder={field.example}
+                                  autoComplete="off"
+                                  aria-invalid={hint ? true : undefined}
+                                  aria-describedby={hint ? `pf-${field.key}-hint` : undefined}
+                                  className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground focus:ring-2 focus:ring-ring/20"
+                                />
+                              ) : (
+                                <span className={cx('break-words font-mono text-[13px] tabular-nums', !value.trim() && 'text-muted-foreground')}>{value.trim() || '—'}</span>
+                              )}
+                              {hint && <p id={`pf-${field.key}-hint`} className="mt-1 text-[12px] text-warn-foreground">{hint}</p>}
+                              {meta.sources[field.key] && <p className="mt-1 text-[11px] text-muted-foreground">из «{meta.sources[field.key]}»</p>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </Card>
+              ))}
             </div>
-          </div>
-        ) : (
-          <Button variant="ghost" size="sm" className="text-danger hover:text-danger" onClick={() => setWipe('confirm')}>
-            <Trash2 className="size-3.5" /> Удалить все мои данные
-          </Button>
+          </>
         )}
-        <div aria-live="polite" className="empty:hidden">
-          {wipe === 'blocked' && <Notice tone="warn">Сервис открыт ещё в другой вкладке — закройте её: удаление закончится, когда она закроется. Потом обновите эту страницу.</Notice>}
-          {wipe === 'failed' && <Notice tone="warn">Браузер не дал удалить данные. Удалите их в настройках браузера — «Очистить данные сайта».</Notice>}
-        </div>
-      </Card>
+      </TabPanel>
+
+      <TabPanel idPrefix={tabId} tabKey="evidence" active={tab}>
+        {/* База доказательств: факты о компании с источником и сроком; что требуют закупки и чего не хватает */}
+        {profile && <EvidenceBase profile={profile} sources={meta.sources} docs={docs} />}
+      </TabPanel>
+
+      <TabPanel idPrefix={tabId} tabKey="docs" active={tab}>
+        {/* Образцы и документы компании */}
+        <Card className="overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+            <div>
+              <span className="text-sm font-medium">
+                Образцы и документы{docs.length > 0 && <span className="ml-1.5 font-mono text-[11px] text-muted-foreground">{docs.length}</span>}
+              </span>
+              <p className="mt-0.5 text-[12px] text-muted-foreground">
+                Прошлые заявки, анкеты, карточка предприятия, исполненные договоры. По ним ИИ пишет новые документы так же, как ваши, и заполняет реквизиты.
+              </p>
+            </div>
+            <Button size="sm" variant="secondary" disabled={stage !== null} onClick={() => fileInput.current?.click()}>
+              <Plus className="size-3.5" /> Добавить
+            </Button>
+            <input
+              ref={fileInput}
+              type="file"
+              multiple
+              accept={ACCEPTED_FILES}
+              className="hidden"
+              onChange={(e) => {
+                const files = e.currentTarget.files ? [...e.currentTarget.files] : [];
+                e.currentTarget.value = '';
+                if (files.length) void add(files);
+              }}
+            />
+          </div>
+
+          <div className="space-y-2 px-4 pt-3 empty:hidden" aria-live="polite">
+            {error && <Notice tone="warn">{error}</Notice>}
+            {report && (
+              <>
+                {report.added.length > 0 && (
+                  <Notice tone="ok">
+                    Добавил {report.added.length} {plural(report.added.length, 'документ', 'документа', 'документов')}:{' '}
+                    {DOC_KIND_KEYS.map((kind) => [kind, report.added.filter((d) => d.kinds.includes(kind)).length] as const)
+                      .filter(([, n]) => n > 0)
+                      .map(([kind, n]) => `${DOC_KINDS[kind].few} — ${n}`)
+                      .join(', ')}
+                    .
+                  </Notice>
+                )}
+                {report.sortError && (
+                  <Notice tone="warn">Разложил по названиям файлов, без ИИ. Проверьте виды и поправьте, где нужно. {report.sortError}</Notice>
+                )}
+                {report.filled !== undefined && (
+                  <Notice tone={report.filled ? 'ok' : 'info'}>
+                    {report.filled
+                      ? `Реквизиты: заполнил ${report.filled} ${plural(report.filled, 'поле', 'поля', 'полей')} из ваших документов — проверьте их выше.`
+                      : 'Реквизиты: нового в документах не нашлось.'}
+                    {report.suggestions ? ' Есть расхождения между документами — они показаны подсказками в реквизитах.' : ''}
+                  </Notice>
+                )}
+                {report.profileError && <Notice tone="warn">Реквизиты заполнить не получилось: {report.profileError}</Notice>}
+                {report.failed.length > 0 && (
+                  <Notice tone="warn">Не получилось прочитать: {report.failed.map((f) => `${f.name} — ${f.reason}`).join('; ')}.</Notice>
+                )}
+              </>
+            )}
+          </div>
+
+          {stage && (
+            <div className="px-4 py-6" aria-live="polite">
+              <p className="flex items-center gap-2 text-sm font-medium">
+                <Loader2 className="size-4 animate-spin" /> {STAGE_TEXT[stage]}
+              </p>
+              <p className="mt-1 text-[12px] text-muted-foreground">Сканы и фото распознаются дольше — примерно минута на каждые 10 страниц.</p>
+            </div>
+          )}
+
+          <div className="divide-y divide-border">
+            {docs.map((d) => {
+              const first = d.kinds[0];
+              const others = d.kinds.filter((k) => k !== first);
+              const unused = used.get(first) && !used.get(first)!.has(d.id);
+              const meta = [
+                `≈ ${pages(d.text)} ${plural(pages(d.text), 'страница', 'страницы', 'страниц')}`,
+                `добавлен ${new Date(d.addedAt).toLocaleDateString('ru-RU')}`,
+                ...(d.scan ? ['распознан со скана — сверьте цифры'] : []),
+                ...(unused ? ['не используется: образцов уже достаточно'] : []),
+              ].join(' · ');
+              return (
+                <div key={d.id} className="space-y-2 px-4 py-3">
+                  <div className="flex items-start gap-3">
+                    <FileText className={cx('mt-0.5 size-4 shrink-0', d.scan ? 'text-warn' : 'text-muted-foreground')} />
+                    <div className="min-w-0 flex-1">
+                      <p className="break-words text-sm font-medium">{d.name}</p>
+                      {d.about && <p className="mt-0.5 text-[12px] text-muted-foreground">{d.about}</p>}
+                      <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{meta}</p>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                      <Badge>{DOC_KINDS[first].few}</Badge>
+                      {others.map((k) => (
+                        <Badge key={k}>{DOC_KINDS[k].few}</Badge>
+                      ))}
+                      <IconButton
+                        label="Изменить вид"
+                        onClick={() => {
+                          setConfirmDoc(null);
+                          setEditingDoc(editingDoc === d.id ? null : d.id);
+                        }}
+                      >
+                        <Pencil className="size-4" />
+                      </IconButton>
+                      <IconButton
+                        label="Удалить"
+                        tone="danger"
+                        align="end"
+                        onClick={() => {
+                          setEditingDoc(null);
+                          setConfirmDoc(confirmDoc === d.id ? null : d.id);
+                        }}
+                      >
+                        <Trash2 className="size-4" />
+                      </IconButton>
+                    </div>
+                  </div>
+                  {editingDoc === d.id && <KindEditor doc={d} onSave={(kinds) => void saveKinds(d, kinds)} onCancel={() => setEditingDoc(null)} />}
+                  {confirmDoc === d.id && (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pl-7 text-[13px]">
+                      <span>{others.length ? 'Удалить файл целиком, из всех групп?' : 'Удалить документ?'}</span>
+                      <Button size="sm" variant="danger" onClick={() => void removeDoc(d.id)}>
+                        Удалить
+                      </Button>
+                      <Button size="sm" variant="secondary" onClick={() => setConfirmDoc(null)}>
+                        Отмена
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {!stage && (
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDrag(true);
+              }}
+              onDragLeave={() => setDrag(false)}
+              onDrop={onDrop}
+              className="p-3"
+            >
+              <button
+                type="button"
+                onClick={() => fileInput.current?.click()}
+                className={cx(
+                  'flex w-full flex-col items-center gap-1.5 rounded-lg border border-dashed px-4 py-6 text-center transition-colors',
+                  drag ? 'border-foreground bg-secondary' : 'border-border hover:bg-secondary/50',
+                )}
+              >
+                <Upload className="size-5 text-muted-foreground" />
+                <span className="text-sm font-medium">{docs.length ? 'Добавить документы' : 'Загрузить документы'}</span>
+                <span className="max-w-[60ch] text-[12px] text-muted-foreground">
+                  {docs.length === 0 && 'Документов пока нет — загрузите прошлые заявки и карточку предприятия. '}
+                  Перетащите сюда свои документы — PDF, Word, Excel, ZIP, сканы и фото. Можно сразу все.
+                </span>
+              </button>
+            </div>
+          )}
+        </Card>
+      </TabPanel>
+
+      <TabPanel idPrefix={tabId} tabKey="data" active={tab}>
+        {/* Копия данных */}
+        <Card className="space-y-3 p-5">
+          <div>
+            <span className="text-sm font-medium">Копия данных</span>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">Закупки, документы, реквизиты, образцы и база доказательств</p>
+          </div>
+          <p className="max-w-[70ch] text-[13px] leading-snug text-muted-foreground">
+            Всё это хранится только в этом браузере. Если очистить браузер — пропадёт, а Safari может стереть данные сам, если сервис не
+            открывать неделю. Сохраняйте копию файлом: из неё всё вернётся, и так же данные переносятся на другой компьютер. В файле
+            реквизиты и тексты документов — храните его так же бережно, как сами документы.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" disabled={backupBusy} onClick={() => void saveBackup()}>
+              <Download className="size-4" /> Сохранить копию
+            </Button>
+            <Button variant="secondary" disabled={backupBusy} onClick={() => backupInput.current?.click()}>
+              <Upload className="size-4" /> Загрузить копию
+            </Button>
+            <input
+              ref={backupInput}
+              type="file"
+              accept=".json,application/json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.currentTarget.files?.[0];
+                e.currentTarget.value = '';
+                if (file) void loadBackup(file);
+              }}
+            />
+          </div>
+          <div aria-live="polite" className="empty:hidden">
+            {backupNote && <Notice tone={backupNote.tone}>{backupNote.text}</Notice>}
+          </div>
+        </Card>
+
+        {/* Удалить все данные */}
+        <Card className="space-y-3 p-5">
+          <div>
+            <span className="text-sm font-medium">Удалить все данные</span>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">Из этого браузера — всё сразу</p>
+          </div>
+          <p className="max-w-[70ch] text-[13px] leading-snug text-muted-foreground">
+            Удалятся все закупки с документами и черновиками, реквизиты, образцы, база доказательств, настройки и отметка о согласии. Вернуть их можно будет
+            только из копии — сохраните её выше. На сервере данные не хранятся; то, что уже отправлено ИИ, хранится у Anthropic по её
+            условиям — подробнее в{' '}
+            <a href="/privacy" target="_blank" rel="noreferrer" className="underline underline-offset-4 hover:text-foreground">
+              политике
+            </a>
+            .
+          </p>
+          {wipe === 'confirm' || wipe === 'wiping' ? (
+            <div className="space-y-2.5">
+              <p className="text-[13px] font-medium">Удалить всё? Вернуть данные можно будет только из копии.</p>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="danger" size="sm" disabled={wipe === 'wiping'} onClick={() => void wipeAllData()}>
+                  {wipe === 'wiping' ? 'Удаляю…' : 'Удалить всё'}
+                </Button>
+                {/* Фокус — на безопасном ответе: случайный Enter ничего не удалит. */}
+                <Button variant="secondary" size="sm" autoFocus disabled={wipe === 'wiping'} onClick={() => setWipe('idle')}>
+                  Отмена
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button variant="ghost" size="sm" className="text-danger hover:text-danger" onClick={() => setWipe('confirm')}>
+              <Trash2 className="size-3.5" /> Удалить все мои данные
+            </Button>
+          )}
+          <div aria-live="polite" className="empty:hidden">
+            {wipe === 'blocked' && <Notice tone="warn">Сервис открыт ещё в другой вкладке — закройте её: удаление закончится, когда она закроется. Потом обновите эту страницу.</Notice>}
+            {wipe === 'failed' && <Notice tone="warn">Браузер не дал удалить данные. Удалите их в настройках браузера — «Очистить данные сайта».</Notice>}
+          </div>
+        </Card>
+      </TabPanel>
     </div>
   );
 }
