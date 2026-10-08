@@ -338,7 +338,12 @@ export function Tabs({
     <div
       role="tablist"
       onKeyDown={onKeyDown}
-      className={cx('inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-lg border border-border bg-card p-1 shadow-sm', className)}
+      className={cx(
+        'inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-lg border border-border bg-card p-1 shadow-sm',
+        // Край размыт всегда — честный намёк, что ряд можно прокрутить, даже когда вкладок не видно за кадром не очень очевидно (на телефоне).
+        '[mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)]',
+        className,
+      )}
     >
       {items.map((item) => {
         const selected = item.key === active;

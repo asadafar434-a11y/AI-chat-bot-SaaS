@@ -248,7 +248,8 @@ function Shell({
           {aside}
         </div>
 
-        <ol className="flex items-center gap-1.5 overflow-x-auto pb-1">
+        {/* Край размыт всегда — честный намёк, что шаги можно прокрутить: на телефоне их не все видно за кадром. */}
+        <ol className="flex items-center gap-1.5 overflow-x-auto pb-1 [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)]">
           {steps.map((s, i) => {
             const state = i === step ? 'active' : done[i] ? 'done' : 'todo';
             const Icon = s.icon;
