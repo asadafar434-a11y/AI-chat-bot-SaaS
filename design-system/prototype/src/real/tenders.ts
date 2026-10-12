@@ -1,4 +1,5 @@
 import { lawText, procedureOf, progressOf, statusOf } from '@/lib/dashboard';
+import { dueLine, dueTone } from '@/lib/deadline';
 import type { Profile } from '@/lib/profile';
 import { titleOf, type Purchase } from '@/lib/purchase';
 import { parseRubles } from '@/lib/rub-words';
@@ -24,6 +25,8 @@ export function procedureKind(p: Purchase): Procedure {
 // profile — реквизиты участника: по ним видно, что ИП устав не нужен, и готовность закупки в списке совпадает с «Пакетом».
 export function toTender(p: Purchase, profile?: Profile): TenderCard {
   const steps = stepsOf(p, profile);
+  // Пример — со сроком, которого нет: красить нечего.
+  const due = p.sample ? null : dueLine(p.deadline, false);
   return {
     id: p.id,
     title: titleOf(p),
@@ -38,5 +41,7 @@ export function toTender(p: Purchase, profile?: Profile): TenderCard {
     docsLoaded: p.files.length,
     docsTotal: p.files.length + p.unreadable.length,
     sample: p.sample,
+    dueTone: dueTone(due),
+    dueLeft: due?.left?.replace(/ /g, ' '),
   };
 }

@@ -98,3 +98,17 @@ test("порядок в списке: сначала ближайший срок
     ["сегодня", "через 2 дня", "через 20 дней", "без срока", "вчера", "прошла давно"]
   );
 });
+
+test("цвет срока на экране: прошёл — красноватый, скоро (за 3 дня, за неделю, сегодня) — жёлтый, дальше и пример — спокойный", async () => {
+  const { dueTone } = await import("./deadline.ts");
+  const tone = (n: number) => dueTone(dueLine(on(inDays(n)), false));
+  assert.equal(tone(-1), "danger", "приём закончился вчера");
+  assert.equal(tone(-30), "danger", "закончился давно");
+  for (const n of [0, 1, 2, 3, 7]) assert.equal(tone(n), "warn", `${n} дн. до срока`);
+  for (const n of [8, 14, 60]) assert.equal(tone(n), "neutral", `${n} дн. до срока`);
+  assert.equal(dueTone(null), "neutral", "срок не найден — красить нечего");
+  assert.equal(dueTone(SAMPLE_DUE), "neutral", "у примера срок вымышленный");
+  // Смысл не держится на цвете: слова остаются.
+  assert.match(dueLine(on(inDays(-2)), false)!.head, /^Приём заявок закончился/);
+  assert.match(dueLine(on(inDays(3)), false)!.left ?? "", /осталось/);
+});

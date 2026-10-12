@@ -8,7 +8,7 @@ import { Profile } from './components/Profile';
 import { Tariffs } from './components/Tariffs';
 import { ChatAssistant } from './components/ChatAssistant';
 import { Badge, Tooltip } from './components/ui';
-import { dueOf } from '@/lib/deadline';
+import { dueOf, dueTone } from '@/lib/deadline';
 import { procedureHint } from '@/lib/dashboard';
 import { titleOf } from '@/lib/purchase';
 import { deletePurchase, savePurchase } from '@/lib/purchase-store';
@@ -348,7 +348,7 @@ function Workflow({
       }
       aside={
         due && (
-          <Badge tone={due.tone === 'soon' ? 'warn' : 'neutral'}>
+          <Badge tone={dueTone(due)}>
             {due.head}
             {due.left ? ` · ${due.left.replace(/ /g, ' ')}` : ''}
           </Badge>

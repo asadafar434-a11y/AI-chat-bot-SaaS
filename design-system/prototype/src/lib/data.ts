@@ -50,6 +50,9 @@ export type TenderCard = {
   // Из настоящих закупок: название способа, как в документах, и пометка примера.
   procedureLabel?: string;
   sample?: boolean;
+  // Срок подачи на глаз: красноватый — приём закончился, жёлтый — скоро (lib/deadline.ts); «осталось N дней» — словами.
+  dueTone?: 'danger' | 'warn' | 'neutral';
+  dueLeft?: string;
 };
 
 export const statusLabels: Record<TenderStatus, { label: string; tone: 'neutral' | 'warn' | 'success'; hint: string }> = {

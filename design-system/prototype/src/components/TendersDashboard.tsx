@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Search, Plus, Calendar, FileText, ChevronRight, Trash2, Clock, Bell } from '../lib/icons';
-import { Button, Card, Badge, Modal, AIDisclaimer, Tooltip, IconButton } from './ui';
+import { Button, Card, Badge, Modal, AIDisclaimer, Tooltip, IconButton, cx } from './ui';
 import { statusLabels, procedureMeta, rub, type TenderCard, type TenderStatus } from '../lib/data';
 
 const filters: { id: TenderStatus | 'all'; label: string }[] = [
@@ -163,8 +163,19 @@ export function TendersDashboard({
                       <Tooltip content="НМЦК — начальная (максимальная) цена контракта. Выше неё цену предложить нельзя." align="start">
                         <span className="font-mono tabular-nums text-foreground">{t.nmck ? rub(t.nmck) : 'цена не указана'}</span>
                       </Tooltip>
-                      <span className="inline-flex items-center gap-1">
-                        <Calendar className="size-3.5" /> {t.deadline ? `до ${t.deadline}` : 'срок не найден'}
+                      <span
+                        className={cx(
+                          'inline-flex items-center gap-1',
+                          t.dueTone === 'danger' && 'font-medium text-danger',
+                          t.dueTone === 'warn' && 'font-medium text-warn-foreground',
+                        )}
+                      >
+                        <Calendar className="size-3.5" />
+                        {!t.deadline
+                          ? 'срок не найден'
+                          : t.dueTone === 'danger'
+                            ? `приём заявок закончился ${t.deadline}`
+                            : `до ${t.deadline}${t.dueLeft ? ` · ${t.dueLeft}` : ''}`}
                       </span>
                       <Tooltip content="Сколько документов закупки загружено из тех, что опубликованы на площадке.">
                         <span className="inline-flex items-center gap-1">

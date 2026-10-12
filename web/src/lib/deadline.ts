@@ -44,6 +44,13 @@ export function dueLine({ date, time, zone }: Deadline, withTime: boolean): Due 
   );
 }
 
+/**
+ * Цвет срока подачи на экране: красноватый — приём заявок закончился, жёлтый — срок близко (неделя и меньше; тем более за 3 дня),
+ * иначе спокойный. Смысл не держится на одном цвете: «закончился» и «осталось N дней» написаны словами.
+ */
+export type DueTone = "danger" | "warn" | "neutral";
+export const dueTone = (due: Due | null): DueTone => (!due ? "neutral" : due.days < 0 ? "danger" : due.tone === "soon" ? "warn" : "neutral");
+
 // Даты примера вымышленные и заданы раз и навсегда: со временем «приём закончился вчера» в нём вводил бы в заблуждение.
 export const SAMPLE_DUE: Due = due("Пример · сроки вымышленные", "calm", 0);
 
