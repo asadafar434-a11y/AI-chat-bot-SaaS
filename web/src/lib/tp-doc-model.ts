@@ -1,7 +1,7 @@
 import type { PartBlock, PartDoc } from "@/lib/part-doc";
 import { ANKETA, anketaExtraRows, fillFromProfile, type Profile } from "@/lib/profile";
 import { formatRubles, rublesInWords } from "@/lib/rub-words";
-import { registryLine } from "@/lib/registry-types";
+import { REGISTRY_CHECK, REGISTRY_NEEDED, characteristicsWithRegistry, goodsWithRegistry, isOriginRow } from "@/lib/registry-lines";
 import type { DetectedForm, TpForm } from "@/lib/tp";
 import { PART_TITLES, type TpPart } from "@/lib/tp-parts";
 
@@ -17,7 +17,8 @@ export type TpDocx = {
   form: TpForm;
   // registryNumber — номер реестровой записи, который участник выбрал и подтвердил (lib/registry-log.ts); без него поле не пишется.
   // registryRejected — перед сборкой файла сервер не нашёл эту запись среди действующих: вместо номера в файле жёлтая пометка.
-  goods: { name: string; characteristics: string; quantity: string; registryNumber?: string; registryRejected?: boolean }[];
+  // registryNeeded — закупка требует реестровый номер: если его нет, на месте строки ОКПД жёлтое поле «впишите номер».
+  goods: { name: string; characteristics: string; quantity: string; registryNumber?: string; registryRejected?: boolean; registryNeeded?: boolean }[];
   items: { clause: string; requirement: string; offer: string }[];
   // Дополнительные бланки, найденные ИИ в документах закупки (кроме главной формы).
   detectedForms?: DetectedForm[];
@@ -88,20 +89,14 @@ const signature = (profile: Profile | null): Para[] => [
 // Столбец заказчика для номера реестровой записи: «Номер реестровой записи», «Реестровый номер».
 const REGISTRY_COLUMN = /реестров|номер\s+запис/i;
 
-// Характеристики, которые пишет участник, и — только если номер подтверждён — строка с номером отдельным абзацем.
-// Название, характеристики и производитель из-за реестра не меняются.
-const REGISTRY_CHECK = "[номер реестровой записи: проверьте — записи нет среди действующих]";
-const withRegistry = (g: { characteristics: string; registryNumber?: string; registryRejected?: boolean }): string => {
-  const extra = g.registryNumber ? registryLine(g.registryNumber) : g.registryRejected ? REGISTRY_CHECK : "";
-  return extra ? `${g.characteristics}${g.characteristics.trim() ? "\n" : ""}${extra}` : g.characteristics;
-};
-
-function goodsTableOf(goods: TpDocx["goods"], headers: string[]): Table {
+// Реестровый номер вместо кода ОКПД, поле «впишите номер» и пометка «проверьте» — lib/registry-lines.ts (то же видно на экране).
+function goodsTableOf(rawGoods: TpDocx["goods"], headers: string[]): Table {
   if (!headers.length) {
+    const goods = goodsWithRegistry(rawGoods);
     return table([
       headerRow([["№ п/п", 7], ["Наименование товара", 25], ["Характеристики товара", 50], ["Количество", 18]]),
       ...goods.map((g, i): Row => ({
-        cells: [textCell(String(i + 1), 7), textCell(g.name, 25), cell(paragraphs(withRegistry(g)), 50), textCell(g.quantity, 18)],
+        cells: [textCell(String(i + 1), 7), textCell(g.name, 25), cell(paragraphs(g.characteristics), 50), textCell(g.quantity, 18)],
       })),
     ]);
   }
@@ -113,23 +108,58 @@ function goodsTableOf(goods: TpDocx["goods"], headers: string[]): Table {
   // У заказчика есть свой столбец для номера — номер идёт туда, а не строкой в характеристики.
   const isRegistryColumn = (h: string) => REGISTRY_COLUMN.test(h) && !/наименован|предложен|характеристик|количеств/i.test(h);
   const ownRegistryColumn = headers.some(isRegistryColumn);
-  const fillCol = (h: string, g: TpDocx["goods"][number]): Cell => {
-    if (isRegistryColumn(h) && g.registryNumber) return textCell(g.registryNumber, colW);
-    if (isRegistryColumn(h) && g.registryRejected) return cell([para(withFields(REGISTRY_CHECK))], colW);
+  // Свой столбец — номер идёт в него, а в характеристиках только убирается ОКПД (строка про происхождение заполняется как обычно).
+  const full = goodsWithRegistry(rawGoods);
+  const goods = ownRegistryColumn
+    ? rawGoods.map((g, i) =>
+        isOriginRow(g) ? full[i] : { ...g, characteristics: characteristicsWithRegistry({ ...g, registryNumber: undefined, registryRejected: undefined, registryNeeded: false }) },
+      )
+    : full;
+  // Что писать в столбце, понятно по заголовку формы заказчика. «Указать характеристики поставляемого товара» — это столбец участника
+  // (он пишет сам), а не столбец заказчика «Характеристики по ТЗ»: в него идут характеристики товара.
+  const hasOffer = headers.some((h) => OFFER_HEADER.test(h));
+  const hasUnit = headers.some((h) => UNIT_HEADER.test(h));
+  const hasCountry = headers.some((h) => COUNTRY_HEADER.test(h));
+  // Строка «Страна происхождения – Россия», которую ТП добавляет после товаров, — не товар. Есть столбец страны — страна идёт в него.
+  const originRow = rawGoods.find(isOriginRow);
+  const country = originRow ? /страна происхождения товара:[ \t]*([^\n]+)/i.exec(originRow.characteristics)?.[1].trim() : undefined;
+  const kept = rawGoods.map((_, i) => i).filter((i) => !(hasCountry && isOriginRow(rawGoods[i])));
+  const fillCol = (h: string, g: TpDocx["goods"][number], raw: TpDocx["goods"][number]): Cell => {
+    if (isRegistryColumn(h) && raw.registryNumber) return textCell(raw.registryNumber, colW);
+    if (isRegistryColumn(h) && raw.registryRejected) return cell([para(withFields(REGISTRY_CHECK))], colW);
+    if (isRegistryColumn(h) && raw.registryNeeded) return cell([para(withFields(REGISTRY_NEEDED))], colW);
     if (/наименован/i.test(h)) return textCell(g.name, colW);
-    if (/предложен|предлагаем|участник.*хар|хар.*участ|значен.*участ/i.test(h)) return cell(paragraphs(ownRegistryColumn ? g.characteristics : withRegistry(g)), colW);
-    if (/количеств|кол[-.\s]?во/i.test(h)) return textCell(g.quantity, colW);
-    if (/единиц|ед[-.\s]?изм/i.test(h)) return textCell(g.quantity.replace(/^\s*[\d,.]+\s*/, "").trim() || g.quantity, colW);
-    if (/характеристик|требован|параметр|спецификац/i.test(h)) return cell([para(withFields("[характеристика из ТЗ]"))], colW);
+    if (OFFER_HEADER.test(h)) return cell(paragraphs(g.characteristics), colW);
+    if (QTY_HEADER.test(h)) return textCell(hasUnit ? splitQuantity(g.quantity).amount || g.quantity : g.quantity, colW);
+    if (UNIT_HEADER.test(h)) return textCell(splitQuantity(g.quantity).unit || g.quantity, colW);
+    if (COUNTRY_HEADER.test(h)) return country ? textCell(country, colW) : cell([para(withFields("[заполните]"))], colW);
+    if (SPEC_HEADER.test(h)) {
+      // Единственный столбец характеристик — столбец участника. Рядом со столбцом «Предложение участника» характеристики из ТЗ — заказчика.
+      if (!hasOffer && !/по\s*тз|заказчик/i.test(h)) return cell(paragraphs(g.characteristics), colW);
+      return cell([para(withFields("[характеристика из ТЗ]"))], colW);
+    }
     return cell([para(withFields("[заполните]"))], colW);
   };
   return table([
     headerRow(widths),
-    ...goods.map((g, i): Row => ({
-      cells: headers.map((h) => (/^№/.test(h) ? textCell(String(i + 1), numWidth) : fillCol(h, g))),
+    ...kept.map((index, row): Row => ({
+      cells: headers.map((h) => (/^№/.test(h) ? textCell(String(row + 1), numWidth) : fillCol(h, goods[index], rawGoods[index]))),
     })),
   ]);
 }
+
+// Заголовки столбцов формы заказчика: по ним понятно, что писать в столбце.
+const OFFER_HEADER = /предложен|предлагаем|участник.*хар|хар.*участ|значен.*участ|указать\s+характеристик|укажите\s+характеристик/i;
+const COUNTRY_HEADER = /стран[ауыеой]\s+происхожд/i;
+const QTY_HEADER = /количеств|кол[-.\s]*во/i;
+const UNIT_HEADER = /единиц|ед[-.\s]*изм/i;
+const SPEC_HEADER = /характеристик|требован|параметр|спецификац/i;
+
+/** «80 штук» → количество «80» и единица «штук». Числа нет — всё считается единицей. */
+const splitQuantity = (quantity: string): { amount: string; unit: string } => {
+  const match = /^\s*(\d[\d\s.,]*?)\s*([^\d\s.,][^\n]*)?$/.exec(quantity);
+  return match ? { amount: match[1].trim(), unit: (match[2] ?? "").trim() } : { amount: "", unit: quantity.trim() };
+};
 
 function tpBody({ form, goods, items, cast }: TpDocx): Block[] {
   const body: Block[] = [];
@@ -441,7 +471,7 @@ function eaistApplicationBody({ form, goods, price, profile }: TpDocx): Block[] 
     table([
       headerRow([["№ п/п", 10], ["Наименование товара", 30], ["Характеристики товара", 60]]),
       ...(goods.length
-        ? goods.map((g, i): Row => ({ cells: [textCell(`${i + 1}.`, 10), textCell(g.name, 30), cell(paragraphs(withRegistry(g)), 60)] }))
+        ? goodsWithRegistry(goods).map((g, i): Row => ({ cells: [textCell(`${i + 1}.`, 10), textCell(g.name, 30), cell(paragraphs(g.characteristics), 60)] }))
         : [
             {
               cells: [

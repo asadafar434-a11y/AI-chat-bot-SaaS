@@ -242,3 +242,21 @@ test('журнал решений показывает последние соб
   assert.match(out, /История решений \(1\)/);
   assert.match(out, /Подтверждена запись 00000001/);
 });
+
+test('баллы и процентный показатель записи показаны, а если их нет — так и написано; ОКПД2 в форме и в списке нет', () => {
+  const withScore = view({ registryNumber: '00000010', points: 135, percent: 0.81, conformity: 'Соответствует требованиям (тест)' });
+  const out = render({ positions: [position({ status: 'choose', decision: decision('choose', { candidates: [withScore, view({ registryNumber: '00000011' })] }) })] });
+  assert.match(out, /баллы: 135 · процентный показатель: 81 %/);
+  assert.match(out, /в записи не указаны/);
+  assert.equal(/Код ОКПД2/.test(out), false, 'поля ОКПД2 в карточке товара нет');
+  assert.equal(/<dt[^>]*>ОКПД2<\/dt>/.test(out), false, 'ОКПД2 записи в списке не показывается');
+});
+
+test('записи с одинаковым названием у одного производителя помечены: выбирать нужно свой номер', () => {
+  const a = view({ registryNumber: '00000020', productName: 'Бейсболка' });
+  const b = view({ registryNumber: '00000021', productName: 'Бейсболка' });
+  const other = view({ registryNumber: '00000022', productName: 'Бейсболка', inn: '9900000002' });
+  const out = render({ positions: [position({ status: 'choose', decision: decision('choose', { candidates: [a, b, other] }) })] });
+  assert.match(out, /Такое же название ещё у 1 записи — выберите свой номер/);
+  assert.equal((out.match(/Такое же название ещё у/g) ?? []).length, 2, 'помечены две записи одного производителя, чужая — нет');
+});

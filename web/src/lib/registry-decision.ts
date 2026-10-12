@@ -60,6 +60,11 @@ export type CandidateView = {
   validUntil: string | null;
   validUntilMin: string | null;
   basisCount: number;
+  /** Баллы и процентный показатель из записи реестра; null — в записи их нет. */
+  points: number | null;
+  percent: number | null;
+  /** Текст колонки «О соответствии»: на каком основании запись подтверждает российское происхождение. */
+  conformity: string | null;
   recordStatus: "active" | "absent";
   activity: Activity;
   tiers: SearchTier[];
@@ -138,6 +143,9 @@ export function viewOf(candidate: Candidate, asOf: string): CandidateView {
     validUntil: record.validUntil,
     validUntilMin: record.validUntilMin,
     basisCount: record.bases.length,
+    points: record.points,
+    percent: record.percent,
+    conformity: record.conformity,
     recordStatus: record.status,
     activity: activityOf(record, asOf),
     tiers: candidate.tiers,

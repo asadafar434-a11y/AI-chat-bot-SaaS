@@ -19,7 +19,7 @@ export type DocxRequest = {
   part?: unknown;
   subject?: unknown;
   form?: Loose<TpForm>;
-  goods?: Loose<{ name: string; characteristics: string; quantity: string; registryNumber: string }>[];
+  goods?: Loose<{ name: string; characteristics: string; quantity: string; registryNumber: string; registryNeeded: boolean }>[];
   items?: Loose<{ clause: string; requirement: string; offer: string }>[];
   // Дополнительные бланки заказчика, найденные ИИ в документах закупки.
   detectedForms?: Loose<{ source: string; title: string; pages?: string; fields: Loose<{ label: string; value: string }>[] }>[];
@@ -112,6 +112,7 @@ function sourceFromRequest(body: DocxRequest): SourceResult {
       quantity: text(g.quantity, 100),
       // Номер реестровой записи пускаем в файл только в безопасном виде; настоящий ли он, проверяет сервер перед сборкой.
       ...(isSafeRegistryNumber(g.registryNumber) && { registryNumber: g.registryNumber }),
+      ...(g.registryNeeded === true && { registryNeeded: true }),
     })),
     items: items.map((item) => ({
       clause: text(item.clause, 40),

@@ -1,5 +1,6 @@
-import { cardsFromGoods, type DocText, type ProductCard } from "@/lib/product-card";
+import { cardsFromGoods, goodsIndexOf, type DocText, type ProductCard } from "@/lib/product-card";
 import { detectRegistryDemand, type RegistryDemand } from "@/lib/registry-demand";
+import { goodsWithRegistry } from "@/lib/registry-lines";
 import { EMPTY_REGISTRY_STATE, autofillSummary, type RegistryState } from "@/lib/registry-log";
 import { moscowDay, type RegistryKind } from "@/lib/registry-types";
 import type { TpGood } from "@/lib/tp";
@@ -47,8 +48,50 @@ export function registryNumbersFor(purchase: RegistryPurchase, docs: DocText[], 
   const required = requiredRegistryOf(demand, purchase.registry);
   const cards = registryCardsOf(purchase, docs);
   const { lines } = autofillSummary(cards, purchase.registry ?? EMPTY_REGISTRY_STATE, required, asOfDate(purchase.deadline, now));
-  cards.forEach((card, index) => {
-    if (lines.has(card.key)) out.set(index, purchase.registry!.choices[card.key].registryNumber);
-  });
+  for (const card of cards) {
+    if (lines.has(card.key)) out.set(goodsIndexOf(card.key), purchase.registry.choices[card.key].registryNumber);
+  }
   return out;
+}
+
+/** Закупка требует реестровый номер: документы назвали реестр или участник выбрал его сам. */
+export const registryNeededFor = (purchase: RegistryPurchase, docs: DocText[]): boolean =>
+  requiredRegistryOf(registryDemandOf(purchase, docs), purchase.registry) !== null;
+
+type ViewGood = Pick<TpGood, "name" | "characteristics" | "quantity">;
+type ViewTp = { goods: ViewGood[] };
+
+// Товары ТП с номерами и без кода ОКПД; служебные поля подстановки наружу не идут.
+function viewGoods<G extends ViewGood>(goods: G[], numbers: Map<number, string> | null, needed: boolean): G[] {
+  const marked = goods.map((g, i) => ({ ...g, registryNeeded: needed, ...(numbers?.has(i) && { registryNumber: numbers.get(i) }) }));
+  return goodsWithRegistry(marked).map((g) => {
+    const { registryNeeded: _needed, registryNumber: _number, registryRejected: _rejected, ...rest } = g as Record<string, unknown>;
+    void _needed;
+    void _number;
+    void _rejected;
+    return rest as G;
+  });
+}
+
+/**
+ * ТП, как он виден на экране: без кода ОКПД, с реестровыми номерами. То же делается с исходным черновиком ИИ (но без номеров), чтобы
+ * на месте номера в черновике стояло поле, а в ТП — его значение: так проверка полей считает это место заполненным участником.
+ * Нет ТП или товаров — null.
+ */
+export function registryView<T extends ViewTp>(
+  purchase: RegistryPurchase & { tp?: T; tpDraft?: T },
+  docs: DocText[],
+  now = new Date(),
+): { tp: T; tpDraft: T | undefined; numbers: Map<number, string>; needed: boolean } | null {
+  const tp = purchase.tp;
+  if (!tp || tp.goods.length === 0) return null;
+  const numbers = registryNumbersFor(purchase, docs, now);
+  const needed = registryNeededFor(purchase, docs);
+  const draft = purchase.tpDraft;
+  return {
+    tp: { ...tp, goods: viewGoods(tp.goods, numbers, needed) },
+    tpDraft: draft ? { ...draft, goods: viewGoods(draft.goods, null, needed) } : undefined,
+    numbers,
+    needed,
+  };
 }

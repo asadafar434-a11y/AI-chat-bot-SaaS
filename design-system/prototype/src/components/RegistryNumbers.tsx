@@ -1,9 +1,9 @@
 import { useState, type ReactNode } from 'react';
-import { ORIGIN_TEXT, type CardEdits, type ProductCard } from '@/lib/product-card';
+import type { CardEdits, ProductCard } from '@/lib/product-card';
 import type { RegistryDemand } from '@/lib/registry-demand';
 import { STALE_DAYS, STATUS_TEXT, selectable, type CandidateView, type DatasetRef, type Decision, type DecisionStatus } from '@/lib/registry-decision';
 import type { AutofillCheck, RegistryChoice, RegistryLogEntry } from '@/lib/registry-log';
-import { REGISTRY_SHORT, REGISTRY_TITLES, moscowDay, moscowTime, type RegistryKind } from '@/lib/registry-types';
+import { REGISTRY_SHORT, REGISTRY_TITLES, moscowDay, moscowTime, scoreText, type RegistryKind } from '@/lib/registry-types';
 import {
   AlertTriangle,
   Archive,
@@ -88,7 +88,6 @@ const FIELDS: { key: keyof CardEdits; label: string; hint?: string; wide?: boole
   { key: 'model', label: 'Модель', hint: 'Например, КО-100' },
   { key: 'article', label: 'Артикул' },
   { key: 'madeBy', label: 'ТУ или ГОСТ', hint: 'По которому изготовлен товар' },
-  { key: 'okpd2', label: 'Код ОКПД2', hint: 'Из ТЗ; можно поправить' },
   { key: 'registryNumber', label: 'Реестровый номер, если уже знаете', wide: true },
   { key: 'characteristics', label: 'Важные характеристики', hint: 'Объём, размеры — по ним сверяются отличия', wide: true },
 ];
@@ -138,15 +137,22 @@ function SignalList({ view }: { view: CandidateView }) {
   );
 }
 
+// Записи с одним названием у одного производителя — это разные реестровые номера одного и того же товара. Их помечаем, чтобы выбор был осознанным.
+const sameName = (a: CandidateView, b: CandidateView) => a.inn === b.inn && a.productName.trim().toLowerCase() === b.productName.trim().toLowerCase();
+const duplicatesOf = (all: CandidateView[], one: CandidateView) => all.filter((x) => x.registryNumber !== one.registryNumber && sameName(x, one)).length;
+
 function CandidateRow({
   view,
   proposed,
   selected,
+  duplicates,
   onSelect,
 }: {
   view: CandidateView;
   proposed: boolean;
   selected: boolean;
+  /** Сколько других записей с тем же названием у того же производителя: это разные номера, выбирать нужно свой. */
+  duplicates: number;
   onSelect: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -178,6 +184,12 @@ function CandidateRow({
               </Badge>
             )}
             {selected && <Badge tone="neutral">Выбрана</Badge>}
+            {duplicates > 0 && (
+              <Badge tone="warn">
+                <AlertTriangle className="size-3" />
+                Такое же название ещё у {duplicates} {duplicates === 1 ? 'записи' : 'записей'} — выберите свой номер
+              </Badge>
+            )}
           </div>
           <p className="mt-1 text-[13px] font-medium">{view.productName}</p>
         </div>
@@ -195,12 +207,12 @@ function CandidateRow({
           </dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">ОКПД2</dt>
-          <dd className="font-mono">{view.okpd2}</dd>
-        </div>
-        <div>
           <dt className="text-muted-foreground">Изготовлена по (ТУ, ГОСТ)</dt>
           <dd>{view.madeBy || '—'}</dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">Баллы и процентный показатель</dt>
+          <dd>{scoreText(view.points, view.percent) ?? <span className="text-muted-foreground">в записи не указаны</span>}</dd>
         </div>
         <div>
           <dt className="text-muted-foreground">Сверка с вашим товаром</dt>
@@ -233,6 +245,11 @@ function CandidateRow({
       </button>
       {open && (
         <div className="space-y-3 border-t border-border bg-secondary/30 px-3 py-3">
+          {view.conformity && (
+            <p className="text-[12px]">
+              <span className="font-medium">О соответствии (из реестра):</span> {view.conformity.length > 600 ? `${view.conformity.slice(0, 600)}…` : view.conformity}
+            </p>
+          )}
           <SignalList view={view} />
           <p className="text-[11px] text-muted-foreground">
             Внесена в реестр: {dateRu(view.addedAt)}. Оснований у записи: {view.basisCount}
@@ -251,14 +268,12 @@ function CardForm({ card, onSave, busy }: { card: ProductCard; onSave: (edits: C
     return f ? f.value : '';
   };
   const [draft, setDraft] = useState<CardEdits>(() => Object.fromEntries(FIELDS.map((f) => [f.key, initial(f.key)])));
-  const tzCode = card.fields.okpd2?.origin === 'tz' ? card.fields.okpd2.value : '';
 
   const save = () => {
     const edits: CardEdits = {};
     for (const f of FIELDS) {
       const value = (draft[f.key] ?? '').trim();
       if (!value) continue;
-      if (f.key === 'okpd2' && value === tzCode) continue;
       edits[f.key] = value;
     }
     onSave(edits);
@@ -273,7 +288,6 @@ function CardForm({ card, onSave, busy }: { card: ProductCard; onSave: (edits: C
       <div className="grid gap-3 sm:grid-cols-2">
         {FIELDS.map((f) => {
           const id = `rg-${card.key}-${f.key}`;
-          const fromTz = f.key === 'okpd2' && tzCode !== '' && (draft.okpd2 ?? '') === tzCode;
           return (
             <div key={f.key} className={f.wide ? 'sm:col-span-2' : undefined}>
               <label htmlFor={id} className="mb-1 block text-[12px] font-medium">
@@ -287,7 +301,6 @@ function CardForm({ card, onSave, busy }: { card: ProductCard; onSave: (edits: C
                 autoComplete="off"
                 className={inputClass}
               />
-              {fromTz && <p className="mt-1 text-[11px] text-muted-foreground">{ORIGIN_TEXT.tz}: {card.fields.okpd2?.source}</p>}
             </div>
           );
         })}
@@ -342,7 +355,7 @@ function PositionCard({
               Данные о товаре изменились
             </Badge>
           )}
-          <StatusBadge status={status} />
+          {!(choice && status === 'pending') && <StatusBadge status={status} />}
           <ChevronDown className={cx('size-4 text-muted-foreground transition-transform', open && 'rotate-180')} />
         </span>
       </button>
@@ -391,7 +404,7 @@ function PositionCard({
                     <>
                       <p className="text-[12px] text-muted-foreground">
                         Показано записей: {decision.candidates.length}
-                        {decision.matchedTotal > decision.candidates.length && ` из ${decision.matchedTotal}`}. Название и ОКПД2 лишь помогают найти кандидатов — выбор делается по производителю, модели и ТУ.
+                        {decision.matchedTotal > decision.candidates.length && ` из ${decision.matchedTotal}`}. Название лишь помогает найти кандидатов — выбор делается по производителю, модели и ТУ.
                       </p>
                       <ul className="space-y-2">
                         {decision.candidates.map((c) => (
@@ -400,6 +413,7 @@ function PositionCard({
                             view={c}
                             proposed={decision.proposed === c.registryNumber}
                             selected={choice?.registryNumber === c.registryNumber}
+                            duplicates={duplicatesOf(decision.candidates, c)}
                             onSelect={() => props.onSelect(card.key, c.registryNumber, note)}
                           />
                         ))}
@@ -447,6 +461,9 @@ function PositionCard({
               <p className="text-[12px] text-muted-foreground">
                 {choice.record.enterpriseName} · {choice.record.productName} · подтверждено {instantRu(choice.confirmedAt)}
                 {choice.note && ` · «${choice.note}»`}
+              </p>
+              <p className="text-[12px] text-muted-foreground">
+                Из реестра: {scoreText(choice.record.points, choice.record.percent) ?? 'баллы и процентный показатель в записи не указаны'}.
               </p>
               {position.autofill.ok ? (
                 <p className="flex items-start gap-1.5 text-[12px] text-success">

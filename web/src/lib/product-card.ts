@@ -1,3 +1,4 @@
+import { isOriginRow } from "@/lib/registry-lines";
 import { compact, okpd2In, lowerWords } from "@/lib/registry-text";
 import type { TpGood } from "@/lib/tp";
 
@@ -115,9 +116,13 @@ export function harvestOkpd2(good: { name: string; quote: string }, docs: DocTex
   return null;
 }
 
-/** Карточки позиций из перечня товаров ТП. Всё, что здесь взято из ТЗ, помечено origin «tz». */
+/**
+ * Карточки позиций из перечня товаров ТП. Всё, что здесь взято из ТЗ, помечено origin «tz». Строка «Страна происхождения – Россия»,
+ * которую ТП добавляет после товаров, — не товар: карточки у неё нет. Номер позиции в ключе — её место среди всех строк ТП.
+ */
 export function cardsFromGoods(goods: Pick<TpGood, "name" | "quantity" | "source" | "quote">[], docs: DocText[], edits: Record<string, CardEdits> = {}): ProductCard[] {
-  return goods.map((good, index) => {
+  return goods.flatMap((good, index) => {
+    if (isOriginRow(good)) return [];
     const key = positionKey(index, good.name);
     const card: ProductCard = {
       key,
@@ -130,9 +135,12 @@ export function cardsFromGoods(goods: Pick<TpGood, "name" | "quantity" | "source
     };
     const found = harvestOkpd2({ name: good.name, quote: good.quote }, docs);
     if (found) card.fields.okpd2 = { value: found.code, origin: "tz", source: found.source };
-    return applyEdits(card, edits[key]);
+    return [applyEdits(card, edits[key])];
   });
 }
+
+/** Место товара среди строк ТП по ключу карточки («3:abc» → 2). */
+export const goodsIndexOf = (key: string): number => Number(key.split(":")[0]) - 1;
 
 /** Наложение того, что вписал участник: его значения важнее ТЗ и считаются подтверждающими. */
 export function applyEdits(card: ProductCard, edits: CardEdits | undefined): ProductCard {

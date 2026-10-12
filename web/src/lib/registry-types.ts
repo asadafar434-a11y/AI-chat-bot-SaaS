@@ -129,3 +129,14 @@ export const isSafeRegistryNumber = (value: unknown): value is string => typeof 
 const MSK_OFFSET_MS = 3 * 3600 * 1000;
 export const moscowDay = (iso: string): string => new Date(Date.parse(iso) + MSK_OFFSET_MS).toISOString().slice(0, 10);
 export const moscowTime = (iso: string): string => new Date(Date.parse(iso) + MSK_OFFSET_MS).toISOString().slice(11, 16);
+
+/** Процентный показатель в реестре — доля от 0 до 1 (0,81): на экране — в процентах. */
+export const percentText = (percent: number): string => `${String(Math.round(percent * 10000) / 100).replace(".", ",")} %`;
+
+/** «Баллы: 135 · процентный показатель: 81 %». Нет ни того, ни другого — null: в записи их нет, и выдумывать нечего. */
+export function scoreText(points: number | null | undefined, percent: number | null | undefined): string | null {
+  const parts: string[] = [];
+  if (points !== null && points !== undefined) parts.push(`баллы: ${points}`);
+  if (percent !== null && percent !== undefined) parts.push(`процентный показатель: ${percentText(percent)}`);
+  return parts.length ? parts.join(" · ") : null;
+}

@@ -20,6 +20,9 @@ export type RecordSnapshot = {
   validUntil: string | null;
   validUntilMin: string | null;
   basisCount: number;
+  /** Баллы и процентный показатель на момент выбора; в выборах, сделанных раньше, их нет. */
+  points?: number | null;
+  percent?: number | null;
 };
 
 export type Considered = { registryNumber: string; enterpriseName: string; productName: string; identity: string[]; contradictions: string[]; active: boolean };
@@ -89,6 +92,8 @@ const snapshotOf = (view: CandidateView): RecordSnapshot => ({
   validUntil: view.validUntil,
   validUntilMin: view.validUntilMin,
   basisCount: view.basisCount,
+  points: view.points,
+  percent: view.percent,
 });
 
 export type SelectResult = { ok: true; state: RegistryState; choice: RegistryChoice } | { ok: false; reason: string };

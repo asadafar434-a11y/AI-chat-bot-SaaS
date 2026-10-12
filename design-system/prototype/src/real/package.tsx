@@ -25,6 +25,7 @@ import { StepPackage, type PackagePreview, type PackageRow } from '../components
 import { AlertTriangle } from '../lib/icons';
 import { useProfile } from './analysis';
 import { useFacts, useMyDocs } from './hooks';
+import { registryView } from '@/lib/registry-fill';
 import { usePurchase } from './purchase-provider';
 import { RegistryBlock } from './registry';
 
@@ -103,7 +104,13 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
     }),
     [my.docs],
   );
-  const fields = useMemo(() => fieldsOf({ purchase, profile, evidence }), [purchase, profile, evidence]);
+  // ТП, как он будет в файлах: без кода ОКПД, с реестровыми номерами (lib/registry-fill.ts). Предпросмотр и проверка полей смотрят на него.
+  const registryDocs = useMemo(() => source.documents.map((d) => ({ name: d.name, text: d.text })), [source.documents]);
+  const shown = useMemo(() => {
+    const view = registryView(purchase, registryDocs);
+    return view ? { ...purchase, tp: view.tp, tpDraft: view.tpDraft } : purchase;
+  }, [purchase, registryDocs]);
+  const fields = useMemo(() => fieldsOf({ purchase: shown, profile, evidence }), [shown, profile, evidence]);
   // Где в файлах закупки стоит цитата пункта «Что требует заказчик» (lib/doc-locate.ts).
   const locator = useMemo(() => createLocator(source.documents), [source.documents]);
   // Страницы каждого бланка — из текста документов (код), а не из ответа ИИ.
@@ -115,7 +122,7 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
     const place = quote ? locator.locate(quote) : null;
     return place ? describeSource(place) : undefined;
   };
-  const final = useMemo(() => completeness(purchase, fields, profile), [purchase, fields, profile]);
+  const final = useMemo(() => completeness(shown, fields, profile), [shown, fields, profile]);
 
   const plans = useMemo(() => fulfillmentOf(purchase, { profile, fields }), [purchase, profile, fields]);
   const generatedParts = useMemo((): TpPart[] => {
@@ -177,7 +184,7 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
       return {
         ...common,
         title: PART_TITLES.tp,
-        body: <ApplicationText purchase={purchase} />,
+        body: <ApplicationText purchase={shown} />,
         foot: ['без названия и реквизитов участника', 'первая часть заявки'],
       };
     }
