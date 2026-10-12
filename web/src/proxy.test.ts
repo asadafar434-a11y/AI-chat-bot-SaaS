@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { NextRequest } from "next/server";
 import { ACCESS_COOKIE, accessToken } from "./lib/access.ts";
-import { AI_PER_IP, FILES_PER_IP } from "./lib/rate-limit.ts";
+import { AI_PER_IP, FILES_PER_IP, REGISTRY_PER_IP } from "./lib/rate-limit.ts";
 import { proxy } from "./proxy.ts";
 
 // Окружение — на время одного теста.
@@ -113,5 +113,18 @@ test("health-пробы открыты без входа и без пароля 
   await withEnv({ NODE_ENV: "production", ACCESS_PASSWORD: undefined, OPEN_ACCESS: undefined }, async () => {
     assert.equal((await proxy(new NextRequest("http://localhost/api/health"))).status, 200);
     assert.notEqual((await proxy(new NextRequest("http://localhost/api/health/ready"))).status, 503);
+  });
+});
+
+test("поиск по реестру — не запрос к ИИ: не расходует лимит ИИ, у него свой лимит", async () => {
+  await withEnv({ NODE_ENV: "development", ACCESS_PASSWORD: undefined }, async () => {
+    const ip = nextIp();
+    for (let i = 0; i < AI_PER_IP[0].max + 5; i++) assert.equal((await proxy(post("/api/registry/search", ip))).status, 200, `поиск ${i + 1}`);
+    assert.equal((await proxy(post("/api/chat", ip))).status, 200, "лимит ИИ у этого адреса не тронут");
+    const other = nextIp();
+    for (let i = 0; i < REGISTRY_PER_IP[0].max; i++) await proxy(post("/api/registry/search", other));
+    const over = await proxy(post("/api/registry/search", other));
+    assert.equal(over.status, 429);
+    assert.match(await over.text(), /Слишком много поисков по реестру подряд/);
   });
 });

@@ -528,3 +528,120 @@ model KnowledgeChunk {
   @@index([ownerKey, hash, embeddingModel])
   @@map("KnowledgeChunk")
 }
+
+// ── S13. Реестр промышленной продукции (ГИСП) ─────────────────────────────────────────────────────
+// Справочник общий для всех организаций и открытый (выгрузка ГИСП), поэтому, как и база знаний, без
+// organizationId. Решения участника по товарам (кто что выбрал) хранятся в закупке, а не здесь.
+
+enum RegistryImportStatus {
+  running
+  completed
+  failed
+}
+
+enum RegistryRecordStatus {
+  /// Запись есть в последней загруженной выгрузке.
+  active
+  /// Записи нет в последней выгрузке: её исключили или срок вышел. Строка остаётся, чтобы объяснить прошлые решения.
+  absent
+}
+
+enum RegistryChangeKind {
+  changed
+  absent
+  returned
+}
+
+/// Одна загруженная выгрузка реестра: что за файл, когда выгружен и чем закончился импорт.
+model RegistryDataset {
+  id            String               @id @default(cuid())
+  /// Какой это реестр: "gisp_rpp_719" — реестр российской промышленной продукции (ПП 719).
+  registryKind  String               @db.VarChar(40)
+  /// Версия разбора колонок (registry-format.ts).
+  formatVersion String               @db.VarChar(40)
+  fileName      String               @db.VarChar(500)
+  fileSha256    String               @db.VarChar(64)
+  /// Время выгрузки из самого файла («Время выгрузки: …»). Без него — пусто, а не дата импорта.
+  exportedAt    DateTime?            @db.Timestamptz(3)
+  status        RegistryImportStatus @default(running)
+  importedBy    String?              @db.VarChar(120)
+  finishedAt    DateTime?            @db.Timestamptz(3)
+  /// Счётчики и результаты проверки целостности: rowsRead, recordsAdded, recordsChanged, … (registry-import.ts).
+  report        Json?
+  createdAt     DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime             @updatedAt @db.Timestamptz(3)
+
+  firstSeen RegistryRecord[] @relation("RegistryFirstSeen")
+  lastSeen  RegistryRecord[] @relation("RegistryLastSeen")
+  changes   RegistryChange[]
+
+  @@unique([registryKind, fileSha256])
+  @@index([registryKind, status, exportedAt])
+  @@map("RegistryDataset")
+}
+
+/// Реестровая запись. Ключ — реестровый номер (строкой): в выгрузке один номер может занимать две строки с разными
+/// основаниями, они собираются в bases, а не плодят дубликаты.
+model RegistryRecord {
+  id                 String               @id @default(cuid())
+  registryKind       String               @db.VarChar(40)
+  registryNumber     String               @db.VarChar(40)
+  status             RegistryRecordStatus @default(active)
+  enterpriseName     String               @db.VarChar(600)
+  inn                String               @db.VarChar(12)
+  ogrn               String?              @db.VarChar(15)
+  productName        String               @db.VarChar(1000)
+  okpd2              String               @db.VarChar(20)
+  tnved              String?              @db.VarChar(300)
+  /// «Изготовлена по»: ТУ, ГОСТ — единственные технические сведения в записи.
+  madeBy             String?              @db.VarChar(2000)
+  digitalPassport    String?              @db.VarChar(40)
+  primaryNumber      String?              @db.VarChar(60)
+  addedAt            DateTime?            @db.Date
+  /// Самая поздняя дата окончания среди оснований; самая ранняя — validUntilMin. Если они разные, запись помечается.
+  validUntil         DateTime?            @db.Date
+  validUntilMin      DateTime?            @db.Date
+  terminatedAt       DateTime?            @db.Date
+  points             Float?
+  percent            Float?
+  conformity         String?              @db.Text
+  department         String?              @db.VarChar(200)
+  flags              Json
+  /// Основания записи: вид (СТ-1, акт экспертизы…), номер, дата, срок действия, заключение. По одной на строку выгрузки.
+  bases              Json
+  /// Отпечаток всех сведений записи: по нему повторный импорт видит, что запись не менялась.
+  rowHash            String               @db.VarChar(64)
+  firstSeenDatasetId String
+  lastSeenDatasetId  String
+  createdAt          DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime             @updatedAt @db.Timestamptz(3)
+
+  firstSeenDataset RegistryDataset @relation("RegistryFirstSeen", fields: [firstSeenDatasetId], references: [id], onDelete: Restrict)
+  lastSeenDataset  RegistryDataset @relation("RegistryLastSeen", fields: [lastSeenDatasetId], references: [id], onDelete: Restrict)
+  changes          RegistryChange[]
+
+  @@unique([registryKind, registryNumber])
+  @@index([registryKind, inn])
+  @@index([registryKind, okpd2])
+  @@index([registryKind, status, lastSeenDatasetId])
+  @@map("RegistryRecord")
+}
+
+/// Что изменилось в записи между выгрузками. Первое появление не пишется: его видно по firstSeenDatasetId.
+model RegistryChange {
+  id        String             @id @default(cuid())
+  recordId  String
+  datasetId String
+  kind      RegistryChangeKind
+  /// Только изменившиеся поля: { поле: значение }. Для absent и returned — пусто.
+  before    Json?
+  after     Json?
+  createdAt DateTime           @default(now()) @db.Timestamptz(3)
+
+  record  RegistryRecord  @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  dataset RegistryDataset @relation(fields: [datasetId], references: [id], onDelete: Restrict)
+
+  @@index([recordId, createdAt])
+  @@index([datasetId, kind])
+  @@map("RegistryChange")
+}

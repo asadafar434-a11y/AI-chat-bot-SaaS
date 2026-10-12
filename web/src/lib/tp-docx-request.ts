@@ -7,6 +7,8 @@ import { PART_TITLES, type TpPart } from "@/lib/tp-parts";
 import { PartDocFileSchema, type PartDoc } from "@/lib/part-doc";
 import { EMPTY_PROFILE, PROFILE_KEYS, type Profile } from "@/lib/profile";
 import { PLAIN_FORM, type TpForm } from "@/lib/tp";
+import { isSafeRegistryNumber } from "@/lib/registry-types";
+import { rejectUnknownRegistryNumbers } from "@/server/registry/verify";
 import { badRequest, readJson } from "@/lib/read-json";
 
 // Файл части заявки — Word, PDF или ODT — из того, что прислал браузер. Одинаково для одного файла (api/tp/docx, api/tp/pdf,
@@ -17,7 +19,7 @@ export type DocxRequest = {
   part?: unknown;
   subject?: unknown;
   form?: Loose<TpForm>;
-  goods?: Loose<{ name: string; characteristics: string; quantity: string }>[];
+  goods?: Loose<{ name: string; characteristics: string; quantity: string; registryNumber: string }>[];
   items?: Loose<{ clause: string; requirement: string; offer: string }>[];
   // Дополнительные бланки заказчика, найденные ИИ в документах закупки.
   detectedForms?: Loose<{ source: string; title: string; pages?: string; fields: Loose<{ label: string; value: string }>[] }>[];
@@ -108,6 +110,8 @@ function sourceFromRequest(body: DocxRequest): SourceResult {
       name: text(g.name, 500),
       characteristics: text(g.characteristics, 8000),
       quantity: text(g.quantity, 100),
+      // Номер реестровой записи пускаем в файл только в безопасном виде; настоящий ли он, проверяет сервер перед сборкой.
+      ...(isSafeRegistryNumber(g.registryNumber) && { registryNumber: g.registryNumber }),
     })),
     items: items.map((item) => ({
       clause: text(item.clause, 40),
@@ -149,7 +153,9 @@ export async function fileFromRequest(body: DocxRequest, format: FileFormat = "d
   const made = sourceFromRequest(body);
   if (!made.ok) return made;
   const { source } = made;
-  const blank = source.kind === "data" && source.data.blankOnly ? source.data.detectedForms?.[0] : undefined;
+  // Номер, которого нет среди действующих записей реестра, в файл не попадает: вместо него жёлтая пометка «проверьте».
+  if (source.kind === "data") await rejectUnknownRegistryNumbers(source.data.goods);
+  const blank =source.kind === "data" && source.data.blankOnly ? source.data.detectedForms?.[0] : undefined;
   return { ok: true, part: source.part, name: blank?.title ?? PART_TITLES[source.part], buffer: await render(source, format) };
 }
 

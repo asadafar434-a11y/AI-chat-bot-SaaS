@@ -43,6 +43,13 @@ const S2_MODELS = [...AUTH_MODELS, "Invitation"] as const;
  */
 const KB_MODELS = ["KnowledgeDocument", "KnowledgeChunk"] as const;
 
+/**
+ * Таблицы реестра промышленной продукции (S13). Это открытый справочник ГИСП, общий для всех организаций, поэтому у них
+ * нет ни `organizationId`, ни связи с Organization — как у общей базы знаний. Решения участника по товарам (кто какой номер
+ * выбрал) в эти таблицы не пишутся: они лежат в закупке.
+ */
+const REGISTRY_MODELS = ["RegistryDataset", "RegistryRecord", "RegistryChange"] as const;
+
 /** Таблицы, которые заведены в более поздних этапах и не должны появляться сейчас. */
 const LATER_STAGE_MODELS = ["Payment", "pgboss"] as const;
 
@@ -58,8 +65,8 @@ function modelNames(): string[] {
   return [...schema.matchAll(/^model\s+(\w+)\s*\{/gm)].map((match) => match[1]);
 }
 
-test("в схеме ровно 17 моделей: 11 приложения (S1), 4 аутентификации (S2) и 2 базы знаний (S12)", () => {
-  assert.deepEqual(modelNames().sort(), [...S1_MODELS, ...S2_MODELS, ...KB_MODELS].sort());
+test("в схеме ровно 20 моделей: 11 приложения (S1), 4 аутентификации (S2), 2 базы знаний (S12) и 3 реестра (S13)", () => {
+  assert.deepEqual(modelNames().sort(), [...S1_MODELS, ...S2_MODELS, ...KB_MODELS, ...REGISTRY_MODELS].sort());
 });
 
 test("моделей более поздних этапов в схеме нет", () => {
@@ -75,7 +82,7 @@ test("моделей более поздних этапов в схеме нет
  * организациях, `UserProfile` принадлежит пользователю, а не арендатору. Таблицы Auth.js
  * привязаны к `userId` текущей сессии, а не к арендатору (data-model.md §7).
  */
-const TABLES_WITHOUT_ORG_ID = ["Organization", "User", "UserProfile", ...AUTH_MODELS, ...KB_MODELS];
+const TABLES_WITHOUT_ORG_ID = ["Organization", "User", "UserProfile", ...AUTH_MODELS, ...KB_MODELS, ...REGISTRY_MODELS];
 
 /**
  * Таблицы, у которых вместо `createdAt`/`updatedAt` собственные отметки времени:
@@ -85,6 +92,8 @@ const TABLES_WITH_OWN_TIMESTAMPS: Record<string, { created: string; updated: str
   LegacyImportBatch: { created: "startedAt", updated: "finishedAt" },
   // Фрагменты не правятся: при изменении документа они заменяются целиком.
   KnowledgeChunk: { created: "createdAt", updated: "createdAt" },
+  // Журнал изменений записей реестра только дополняется: прошлое не правится.
+  RegistryChange: { created: "createdAt", updated: "createdAt" },
 };
 
 test("модели без organizationId — только корень и таблицы пользователя", () => {
@@ -311,4 +320,55 @@ test("база знаний: поиск по владельцу идёт по и
 test("база знаний: векторы — массив Float, текст документа хранится только для переиндексации", () => {
   assert.match(modelBlock("KnowledgeChunk"), /embedding\s+Float\[\]/);
   assert.match(modelBlock("KnowledgeDocument"), /sourceText\s+String/);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Инварианты S13: реестр промышленной продукции
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("реестр: запись уникальна по реестру и номеру, выгрузка — по реестру и отпечатку файла", () => {
+  assert.match(modelBlock("RegistryRecord"), /@@unique\(\[registryKind,\s*registryNumber\]\)/);
+  assert.match(modelBlock("RegistryDataset"), /@@unique\(\[registryKind,\s*fileSha256\]\)/);
+});
+
+test("реестр: номер записи хранится строкой, а не числом", () => {
+  assert.match(modelBlock("RegistryRecord"), /registryNumber\s+String\s/);
+  assert.doesNotMatch(modelBlock("RegistryRecord"), /registryNumber\s+(Int|BigInt|Float)/);
+});
+
+test("реестр: поиск идёт по индексам — ИНН производителя и ОКПД2 внутри реестра", () => {
+  const block = modelBlock("RegistryRecord");
+  assert.match(block, /@@index\(\[registryKind,\s*inn\]\)/);
+  assert.match(block, /@@index\(\[registryKind,\s*okpd2\]\)/);
+});
+
+test("реестр: выгрузки и записи не удаляются из-под журнала — внешние ключи без каскада; журнал уходит вместе с записью", () => {
+  const record = modelBlock("RegistryRecord");
+  assert.match(record, /firstSeenDataset\s+RegistryDataset\s+@relation\("RegistryFirstSeen",[^)]*onDelete:\s*Restrict\)/);
+  assert.match(record, /lastSeenDataset\s+RegistryDataset\s+@relation\("RegistryLastSeen",[^)]*onDelete:\s*Restrict\)/);
+  const change = modelBlock("RegistryChange");
+  assert.match(change, /dataset\s+RegistryDataset\s+@relation\([^)]*onDelete:\s*Restrict\)/);
+  assert.match(change, /record\s+RegistryRecord\s+@relation\([^)]*onDelete:\s*Cascade\)/);
+});
+
+test("реестр: статусы — enum, а не свободная строка; основания и флаги — JSON", () => {
+  assert.match(modelBlock("RegistryRecord"), /status\s+RegistryRecordStatus/);
+  assert.match(modelBlock("RegistryDataset"), /status\s+RegistryImportStatus/);
+  assert.match(modelBlock("RegistryChange"), /kind\s+RegistryChangeKind/);
+  assert.match(modelBlock("RegistryRecord"), /bases\s+Json/);
+});
+
+test("реестр: срок действия — дата без времени, а не момент", () => {
+  const block = modelBlock("RegistryRecord");
+  assert.match(block, /validUntil\s+DateTime\?\s+@db\.Date/);
+  assert.match(block, /addedAt\s+DateTime\?\s+@db\.Date/);
+});
+
+test("реестр: последняя выгрузка, из которой запись пропала, видна по статусу absent", () => {
+  const status = schema.match(/enum\s+RegistryRecordStatus\s*\{([\s\S]*?)\}/);
+  assert.ok(status, "enum RegistryRecordStatus не найден");
+  assert.deepEqual(
+    [...status[1].matchAll(/^\s*(\w+)\s*$/gm)].map((match) => match[1]),
+    ["active", "absent"],
+  );
 });

@@ -26,6 +26,7 @@ import { AlertTriangle } from '../lib/icons';
 import { useProfile } from './analysis';
 import { useFacts, useMyDocs } from './hooks';
 import { usePurchase } from './purchase-provider';
+import { RegistryBlock } from './registry';
 
 // Документ, который ИИ составил по форме заказчика: заголовок, абзацы и таблицы; пропуски «[…]» — жёлтые.
 function PartBody({ doc }: { doc: PartDoc }) {
@@ -247,6 +248,7 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
       scoringReport={appScoringReport}
       detectedForms={detectedForms}
       onDownloadForm={downloadDetectedForm}
+      registry={tp ? <RegistryBlock /> : undefined}
     />
   );
 }

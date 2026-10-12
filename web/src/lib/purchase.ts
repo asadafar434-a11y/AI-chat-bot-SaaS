@@ -9,6 +9,7 @@ import { forServer, type FailedFile, type SentDocument } from "@/lib/read-docume
 import type { Criteria } from "@/lib/criteria";
 import type { PurchaseSummary, ReqGroups, RequirementsResponse } from "@/lib/requirements";
 import type { TpResult } from "@/lib/tp";
+import type { RegistryState } from "@/lib/registry-log";
 
 // Часть заявки, которую ИИ написал по образцам. basisKey — отпечаток того, из чего она составлена:
 // форма заказчика, реквизиты, цена, образцы. Изменилось что-то из этого — часть составляется заново.
@@ -48,6 +49,8 @@ export type Purchase = PurchaseSummary & {
   // Какие документы из «Что подать» участник отметил готовыми — по тексту пункта (lib/application-files.ts).
   submitReady?: string[];
   chat?: ChatMessage[];
+  // Реестровые номера товаров: что участник вписал в карточки, какие записи реестра выбрал и журнал решений (lib/registry-log.ts).
+  registry?: RegistryState;
   // Участник отметил, что подал заявку на площадке: закупка уходит из «В работе» в «Поданы».
   submitted?: boolean;
 };

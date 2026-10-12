@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ACCESS_COOKIE, accessPassword, accessToken, closedWithoutPassword, sameToken } from "@/lib/access";
 import { isLegalPath } from "@/lib/legal";
-import { AI_PER_IP, AI_TOTAL, clientIp, createLimiter, FILES_PER_IP, waitText } from "@/lib/rate-limit";
+import { AI_PER_IP, AI_TOTAL, clientIp, createLimiter, FILES_PER_IP, REGISTRY_PER_IP, waitText } from "@/lib/rate-limit";
 import { SECURE_SESSION_COOKIE_NAME, SESSION_COOKIE_NAME } from "@/server/auth/session";
 
 // Cookie серверной сессии Auth.js. Наличие проверяется «оптимистично»: реальная проверка
@@ -18,6 +18,7 @@ const text = (message: string, status: number, retryAfter?: number) =>
 const aiPerIp = createLimiter(AI_PER_IP);
 const aiTotal = createLimiter(AI_TOTAL);
 const filesPerIp = createLimiter(FILES_PER_IP);
+const registryPerIp = createLimiter(REGISTRY_PER_IP);
 
 // Liveness/readiness probes должны отвечать без входа: их опрашивает балансировщик,
 // а не человек. Данные они не отдают — только состояние процесса/БД.
@@ -33,6 +34,11 @@ function tooMany(request: NextRequest): NextResponse | null {
   if (pathname === "/api/documents") {
     const wait = filesPerIp(ip);
     return wait ? text(`Слишком много файлов подряд — продолжите ${waitText(wait)}.`, 429, wait) : null;
+  }
+  // Поиск по реестру — не запрос к ИИ: бюджет ИИ он не тратит и в его лимит не входит, у него свой.
+  if (pathname === "/api/registry/search") {
+    const wait = registryPerIp(ip);
+    return wait ? text(`Слишком много поисков по реестру подряд — продолжите ${waitText(wait)}.`, 429, wait) : null;
   }
   const own = aiPerIp(ip);
   if (own) return text(`Слишком много запросов к ИИ подряд — продолжите ${waitText(own)}.`, 429, own);

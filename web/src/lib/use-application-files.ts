@@ -12,6 +12,7 @@ import { isEvidencePart, PART_SAMPLE_KIND, type PartKey } from "@/lib/my-docs";
 import type { PartDoc } from "@/lib/part-doc";
 import { aiHeaders, type Purchase } from "@/lib/purchase";
 import { forServer, type SentDocument } from "@/lib/read-documents";
+import { registryNumbersFor } from "@/lib/registry-fill";
 import { saveFile } from "@/lib/save-file";
 import type { DetectedForm, TpResult } from "@/lib/tp";
 import { criteriaRowsFor, PART_TITLES, partsOf, type TpPart } from "@/lib/tp-parts";
@@ -84,10 +85,18 @@ export function useApplicationFilesOf({ purchase, documents, update }: Applicati
 
   // Техническое предложение — всегда из черновика на экране. По этому же шаблону без ИИ собираются
   // остальные части в примере и когда ИИ не подключён.
-  const templatePayload = (current: TpResult, part: TpPart) => ({
+  const templatePayload = (current: TpResult, part: TpPart) => {
+    const registryNumbers = registryNumbersFor({ tp: current, registry: purchase.registry, deadline: purchase.deadline }, documents);
+    return {
     subject: purchase.subject,
     form: current.form,
-    goods: current.goods.map(({ name, characteristics, quantity }) => ({ name, characteristics, quantity })),
+    goods: current.goods.map(({ name, characteristics, quantity }, index) => ({
+      name,
+      characteristics,
+      quantity,
+      // Номер реестровой записи — только подтверждённый участником и прошедший проверку (lib/registry-log.ts).
+      ...(registryNumbers.has(index) && { registryNumber: registryNumbers.get(index) }),
+    })),
     items: current.items.map(({ clause, requirement, offer }) => ({ clause, requirement, offer })),
     // Дополнительные бланки заказчика попадают только в единый бланк заявки (application).
     detectedForms: part === "application" ? (current.detectedForms ?? []) : undefined,
@@ -98,7 +107,8 @@ export function useApplicationFilesOf({ purchase, documents, update }: Applicati
     profile: part === "tp" ? undefined : profile,
     // Строки анкеты заказчика сверх реквизитов — со значениями, вписанными для этой закупки.
     anketaExtra: part === "participant" ? anketaExtraValues(purchase, current.form) : undefined,
-  });
+    };
+  };
 
   // Что уйдёт в файл части: готовый документ, шаблон или документ, который ИИ напишет сейчас.
   // parts — готовые части на этот момент: при скачивании архивом они пишутся одна за другой.

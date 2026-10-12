@@ -618,6 +618,7 @@ export function StepPackage({
   scoringReport: scoringRep,
   detectedForms,
   onDownloadForm,
+  registry,
 }: {
   hasTp: boolean;
   // Блок под заголовком шага — например, «документы закупки изменились».
@@ -657,6 +658,8 @@ export function StepPackage({
   detectedForms?: DetectedForm[];
   // Скачать один бланк отдельным файлом.
   onDownloadForm?: (df: DetectedForm) => void;
+  // Блок «Реестровые номера товаров» (real/registry.tsx); на макете без закупки не задаётся.
+  registry?: ReactNode;
 }) {
   const [openPart, setOpenPart] = useState<TpPart | null>(null);
   const [redo, setRedo] = useState(false);
@@ -818,6 +821,9 @@ export function StepPackage({
               ))}
             </div>
           </Card>
+
+          {/* Реестровые номера товаров */}
+          {registry}
 
           {/* Сборка заявки по 7 шагам */}
           {buildReport && <BuildPanel report={buildReport} />}
