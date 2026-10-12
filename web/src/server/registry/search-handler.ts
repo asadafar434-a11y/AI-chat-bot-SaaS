@@ -2,7 +2,7 @@ import "server-only";
 import { badRequest, readJson } from "@/lib/read-json";
 import { parseSearchRequest } from "@/lib/registry-request";
 import { moscowDay } from "@/lib/registry-types";
-import { resolveCard } from "@/lib/registry-service";
+import { latestDatasets, resolveCard } from "@/lib/registry-service";
 import type { RegistryStore } from "@/lib/registry-store";
 
 // Обработчик «найти записи реестра». Отдельно от файла маршрута, чтобы проверять его без сервера и базы:
@@ -32,14 +32,15 @@ export async function handleRegistrySearch(request: Request, deps: SearchDeps): 
   const { registry, asOf, cards } = parsed.value;
   try {
     const store = deps.getStore();
-    const dataset = await store.latestDataset(registry);
+    // Ищем сразу во всех загруженных реестрах: участнику выбирать реестр не нужно.
+    const datasets = await latestDatasets(store);
     const limit = cards.length > 20 ? 12 : 30;
     const results = [];
-    for (const card of cards) results.push({ key: card.key, decision: await resolveCard(store, card, { registry, asOf, now, dataset, limit }) });
+    for (const card of cards) results.push({ key: card.key, decision: await resolveCard(store, card, { registry, asOf, now, datasets, limit }) });
     return Response.json({
       registry,
       asOf,
-      dataset: dataset && { id: dataset.id, fileSha256: dataset.fileSha256, formatVersion: dataset.formatVersion, exportedAt: dataset.exportedAt, importedAt: dataset.importedAt },
+      datasets: datasets.map((d) => ({ registry: d.registryKind, id: d.id, fileSha256: d.fileSha256, formatVersion: d.formatVersion, exportedAt: d.exportedAt, importedAt: d.importedAt })),
       results,
     });
   } catch (error) {

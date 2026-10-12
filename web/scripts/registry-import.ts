@@ -1,7 +1,10 @@
 // Импорт выгрузки реестра промышленной продукции (ГИСП) в PostgreSQL: npm run registry:import
 //
-//   npm run registry:import -- --file="путь\к\production_res_valid_only.xlsx" --by="Имя" --dry-run   пробный прогон, в базу ничего не пишется
-//   npm run registry:import -- --file="путь\к\выгрузке.xlsx" --by="Имя"                              запись в базу
+//   npm run registry:import -- --registry=rpp --file="путь\к\production_res_valid_only.xlsx" --by="Имя" --dry-run   пробный прогон, в базу ничего не пишется
+//   npm run registry:import -- --registry=rpp --file="путь\к\production_res_valid_only.xlsx" --by="Имя"             запись в базу
+//   npm run registry:import -- --registry=rep --file="путь\к\production-rep_res_valid_only.xlsx" --by="Имя"         выгрузка радиоэлектронной продукции
+//   --registry   какой это реестр: rpp — российская промышленная продукция (ПП 719), rep — радиоэлектронная (ПП 878). Обязателен:
+//                файл сам себя не называет, а загрузка одного реестра в другой подменила бы записи.
 //   ... --allow-shrink    разрешить пометить пропавшие записи, даже если выгрузка выглядит неполной
 //
 // Для записи нужна DATABASE_URL (локальная база: npm run db:up, затем npm run db:migrate:deploy).
@@ -12,9 +15,11 @@ import { basename } from "node:path";
 import { importRegistry } from "../src/lib/registry-import.ts";
 import { createMemoryRegistryStore } from "../src/lib/registry-store.ts";
 import { createDbRegistryStore, type RegistryDb } from "../src/lib/registry-store-db.ts";
-import { REGISTRY_TITLES, RegistryError, type RegistryImportReport } from "../src/lib/registry-types.ts";
+import { REGISTRY_TITLES, RegistryError, type RegistryImportReport, type RegistryKind } from "../src/lib/registry-types.ts";
 import { disconnectPrisma, getPrismaClient } from "../src/server/db/client.ts";
 import { openXlsx } from "../src/server/registry/xlsx-stream.ts";
+
+const KINDS: Record<string, RegistryKind> = { rpp: "gisp_rpp_719", rep: "gisp_rep_878" };
 
 const args = new Map(process.argv.slice(2).map((a) => {
   const [key, ...rest] = a.replace(/^--/, "").split("=");
@@ -38,13 +43,14 @@ function printReport(report: RegistryImportReport, exportedAt: string | null) {
 
 async function main() {
   const file = args.get("file");
-  if (!file || file === "true") throw new Error('укажите файл: --file="путь\\к\\выгрузке.xlsx"');
+  if (!file || file === "true") throw new RegistryError("invalid_input", 'укажите файл: --file="путь\\к\\выгрузке.xlsx"');
   const dryRun = args.has("dry-run");
   const by = args.get("by");
-  if (!dryRun && (!by || by === "true")) throw new Error('для записи укажите, кто загружает: --by="Имя"');
-  if (!dryRun && !process.env.DATABASE_URL) throw new Error("для записи нужна DATABASE_URL (локальная база: npm run db:up, затем npm run db:migrate:deploy)");
+  if (!dryRun && (!by || by === "true")) throw new RegistryError("invalid_input", 'для записи укажите, кто загружает: --by="Имя"');
+  if (!dryRun && !process.env.DATABASE_URL) throw new RegistryError("invalid_input", "для записи нужна DATABASE_URL (локальная база: npm run db:up, затем npm run db:migrate:deploy)");
 
-  const kind = "gisp_rpp_719" as const;
+  const kind = KINDS[args.get("registry") ?? ""];
+  if (!kind) throw new RegistryError("invalid_input", "укажите, какой это реестр: --registry=rpp (российская промышленная продукция, ПП 719) или --registry=rep (радиоэлектронная продукция, ПП 878)");
   console.log(`Реестр: ${REGISTRY_TITLES[kind]}`);
   console.log(`Файл: ${basename(file)}${dryRun ? "  (пробный прогон: в базу ничего не пишется)" : ""}`);
   const started = Date.now();

@@ -7,7 +7,7 @@ import { PART_TITLES, type TpPart } from "@/lib/tp-parts";
 import { PartDocFileSchema, type PartDoc } from "@/lib/part-doc";
 import { EMPTY_PROFILE, PROFILE_KEYS, type Profile } from "@/lib/profile";
 import { PLAIN_FORM, type TpForm } from "@/lib/tp";
-import { isSafeRegistryNumber } from "@/lib/registry-types";
+import { isRegistryKind, isSafeRegistryNumber } from "@/lib/registry-types";
 import { rejectUnknownRegistryNumbers } from "@/server/registry/verify";
 import { badRequest, readJson } from "@/lib/read-json";
 
@@ -19,7 +19,7 @@ export type DocxRequest = {
   part?: unknown;
   subject?: unknown;
   form?: Loose<TpForm>;
-  goods?: Loose<{ name: string; characteristics: string; quantity: string; registryNumber: string; registryNeeded: boolean }>[];
+  goods?: Loose<{ name: string; characteristics: string; quantity: string; registryNumber: string; registryKind: string; registryNeeded: boolean }>[];
   items?: Loose<{ clause: string; requirement: string; offer: string }>[];
   // Дополнительные бланки заказчика, найденные ИИ в документах закупки.
   detectedForms?: Loose<{ source: string; title: string; pages?: string; fields: Loose<{ label: string; value: string }>[] }>[];
@@ -111,7 +111,11 @@ function sourceFromRequest(body: DocxRequest): SourceResult {
       characteristics: text(g.characteristics, 8000),
       quantity: text(g.quantity, 100),
       // Номер реестровой записи пускаем в файл только в безопасном виде; настоящий ли он, проверяет сервер перед сборкой.
-      ...(isSafeRegistryNumber(g.registryNumber) && { registryNumber: g.registryNumber }),
+      // Реестр, из которого номер, определяет подпись строки и то, где сервер проверяет номер; не названный — РПП.
+      ...(isSafeRegistryNumber(g.registryNumber) && {
+        registryNumber: g.registryNumber,
+        registryKind: isRegistryKind(g.registryKind) ? g.registryKind : ("gisp_rpp_719" as const),
+      }),
       ...(g.registryNeeded === true && { registryNeeded: true }),
     })),
     items: items.map((item) => ({

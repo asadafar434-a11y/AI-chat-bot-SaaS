@@ -1,14 +1,14 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { isInn, isOkpd2 } from "@/lib/registry-text";
-import type { RegistryBasis, RegistryFlags, RegistryKind, RegistryRecordData } from "@/lib/registry-types";
+import { gispUrl, type RegistryBasis, type RegistryFlags, type RegistryKind, type RegistryRecordData } from "@/lib/registry-types";
 
-// Формат выгрузки ГИСП «Реестр российской промышленной продукции» (ПП 719). Колонки ищутся по названию в строке
-// заголовков, а не по номеру столбца: порядок колонок в выгрузке может меняться. Бизнес-логика этого файла не знает —
-// она работает с RegistryRecordData. Новая версия формата или другой реестр — новый файл рядом с этим.
+// Формат выгрузок ГИСП: «Реестр российской промышленной продукции» (ПП 719) и выгрузка радиоэлектронной продукции. Колонки ищутся
+// по названию в строке заголовков, а не по номеру столбца: порядок колонок в выгрузке может меняться, а у второго файла часть
+// колонок называется иначе («Наименование предприятия», «ОКПД 2») и есть лишние (уровень, ссылки). Бизнес-логика этого файла не
+// знает — она работает с RegistryRecordData. Новая версия формата — новое название колонки в списках ниже.
 
-export const FORMAT_VERSION = "gisp-rpp-v1";
-export const FORMAT_KIND: RegistryKind = "gisp_rpp_719";
+export const FORMAT_VERSION = "gisp-v2";
 
 export type Cell = string | number | boolean | null | undefined;
 export type RawRow = { rowNumber: number; cells: Cell[] };
@@ -40,7 +40,16 @@ const COLUMN_NAMES = {
   department: "заключение: департамент",
   conclusionNumber: "заключение: номер заключения",
   conclusionUrl: "заключение: документ",
+  radioLevel: "уровень радиоэлектронной продукции",
+  extractUrl: "ссылка на выписку из реестра",
+  catalogUrl: "ссылка на каталог продукции",
 } as const;
+
+/** Другие названия тех же колонок: у выгрузки радиоэлектронной продукции они свои. */
+const COLUMN_ALIASES: Record<string, ColumnKey> = {
+  "наименование предприятия": "enterprise",
+  "окпд 2": "okpd2",
+};
 
 export type ColumnKey = keyof typeof COLUMN_NAMES;
 
@@ -57,7 +66,7 @@ export const REQUIRED_COLUMN_LABELS = {
 export const REQUIRED_COLUMNS = Object.keys(REQUIRED_COLUMN_LABELS) as (keyof typeof REQUIRED_COLUMN_LABELS)[];
 
 /** Колонки, которые формат знает, но которых могло не быть в старых выгрузках, — их отсутствие не ошибка. */
-const KNOWN_IGNORED = new Set(["фактический адрес производителя", "адрес производственных помещений"]);
+const KNOWN_IGNORED = new Set(["фактический адрес производителя", "адрес производственных помещений", "№ п/п"]);
 
 const normHeader = (value: Cell): string =>
   String(value ?? "")
@@ -72,6 +81,7 @@ export type HeaderMap = { columns: Partial<Record<ColumnKey, number>>; unknown: 
 export function resolveHeader(cells: Cell[]): HeaderMap {
   const byName = new Map<string, ColumnKey>();
   for (const [key, name] of Object.entries(COLUMN_NAMES) as [ColumnKey, string][]) byName.set(name, key);
+  for (const [name, key] of Object.entries(COLUMN_ALIASES)) byName.set(name, key);
   const columns: Partial<Record<ColumnKey, number>> = {};
   const unknown: string[] = [];
   cells.forEach((cell, index) => {
@@ -84,10 +94,10 @@ export function resolveHeader(cells: Cell[]): HeaderMap {
   return { columns, unknown, missing: REQUIRED_COLUMNS.filter((key) => columns[key] === undefined) };
 }
 
-/** Строка заголовков — первая из начальных строк, где есть «Реестровый номер» и «ОКПД2». */
+/** Строка заголовков — первая из начальных строк, где есть «Реестровый номер» и «ОКПД2» («ОКПД 2»). */
 export function isHeaderRow(cells: Cell[]): boolean {
   const names = new Set(cells.map(normHeader));
-  return names.has(COLUMN_NAMES.registryNumber) && names.has(COLUMN_NAMES.okpd2);
+  return names.has(COLUMN_NAMES.registryNumber) && (names.has(COLUMN_NAMES.okpd2) || names.has("окпд 2"));
 }
 
 /** «Время выгрузки: 11.10.2026, 01:00:10» → момент. В файле нет часового пояса, принят московский. */
@@ -204,6 +214,17 @@ export function parseRow(header: HeaderMap, raw: RawRow): RowResult {
   if (!validUntil) warnings.push("нет_срока_действия");
   const terminatedAt = dated("terminatedAt", "прекращения");
 
+  // Уровень и ссылки есть не во всех выгрузках; ссылка на чужой сайт в запись не попадает.
+  const level = clip(nullable(at("radioLevel")), 60, "уровень");
+  const linked = (key: ColumnKey, label: string): string | null => {
+    const cell = at(key);
+    const url = gispUrl(cell);
+    if (!url && cell !== null && cell !== undefined && cell !== "") warnings.push(`ссылка:${label}`);
+    return url;
+  };
+  const extractUrl = linked("extractUrl", "выписка");
+  const catalogUrl = linked("catalogUrl", "каталог");
+
   const basis: RegistryBasis = {
     name: nullable(at("basisName")),
     number: nullable(at("basisNumber")),
@@ -236,7 +257,14 @@ export function parseRow(header: HeaderMap, raw: RawRow): RowResult {
       percent: numberOf(at("percent")),
       conformity: nullable(at("conformity")),
       department: clip(nullable(at("department")), LIMITS.department, "департамент"),
-      flags: { ai: bool(at("ai")), highTech: bool(at("highTech")), trustedPak: bool(at("trustedPak")) },
+      flags: {
+        ai: bool(at("ai")),
+        highTech: bool(at("highTech")),
+        trustedPak: bool(at("trustedPak")),
+        ...(level && { radioLevel: level }),
+        ...(extractUrl && { extractUrl }),
+        ...(catalogUrl && { catalogUrl }),
+      },
       basis,
       warnings,
     },
@@ -285,7 +313,15 @@ export function mergeRows(kind: RegistryKind, rows: ParsedRow[]): MergeResult {
     percent: primary.percent,
     conformity: primary.conformity,
     department: primary.department,
-    flags: { ai: same.some((r) => r.flags.ai), highTech: same.some((r) => r.flags.highTech), trustedPak: same.some((r) => r.flags.trustedPak) },
+    flags: {
+      ai: same.some((r) => r.flags.ai),
+      highTech: same.some((r) => r.flags.highTech),
+      trustedPak: same.some((r) => r.flags.trustedPak),
+      // Уровень и ссылки — из той же строки, что и описание записи.
+      ...(primary.flags.radioLevel && { radioLevel: primary.flags.radioLevel }),
+      ...(primary.flags.extractUrl && { extractUrl: primary.flags.extractUrl }),
+      ...(primary.flags.catalogUrl && { catalogUrl: primary.flags.catalogUrl }),
+    },
     bases,
   };
   return { record: { ...data, rowHash: hashRecord(data) }, rejected };

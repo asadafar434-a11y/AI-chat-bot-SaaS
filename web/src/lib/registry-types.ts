@@ -1,15 +1,17 @@
 // Реестр промышленной продукции: общие типы. Даты в записях — строки «ГГГГ-ММ-ДД» (без времени и часового пояса),
 // моменты — ISO-строки. Реестровый номер всегда строка: числом ведущие нули и буквы теряются.
 
-export const REGISTRY_KINDS = ["gisp_rpp_719"] as const;
+export const REGISTRY_KINDS = ["gisp_rpp_719", "gisp_rep_878"] as const;
 export type RegistryKind = (typeof REGISTRY_KINDS)[number];
 
 export const REGISTRY_TITLES: Record<RegistryKind, string> = {
   gisp_rpp_719: "Реестр российской промышленной продукции (ГИСП, ПП 719)",
+  gisp_rep_878: "Реестр российской радиоэлектронной продукции (ГИСП, ПП 878)",
 };
 
 export const REGISTRY_SHORT: Record<RegistryKind, string> = {
   gisp_rpp_719: "РПП (ПП 719)",
+  gisp_rep_878: "РЭП (ПП 878)",
 };
 
 export const isRegistryKind = (value: unknown): value is RegistryKind =>
@@ -30,7 +32,20 @@ export type RegistryBasis = {
   conclusionUrl: string | null;
 };
 
-export type RegistryFlags = { ai: boolean; highTech: boolean; trustedPak: boolean };
+/**
+ * Признаки и ссылки записи (один JSON-столбец, без отдельной миграции). Последние три есть не у всех выгрузок — их ключей в записи
+ * нет, пока в файле нет колонки: так отпечаток записей, загруженных раньше, не меняется.
+ */
+export type RegistryFlags = {
+  ai: boolean;
+  highTech: boolean;
+  trustedPak: boolean;
+  /** «Уровень радиоэлектронной продукции»: «Уровень 1», «Уровень 2», «Нет уровня». */
+  radioLevel?: string;
+  /** Выписка из реестра на сайте ГИСП. Сохраняется только ссылка на gisp.gov.ru по https. */
+  extractUrl?: string;
+  catalogUrl?: string;
+};
 
 /** Запись реестра в том виде, в котором она сравнивается и сохраняется. */
 export type RegistryRecordData = {
@@ -119,7 +134,23 @@ export class RegistryError extends Error {
 
 /** Как строка с номером выглядит в заявке. Закон называет номер «реестровой записью», поэтому слова близки к его тексту. */
 export const REGISTRY_LINE_LABEL = "Номер реестровой записи в реестре российской промышленной продукции";
-export const registryLine = (number: string): string => `${REGISTRY_LINE_LABEL}: ${number}`;
+const REGISTRY_LINE_LABELS: Record<RegistryKind, string> = {
+  gisp_rpp_719: REGISTRY_LINE_LABEL,
+  gisp_rep_878: "Номер реестровой записи в реестре российской радиоэлектронной продукции",
+};
+/** Название реестра стоит в строке по виду реестра: номер РЭП не подписывается как номер РПП. Без вида — РПП. */
+export const registryLine = (number: string, kind: RegistryKind = "gisp_rpp_719"): string => `${REGISTRY_LINE_LABELS[kind]}: ${number}`;
+
+/** Ссылка из выгрузки годится для показа, только если это https-адрес на gisp.gov.ru: чужие адреса в интерфейс не попадают. */
+export function gispUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "https:" && (url.hostname === "gisp.gov.ru" || url.hostname.endsWith(".gisp.gov.ru")) && value.length <= 400 ? url.href : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Допустимый вид номера в документе: цифры, буквы и дефис. Остальное в файл не пускаем. */
 export const isSafeRegistryNumber = (value: unknown): value is string => typeof value === "string" && /^[\p{L}\p{N}\-]{1,40}$/u.test(value);

@@ -105,8 +105,6 @@ export type SelectResult = { ok: true; state: RegistryState; choice: RegistryCho
 export function selectRecord(state: RegistryState, input: { card: ProductCard; decision: Decision; registryNumber: string; note?: string; now?: Date }): SelectResult {
   const { card, decision, registryNumber } = input;
   const now = input.now ?? new Date();
-  const registry = decision.search.registry;
-  if (!registry) return { ok: false, reason: "Не выбран реестр." };
   const view = decision.candidates.find((c) => c.registryNumber === registryNumber);
   if (!view) return { ok: false, reason: "Этой записи нет среди найденных для позиции: выберите из списка." };
   if (!view.activity.active) return { ok: false, reason: `Запись неактуальна: ${view.activity.reasons.join("; ")}.` };
@@ -114,7 +112,8 @@ export function selectRecord(state: RegistryState, input: { card: ProductCard; d
   const proven = decision.proposed === registryNumber && (decision.status === "confirmed" || decision.status === "needs_update");
   const choice: RegistryChoice = {
     positionKey: card.key,
-    registryKind: registry,
+    // Реестр — тот, из которого взята запись: с его названием номер пойдёт в заявку.
+    registryKind: view.registryKind,
     registryNumber,
     basis: proven ? "auto_proven" : "user_selected",
     confirmedAt: now.toISOString(),
@@ -166,12 +165,12 @@ export function autofillCheck(input: { choice: RegistryChoice | undefined; card:
   const { choice, card, requiredRegistry, asOf } = input;
   if (!choice) return { ok: false, reason: "Номер не выбран и не подтверждён участником" };
   if (!choice.confirmedAt) return { ok: false, reason: "Выбор не подтверждён участником" };
-  if (!requiredRegistry) return { ok: false, reason: "Не определён реестр, который требует закупка" };
-  if (choice.registryKind !== requiredRegistry) return { ok: false, reason: `Выбрана запись другого реестра (${REGISTRY_SHORT[choice.registryKind]}), а закупка требует ${REGISTRY_SHORT[requiredRegistry]}` };
+  // Закупка реестр не назвала — участник сам выбрал запись, её реестр и есть реестр номера. Назвала — реестр записи должен совпасть.
+  if (requiredRegistry && choice.registryKind !== requiredRegistry) return { ok: false, reason: `Выбрана запись другого реестра (${REGISTRY_SHORT[choice.registryKind]}), а закупка требует ${REGISTRY_SHORT[requiredRegistry]}` };
   if (choice.cardHash !== cardHash(card)) return { ok: false, reason: "Сведения о товаре изменились после выбора — найдите запись заново" };
   if (choice.record.validUntil && choice.record.validUntil < asOf) return { ok: false, reason: `Срок действия записи истёк ${choice.record.validUntil}` };
   if (choice.datasetAgeDays !== null && choice.datasetAgeDays > STALE_DAYS) return { ok: false, reason: "Выбор сделан по устаревшей выгрузке реестра — повторите поиск по свежей" };
-  return { ok: true, registryNumber: choice.registryNumber, line: registryLine(choice.registryNumber) };
+  return { ok: true, registryNumber: choice.registryNumber, line: registryLine(choice.registryNumber, choice.registryKind) };
 }
 
 /** Сколько позиций получили номер, а сколько остались без него и почему. */

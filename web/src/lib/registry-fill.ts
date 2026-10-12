@@ -39,22 +39,25 @@ export function registryDemandOf(purchase: RegistryPurchase, docs: DocText[]): R
 export const requiredRegistryOf = (demand: Pick<RegistryDemand, "registry" | "status">, state: RegistryState | undefined): RegistryKind | null =>
   demand.registry ?? state?.registry ?? null;
 
-/** Номера для заявки по позициям ТП (индекс товара → номер). Позиция без подтверждённого и проверенного номера в таблице не появляется. */
-export function registryNumbersFor(purchase: RegistryPurchase, docs: DocText[], now = new Date()): Map<number, string> {
+/** Номера для заявки по позициям ТП: индекс товара, номер и реестр, из которого он взят. Позиции без подтверждённого и проверенного номера здесь нет. */
+export function registryFillFor(purchase: RegistryPurchase, docs: DocText[], now = new Date()): { index: number; number: string; kind: RegistryKind }[] {
   const goods = purchase.tp?.goods ?? [];
-  const out = new Map<number, string>();
-  if (goods.length === 0 || !purchase.registry || Object.keys(purchase.registry.choices).length === 0) return out;
-  const demand = registryDemandOf(purchase, docs);
-  const required = requiredRegistryOf(demand, purchase.registry);
+  if (goods.length === 0 || !purchase.registry || Object.keys(purchase.registry.choices).length === 0) return [];
+  const required = requiredRegistryOf(registryDemandOf(purchase, docs), purchase.registry);
   const cards = registryCardsOf(purchase, docs);
   const { lines } = autofillSummary(cards, purchase.registry ?? EMPTY_REGISTRY_STATE, required, asOfDate(purchase.deadline, now));
-  for (const card of cards) {
-    if (lines.has(card.key)) out.set(goodsIndexOf(card.key), purchase.registry.choices[card.key].registryNumber);
-  }
-  return out;
+  return cards.filter((card) => lines.has(card.key)).map((card) => ({ index: goodsIndexOf(card.key), number: purchase.registry!.choices[card.key].registryNumber, kind: purchase.registry!.choices[card.key].registryKind }));
 }
 
-/** Закупка требует реестровый номер: документы назвали реестр или участник выбрал его сам. */
+/** Номера для заявки по позициям ТП (индекс товара → номер). Позиция без подтверждённого и проверенного номера в таблице не появляется. */
+export const registryNumbersFor = (purchase: RegistryPurchase, docs: DocText[], now = new Date()): Map<number, string> =>
+  new Map(registryFillFor(purchase, docs, now).map((x) => [x.index, x.number]));
+
+/** Реестры тех же номеров (индекс товара → реестр): от него зависит подпись строки в заявке. */
+export const registryKindsFor = (purchase: RegistryPurchase, docs: DocText[], now = new Date()): Map<number, RegistryKind> =>
+  new Map(registryFillFor(purchase, docs, now).map((x) => [x.index, x.kind]));
+
+/** Закупка требует реестровый номер: документы назвали реестр (или участник когда-то указал его сам). Иначе жёлтого поля «впишите номер» в заявке нет. */
 export const registryNeededFor = (purchase: RegistryPurchase, docs: DocText[]): boolean =>
   requiredRegistryOf(registryDemandOf(purchase, docs), purchase.registry) !== null;
 
@@ -62,12 +65,17 @@ type ViewGood = Pick<TpGood, "name" | "characteristics" | "quantity">;
 type ViewTp = { goods: ViewGood[] };
 
 // Товары ТП с номерами и без кода ОКПД; служебные поля подстановки наружу не идут.
-function viewGoods<G extends ViewGood>(goods: G[], numbers: Map<number, string> | null, needed: boolean): G[] {
-  const marked = goods.map((g, i) => ({ ...g, registryNeeded: needed, ...(numbers?.has(i) && { registryNumber: numbers.get(i) }) }));
+function viewGoods<G extends ViewGood>(goods: G[], numbers: Map<number, string> | null, kinds: Map<number, RegistryKind> | null, needed: boolean): G[] {
+  const marked = goods.map((g, i) => ({
+    ...g,
+    registryNeeded: needed,
+    ...(numbers?.has(i) && { registryNumber: numbers.get(i), ...(kinds?.get(i) && { registryKind: kinds.get(i) }) }),
+  }));
   return goodsWithRegistry(marked).map((g) => {
-    const { registryNeeded: _needed, registryNumber: _number, registryRejected: _rejected, ...rest } = g as Record<string, unknown>;
+    const { registryNeeded: _needed, registryNumber: _number, registryKind: _kind, registryRejected: _rejected, ...rest } = g as Record<string, unknown>;
     void _needed;
     void _number;
+    void _kind;
     void _rejected;
     return rest as G;
   });
@@ -85,12 +93,14 @@ export function registryView<T extends ViewTp>(
 ): { tp: T; tpDraft: T | undefined; numbers: Map<number, string>; needed: boolean } | null {
   const tp = purchase.tp;
   if (!tp || tp.goods.length === 0) return null;
-  const numbers = registryNumbersFor(purchase, docs, now);
+  const filled = registryFillFor(purchase, docs, now);
+  const numbers = new Map(filled.map((x) => [x.index, x.number]));
+  const kinds = new Map(filled.map((x) => [x.index, x.kind]));
   const needed = registryNeededFor(purchase, docs);
   const draft = purchase.tpDraft;
   return {
-    tp: { ...tp, goods: viewGoods(tp.goods, numbers, needed) },
-    tpDraft: draft ? { ...draft, goods: viewGoods(draft.goods, null, needed) } : undefined,
+    tp: { ...tp, goods: viewGoods(tp.goods, numbers, kinds, needed) },
+    tpDraft: draft ? { ...draft, goods: viewGoods(draft.goods, null, null, needed) } : undefined,
     numbers,
     needed,
   };

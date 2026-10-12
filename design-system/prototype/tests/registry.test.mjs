@@ -29,7 +29,8 @@ after(async () => {
 
 const html = (element) => renderToStaticMarkup(element);
 
-const dataset = { id: 'ds', fileSha256: 'x', formatVersion: 'gisp-rpp-v1', exportedAt: '2026-10-10T22:00:10.000Z', importedAt: '2026-10-12T09:00:00.000Z' };
+const dataset = { id: 'ds', fileSha256: 'x', formatVersion: 'gisp-v2', exportedAt: '2026-10-10T22:00:10.000Z', importedAt: '2026-10-12T09:00:00.000Z' };
+const brief = (registry, over = {}) => ({ registry, exportedAt: dataset.exportedAt, importedAt: dataset.importedAt, ...over });
 const demandFound = {
   status: 'found',
   registry: 'gisp_rpp_719',
@@ -53,6 +54,8 @@ const card = (name = 'Кресло офисное') => ({
 const view = (over = {}) => ({
   recordId: 'r1',
   registryNumber: '00000001',
+  registryKind: 'gisp_rpp_719',
+  registries: ['gisp_rpp_719'],
   enterpriseName: 'ТЕСТОВОЕ ПРЕДПРИЯТИЕ',
   inn: '9900000001',
   productName: 'Кресло офисное тестовое КО-1',
@@ -91,7 +94,7 @@ const decision = (status, over = {}) => ({
   assumptions: ['Допущение один'],
   similarElsewhere: null,
   dismissed: 0,
-  search: { registry: 'gisp_rpp_719', filters: ['Реестр: РПП (ПП 719)', 'ИНН производителя 9900000001'], dataset, datasetAgeDays: 2, asOf: '2026-11-20', searchedAt: '2026-10-12T09:00:00.000Z' },
+  search: { registry: 'gisp_rpp_719', searched: ['gisp_rpp_719'], filters: ['Реестр: РПП (ПП 719)', 'ИНН производителя 9900000001'], dataset, datasetAgeDays: 2, asOf: '2026-11-20', searchedAt: '2026-10-12T09:00:00.000Z' },
   ...over,
 });
 
@@ -109,9 +112,7 @@ const position = (over = {}) => ({
 const baseProps = (over = {}) => ({
   demand: demandFound,
   required: 'gisp_rpp_719',
-  chosenRegistry: undefined,
-  onChooseRegistry() {},
-  dataset,
+  datasets: [brief('gisp_rpp_719')],
   datasetError: null,
   positions: [position()],
   onSearch() {},
@@ -155,16 +156,18 @@ test('требование найдено: показано, откуда оно
   assert.match(out, /Требование о реестровом номере обнаружено — поиск не выполнен/);
 });
 
-test('требования нет: об этом сказано, и участник сам может указать реестр', () => {
+test('требования нет: об этом сказано, но искать всё равно можно — реестр выбирать не нужно', () => {
   const out = render({ demand: demandNone, required: null, positions: [position({ status: 'no_requirement' })] });
   assert.match(out, /Требование не обнаружено/);
-  assert.match(out, /В каком реестре искать\?/);
-  assert.match(out, /Реестр российской промышленной продукции/);
+  assert.equal(/В каком реестре искать/.test(out), false, 'вопроса про реестр нет');
+  assert.equal(/type="radio"/.test(out), false, 'выбора реестра нет');
+  assert.match(out, /поиск идёт сразу в обоих реестрах/);
+  assert.match(out, /Найти в реестре/);
 });
 
 test('данные не загружены, выгрузка устарела, сервер недоступен — три разных сообщения', () => {
-  assert.match(render({ dataset: null }), /ещё не загружена на сервер/);
-  assert.match(render({ dataset: { ...dataset, exportedAt: '2026-08-01T00:00:00.000Z' } }), /Данные требуют обновления/);
+  assert.match(render({ datasets: [] }), /ещё не загружены на сервер/);
+  assert.match(render({ datasets: [brief('gisp_rpp_719', { exportedAt: '2026-08-01T00:00:00.000Z' })] }), /Данные требуют обновления/);
   assert.match(render({ datasetError: 'База реестра сейчас недоступна — попробуйте позже.' }), /сейчас недоступна/);
 });
 
@@ -259,4 +262,29 @@ test('записи с одинаковым названием у одного п
   const out = render({ positions: [position({ status: 'choose', decision: decision('choose', { candidates: [a, b, other] }) })] });
   assert.match(out, /Такое же название ещё у 1 записи — выберите свой номер/);
   assert.equal((out.match(/Такое же название ещё у/g) ?? []).length, 2, 'помечены две записи одного производителя, чужая — нет');
+});
+
+test('реестра два: ищем сразу в обоих без выбора; у записи видно, в каких реестрах она есть, её уровень и выписка на gisp.gov.ru', () => {
+  const none = render({ demand: demandNone, required: null, datasets: [brief('gisp_rpp_719'), brief('gisp_rep_878', { exportedAt: '2026-10-11T22:00:10.000Z' })], positions: [position({ status: 'no_requirement' })] });
+  assert.equal(/type="radio"/.test(none), false, 'выбирать реестр не нужно');
+  assert.match(none, /Ищем сразу в обоих реестрах/);
+  assert.match(none, /РПП \(ПП 719\): выгрузка от <b[^>]*>11\.10\.2026/);
+  assert.match(none, /РЭП \(ПП 878\): выгрузка от <b[^>]*>12\.10\.2026/);
+
+  const radio = view({
+    registryNumber: '00000030',
+    registryKind: 'gisp_rpp_719',
+    registries: ['gisp_rpp_719', 'gisp_rep_878'],
+    radioLevel: 'Уровень 2',
+    extractUrl: 'https://gisp.gov.ru/pp719v2/app/1/product/2/writeout/zip_sd',
+  });
+  const out = render({ positions: [position({ status: 'choose', decision: decision('choose', { candidates: [radio, view({ registryNumber: '00000031' })] }) })] });
+  assert.match(out, /№ 00000030[\s\S]*?РПП \(ПП 719\)[\s\S]*?РЭП \(ПП 878\)/, 'запись есть в обоих реестрах — обе пометки');
+  assert.match(out, /Уровень радиоэлектронной продукции/);
+  assert.match(out, /Уровень 2/);
+  assert.match(out, /<a href="https:\/\/gisp\.gov\.ru\/pp719v2[^"]*" target="_blank" rel="noopener noreferrer"[^>]*>открыть на сайте ГИСП<\/a>/);
+  assert.equal((out.match(/открыть на сайте ГИСП/g) ?? []).length, 1, 'у записи без выписки ссылки нет');
+
+  const chosen = render({ positions: [position({ status: 'confirmed', decision: decision('confirmed'), choice: { ...choiceOf('auto_proven'), registryKind: 'gisp_rep_878' } })] });
+  assert.match(chosen, /Выбрана запись № 00000001 \(РЭП \(ПП 878\)\)/);
 });

@@ -2,7 +2,7 @@ import { FIELD_LABELS, identityFieldsOf, type ProductCard } from "@/lib/product-
 import type { RegistryDemand } from "@/lib/registry-demand";
 import type { Signal, SignalField } from "@/lib/registry-match";
 import type { Candidate, CandidateSearch, SearchTier } from "@/lib/registry-search";
-import { REGISTRY_SHORT, moscowDay, type RegistryDatasetInfo, type RegistryKind, type StoredRegistryRecord } from "@/lib/registry-types";
+import { REGISTRY_SHORT, gispUrl, moscowDay, type RegistryDatasetInfo, type RegistryKind, type StoredRegistryRecord } from "@/lib/registry-types";
 
 // Правила принятия решения по одной товарной позиции. Решение — не оценка «насколько похоже», а проверка условий:
 //   кто производитель + какая модель/артикул/ТУ + нет противоречий + запись действует на дату подачи.
@@ -10,7 +10,6 @@ import { REGISTRY_SHORT, moscowDay, type RegistryDatasetInfo, type RegistryKind,
 
 export type DecisionStatus =
   | "no_requirement"
-  | "clarify_registry"
   | "unsupported_registry"
   | "no_dataset"
   | "pending"
@@ -25,7 +24,6 @@ export type DecisionStatus =
 /** Подписи состояний — как в экране; смысл не передаётся одним цветом. */
 export const STATUS_TEXT: Record<DecisionStatus, string> = {
   no_requirement: "Требование о реестровом номере не обнаружено",
-  clarify_registry: "Требуется уточнение применимого реестра",
   unsupported_registry: "Нужен реестр, которого нет в системе",
   no_dataset: "Данные реестра не загружены",
   pending: "Требование о реестровом номере обнаружено — поиск не выполнен",
@@ -50,6 +48,9 @@ export type Activity = { active: boolean; reasons: string[]; warnings: string[] 
 export type CandidateView = {
   recordId: string;
   registryNumber: string;
+  /** Реестр, из которого взято описание записи, и все реестры, где этот номер есть. Номер в заявку идёт с подписью реестра `registryKind`. */
+  registryKind: RegistryKind;
+  registries: RegistryKind[];
   enterpriseName: string;
   inn: string;
   productName: string;
@@ -65,6 +66,9 @@ export type CandidateView = {
   percent: number | null;
   /** Текст колонки «О соответствии»: на каком основании запись подтверждает российское происхождение. */
   conformity: string | null;
+  /** «Уровень радиоэлектронной продукции» и выписка из реестра на gisp.gov.ru — есть не у всех записей. */
+  radioLevel: string | null;
+  extractUrl: string | null;
   recordStatus: "active" | "absent";
   activity: Activity;
   tiers: SearchTier[];
@@ -79,6 +83,7 @@ export type CandidateView = {
 
 export type DatasetRef = { id: string; fileSha256: string; formatVersion: string; exportedAt: string | null; importedAt: string };
 
+/** Поиск идёт сразу во всех загруженных реестрах; `demanded` — реестр, который назвала закупка (записи из него предпочтительны). */
 export type Decision = {
   status: DecisionStatus;
   scenario: Scenario | null;
@@ -98,8 +103,12 @@ export type Decision = {
   /** Сколько найденных записей не подошли (другая модель или параметр у записей чужого производителя) и не показаны. */
   dismissed: number;
   search: {
+    /** Реестр, который требует закупка; null — документы реестр не назвали. Поиск от этого не ограничивается. */
     registry: RegistryKind | null;
+    /** В каких реестрах искали (у каких есть выгрузка). */
+    searched: RegistryKind[];
     filters: string[];
+    /** Самая старая из использованных выгрузок: по ней считается «данные устарели». */
     dataset: DatasetRef | null;
     datasetAgeDays: number | null;
     asOf: string;
@@ -128,11 +137,17 @@ export function activityOf(record: StoredRegistryRecord, asOf: string): Activity
   return { active: reasons.length === 0, reasons, warnings };
 }
 
+/** Реестры расходятся в сведениях об одном номере — запись остаётся, но человек предупреждён: проверьте на сайте ГИСП. */
+const withDisagreements = (activity: Activity, disagreements: string[] | undefined): Activity =>
+  disagreements?.length ? { ...activity, warnings: [...activity.warnings, `реестры расходятся в сведениях об этом номере (${disagreements.join("; ")}) — проверьте на сайте ГИСП`] } : activity;
+
 export function viewOf(candidate: Candidate, asOf: string): CandidateView {
   const { record, matching } = candidate;
   return {
     recordId: record.id,
     registryNumber: record.registryNumber,
+    registryKind: record.registryKind,
+    registries: candidate.registries,
     enterpriseName: record.enterpriseName,
     inn: record.inn,
     productName: record.productName,
@@ -146,8 +161,10 @@ export function viewOf(candidate: Candidate, asOf: string): CandidateView {
     points: record.points,
     percent: record.percent,
     conformity: record.conformity,
+    radioLevel: record.flags.radioLevel ?? null,
+    extractUrl: gispUrl(record.flags.extractUrl),
     recordStatus: record.status,
-    activity: activityOf(record, asOf),
+    activity: withDisagreements(activityOf(record, asOf), candidate.disagreements),
     tiers: candidate.tiers,
     signals: matching.signals,
     identity: matching.identity,
@@ -170,6 +187,9 @@ const FIELD_NAME: Record<SignalField, string> = {
   registryNumber: "реестровый номер",
   brand: "торговая марка",
 };
+
+const registryAssumption = (searched: RegistryKind[]): string =>
+  `Реестры указаны при загрузке выгрузок (${searched.map((k) => REGISTRY_SHORT[k]).join(", ")}); сами файлы свои реестры не называют.`;
 
 function differencesOf(views: CandidateView[]): string[] {
   if (views.length < 2) return [];
@@ -194,8 +214,10 @@ function missingOf(card: ProductCard): string[] {
 
 export type DecideInput = {
   card: ProductCard;
-  registry: RegistryKind | null;
-  dataset: RegistryDatasetInfo | null;
+  /** Реестр, который назвала закупка. Не сужает поиск: ищем сразу во всех загруженных реестрах; этот — предпочтительный. */
+  demanded?: RegistryKind | null;
+  /** Выгрузки, по которым искали (по одной на реестр). Пусто — ни один реестр не загружен. */
+  datasets: RegistryDatasetInfo[];
   search: CandidateSearch | null;
   /** Дата, на которую запись должна действовать: подача заявки (ГГГГ-ММ-ДД). */
   asOf: string;
@@ -204,10 +226,18 @@ export type DecideInput = {
 
 const refOf = (d: RegistryDatasetInfo): DatasetRef => ({ id: d.id, fileSha256: d.fileSha256, formatVersion: d.formatVersion, exportedAt: d.exportedAt, importedAt: d.importedAt });
 
+const stampOf = (d: RegistryDatasetInfo) => Date.parse(d.exportedAt ?? d.importedAt);
+const exportedText = (d: RegistryDatasetInfo) => (d.exportedAt ? moscowDay(d.exportedAt) : "даты не указано");
+
 export function decide(input: DecideInput): Decision {
-  const { card, registry, dataset, search, asOf } = input;
+  const { card, datasets, search, asOf } = input;
+  const registry = input.demanded ?? null;
   const now = input.now ?? new Date();
-  const ageDays = dataset ? Math.floor((now.getTime() - Date.parse(dataset.exportedAt ?? dataset.importedAt)) / DAY) : null;
+  // Самая старая из выгрузок: по ней считаем, устарели ли данные (честнее, чем по самой свежей).
+  const dataset = datasets.length ? datasets.reduce((oldest, d) => (stampOf(d) < stampOf(oldest) ? d : oldest)) : null;
+  const searched = datasets.map((d) => d.registryKind);
+  const searchedText = searched.map((k) => REGISTRY_SHORT[k]).join(", ");
+  const ageDays = dataset ? Math.floor((now.getTime() - stampOf(dataset)) / DAY) : null;
   const base: Decision = {
     status: "not_found",
     scenario: null,
@@ -221,12 +251,11 @@ export function decide(input: DecideInput): Decision {
     assumptions: [],
     similarElsewhere: search?.similarElsewhere ?? null,
     dismissed: 0,
-    search: { registry, filters: search?.filters ?? [], dataset: dataset ? refOf(dataset) : null, datasetAgeDays: ageDays, asOf, searchedAt: now.toISOString() },
+    search: { registry, searched, filters: search?.filters ?? [], dataset: dataset ? refOf(dataset) : null, datasetAgeDays: ageDays, asOf, searchedAt: now.toISOString() },
   };
 
-  if (!registry) return { ...base, status: "clarify_registry", reasons: ["Не выбран реестр, в котором нужно искать."] };
   if (!dataset || !search) {
-    return { ...base, status: "no_dataset", reasons: [`Выгрузка «${REGISTRY_SHORT[registry]}» не загружена, поиск невозможен. Номер не подставляется.`] };
+    return { ...base, status: "no_dataset", reasons: ["Выгрузки реестров не загружены, поиск невозможен. Номер не подставляется."] };
   }
 
   // Противоречие (другая модель, другой параметр, другой ИНН) важно, только если производитель или номер уже совпали:
@@ -244,8 +273,8 @@ export function decide(input: DecideInput): Decision {
       candidates: views,
       matchedTotal: search.matchedTotal,
       truncated: search.truncated,
-      assumptions: [`Реестр определён по структуре файла выгрузки (${REGISTRY_SHORT[registry]}); сам файл его название не содержит.`],
-      reasons: [`Указанного вами номера ${typed.value} нет в выгрузке реестра ${REGISTRY_SHORT[registry]}${dataset.exportedAt ? ` от ${moscowDay(dataset.exportedAt)}` : ""}. Номер не подставляется — проверьте его на сайте ГИСП.`],
+      assumptions: [registryAssumption(searched)],
+      reasons: [`Указанного вами номера ${typed.value} нет в выгрузках реестров (${searchedText})${dataset.exportedAt ? `, самая старая от ${moscowDay(dataset.exportedAt)}` : ""}. Номер не подставляется — проверьте его на сайте ГИСП.`],
     };
   }
   const active = views.filter((v) => v.activity.active);
@@ -256,7 +285,7 @@ export function decide(input: DecideInput): Decision {
   const inactiveProven = inactive.filter((v) => v.proven);
   const hasIdentityData = identityFieldsOf(card).length > 0;
 
-  const assumptions: string[] = [`Реестр определён по структуре файла выгрузки (${REGISTRY_SHORT[registry]}); сам файл его название не содержит.`];
+  const assumptions: string[] = [registryAssumption(searched)];
   if (dataset.exportedAt) assumptions.push("Время выгрузки в файле указано без часового пояса, принято московское.");
   else assumptions.push("В файле нет времени выгрузки, возраст данных считается по дате загрузки.");
   if (card.fields.okpd2?.origin === "tz") assumptions.push(`Код ОКПД2 ${card.fields.okpd2.value} взят из документов закупки (${card.fields.okpd2.source}) — это категория, которую хочет заказчик, а не сведения о товаре участника.`);
@@ -328,7 +357,7 @@ export function decide(input: DecideInput): Decision {
       ...out,
       status: "not_found",
       scenario: 5,
-      reasons: [`Поиск выполнен в реестре ${REGISTRY_SHORT[registry]} (выгрузка от ${dataset.exportedAt ? moscowDay(dataset.exportedAt) : "даты не указано"}), подходящая запись не подтверждена. Номер не подставляется.${elsewhere}`, "Обновите выгрузку или проверьте на сайте ГИСП.", ...out.reasons],
+      reasons: [`Поиск выполнен в реестрах: ${searchedText} (выгрузки от ${datasets.map(exportedText).join(", ")}), подходящая запись не подтверждена. Номер не подставляется.${elsewhere}`, "Обновите выгрузку или проверьте на сайте ГИСП.", ...out.reasons],
     };
   }
 
@@ -362,13 +391,14 @@ export function decide(input: DecideInput): Decision {
   };
 }
 
-/** Состояние позиции для экрана: требование закупки + что нашёл поиск. */
-export function statusOf(demand: Pick<RegistryDemand, "status" | "registry" | "unsupported">, chosen: RegistryKind | null, decision: Decision | null): DecisionStatus {
-  if (demand.status === "none" && !chosen) return "no_requirement";
+/**
+ * Состояние позиции для экрана: требование закупки + что нашёл поиск. Реестр участник не выбирает: ищем сразу во всех загруженных,
+ * поэтому поиск возможен и тогда, когда требование в документах не найдено или реестр не назван.
+ */
+export function statusOf(demand: Pick<RegistryDemand, "status" | "unsupported">, decision: Decision | null): DecisionStatus {
+  if (decision) return decision.status;
   if (demand.unsupported) return "unsupported_registry";
-  const registry = demand.registry ?? chosen;
-  if (!registry) return "clarify_registry";
-  return decision ? decision.status : "pending";
+  return demand.status === "none" ? "no_requirement" : "pending";
 }
 
 /** Можно ли выбрать эту запись вручную: действует и нет противоречия по существенному признаку. */

@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import type { CardEdits, ProductCard } from '@/lib/product-card';
 import type { RegistryDemand } from '@/lib/registry-demand';
-import { STALE_DAYS, STATUS_TEXT, selectable, type CandidateView, type DatasetRef, type Decision, type DecisionStatus } from '@/lib/registry-decision';
+import { STALE_DAYS, STATUS_TEXT, selectable, type CandidateView, type Decision, type DecisionStatus } from '@/lib/registry-decision';
 import type { AutofillCheck, RegistryChoice, RegistryLogEntry } from '@/lib/registry-log';
 import { REGISTRY_SHORT, REGISTRY_TITLES, moscowDay, moscowTime, scoreText, type RegistryKind } from '@/lib/registry-types';
 import {
@@ -38,13 +38,15 @@ export type PositionView = {
   cardChanged: boolean;
 };
 
+/** Выгрузка одного реестра, по которой идёт поиск. */
+export type DatasetBrief = { registry: RegistryKind; exportedAt: string | null; importedAt: string };
+
 export type RegistryNumbersProps = {
   demand: RegistryDemand;
+  /** Реестр, который назвала закупка. Поиск от этого не сужается: ищем сразу во всех загруженных реестрах. */
   required: RegistryKind | null;
-  chosenRegistry: RegistryKind | undefined;
-  onChooseRegistry: (kind: RegistryKind) => void;
-  /** undefined — ещё грузится; null — выгрузки на сервере нет. */
-  dataset: DatasetRef | null | undefined;
+  /** Выгрузки реестров, по которым идёт поиск. undefined — ещё грузится; пусто — на сервере ни одной нет. */
+  datasets: DatasetBrief[] | undefined;
   datasetError: string | null;
   positions: PositionView[];
   /** Найти записи для позиций (сведения о товаре не менялись). */
@@ -61,7 +63,6 @@ export type RegistryNumbersProps = {
 
 const STATUS_STYLE: Record<DecisionStatus | 'searching', { tone: Tone; icon: ReactNode }> = {
   no_requirement: { tone: 'neutral', icon: <Info className="size-3" /> },
-  clarify_registry: { tone: 'warn', icon: <HelpCircle className="size-3" /> },
   unsupported_registry: { tone: 'neutral', icon: <Info className="size-3" /> },
   no_dataset: { tone: 'warn', icon: <Archive className="size-3" /> },
   pending: { tone: 'info', icon: <Search className="size-3" /> },
@@ -166,6 +167,11 @@ function CandidateRow({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="font-mono text-sm font-medium tabular-nums">№ {view.registryNumber}</span>
+            {view.registries.map((kind) => (
+              <Badge key={kind} tone="neutral">
+                {REGISTRY_SHORT[kind]}
+              </Badge>
+            ))}
             {view.activity.active ? (
               <Badge tone="success">
                 <CheckCircle2 className="size-3" />
@@ -214,6 +220,22 @@ function CandidateRow({
           <dt className="text-muted-foreground">Баллы и процентный показатель</dt>
           <dd>{scoreText(view.points, view.percent) ?? <span className="text-muted-foreground">в записи не указаны</span>}</dd>
         </div>
+        {view.radioLevel && (
+          <div>
+            <dt className="text-muted-foreground">Уровень радиоэлектронной продукции</dt>
+            <dd>{view.radioLevel}</dd>
+          </div>
+        )}
+        {view.extractUrl && (
+          <div>
+            <dt className="text-muted-foreground">Выписка из реестра</dt>
+            <dd>
+              <a href={view.extractUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">
+                открыть на сайте ГИСП
+              </a>
+            </dd>
+          </div>
+        )}
         <div>
           <dt className="text-muted-foreground">Сверка с вашим товаром</dt>
           <dd>
@@ -329,7 +351,8 @@ function PositionCard({
   const { card, decision, choice, status } = position;
   const [note, setNote] = useState('');
   const busy = status === 'searching';
-  const usable = position.status !== 'no_requirement' && position.status !== 'unsupported_registry' && position.status !== 'clarify_registry';
+  // Реестр участник не выбирает: ищем сразу во всех загруженных. Поиск доступен и тогда, когда требование в документах не найдено.
+  const usable = position.status !== 'unsupported_registry';
   return (
     <li className="rounded-lg border border-border">
       <button
@@ -433,7 +456,7 @@ function PositionCard({
                         <li key={i}>{f}</li>
                       ))}
                       <li>
-                        Выгрузка реестра от {instantRu(decision.search.dataset?.exportedAt)}, загружена {instantRu(decision.search.dataset?.importedAt)}. Запись должна
+                        Самая старая из выгрузок — от {instantRu(decision.search.dataset?.exportedAt)}, загружена {instantRu(decision.search.dataset?.importedAt)}. Запись должна
                         действовать на {dateRu(decision.search.asOf)}.
                       </li>
                       {decision.assumptions.map((a, i) => (
@@ -446,16 +469,14 @@ function PositionCard({
             </>
           ) : (
             <p className="text-[12px] text-muted-foreground">
-              {position.status === 'no_requirement' && 'В документах закупки не найдено требование о реестровом номере для этой позиции.'}
               {position.status === 'unsupported_registry' && 'Для этой закупки нужен реестр, выгрузки которого в системе нет: поиск не выполняется.'}
-              {position.status === 'clarify_registry' && 'Сначала выберите реестр выше.'}
             </p>
           )}
 
           {choice && (
             <section aria-label="Выбранная запись" className="space-y-2 rounded-lg border border-border bg-secondary/30 px-3 py-2.5">
               <p className="text-[13px] font-medium">
-                Выбрана запись № {choice.registryNumber} —{' '}
+                Выбрана запись № {choice.registryNumber} ({REGISTRY_SHORT[choice.registryKind]}) —{' '}
                 {choice.basis === 'auto_proven' ? 'система доказала совпадение, вы подтвердили' : 'выбор участника: объективных подтверждений недостаточно'}
               </p>
               <p className="text-[12px] text-muted-foreground">
@@ -487,12 +508,14 @@ function PositionCard({
 }
 
 export function RegistryNumbers(props: RegistryNumbersProps) {
-  const { demand, required, dataset, positions } = props;
+  const { demand, required, datasets, positions } = props;
   const [openKey, setOpenKey] = useState<string | null>(positions.length === 1 ? positions[0].card.key : null);
-  const age = dataset?.exportedAt ? Math.floor(((props.now ?? Date.now()) - Date.parse(dataset.exportedAt)) / 86400000) : null;
+  // Возраст считаем по самой старой из выгрузок: честнее, чем по самой свежей.
+  const stamps = (datasets ?? []).map((d) => d.exportedAt).filter((x): x is string => Boolean(x)).map((x) => Date.parse(x));
+  const age = stamps.length ? Math.floor(((props.now ?? Date.now()) - Math.min(...stamps)) / 86400000) : null;
   const stale = age !== null && age > STALE_DAYS;
   const withNumber = positions.filter((p) => p.choice && p.autofill.ok).length;
-  const searchable = positions.filter((p) => p.status !== 'no_requirement' && p.status !== 'unsupported_registry' && p.status !== 'clarify_registry');
+  const searchable = positions.filter((p) => p.status !== 'unsupported_registry');
 
   return (
     <Card className="p-0">
@@ -516,8 +539,8 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
         <section aria-label="Что требует закупка" className="space-y-2 text-[13px]">
           {demand.status === 'none' && (
             <p className="text-muted-foreground">
-              В документах закупки не найдено требование о номере реестровой записи. Если вы знаете, что оно есть (например, в документе, который не загружен),
-              укажите реестр ниже.
+              В документах закупки не найдено требование о номере реестровой записи. Если оно всё же есть (например, в документе, который не загружен),
+              найти запись можно: поиск идёт сразу в обоих реестрах.
             </p>
           )}
           {demand.status === 'found' && !demand.unsupported && demand.registry && (
@@ -547,15 +570,6 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
               </ul>
             </details>
           )}
-          {(demand.status !== 'found' || !demand.registry) && !demand.unsupported && !required && (
-            <fieldset className="space-y-1.5">
-              <legend className="text-[12px] font-medium">В каком реестре искать?</legend>
-              <label className="flex items-center gap-2 text-[13px]">
-                <input type="radio" name="registry-kind" checked={props.chosenRegistry === 'gisp_rpp_719'} onChange={() => props.onChooseRegistry('gisp_rpp_719')} />
-                {REGISTRY_TITLES.gisp_rpp_719}
-              </label>
-            </fieldset>
-          )}
         </section>
 
         <section aria-label="Данные реестра" className="rounded-md bg-secondary/40 px-3 py-2 text-[12px]">
@@ -564,27 +578,32 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
               <XCircle className="mt-0.5 size-3.5 shrink-0" />
               {props.datasetError}
             </p>
-          ) : dataset === undefined ? (
-            <p className="text-muted-foreground">Сведения о выгрузке реестра ещё не загружены — нажмите «Найти в реестре» у позиции.</p>
-          ) : dataset === null ? (
+          ) : datasets === undefined ? (
+            <p className="text-muted-foreground">Сведения о выгрузках реестров ещё не загружены — нажмите «Найти в реестре» у позиции.</p>
+          ) : datasets.length === 0 ? (
             <p className="flex items-start gap-1.5 text-warn-foreground">
               <Archive className="mt-0.5 size-3.5 shrink-0" />
-              Выгрузка реестра ещё не загружена на сервер, поэтому поиск невозможен. Загрузку выполняет администратор.
+              Выгрузки реестров ещё не загружены на сервер, поэтому поиск невозможен. Загрузку выполняет администратор.
             </p>
           ) : (
-            <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span>
-                {required ? REGISTRY_SHORT[required] : 'Реестр'}: выгрузка от <b className="font-medium">{instantRu(dataset.exportedAt)}</b>, загружена {instantRu(dataset.importedAt)}.
-              </span>
-              {stale ? (
-                <Badge tone="warn">
-                  <RefreshCw className="size-3" />
-                  Данные требуют обновления ({age} дн.)
-                </Badge>
-              ) : (
-                <span className="text-muted-foreground">Реестр меняется каждый день: данные верны на дату выгрузки.</span>
-              )}
-            </p>
+            <div className="space-y-1">
+              <p className="text-muted-foreground">Ищем сразу в {datasets.length === 1 ? 'загруженном реестре' : 'обоих реестрах'}: выбирать реестр не нужно.</p>
+              {datasets.map((d) => (
+                <p key={d.registry}>
+                  {REGISTRY_SHORT[d.registry]}: выгрузка от <b className="font-medium">{instantRu(d.exportedAt)}</b>, загружена {instantRu(d.importedAt)}.
+                </p>
+              ))}
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                {stale ? (
+                  <Badge tone="warn">
+                    <RefreshCw className="size-3" />
+                    Данные требуют обновления ({age} дн.)
+                  </Badge>
+                ) : (
+                  <span className="text-muted-foreground">Реестр меняется каждый день: данные верны на дату выгрузки.</span>
+                )}
+              </p>
+            </div>
           )}
         </section>
 

@@ -178,10 +178,11 @@ test("14. реестр не загружен или не тот — поиска
   const d = await resolveCard(createMemoryRegistryStore(), baseCard({ inn: "9900000001", model: "КО-1" }), { registry: "gisp_rpp_719", asOf: AS_OF, now: NOW });
   assert.equal(d.status, "no_dataset");
   assert.equal(d.proposed, null);
-  assert.equal(statusOf({ status: "found", registry: null, unsupported: "radio_878" }, null, null), "unsupported_registry");
-  assert.equal(statusOf({ status: "unclear", registry: null, unsupported: null }, null, null), "clarify_registry");
-  assert.equal(statusOf({ status: "none", registry: null, unsupported: null }, null, null), "no_requirement");
-  assert.equal(statusOf({ status: "found", registry: "gisp_rpp_719", unsupported: null }, null, null), "pending");
+  assert.equal(statusOf({ status: "found", unsupported: "other_registry" }, null), "unsupported_registry");
+  assert.equal(statusOf({ status: "found", unsupported: null }, null), "pending");
+  assert.equal(statusOf({ status: "unclear", unsupported: null }, null), "pending", "реестр не назван — участнику его выбирать не нужно: ищем сразу во всех");
+  assert.equal(statusOf({ status: "none", unsupported: null }, null), "no_requirement");
+  assert.equal(statusOf({ status: "none", unsupported: null }, d), "no_dataset", "поиск возможен и без найденного требования: статус берётся из результата");
 });
 
 test("16. одинаковые наименования в разных строках — отдельные ключи и независимые решения", async () => {

@@ -555,7 +555,7 @@ enum RegistryChangeKind {
 /// Одна загруженная выгрузка реестра: что за файл, когда выгружен и чем закончился импорт.
 model RegistryDataset {
   id            String               @id @default(cuid())
-  /// Какой это реестр: "gisp_rpp_719" — реестр российской промышленной продукции (ПП 719).
+  /// Какой это реестр: "gisp_rpp_719" — реестр российской промышленной продукции (ПП 719), "gisp_rep_878" — радиоэлектронной (ПП 878).
   registryKind  String               @db.VarChar(40)
   /// Версия разбора колонок (registry-format.ts).
   formatVersion String               @db.VarChar(40)

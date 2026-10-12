@@ -17,7 +17,7 @@ test("выгрузка читается: записи, время выгрузк
   assert.equal(report.recordsAdded, 2);
   assert.equal(dataset.exportedAt, "2026-10-10T22:00:10.000Z", "11.10.2026 01:00:10 по Москве");
   assert.equal(dataset.status, "completed");
-  assert.equal(dataset.formatVersion, "gisp-rpp-v1");
+  assert.equal(dataset.formatVersion, "gisp-v2");
 });
 
 test("реестровый номер остаётся строкой: ведущие нули не теряются", async () => {

@@ -12,7 +12,7 @@ import { isEvidencePart, PART_SAMPLE_KIND, type PartKey } from "@/lib/my-docs";
 import type { PartDoc } from "@/lib/part-doc";
 import { aiHeaders, type Purchase } from "@/lib/purchase";
 import { forServer, type SentDocument } from "@/lib/read-documents";
-import { registryNeededFor, registryNumbersFor } from "@/lib/registry-fill";
+import { registryKindsFor, registryNeededFor, registryNumbersFor } from "@/lib/registry-fill";
 import { saveFile } from "@/lib/save-file";
 import type { DetectedForm, TpResult } from "@/lib/tp";
 import { criteriaRowsFor, PART_TITLES, partsOf, type TpPart } from "@/lib/tp-parts";
@@ -87,6 +87,7 @@ export function useApplicationFilesOf({ purchase, documents, update }: Applicati
   // остальные части в примере и когда ИИ не подключён.
   const templatePayload = (current: TpResult, part: TpPart) => {
     const registryNumbers = registryNumbersFor({ tp: current, registry: purchase.registry, deadline: purchase.deadline }, documents);
+    const registryKinds = registryKindsFor({ tp: current, registry: purchase.registry, deadline: purchase.deadline }, documents);
     const registryNeeded = registryNeededFor({ tp: current, registry: purchase.registry }, documents);
     return {
     subject: purchase.subject,
@@ -96,7 +97,7 @@ export function useApplicationFilesOf({ purchase, documents, update }: Applicati
       characteristics,
       quantity,
       // Номер реестровой записи — только подтверждённый участником и прошедший проверку (lib/registry-log.ts).
-      ...(registryNumbers.has(index) && { registryNumber: registryNumbers.get(index) }),
+      ...(registryNumbers.has(index) && { registryNumber: registryNumbers.get(index), registryKind: registryKinds.get(index) }),
       ...(registryNeeded && { registryNeeded: true }),
     })),
     items: current.items.map(({ clause, requirement, offer }) => ({ clause, requirement, offer })),

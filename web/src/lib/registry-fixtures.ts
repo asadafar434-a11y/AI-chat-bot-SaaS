@@ -3,7 +3,7 @@
 import type { Cell, RawRow } from "@/lib/registry-format";
 import { hashRecord } from "@/lib/registry-format";
 import { createMemoryRegistryStore } from "@/lib/registry-store";
-import type { RegistryBasis, RegistryRecordData, StoredRegistryRecord } from "@/lib/registry-types";
+import type { RegistryBasis, RegistryKind, RegistryRecordData, StoredRegistryRecord } from "@/lib/registry-types";
 
 export const FIXTURE_HEADER = [
   "Предприятие",
@@ -131,13 +131,13 @@ export function fixtureRecord(over: Partial<RegistryRecordData> & { registryNumb
 }
 
 /** Хранилище с одной загруженной выгрузкой и заданными записями. */
-export async function seededStore(records: StoredRegistryRecord[], exportedAt = "2026-10-10T22:00:10.000Z") {
-  const store = createMemoryRegistryStore();
+export async function seededStore(records: StoredRegistryRecord[], exportedAt = "2026-10-10T22:00:10.000Z", kind: RegistryKind = "gisp_rpp_719", into = createMemoryRegistryStore()) {
+  const store = into;
   const dataset = await store.beginDataset({
-    registryKind: "gisp_rpp_719",
-    formatVersion: "gisp-rpp-v1",
+    registryKind: kind,
+    formatVersion: "gisp-v2",
     fileName: "fixture.xlsx",
-    fileSha256: "fixture-sha",
+    fileSha256: `fixture-sha-${kind}`,
     exportedAt,
     importedBy: "тест",
     now: new Date(exportedAt),

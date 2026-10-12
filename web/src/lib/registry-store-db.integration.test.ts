@@ -125,6 +125,26 @@ test("реестр в PostgreSQL: импорт, повтор, изменения
     // 8. Последняя выгрузка.
     const latest = await store.latestDataset("gisp_rpp_719");
     assert.ok(latest && latest.status === "completed");
+
+    // 9. Второй реестр в тех же таблицах: тот же номер — отдельная запись; уровень и выписка проходят через JSON-столбец; поиск реестры не смешивает.
+    const repHeader = [...FIXTURE_HEADER, "Уровень радиоэлектронной продукции", "Ссылка на выписку из реестра"];
+    const repRow = [...fixtureRow({ number: "00004001", ...A, name: "Тестовый коммутатор КМ-1", okpd2: "26.30.11.110" }), "Уровень 2", "https://gisp.gov.ru/pp719v2/app/1/product/2/writeout/zip_sd"];
+    const rep = await importRegistry(store, { registryKind: "gisp_rep_878", fileName: "itest-rep.xlsx", fileSha256: `${stamp}-rep`, rows: asRows(PREFACE, [repRow], repHeader), now: new Date("2026-10-12T00:00:00Z") });
+    datasetIds.push(rep.dataset.id);
+    assert.equal(rep.report.recordsAdded, 1);
+    assert.equal(rep.report.recordsAbsent, 0, "загрузка РЭП не гасит записи РПП");
+    const inRep = await store.getByNumber("gisp_rep_878", "00004001");
+    assert.equal(inRep?.productName, "Тестовый коммутатор КМ-1");
+    assert.equal(inRep?.flags.radioLevel, "Уровень 2");
+    assert.equal(inRep?.flags.extractUrl, "https://gisp.gov.ru/pp719v2/app/1/product/2/writeout/zip_sd");
+    const stillRpp = await store.getByNumber("gisp_rpp_719", "00004001");
+    assert.match(String(stillRpp?.productName), /новая редакция/, "запись РПП с тем же номером осталась прежней");
+    assert.equal(stillRpp?.flags.radioLevel, undefined);
+    const repFound = await store.search({ registryKind: "gisp_rep_878", inn: A.inn, limit: 50 });
+    assert.deepEqual(repFound.records.map((r: { registryNumber: string }) => r.registryNumber), ["00004001"]);
+    const rppFound = await store.search({ registryKind: "gisp_rpp_719", inn: A.inn, limit: 50 });
+    assert.equal(rppFound.records.length, 2, "в РПП у этого производителя две записи");
+    assert.equal((await store.latestDataset("gisp_rep_878"))?.id, rep.dataset.id);
   } finally {
     // Подчищаем только свои строки: журнал → записи → выгрузки.
     const own = await db.registryDataset.findMany({ where: { fileSha256: { startsWith: stamp } }, select: { id: true } });

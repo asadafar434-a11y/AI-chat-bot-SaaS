@@ -9,7 +9,8 @@ const MAX_TEXT = 500;
 const MAX_LONG = 4000;
 const ORIGINS: FieldOrigin[] = ["tz", "user", "document", "profile"];
 
-export type SearchRequest = { registry: RegistryKind; asOf: string; cards: ProductCard[] };
+/** registry — реестр, который назвала закупка (если назвала): записи из него предпочтительны. Ищем всё равно во всех загруженных реестрах. */
+export type SearchRequest = { registry: RegistryKind | null; asOf: string; cards: ProductCard[] };
 export type ParseResult = { ok: true; value: SearchRequest } | { ok: false; error: string };
 
 const text = (value: unknown, max: number): string =>
@@ -32,7 +33,8 @@ const validDate = (value: unknown): value is string => {
 };
 
 export function parseSearchRequest(body: Record<string, unknown>, today: string): ParseResult {
-  if (!isRegistryKind(body.registry)) return { ok: false, error: "Не указан реестр или такого реестра нет." };
+  const named = body.registry === undefined || body.registry === null || body.registry === "";
+  if (!named && !isRegistryKind(body.registry)) return { ok: false, error: "Такого реестра нет." };
   const asOf = validDate(body.asOf) ? body.asOf : today;
   if (!Array.isArray(body.items)) return { ok: false, error: "Нет списка товаров." };
   if (body.items.length > MAX_ITEMS) return { ok: false, error: `Товаров слишком много: не больше ${MAX_ITEMS} за раз.` };
@@ -62,5 +64,5 @@ export function parseSearchRequest(body: Record<string, unknown>, today: string)
       fields,
     });
   }
-  return { ok: true, value: { registry: body.registry, asOf, cards } };
+  return { ok: true, value: { registry: named ? null : (body.registry as RegistryKind), asOf, cards } };
 }

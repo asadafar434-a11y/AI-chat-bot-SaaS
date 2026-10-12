@@ -94,11 +94,15 @@ test("сведения о товаре изменились после выбо�
   assert.ok(!r.ok && /изменились после выбора/.test(r.reason));
 });
 
-test("14. закупка требует другой реестр или реестр не определён — номер не подставляется", async () => {
+test("14. закупка требует другой реестр — номер не подставляется; реестр не назван — идёт реестр самой записи", async () => {
   const { c, choice } = await chosen();
-  assert.ok(!autofillCheck({ choice, card: c, requiredRegistry: null, asOf: "2026-11-20" }).ok);
-  const other = autofillCheck({ choice: { ...choice, registryKind: "gisp_rpp_719" }, card: c, requiredRegistry: "gisp_rpp_719", asOf: "2026-11-20" });
-  assert.ok(other.ok, "тот же реестр — подставляется");
+  const wrong = autofillCheck({ choice: { ...choice, registryKind: "gisp_rpp_719" }, card: c, requiredRegistry: "gisp_rep_878", asOf: "2026-11-20" });
+  assert.ok(!wrong.ok && /другого реестра/.test(wrong.reason));
+  const same = autofillCheck({ choice: { ...choice, registryKind: "gisp_rpp_719" }, card: c, requiredRegistry: "gisp_rpp_719", asOf: "2026-11-20" });
+  assert.ok(same.ok, "тот же реестр — подставляется");
+  const unnamed = autofillCheck({ choice: { ...choice, registryKind: "gisp_rep_878" }, card: c, requiredRegistry: null, asOf: "2026-11-20" });
+  assert.ok(unnamed.ok, "закупка реестр не назвала, участник сам выбрал запись — выбирать реестр ему не нужно");
+  assert.ok(unnamed.ok && unnamed.line.includes("радиоэлектронной"), "подпись — по реестру записи");
 });
 
 test("срок записи вышел к дате подачи — номер не подставляется", async () => {

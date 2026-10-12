@@ -34,7 +34,8 @@ test("находит запись и возвращает решение с вы
   assert.equal(json.results[0].key, "1:abc");
   assert.equal(json.results[0].decision.status, "confirmed");
   assert.equal(json.results[0].decision.proposed, "00003001");
-  assert.ok(json.dataset.fileSha256);
+  assert.ok(json.datasets[0].fileSha256);
+  assert.equal(json.datasets[0].registry, "gisp_rpp_719");
   assert.ok(json.results[0].decision.assumptions.length > 0);
   assert.equal(JSON.stringify(json).includes("DATABASE_URL"), false);
 });
@@ -96,7 +97,7 @@ test("база упала посреди поиска — 503, в ответ н�
 test("реестр не загружен — ответ «данные реестра не загружены», номер не придумывается", async () => {
   const res = await handleRegistrySearch(post({ registry: "gisp_rpp_719", items: [item()] }), await deps({ getStore: () => createMemoryRegistryStore() }));
   const json = await res.json();
-  assert.equal(json.dataset, null);
+  assert.deepEqual(json.datasets, []);
   assert.equal(json.results[0].decision.status, "no_dataset");
   assert.equal(json.results[0].decision.proposed, null);
 });
@@ -105,7 +106,16 @@ test("пустой список товаров — ответ с описани�
   const res = await handleRegistrySearch(post({ registry: "gisp_rpp_719", items: [] }), await deps());
   const json = await res.json();
   assert.deepEqual(json.results, []);
-  assert.ok(json.dataset.exportedAt);
+  assert.ok(json.datasets[0].exportedAt);
+});
+
+test("реестр в запросе можно не называть: ищем сразу во всех загруженных, а неизвестное название реестра — отказ", async () => {
+  const d = await deps();
+  const res = await handleRegistrySearch(post({ items: [item()] }), d);
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).registry, null);
+  const bad = await handleRegistrySearch(post({ registry: "другой", items: [item()] }), d);
+  assert.equal(bad.status, 400);
 });
 
 test("дата подачи по умолчанию — сегодня, а неверная дата заменяется на сегодня", async () => {
@@ -128,4 +138,29 @@ test("одно из многих: ошибка в запросе одного т
   assert.equal(json.results[0].decision.status, "confirmed");
   assert.equal(json.results[1].decision.status, "contradiction");
   assert.equal(json.results[1].decision.proposed, null);
+});
+
+test("поиск идёт сразу в обоих реестрах: запись только РЭП и запись только РПП находятся без указания реестра, в ответе — обе выгрузки", async () => {
+  const store = createMemoryRegistryStore();
+  await seededStore([fixtureRecord({ registryNumber: "00003001", ...A, productName: "Кресло офисное тестовое КО-1" })], undefined, "gisp_rpp_719", store);
+  await seededStore(
+    [fixtureRecord({ registryKind: "gisp_rep_878", registryNumber: "00003777", enterpriseName: 'ТЕСТОВОЕ ПРЕДПРИЯТИЕ "РАДИО"', inn: "9900000077", productName: "Тестовый коммутатор КМ-1", okpd2: "26.30.11.110", flags: { ai: false, highTech: false, trustedPak: false, radioLevel: "Уровень 1" } })],
+    "2026-10-11T22:00:10.000Z",
+    "gisp_rep_878",
+    store,
+  );
+  const d = await deps({ getStore: () => store });
+  const ask = (name: string, inn: string, model: string) =>
+    handleRegistrySearch(post({ asOf: "2026-11-20", items: [item({ name, fields: { inn: { value: inn, origin: "user", source: "участник" }, model: { value: model, origin: "user", source: "участник" } } })] }), d).then((r) => r.json());
+
+  const radio = await ask("Коммутатор", "9900000077", "КМ-1");
+  assert.equal(radio.results[0].decision.status, "confirmed");
+  assert.equal(radio.results[0].decision.proposed, "00003777");
+  assert.equal(radio.results[0].decision.candidates[0].registryKind, "gisp_rep_878");
+  assert.equal(radio.results[0].decision.candidates[0].radioLevel, "Уровень 1");
+  assert.deepEqual(radio.datasets.map((x: { registry: string }) => x.registry), ["gisp_rpp_719", "gisp_rep_878"]);
+
+  const chair = await ask("Кресло офисное", "9900000001", "КО-1");
+  assert.equal(chair.results[0].decision.proposed, "00003001");
+  assert.equal(chair.results[0].decision.candidates[0].registryKind, "gisp_rpp_719");
 });

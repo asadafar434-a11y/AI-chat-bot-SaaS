@@ -18,8 +18,8 @@ export type RegistryDemand = {
   status: "found" | "unclear" | "none";
   /** Реестр, который требуется и который есть в системе. */
   registry: RegistryKind | null;
-  /** Требуется реестр, выгрузки которого в системе нет. */
-  unsupported: "radio_878" | "other_registry" | null;
+  /** Требуется реестр, выгрузки которого в системе нет (реестр программ и другие). */
+  unsupported: "other_registry" | null;
   mentions: DemandMention[];
   /** Номера позиций (с 0), которые названы в тех же предложениях, что и требование. Подсказка, а не фильтр: ищем по всем. */
   appliesTo: number[];
@@ -123,8 +123,7 @@ export function detectRegistryDemand(docs: LocatableDoc[], goods: { name: string
     registry = "gisp_rpp_719";
   } else if (radio.length > 0) {
     status = "found";
-    unsupported = "radio_878";
-    notes.push("Требуется реестр российской радиоэлектронной продукции (ПП 878). Его выгрузки в системе нет, поиск не выполняется.");
+    registry = "gisp_rep_878";
   } else if (other.length > 0) {
     status = "found";
     unsupported = "other_registry";

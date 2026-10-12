@@ -2,7 +2,7 @@ import { searchName, type ProductCard } from "@/lib/product-card";
 import { matchCandidate, type Matching } from "@/lib/registry-match";
 import type { RegistryStore, RegistrySearchQuery } from "@/lib/registry-store";
 import { compact, isInn, nameWords, orgWords, standardRefs } from "@/lib/registry-text";
-import { REGISTRY_SHORT, type RegistryKind, type StoredRegistryRecord } from "@/lib/registry-types";
+import { REGISTRY_KINDS, REGISTRY_SHORT, type RegistryKind, type StoredRegistryRecord } from "@/lib/registry-types";
 
 // Поиск кандидатов в реестре. Идёт по уровням, от самого надёжного идентификатора к названию:
 //   1. известный реестровый номер;  2. производитель (ИНН или название) + модель, артикул или ТУ;
@@ -23,7 +23,15 @@ export const TIER_TEXT: Record<SearchTier, string> = {
   name: "по названию",
 };
 
-export type Candidate = { record: StoredRegistryRecord; tiers: SearchTier[]; matching: Matching };
+export type Candidate = {
+  record: StoredRegistryRecord;
+  tiers: SearchTier[];
+  matching: Matching;
+  /** Реестры, в которых есть эта запись (номер): запись с одним номером в двух реестрах — одна строка. */
+  registries: RegistryKind[];
+  /** Чем реестры расходятся в сведениях об этом номере; пусто — ни чем. */
+  disagreements?: string[];
+};
 
 export type CandidateSearch = {
   candidates: Candidate[];
@@ -187,8 +195,74 @@ export async function findCandidates(store: RegistryStore, card: ProductCard, op
   }
 
   const candidates = [...found.values()]
-    .map(({ record, tiers }): Candidate => ({ record, tiers: [...tiers], matching: matchCandidate(card, record) }))
+    .map(({ record, tiers }): Candidate => ({ record, tiers: [...tiers], matching: matchCandidate(card, record), registries: [record.registryKind] }))
     .sort((a, b) => b.matching.rank - a.matching.rank || a.record.registryNumber.localeCompare(b.record.registryNumber));
   const shown = candidates.slice(0, limit);
   return { candidates: shown, filters, tierTotals, matchedTotal: Math.max(matchedTotal, found.size), shown: shown.length, truncated: candidates.length > limit || matchedTotal > fetchLimit, similarElsewhere };
+}
+
+/**
+ * Результаты поиска по нескольким реестрам → один список. Запись с одним номером в разных реестрах — одна строка с пометкой, в каких
+ * реестрах она есть; описание берётся из реестра, который требует закупка (если он назван и запись в нём есть), иначе из первого по списку
+ * REGISTRY_KINDS. Если реестры расходятся в сведениях об одном номере (производитель, название, срок), строка остаётся одна, но с предупреждением.
+ */
+export function mergeSearches(searches: CandidateSearch[], options: { demanded?: RegistryKind | null; limit?: number } = {}): CandidateSearch {
+  if (searches.length === 1 && !options.demanded) return searches[0];
+  const rankOf = (kind: RegistryKind) => (kind === options.demanded ? -1 : REGISTRY_KINDS.indexOf(kind));
+  const byNumber = new Map<string, Candidate>();
+  for (const search of searches) {
+    for (const candidate of search.candidates) {
+      const number = candidate.record.registryNumber;
+      const have = byNumber.get(number);
+      if (!have) {
+        byNumber.set(number, { ...candidate, registries: [...candidate.registries] });
+        continue;
+      }
+      const registries = [...new Set([...have.registries, ...candidate.registries])].sort((a, b) => rankOf(a) - rankOf(b));
+      const tiers = [...new Set([...have.tiers, ...candidate.tiers])];
+      const better = rankOf(candidate.record.registryKind) < rankOf(have.record.registryKind);
+      const [primary, other] = better ? [candidate, have] : [have, candidate];
+      const a = primary.record;
+      const b = other.record;
+      const disagree: string[] = [];
+      if (a.inn !== b.inn) disagree.push("производитель");
+      if (a.productName.trim().toLowerCase() !== b.productName.trim().toLowerCase()) disagree.push("название");
+      if (a.validUntil !== b.validUntil) disagree.push("срок действия");
+      // Уровень и выписка есть только в части выгрузок: у записи, описанной по другому реестру, они берутся оттуда, где есть.
+      const flags = { ...a.flags };
+      for (const key of ["radioLevel", "extractUrl", "catalogUrl"] as const) if (!flags[key] && b.flags[key]) flags[key] = b.flags[key];
+      byNumber.set(number, {
+        ...primary,
+        record: { ...a, flags },
+        tiers,
+        registries,
+        disagreements: [...new Set([...(have.disagreements ?? []), ...(candidate.disagreements ?? []), ...disagree.map((what) => `${what}: в ${REGISTRY_SHORT[b.registryKind]} иначе, чем в ${REGISTRY_SHORT[a.registryKind]}`)])],
+      });
+    }
+  }
+  const sum = (pick: (s: CandidateSearch) => number | null | undefined): number | null => {
+    const values = searches.map(pick).filter((v): v is number => typeof v === "number");
+    return values.length ? values.reduce((x, y) => x + y, 0) : null;
+  };
+  const tierTotals: Partial<Record<SearchTier, number>> = {};
+  for (const search of searches) {
+    for (const [tier, total] of Object.entries(search.tierTotals) as [SearchTier, number][]) {
+      // Номер найден, если нашёл хоть один реестр: сумма, а не максимум.
+      tierTotals[tier] = tier === "number" ? (tierTotals[tier] ?? 0) + total : Math.max(tierTotals[tier] ?? 0, total);
+    }
+  }
+  const searched = [...new Set(searches.flatMap((s) => s.filters.filter((f) => f.startsWith("Реестр: ")).map((f) => f.slice("Реестр: ".length))))];
+  const rest = [...new Set(searches.flatMap((s) => s.filters.filter((f) => !f.startsWith("Реестр: "))))];
+  const all = [...byNumber.values()].sort((a, b) => b.matching.rank - a.matching.rank || a.record.registryNumber.localeCompare(b.record.registryNumber));
+  const limit = options.limit ?? 30;
+  const shown = all.slice(0, limit);
+  return {
+    candidates: shown,
+    filters: [`${searched.length > 1 ? "Реестры" : "Реестр"}: ${searched.join(", ")}`, ...rest],
+    tierTotals,
+    matchedTotal: Math.max(...searches.map((s) => s.matchedTotal), all.length),
+    shown: shown.length,
+    truncated: all.length > limit || searches.some((s) => s.truncated),
+    similarElsewhere: sum((s) => s.similarElsewhere),
+  };
 }

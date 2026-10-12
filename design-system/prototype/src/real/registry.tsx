@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { errorText } from '@/lib/http-error';
 import { cardHash, cardsFromGoods, type CardEdits, type ProductCard } from '@/lib/product-card';
-import { STATUS_TEXT, statusOf, type DatasetRef, type Decision } from '@/lib/registry-decision';
+import { STATUS_TEXT, statusOf, type Decision } from '@/lib/registry-decision';
 import { asOfDate, registryCardsOf, registryDemandOf, requiredRegistryOf } from '@/lib/registry-fill';
 import { EMPTY_REGISTRY_STATE, appendLog, autofillCheck, cancelChoice, selectRecord, type RegistryState } from '@/lib/registry-log';
 import { REGISTRY_SHORT, type RegistryKind } from '@/lib/registry-types';
-import { RegistryNumbers, type PositionView } from '../components/RegistryNumbers';
+import { RegistryNumbers, type DatasetBrief, type PositionView } from '../components/RegistryNumbers';
 import { usePurchase } from './purchase-provider';
 
 // Блок «Реестровые номера товаров» на настоящей закупке: карточки позиций — из ТП и документов, поиск — на сервере
@@ -37,28 +37,29 @@ export function RegistryBlock() {
   const [found, setFound] = useState<Record<string, Found>>({});
   const [loading, setLoading] = useState<ReadonlySet<string>>(new Set());
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [dataset, setDataset] = useState<DatasetRef | null | undefined>(undefined);
+  const [datasets, setDatasets] = useState<DatasetBrief[] | undefined>(undefined);
   const [datasetError, setDatasetError] = useState<string | null>(null);
 
   const request = useCallback(
-    async (registry: RegistryKind, items: ProductCard[]) => {
+    // Ищем сразу во всех загруженных реестрах; `registry` — только реестр, который назвала закупка (записи из него предпочтительны).
+    async (registry: RegistryKind | null, items: ProductCard[]) => {
       const res = await fetch('/api/registry/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ registry, asOf, items }),
+        body: JSON.stringify({ ...(registry && { registry }), asOf, items }),
       });
       if (!res.ok) throw new Error(await errorText(res, 'Не удалось выполнить поиск по реестру.'));
-      return (await res.json()) as { dataset: DatasetRef | null; results: { key: string; decision: Decision }[] };
+      return (await res.json()) as { datasets: DatasetBrief[]; results: { key: string; decision: Decision }[] };
     },
     [asOf],
   );
 
-  // Сведения о выгрузке реестра — один лёгкий запрос без позиций, когда понятно, какой реестр нужен.
+  // Сведения о выгрузках реестров — один лёгкий запрос без позиций.
   useEffect(() => {
-    if (!required || cards.length === 0) return;
+    if (cards.length === 0) return;
     let alive = true;
     request(required, []).then(
-      (r) => alive && (setDataset(r.dataset), setDatasetError(null)),
+      (r) => alive && (setDatasets(r.datasets), setDatasetError(null)),
       (e: Error) => alive && setDatasetError(e.message),
     );
     return () => {
@@ -68,13 +69,13 @@ export function RegistryBlock() {
 
   const search = useCallback(
     async (targets: ProductCard[]) => {
-      if (!required || targets.length === 0) return;
+      if (targets.length === 0) return;
       const keys = targets.map((c) => c.key);
       setLoading((prev) => new Set([...prev, ...keys]));
       setErrors((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => !keys.includes(k))));
       try {
         const r = await request(required, targets);
-        setDataset(r.dataset);
+        setDatasets(r.datasets);
         setDatasetError(null);
         const byKey = new Map(targets.map((c) => [c.key, c]));
         setFound((prev) => ({ ...prev, ...Object.fromEntries(r.results.map((x) => [x.key, { decision: x.decision, hash: cardHash(byKey.get(x.key)!) }])) }));
@@ -85,7 +86,7 @@ export function RegistryBlock() {
             at: now.toISOString(),
             positionKey: x.key,
             event: 'search',
-            text: `Поиск в реестре ${REGISTRY_SHORT[required]}: ${STATUS_TEXT[x.decision.status]}${x.decision.candidates.length ? ` (записей: ${x.decision.candidates.length})` : ''}.`,
+            text: `Поиск в реестрах ${x.decision.search.searched.map((k) => REGISTRY_SHORT[k]).join(', ') || 'нет загруженных'}: ${STATUS_TEXT[x.decision.status]}${x.decision.candidates.length ? ` (записей: ${x.decision.candidates.length})` : ''}.`,
             status: x.decision.status,
           });
         }
@@ -109,7 +110,7 @@ export function RegistryBlock() {
       decision,
       error: errors[card.key] ?? null,
       choice,
-      status: loading.has(card.key) ? 'searching' : statusOf(demand, state.registry ?? null, decision),
+      status: loading.has(card.key) ? 'searching' : statusOf(demand, decision),
       autofill: autofillCheck({ choice, card, requiredRegistry: required, asOf }),
       cardChanged: Boolean(choice && choice.cardHash !== cardHash(card)),
     };
@@ -119,11 +120,7 @@ export function RegistryBlock() {
     <RegistryNumbers
       demand={demand}
       required={required}
-      chosenRegistry={state.registry}
-      onChooseRegistry={(kind) => {
-        save(appendLog({ ...stateRef.current, registry: kind }, { at: new Date().toISOString(), positionKey: '', event: 'registry_chosen', text: `Участник указал реестр: ${REGISTRY_SHORT[kind]}.` }));
-      }}
-      dataset={dataset}
+      datasets={datasets}
       datasetError={datasetError}
       positions={positions}
       searching={loading.size > 0}
