@@ -3,7 +3,7 @@ import { errorText } from '@/lib/http-error';
 import { cardHash, cardsFromGoods, type CardEdits, type ProductCard } from '@/lib/product-card';
 import { STATUS_TEXT, statusOf, type Decision } from '@/lib/registry-decision';
 import { asOfDate, registryCardsOf, registryDemandOf, requiredRegistryOf } from '@/lib/registry-fill';
-import { EMPTY_REGISTRY_STATE, appendLog, autofillCheck, cancelChoice, selectRecord, type RegistryState } from '@/lib/registry-log';
+import { EMPTY_REGISTRY_STATE, appendLog, autoPick, autofillCheck, cancelChoice, selectRecord, type RegistryState } from '@/lib/registry-log';
 import { REGISTRY_SHORT, type RegistryKind } from '@/lib/registry-types';
 import { RegistryNumbers, type DatasetBrief, type PositionView } from '../components/RegistryNumbers';
 import { usePurchase } from './purchase-provider';
@@ -67,8 +67,11 @@ export function RegistryBlock() {
     };
   }, [required, cards.length, request]);
 
+  // Закупка требует номер: тогда лучший найденный номер подставляется сам и помечается «проверьте» (решение владельца 13.10.2026).
+  const needed = required !== null;
+
   const search = useCallback(
-    async (targets: ProductCard[]) => {
+    async (targets: ProductCard[], options: { quiet?: boolean } = {}) => {
       if (targets.length === 0) return;
       const keys = targets.map((c) => c.key);
       setLoading((prev) => new Set([...prev, ...keys]));
@@ -82,15 +85,20 @@ export function RegistryBlock() {
         let next = stateRef.current;
         const now = new Date();
         for (const x of r.results) {
-          next = appendLog(next, {
-            at: now.toISOString(),
-            positionKey: x.key,
-            event: 'search',
-            text: `Поиск в реестрах ${x.decision.search.searched.map((k) => REGISTRY_SHORT[k]).join(', ') || 'нет загруженных'}: ${STATUS_TEXT[x.decision.status]}${x.decision.candidates.length ? ` (записей: ${x.decision.candidates.length})` : ''}.`,
-            status: x.decision.status,
-          });
+          // Автоматический поиск при открытии блока в журнал не пишется: иначе при каждом заходе на шаг в нём росли бы одинаковые строки.
+          if (!options.quiet) {
+            next = appendLog(next, {
+              at: now.toISOString(),
+              positionKey: x.key,
+              event: 'search',
+              text: `Поиск в реестрах ${x.decision.search.searched.map((k) => REGISTRY_SHORT[k]).join(', ') || 'нет загруженных'}: ${STATUS_TEXT[x.decision.status]}${x.decision.candidates.length ? ` (записей: ${x.decision.candidates.length})` : ''}.`,
+              status: x.decision.status,
+            });
+          }
+          const card = byKey.get(x.key);
+          if (needed && card) next = autoPick(next, { card, decision: x.decision, now });
         }
-        save(next);
+        if (next !== stateRef.current) save(next);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Не удалось выполнить поиск по реестру.';
         setErrors((prev) => ({ ...prev, ...Object.fromEntries(keys.map((k) => [k, message])) }));
@@ -98,8 +106,21 @@ export function RegistryBlock() {
         setLoading((prev) => new Set([...prev].filter((k) => !keys.includes(k))));
       }
     },
-    [required, request, save],
+    [needed, required, request, save],
   );
+
+  // Поиск бесплатный и быстрый, поэтому идёт сам: при открытии блока и после правки товара. Каждую карточку — один раз за открытие.
+  const attempted = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!needed || demand.unsupported || cards.length === 0) return;
+    const targets = cards.filter((c) => {
+      const id = `${c.key}:${cardHash(c)}`;
+      return !attempted.current.has(id) && !loading.has(c.key) && found[c.key]?.hash !== cardHash(c);
+    });
+    if (targets.length === 0) return;
+    for (const c of targets) attempted.current.add(`${c.key}:${cardHash(c)}`);
+    void search(targets, { quiet: true });
+  }, [needed, demand.unsupported, cards, found, loading, search]);
 
   const positions: PositionView[] = cards.map((card) => {
     const entry = found[card.key];
@@ -139,7 +160,11 @@ export function RegistryBlock() {
       onSelect={(key, registryNumber, note) => {
         const entry = found[key];
         const card = cards.find((c) => c.key === key);
-        if (!entry || !card) return;
+        if (!card) return;
+        if (!entry) {
+          setErrors((prev) => ({ ...prev, [key]: 'Варианты ещё ищутся — подождите секунду и повторите.' }));
+          return;
+        }
         const result = selectRecord(stateRef.current, { card, decision: entry.decision, registryNumber, note });
         if (!result.ok) {
           setErrors((prev) => ({ ...prev, [key]: result.reason }));

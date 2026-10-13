@@ -141,6 +141,15 @@ const REGISTRY_LINE_LABELS: Record<RegistryKind, string> = {
 /** Название реестра стоит в строке по виду реестра: номер РЭП не подписывается как номер РПП. Без вида — РПП. */
 export const registryLine = (number: string, kind: RegistryKind = "gisp_rpp_719"): string => `${REGISTRY_LINE_LABELS[kind]}: ${number}`;
 
+/**
+ * Номер, который подобрала система, а человек ещё не проверил: в квадратных скобках, чтобы в документе он был выделен жёлтым и считался
+ * незаполненным местом (итоговая проверка не пропустит), пока участник не выберет или не подтвердит номер.
+ */
+export const registryUnverifiedField = (number: string, options?: number): string =>
+  `[ПРОВЕРЬТЕ номер реестровой записи: ${number} — подобран автоматически${options && options > 1 ? `, вариантов: ${options}` : ""}]`;
+export const registryLineUnverified = (number: string, kind: RegistryKind = "gisp_rpp_719", options?: number): string =>
+  `${REGISTRY_LINE_LABELS[kind]}: ${registryUnverifiedField(number, options)}`;
+
 /** Ссылка из выгрузки годится для показа, только если это https-адрес на gisp.gov.ru: чужие адреса в интерфейс не попадают. */
 export function gispUrl(value: unknown): string | null {
   if (typeof value !== "string") return null;

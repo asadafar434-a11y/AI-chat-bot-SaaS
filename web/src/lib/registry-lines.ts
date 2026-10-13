@@ -1,4 +1,4 @@
-import { registryLine, type RegistryKind } from "@/lib/registry-types";
+import { registryLine, registryLineUnverified, registryUnverifiedField, type RegistryKind } from "@/lib/registry-types";
 
 // Как реестровый номер попадает в текст товаров ТП — и в предпросмотр на экране, и в файлы заявки (одна функция на оба).
 // Код ОКПД в заявке участника не нужен: в ней нужен номер реестровой записи его товара. Поэтому:
@@ -16,6 +16,10 @@ export type RegistryGood = {
   registryNumber?: string;
   /** Реестр, из которого номер: от него зависит подпись строки. Нет — РПП. */
   registryKind?: RegistryKind;
+  /** Номер подобрала система, участник его не проверил: в заявке он в скобках со словом «ПРОВЕРЬТЕ». */
+  registryUnverified?: boolean;
+  /** Сколько было вариантов. */
+  registryOptions?: number;
   registryRejected?: boolean;
   /** Закупка требует реестровый номер: если номера нет, на его месте жёлтое поле. */
   registryNeeded?: boolean;
@@ -34,7 +38,7 @@ export const REGISTRY_NEEDED = "[номер реестровой записи �
 export const isOriginRow = (good: { name: string; quantity?: string }): boolean => /^\s*страна\s+происхождени/i.test(good.name) && !(good.quantity ?? "").trim();
 
 const lineFor = (g: RegistryGood): string =>
-  g.registryNumber ? registryLine(g.registryNumber, g.registryKind) : g.registryRejected ? REGISTRY_CHECK : g.registryNeeded ? REGISTRY_NEEDED : "";
+  g.registryNumber ? (g.registryUnverified ? registryLineUnverified(g.registryNumber, g.registryKind, g.registryOptions) : registryLine(g.registryNumber, g.registryKind)) : g.registryRejected ? REGISTRY_CHECK : g.registryNeeded ? REGISTRY_NEEDED : "";
 
 /** Характеристики одного товара: строка ОКПД убрана, вместо неё номер реестровой записи или отметка, что его нужно выбрать. */
 export function characteristicsWithRegistry(g: RegistryGood): string {
@@ -54,7 +58,7 @@ export function goodsWithRegistry<T extends RegistryGood>(goods: T[]): T[] {
   return goods.map((g) => {
     if (!isOriginRow(g)) return { ...g, characteristics: characteristicsWithRegistry(g) };
     if (done.length === 0 || !NUMBER_HOLE.test(g.characteristics)) return g;
-    const filled = done.map((d) => `${d.name} — ${d.registryNumber}`).join("; ");
+    const filled = done.map((d) => `${d.name} — ${d.registryUnverified ? registryUnverifiedField(d.registryNumber!, d.registryOptions) : d.registryNumber}`).join("; ");
     const rest = missing.length ? `; [номер реестровой записи — ещё для: ${missing.map((m) => m.name).join(", ")}]` : "";
     return { ...g, characteristics: g.characteristics.replace(NUMBER_HOLE, () => `${filled}${rest}`) };
   });

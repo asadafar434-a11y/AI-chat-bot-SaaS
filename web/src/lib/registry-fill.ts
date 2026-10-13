@@ -1,7 +1,7 @@
 import { cardsFromGoods, goodsIndexOf, type DocText, type ProductCard } from "@/lib/product-card";
 import { detectRegistryDemand, type RegistryDemand } from "@/lib/registry-demand";
 import { goodsWithRegistry } from "@/lib/registry-lines";
-import { EMPTY_REGISTRY_STATE, autofillSummary, type RegistryState } from "@/lib/registry-log";
+import { EMPTY_REGISTRY_STATE, autofillCheck, type RegistryState } from "@/lib/registry-log";
 import { moscowDay, type RegistryKind } from "@/lib/registry-types";
 import type { TpGood } from "@/lib/tp";
 
@@ -39,15 +39,39 @@ export function registryDemandOf(purchase: RegistryPurchase, docs: DocText[]): R
 export const requiredRegistryOf = (demand: Pick<RegistryDemand, "registry" | "status">, state: RegistryState | undefined): RegistryKind | null =>
   demand.registry ?? state?.registry ?? null;
 
-/** Номера для заявки по позициям ТП: индекс товара, номер и реестр, из которого он взят. Позиции без подтверждённого и проверенного номера здесь нет. */
-export function registryFillFor(purchase: RegistryPurchase, docs: DocText[], now = new Date()): { index: number; number: string; kind: RegistryKind }[] {
+export type RegistryFill = {
+  index: number;
+  number: string;
+  kind: RegistryKind;
+  /** Номер подобрала система, участник его ещё не проверил: в заявке он выделен словом «ПРОВЕРЬТЕ». */
+  unverified: boolean;
+  /** Сколько было вариантов, когда номер подбирали автоматически. */
+  options?: number;
+};
+
+/**
+ * Номера для заявки по позициям ТП: индекс товара, номер, реестр, из которого он взят, и ждёт ли он проверки. Позиции, где номер вписывать
+ * нельзя (выбор отменён условиями, запись не действует, реестр не тот), здесь нет.
+ */
+export function registryFillFor(purchase: RegistryPurchase, docs: DocText[], now = new Date()): RegistryFill[] {
   const goods = purchase.tp?.goods ?? [];
-  if (goods.length === 0 || !purchase.registry || Object.keys(purchase.registry.choices).length === 0) return [];
+  const state = purchase.registry ?? EMPTY_REGISTRY_STATE;
+  if (goods.length === 0 || Object.keys(state.choices).length === 0) return [];
   const required = requiredRegistryOf(registryDemandOf(purchase, docs), purchase.registry);
-  const cards = registryCardsOf(purchase, docs);
-  const { lines } = autofillSummary(cards, purchase.registry ?? EMPTY_REGISTRY_STATE, required, asOfDate(purchase.deadline, now));
-  return cards.filter((card) => lines.has(card.key)).map((card) => ({ index: goodsIndexOf(card.key), number: purchase.registry!.choices[card.key].registryNumber, kind: purchase.registry!.choices[card.key].registryKind }));
+  const asOf = asOfDate(purchase.deadline, now);
+  const out: RegistryFill[] = [];
+  for (const card of registryCardsOf(purchase, docs)) {
+    const choice = state.choices[card.key];
+    const check = autofillCheck({ choice, card, requiredRegistry: required, asOf });
+    if (!choice || !check.ok) continue;
+    out.push({ index: goodsIndexOf(card.key), number: choice.registryNumber, kind: choice.registryKind, unverified: check.unverified === true, ...(check.options !== undefined && { options: check.options }) });
+  }
+  return out;
 }
+
+/** Позиции с номером, который ждёт проверки (индекс товара → сколько было вариантов; 0 — неизвестно). */
+export const registryUnverifiedFor = (purchase: RegistryPurchase, docs: DocText[], now = new Date()): Map<number, number> =>
+  new Map(registryFillFor(purchase, docs, now).filter((x) => x.unverified).map((x) => [x.index, x.options ?? 0]));
 
 /** Номера для заявки по позициям ТП (индекс товара → номер). Позиция без подтверждённого и проверенного номера в таблице не появляется. */
 export const registryNumbersFor = (purchase: RegistryPurchase, docs: DocText[], now = new Date()): Map<number, string> =>
@@ -65,18 +89,23 @@ type ViewGood = Pick<TpGood, "name" | "characteristics" | "quantity">;
 type ViewTp = { goods: ViewGood[] };
 
 // Товары ТП с номерами и без кода ОКПД; служебные поля подстановки наружу не идут.
-function viewGoods<G extends ViewGood>(goods: G[], numbers: Map<number, string> | null, kinds: Map<number, RegistryKind> | null, needed: boolean): G[] {
-  const marked = goods.map((g, i) => ({
-    ...g,
-    registryNeeded: needed,
-    ...(numbers?.has(i) && { registryNumber: numbers.get(i), ...(kinds?.get(i) && { registryKind: kinds.get(i) }) }),
-  }));
+function viewGoods<G extends ViewGood>(goods: G[], filled: Map<number, RegistryFill> | null, needed: boolean): G[] {
+  const marked = goods.map((g, i) => {
+    const fill = filled?.get(i);
+    return {
+      ...g,
+      registryNeeded: needed,
+      ...(fill && { registryNumber: fill.number, registryKind: fill.kind, ...(fill.unverified && { registryUnverified: true, registryOptions: fill.options }) }),
+    };
+  });
   return goodsWithRegistry(marked).map((g) => {
-    const { registryNeeded: _needed, registryNumber: _number, registryKind: _kind, registryRejected: _rejected, ...rest } = g as Record<string, unknown>;
+    const { registryNeeded: _needed, registryNumber: _number, registryKind: _kind, registryRejected: _rejected, registryUnverified: _unverified, registryOptions: _options, ...rest } = g as Record<string, unknown>;
     void _needed;
     void _number;
     void _kind;
     void _rejected;
+    void _unverified;
+    void _options;
     return rest as G;
   });
 }
@@ -93,14 +122,13 @@ export function registryView<T extends ViewTp>(
 ): { tp: T; tpDraft: T | undefined; numbers: Map<number, string>; needed: boolean } | null {
   const tp = purchase.tp;
   if (!tp || tp.goods.length === 0) return null;
-  const filled = registryFillFor(purchase, docs, now);
-  const numbers = new Map(filled.map((x) => [x.index, x.number]));
-  const kinds = new Map(filled.map((x) => [x.index, x.kind]));
+  const filled = new Map(registryFillFor(purchase, docs, now).map((x) => [x.index, x]));
+  const numbers = new Map([...filled].map(([i, x]) => [i, x.number]));
   const needed = registryNeededFor(purchase, docs);
   const draft = purchase.tpDraft;
   return {
-    tp: { ...tp, goods: viewGoods(tp.goods, numbers, kinds, needed) },
-    tpDraft: draft ? { ...draft, goods: viewGoods(draft.goods, null, null, needed) } : undefined,
+    tp: { ...tp, goods: viewGoods(tp.goods, filled, needed) },
+    tpDraft: draft ? { ...draft, goods: viewGoods(draft.goods, null, needed) } : undefined,
     numbers,
     needed,
   };

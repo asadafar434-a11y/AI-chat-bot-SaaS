@@ -288,3 +288,62 @@ test('реестра два: ищем сразу в обоих без выбор
   const chosen = render({ positions: [position({ status: 'confirmed', decision: decision('confirmed'), choice: { ...choiceOf('auto_proven'), registryKind: 'gisp_rep_878' } })] });
   assert.match(chosen, /Выбрана запись № 00000001 \(РЭП \(ПП 878\)\)/);
 });
+
+test('несколько вариантов: номер подобран сам — заметная пометка «Проверьте обязательно», выпадающий список вариантов и кнопка «Всё верно»', () => {
+  const a = view({ registryNumber: '00000041', productName: 'Куртка мужская зимняя Север', registries: ['gisp_rpp_719'] });
+  const b = view({ registryNumber: '00000042', productName: 'Куртка мужская рабочая', enterpriseName: 'ТЕСТОВОЕ ПРЕДПРИЯТИЕ БЕТА', inn: '9900000002', registries: ['gisp_rpp_719', 'gisp_rep_878'] });
+  const auto = {
+    ...choiceOf('user_selected'),
+    basis: 'auto_picked',
+    confirmedAt: '',
+    options: 2,
+    registryNumber: '00000041',
+    record: { ...choiceOf('user_selected').record, registryNumber: '00000041', productName: 'Куртка мужская зимняя Север' },
+  };
+  const out = render({
+    positions: [
+      position({
+        status: 'need_data',
+        decision: decision('need_data', { candidates: [a, b] }),
+        choice: auto,
+        autofill: { ok: true, registryNumber: '00000041', line: 'Номер реестровой записи в реестре российской промышленной продукции: [ПРОВЕРЬТЕ номер реестровой записи: 00000041 — подобран автоматически, вариантов: 2]', unverified: true, options: 2 },
+      }),
+    ],
+  });
+  assert.match(out, /Проверьте обязательно: номер подобран автоматически, вариантов — 2/);
+  assert.match(out, /<select[^>]*id="rg-pick-1:k"/);
+  assert.match(out, /<option value="00000041" selected="">№ 00000041 — Куртка мужская зимняя Север/);
+  assert.match(out, /<option value="00000042">№ 00000042 — Куртка мужская рабочая[^<]*РПП \(ПП 719\), РЭП \(ПП 878\)/, 'у варианта видно, в каких реестрах он есть');
+  assert.match(out, /Всё верно/);
+  assert.match(out, /№ 00000041 · проверьте обязательно/);
+  assert.match(out, /Ждут проверки: 1/);
+  assert.match(out, /Номера подобраны автоматически у позиций: 1 из 1/);
+  assert.match(out, /выделен жёлтым и помечен «ПРОВЕРЬТЕ»/);
+});
+
+test('подтверждённый номер: список вариантов остаётся, но пометки «проверьте» и кнопки «Всё верно» нет', () => {
+  const a = view({ registryNumber: '00000001' });
+  const b = view({ registryNumber: '00000002', productName: 'Кресло офисное тестовое КО-2' });
+  const out = render({
+    positions: [
+      position({
+        status: 'choose',
+        decision: decision('choose', { candidates: [a, b] }),
+        choice: choiceOf('user_selected'),
+        autofill: { ok: true, registryNumber: '00000001', line: 'Номер реестровой записи в реестре российской промышленной продукции: 00000001' },
+      }),
+    ],
+  });
+  assert.match(out, /<select[^>]*id="rg-pick-1:k"/);
+  assert.equal(/Всё верно/.test(out), false);
+  assert.equal(/Проверьте обязательно/.test(out), false);
+  assert.equal(/Ждут проверки/.test(out), false);
+  assert.match(out, /№ 00000001 · выбрана вами/);
+});
+
+test('номер ещё не выбран, варианты найдены — список с подсказкой «выберите номер»; идёт поиск — «Ищем варианты номера»', () => {
+  const out = render({ positions: [position({ status: 'choose', decision: decision('choose', { candidates: [view({ registryNumber: '00000051' }), view({ registryNumber: '00000052' })] }) })] });
+  assert.match(out, /<option value="" selected="">— выберите номер —<\/option>/);
+  const wait = render({ positions: [position({ status: 'searching' })] });
+  assert.match(wait, /Ищем варианты номера/);
+});

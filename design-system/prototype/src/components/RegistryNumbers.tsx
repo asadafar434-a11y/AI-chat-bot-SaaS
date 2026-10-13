@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import type { CardEdits, ProductCard } from '@/lib/product-card';
 import type { RegistryDemand } from '@/lib/registry-demand';
 import { STALE_DAYS, STATUS_TEXT, selectable, type CandidateView, type Decision, type DecisionStatus } from '@/lib/registry-decision';
-import type { AutofillCheck, RegistryChoice, RegistryLogEntry } from '@/lib/registry-log';
+import { optionsOf, type AutofillCheck, type RegistryChoice, type RegistryLogEntry } from '@/lib/registry-log';
 import { REGISTRY_SHORT, REGISTRY_TITLES, moscowDay, moscowTime, scoreText, type RegistryKind } from '@/lib/registry-types';
 import {
   AlertTriangle,
@@ -146,12 +146,15 @@ function CandidateRow({
   view,
   proposed,
   selected,
+  autoPicked,
   duplicates,
   onSelect,
 }: {
   view: CandidateView;
   proposed: boolean;
   selected: boolean;
+  /** Эту запись подобрала система, а участник её ещё не проверил. */
+  autoPicked: boolean;
   /** Сколько других записей с тем же названием у того же производителя: это разные номера, выбирать нужно свой. */
   duplicates: number;
   onSelect: () => void;
@@ -189,7 +192,13 @@ function CandidateRow({
                 Подтверждена совпадением
               </Badge>
             )}
-            {selected && <Badge tone="neutral">Выбрана</Badge>}
+            {selected && !autoPicked && <Badge tone="neutral">Выбрана</Badge>}
+            {selected && autoPicked && (
+              <Badge tone="warn">
+                <AlertTriangle className="size-3" />
+                Подобрана автоматически — проверьте
+              </Badge>
+            )}
             {duplicates > 0 && (
               <Badge tone="warn">
                 <AlertTriangle className="size-3" />
@@ -200,8 +209,8 @@ function CandidateRow({
           <p className="mt-1 text-[13px] font-medium">{view.productName}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <Button size="sm" variant={proposed ? 'primary' : 'secondary'} disabled={!can || selected} onClick={onSelect} title={blockReason || undefined}>
-            {selected ? 'Выбрана' : 'Выбрать'}
+          <Button size="sm" variant={proposed || autoPicked ? 'primary' : 'secondary'} disabled={!can || (selected && !autoPicked)} onClick={onSelect} title={blockReason || undefined}>
+            {selected && !autoPicked ? 'Выбрана' : autoPicked ? 'Подтвердить' : 'Выбрать'}
           </Button>
         </div>
       </div>
@@ -335,6 +344,75 @@ function CardForm({ card, onSave, busy }: { card: ProductCard; onSave: (edits: C
   );
 }
 
+/** Вариант номера в выпадающем списке: коротко, но так, чтобы можно было сверить с товаром. */
+const optionLabel = (v: CandidateView) =>
+  `№ ${v.registryNumber} — ${v.productName.length > 90 ? `${v.productName.slice(0, 90)}…` : v.productName} · ${v.enterpriseName.length > 40 ? `${v.enterpriseName.slice(0, 40)}…` : v.enterpriseName} (${v.registries.map((k) => REGISTRY_SHORT[k]).join(', ')})${v.validUntil ? ` · до ${dateRu(v.validUntil)}` : ''}`;
+
+/**
+ * Номер позиции под её названием: выпадающий список вариантов, а у подобранного автоматически — заметная пометка «Проверьте обязательно»
+ * и кнопка «Всё верно». Выбор в списке — это решение участника: пометка снимается.
+ */
+function NumberPicker({ position, onSelect }: { position: PositionView; onSelect: (number: string) => void }) {
+  const { card, decision, choice } = position;
+  const current = choice && !position.cardChanged ? choice : undefined;
+  const unverified = Boolean(current && !current.confirmedAt && current.basis === 'auto_picked');
+  const found = decision ? optionsOf(decision) : [];
+  // Текущий номер должен быть в списке, даже когда варианты ещё не найдены (после перезагрузки страницы они ищутся заново).
+  const items = found.map((v) => ({ number: v.registryNumber, label: optionLabel(v) }));
+  if (current && !items.some((x) => x.number === current.registryNumber)) {
+    items.unshift({ number: current.registryNumber, label: `№ ${current.registryNumber} — ${current.record.productName} · ${current.record.enterpriseName} (${REGISTRY_SHORT[current.registryKind]})` });
+  }
+  if (position.status === 'searching' && !current) {
+    return (
+      <p className="flex items-center gap-1.5 border-t border-border px-3 py-2 text-[12px] text-muted-foreground">
+        <Loader2 className="size-3.5 animate-spin" />
+        Ищем варианты номера…
+      </p>
+    );
+  }
+  if (items.length === 0) return null;
+  const many = (current?.options ?? found.length) > 1;
+  return (
+    <div className={cx('space-y-2 border-t px-3 py-2.5', unverified ? 'border-warn/50 bg-warn-surface' : 'border-border')}>
+      {unverified && (
+        <p className="flex items-start gap-1.5 text-[12px] font-medium text-warn-foreground">
+          <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+          <span>
+            Проверьте обязательно: номер подобран автоматически{many ? `, вариантов — ${current?.options ?? found.length}` : ''}. Сверьте с вашим товаром и выберите нужный в списке — пока вы не
+            подтвердили, в заявке номер выделен жёлтым и помечен «ПРОВЕРЬТЕ».
+          </span>
+        </p>
+      )}
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="min-w-0 flex-1">
+          <label htmlFor={`rg-pick-${card.key}`} className="mb-1 block text-[12px] font-medium">
+            Номер реестровой записи{items.length > 1 ? ` (вариантов: ${items.length})` : ''}
+          </label>
+          <select
+            id={`rg-pick-${card.key}`}
+            value={current?.registryNumber ?? ''}
+            onChange={(e) => e.target.value && onSelect(e.target.value)}
+            className={inputClass}
+          >
+            {!current && <option value="">— выберите номер —</option>}
+            {items.map((x) => (
+              <option key={x.number} value={x.number}>
+                {x.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        {unverified && current && (
+          <Button size="sm" onClick={() => onSelect(current.registryNumber)}>
+            <CheckCircle2 className="size-3.5" />
+            Всё верно
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function PositionCard({
   position,
   index,
@@ -351,6 +429,7 @@ function PositionCard({
   const { card, decision, choice, status } = position;
   const [note, setNote] = useState('');
   const busy = status === 'searching';
+  const autoPicked = Boolean(choice && !choice.confirmedAt && choice.basis === 'auto_picked' && !position.cardChanged);
   // Реестр участник не выбирает: ищем сразу во всех загруженных. Поиск доступен и тогда, когда требование в документах не найдено.
   const usable = position.status !== 'unsupported_registry';
   return (
@@ -367,7 +446,12 @@ function PositionCard({
           {card.quantity && <span className="ml-1.5 font-normal text-muted-foreground">· {card.quantity}</span>}
         </span>
         <span className="flex flex-wrap items-center gap-1.5">
-          {choice && !position.cardChanged && (
+          {choice && !position.cardChanged && autoPicked && (
+            <Badge tone="warn">
+              <AlertTriangle className="size-3" />№ {choice.registryNumber} · проверьте обязательно
+            </Badge>
+          )}
+          {choice && !position.cardChanged && !autoPicked && (
             <Badge tone="neutral">
               <ListChecks className="size-3" />№ {choice.registryNumber} · {choice.basis === 'auto_proven' ? 'подтверждена совпадением' : 'выбрана вами'}
             </Badge>
@@ -382,6 +466,7 @@ function PositionCard({
           <ChevronDown className={cx('size-4 text-muted-foreground transition-transform', open && 'rotate-180')} />
         </span>
       </button>
+      <NumberPicker position={position} onSelect={(number) => props.onSelect(card.key, number, '')} />
       {open && (
         <div className="space-y-4 border-t border-border px-3 py-3">
           {position.error && (
@@ -436,6 +521,7 @@ function PositionCard({
                             view={c}
                             proposed={decision.proposed === c.registryNumber}
                             selected={choice?.registryNumber === c.registryNumber}
+                            autoPicked={autoPicked && choice?.registryNumber === c.registryNumber}
                             duplicates={duplicatesOf(decision.candidates, c)}
                             onSelect={() => props.onSelect(card.key, c.registryNumber, note)}
                           />
@@ -476,29 +562,42 @@ function PositionCard({
           {choice && (
             <section aria-label="Выбранная запись" className="space-y-2 rounded-lg border border-border bg-secondary/30 px-3 py-2.5">
               <p className="text-[13px] font-medium">
-                Выбрана запись № {choice.registryNumber} ({REGISTRY_SHORT[choice.registryKind]}) —{' '}
-                {choice.basis === 'auto_proven' ? 'система доказала совпадение, вы подтвердили' : 'выбор участника: объективных подтверждений недостаточно'}
+                {autoPicked ? 'Подобрана запись' : 'Выбрана запись'} № {choice.registryNumber} ({REGISTRY_SHORT[choice.registryKind]}) —{' '}
+                {choice.basis === 'auto_picked'
+                  ? 'подобрана автоматически, ждёт вашей проверки'
+                  : choice.basis === 'auto_proven'
+                    ? 'система доказала совпадение, вы подтвердили'
+                    : 'выбор участника: объективных подтверждений недостаточно'}
               </p>
               <p className="text-[12px] text-muted-foreground">
-                {choice.record.enterpriseName} · {choice.record.productName} · подтверждено {instantRu(choice.confirmedAt)}
+                {choice.record.enterpriseName} · {choice.record.productName}
+                {choice.confirmedAt ? ` · подтверждено ${instantRu(choice.confirmedAt)}` : ''}
                 {choice.note && ` · «${choice.note}»`}
               </p>
               <p className="text-[12px] text-muted-foreground">
                 Из реестра: {scoreText(choice.record.points, choice.record.percent) ?? 'баллы и процентный показатель в записи не указаны'}.
               </p>
               {position.autofill.ok ? (
-                <p className="flex items-start gap-1.5 text-[12px] text-success">
-                  <CheckCircle2 className="mt-0.5 size-3.5 shrink-0" />В заявку будет вписано: {position.autofill.line}
-                </p>
+                position.autofill.unverified ? (
+                  <p className="flex items-start gap-1.5 text-[12px] text-warn-foreground">
+                    <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />В заявку будет вписано, выделено жёлтым и с пометкой «ПРОВЕРЬТЕ»: {position.autofill.line}
+                  </p>
+                ) : (
+                  <p className="flex items-start gap-1.5 text-[12px] text-success">
+                    <CheckCircle2 className="mt-0.5 size-3.5 shrink-0" />В заявку будет вписано: {position.autofill.line}
+                  </p>
+                )
               ) : (
                 <p className="flex items-start gap-1.5 text-[12px] text-warn-foreground">
                   <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
                   Номер в заявку не вписывается: {position.autofill.reason}.
                 </p>
               )}
-              <Button size="sm" variant="secondary" onClick={() => props.onCancel(card.key)}>
-                Отменить выбор
-              </Button>
+              {!autoPicked && (
+                <Button size="sm" variant="secondary" onClick={() => props.onCancel(card.key)}>
+                  Отменить выбор
+                </Button>
+              )}
             </section>
           )}
         </div>
@@ -515,6 +614,8 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
   const age = stamps.length ? Math.floor(((props.now ?? Date.now()) - Math.min(...stamps)) / 86400000) : null;
   const stale = age !== null && age > STALE_DAYS;
   const withNumber = positions.filter((p) => p.choice && p.autofill.ok).length;
+  // Номер подобрала система, участник его ещё не проверил: такие места в заявке выделены и считаются незаполненными.
+  const unverifiedCount = positions.filter((p) => p.choice && p.autofill.ok && p.autofill.unverified).length;
   const searchable = positions.filter((p) => p.status !== 'unsupported_registry');
 
   return (
@@ -523,7 +624,7 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
         <div className="flex items-center gap-2">
           <ListChecks className="size-4" />
           <span className="text-sm font-medium">Реестровые номера товаров</span>
-          <HelpTip content="Если закупка требует подтвердить российское происхождение, в заявке нужен номер записи из реестра. Программа ищет кандидатов в выгрузке реестра, но выбирает номер человек: по одному названию товар не определить." align="start" />
+          <HelpTip content="Если закупка требует подтвердить российское происхождение, в заявке нужен номер записи из реестра. Программа ищет записи в обоих реестрах и подставляет лучший номер, но помечает его «проверьте обязательно»: по одному названию товар не определить, подтверждает номер человек." align="start" />
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           {demand.status === 'found' && <Badge tone="info">Требование обнаружено</Badge>}
@@ -532,10 +633,25 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
           {positions.length > 0 && demand.status !== 'none' && (
             <span className="font-mono text-[11px] text-muted-foreground">в заявку попадёт номеров: {withNumber} из {positions.length}</span>
           )}
+          {unverifiedCount > 0 && (
+            <Badge tone="warn">
+              <AlertTriangle className="size-3" />
+              Ждут проверки: {unverifiedCount}
+            </Badge>
+          )}
         </div>
       </div>
 
       <div className="space-y-4 px-4 py-3">
+        {unverifiedCount > 0 && (
+          <section aria-label="Нужна проверка" className="flex items-start gap-2 rounded-lg border border-warn/50 bg-warn-surface px-3 py-2.5 text-[13px] text-warn-foreground">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+            <p>
+              <b className="font-semibold">Проверьте обязательно.</b> Номера подобраны автоматически у позиций: {unverifiedCount} из {positions.length}. Сверьте каждый с вашим товаром
+              и выберите нужный в списке под названием позиции или нажмите «Всё верно». Пока вы не подтвердили, в заявке номер выделен жёлтым и помечен «ПРОВЕРЬТЕ».
+            </p>
+          </section>
+        )}
         <section aria-label="Что требует закупка" className="space-y-2 text-[13px]">
           {demand.status === 'none' && (
             <p className="text-muted-foreground">
@@ -613,7 +729,7 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
               {props.searching ? <Loader2 className="size-3.5 animate-spin" /> : <Search className="size-3.5" />}
               Найти для всех позиций
             </Button>
-            <span className="text-[12px] text-muted-foreground">По ТЗ без сведений о вашем товаре покажем только кандидатов — номер не выбирается.</span>
+            <span className="text-[12px] text-muted-foreground">Если вариантов несколько, лучший номер подставится сам и будет помечен «проверьте обязательно».</span>
           </div>
         )}
 
@@ -651,8 +767,8 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
         )}
         <p className="flex items-start gap-2 text-[11px] text-muted-foreground">
           <Info className="mt-0.5 size-3.5 shrink-0" />
-          Номер вписывается в файлы заявки только для позиций, где вы выбрали запись и сведения о товаре не менялись после выбора. Программа не подтверждает
-          юридическую достаточность реестровой записи: проверьте её на сайте ГИСП перед подачей.
+          Номер вписывается в файлы заявки, пока сведения о товаре не менялись после выбора. Подобранный автоматически выделен жёлтым и помечен «ПРОВЕРЬТЕ», пока вы
+          его не выберете или не подтвердите. Программа не подтверждает юридическую достаточность реестровой записи: проверьте её на сайте ГИСП перед подачей.
         </p>
       </div>
     </Card>

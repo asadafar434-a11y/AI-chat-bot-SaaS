@@ -19,7 +19,7 @@ export type DocxRequest = {
   part?: unknown;
   subject?: unknown;
   form?: Loose<TpForm>;
-  goods?: Loose<{ name: string; characteristics: string; quantity: string; registryNumber: string; registryKind: string; registryNeeded: boolean }>[];
+  goods?: Loose<{ name: string; characteristics: string; quantity: string; registryNumber: string; registryKind: string; registryUnverified: boolean; registryOptions: number; registryNeeded: boolean }>[];
   items?: Loose<{ clause: string; requirement: string; offer: string }>[];
   // Дополнительные бланки заказчика, найденные ИИ в документах закупки.
   detectedForms?: Loose<{ source: string; title: string; pages?: string; fields: Loose<{ label: string; value: string }>[] }>[];
@@ -115,6 +115,8 @@ function sourceFromRequest(body: DocxRequest): SourceResult {
       ...(isSafeRegistryNumber(g.registryNumber) && {
         registryNumber: g.registryNumber,
         registryKind: isRegistryKind(g.registryKind) ? g.registryKind : ("gisp_rpp_719" as const),
+        // Номер подобран автоматически и не проверен: в файле он в скобках со словом «ПРОВЕРЬТЕ» и считается незаполненным.
+        ...(g.registryUnverified === true && { registryUnverified: true, ...(Number.isInteger(g.registryOptions) && Number(g.registryOptions) > 0 && Number(g.registryOptions) < 1000 && { registryOptions: Number(g.registryOptions) }) }),
       }),
       ...(g.registryNeeded === true && { registryNeeded: true }),
     })),

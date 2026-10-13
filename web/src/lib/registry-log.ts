@@ -1,13 +1,14 @@
 import { cardHash, type CardEdits, type ProductCard } from "@/lib/product-card";
 import { STALE_DAYS, selectable, type CandidateView, type Decision, type DatasetRef } from "@/lib/registry-decision";
-import { REGISTRY_LINE_LABEL, REGISTRY_SHORT, registryLine, type RegistryKind } from "@/lib/registry-types";
+import { REGISTRY_LINE_LABEL, REGISTRY_SHORT, registryLine, registryLineUnverified, type RegistryKind } from "@/lib/registry-types";
 
 export { REGISTRY_LINE_LABEL };
 
 // Решения участника по реестровым номерам и журнал. Живут в закупке (в браузере), рядом с ТП: сервер выбор не хранит.
 // По журналу можно ответить: «Почему в заявке указан именно этот номер и на каких данных основан выбор?»
 
-export type ChoiceBasis = "auto_proven" | "user_selected";
+/** auto_picked — номер подобрала система, участник его ещё не проверил (confirmedAt пусто): в заявке он выделен словом «ПРОВЕРЬТЕ». */
+export type ChoiceBasis = "auto_proven" | "user_selected" | "auto_picked";
 
 /** Что запомнено о записи в момент выбора: даже если реестр потом обновится, видно, на чём основывалось решение. */
 export type RecordSnapshot = {
@@ -33,7 +34,10 @@ export type RegistryChoice = {
   registryNumber: string;
   /** auto_proven — система доказала совпадение, участник подтвердил; user_selected — участник выбрал сам, объективных подтверждений мало. */
   basis: ChoiceBasis;
+  /** Когда номер подтвердил участник. Пусто — номер подобран автоматически и ждёт проверки (basis = auto_picked). */
   confirmedAt: string;
+  /** Сколько подходящих вариантов было, когда номер подбирали автоматически. */
+  options?: number;
   note: string;
   /** Отпечаток карточки товара на момент выбора. */
   cardHash: string;
@@ -51,7 +55,7 @@ export type RegistryChoice = {
   warnings: string[];
 };
 
-export type LogEvent = "search" | "select" | "cancel" | "autofill" | "skip" | "card_changed" | "registry_chosen";
+export type LogEvent = "search" | "select" | "autopick" | "cancel" | "autofill" | "skip" | "card_changed" | "registry_chosen";
 
 export type RegistryLogEntry = {
   at: string;
@@ -96,6 +100,69 @@ const snapshotOf = (view: CandidateView): RecordSnapshot => ({
   percent: view.percent,
 });
 
+/** Запись выбора: что выбрано, на каких данных и что рассматривалось. Общая для выбора участником и автоматического подбора. */
+function choiceFrom(card: ProductCard, decision: Decision, view: CandidateView, basis: ChoiceBasis, confirmedAt: string, note: string, options?: number): RegistryChoice {
+  return {
+    positionKey: card.key,
+    // Реестр — тот, из которого взята запись: с его названием номер пойдёт в заявку.
+    registryKind: view.registryKind,
+    registryNumber: view.registryNumber,
+    basis,
+    confirmedAt,
+    ...(options !== undefined && { options }),
+    note,
+    cardHash: cardHash(card),
+    decisionStatus: decision.status,
+    record: snapshotOf(view),
+    dataset: decision.search.dataset,
+    datasetAgeDays: decision.search.datasetAgeDays,
+    asOf: decision.search.asOf,
+    searchedAt: decision.search.searchedAt,
+    considered: decision.candidates.slice(0, 30).map((c) => ({
+      registryNumber: c.registryNumber,
+      enterpriseName: c.enterpriseName,
+      productName: c.productName,
+      identity: c.identity,
+      contradictions: c.signals.filter((x) => x.verdict === "contradict").map((x) => x.text),
+      active: c.activity.active,
+    })),
+    reasons: decision.reasons,
+    assumptions: decision.assumptions,
+    warnings: view.activity.warnings,
+  };
+}
+
+/** Варианты, из которых можно выбрать: запись действует и нет противоречия с данными о товаре. Порядок — по убыванию совпадения. */
+export const optionsOf = (decision: Decision): CandidateView[] => decision.candidates.filter(selectable);
+
+/**
+ * Автоматический подбор (решение владельца 13.10.2026): если вариантов несколько или совпадение неполное, программа не оставляет поле
+ * пустым, а подставляет лучший номер и помечает его «ПРОВЕРЬТЕ» — участник выбирает верный из списка или подтверждает. Лучший — тот, что
+ * система доказала (decision.proposed), иначе первый по совпадению. Выбор человека не трогаем, пока сведения о товаре те же; подобранный
+ * автоматически — пересчитываем при каждом новом поиске. Состояние возвращается тем же объектом, если менять нечего.
+ */
+export function autoPick(state: RegistryState, input: { card: ProductCard; decision: Decision; now?: Date }): RegistryState {
+  const { card, decision } = input;
+  const now = input.now ?? new Date();
+  const existing = state.choices[card.key];
+  const hash = cardHash(card);
+  if (existing && existing.basis !== "auto_picked" && existing.cardHash === hash) return state;
+
+  const options = optionsOf(decision);
+  const best = options.find((v) => v.registryNumber === decision.proposed) ?? options[0];
+  if (!best) {
+    if (!existing || existing.basis !== "auto_picked") return state;
+    const rest = { ...state.choices };
+    delete rest[card.key];
+    return appendLog({ ...state, choices: rest }, { at: now.toISOString(), positionKey: card.key, event: "skip", text: `Подобранный ранее номер ${existing.registryNumber} больше не подходит: подходящих записей нет.`, registryNumber: existing.registryNumber });
+  }
+  if (existing && existing.basis === "auto_picked" && existing.registryNumber === best.registryNumber && existing.cardHash === hash && existing.options === options.length) return state;
+
+  const choice = choiceFrom(card, decision, best, "auto_picked", "", "", options.length);
+  const text = `Номер ${best.registryNumber} подобран автоматически (вариантов: ${options.length}) и ждёт проверки участником.`;
+  return appendLog({ ...state, choices: { ...state.choices, [card.key]: choice } }, { at: now.toISOString(), positionKey: card.key, event: "autopick", text, registryNumber: best.registryNumber, status: decision.status });
+}
+
 export type SelectResult = { ok: true; state: RegistryState; choice: RegistryChoice } | { ok: false; reason: string };
 
 /**
@@ -110,33 +177,7 @@ export function selectRecord(state: RegistryState, input: { card: ProductCard; d
   if (!view.activity.active) return { ok: false, reason: `Запись неактуальна: ${view.activity.reasons.join("; ")}.` };
   if (!selectable(view)) return { ok: false, reason: "У записи есть противоречие с данными о товаре — исправьте данные или передайте проверку специалисту." };
   const proven = decision.proposed === registryNumber && (decision.status === "confirmed" || decision.status === "needs_update");
-  const choice: RegistryChoice = {
-    positionKey: card.key,
-    // Реестр — тот, из которого взята запись: с его названием номер пойдёт в заявку.
-    registryKind: view.registryKind,
-    registryNumber,
-    basis: proven ? "auto_proven" : "user_selected",
-    confirmedAt: now.toISOString(),
-    note: (input.note ?? "").slice(0, 500),
-    cardHash: cardHash(card),
-    decisionStatus: decision.status,
-    record: snapshotOf(view),
-    dataset: decision.search.dataset,
-    datasetAgeDays: decision.search.datasetAgeDays,
-    asOf: decision.search.asOf,
-    searchedAt: decision.search.searchedAt,
-    considered: decision.candidates.slice(0, 30).map((c) => ({
-      registryNumber: c.registryNumber,
-      enterpriseName: c.enterpriseName,
-      productName: c.productName,
-      identity: c.identity,
-      contradictions: c.signals.filter((s) => s.verdict === "contradict").map((s) => s.text),
-      active: c.activity.active,
-    })),
-    reasons: decision.reasons,
-    assumptions: decision.assumptions,
-    warnings: view.activity.warnings,
-  };
+  const choice = choiceFrom(card, decision, view, proven ? "auto_proven" : "user_selected", now.toISOString(), (input.note ?? "").slice(0, 500));
   const text = proven
     ? `Подтверждена запись ${registryNumber}: система доказала совпадение (${view.identity.join(", ")}), участник подтвердил.`
     : `Участник выбрал запись ${registryNumber} сам; объективных подтверждений недостаточно, выбор отмечен как решение участника.`;
@@ -154,22 +195,25 @@ export function cancelChoice(state: RegistryState, positionKey: string, now = ne
 
 // ── Подстановка в заявку ───────────────────────────────────────────────────────────────────────────
 
-export type AutofillCheck = { ok: true; line: string; registryNumber: string } | { ok: false; reason: string };
+/** unverified — номер подобрала система, участник его не проверил: в заявке он в скобках со словом «ПРОВЕРЬТЕ» (options — сколько было вариантов). */
+export type AutofillCheck = { ok: true; line: string; registryNumber: string; unverified?: boolean; options?: number } | { ok: false; reason: string };
 
 /**
  * Можно ли вписать выбранный номер в заявку. Номер не вписывается, если:
- *  — выбор не подтверждён участником; — сведения о товаре изменились после выбора; — реестр не тот, что требует закупка;
+ *  — выбор не подтверждён участником (кроме подобранного автоматически: он вписывается с пометкой «ПРОВЕРЬТЕ»); — сведения о товаре изменились после выбора; — реестр не тот, что требует закупка;
  *  — запись на дату подачи уже не действует (по сохранённому при выборе сроку); — выгрузка, по которой выбирали, была устаревшей.
  */
 export function autofillCheck(input: { choice: RegistryChoice | undefined; card: ProductCard; requiredRegistry: RegistryKind | null; asOf: string }): AutofillCheck {
   const { choice, card, requiredRegistry, asOf } = input;
   if (!choice) return { ok: false, reason: "Номер не выбран и не подтверждён участником" };
-  if (!choice.confirmedAt) return { ok: false, reason: "Выбор не подтверждён участником" };
+  const unverified = !choice.confirmedAt;
+  if (unverified && choice.basis !== "auto_picked") return { ok: false, reason: "Выбор не подтверждён участником" };
   // Закупка реестр не назвала — участник сам выбрал запись, её реестр и есть реестр номера. Назвала — реестр записи должен совпасть.
   if (requiredRegistry && choice.registryKind !== requiredRegistry) return { ok: false, reason: `Выбрана запись другого реестра (${REGISTRY_SHORT[choice.registryKind]}), а закупка требует ${REGISTRY_SHORT[requiredRegistry]}` };
   if (choice.cardHash !== cardHash(card)) return { ok: false, reason: "Сведения о товаре изменились после выбора — найдите запись заново" };
   if (choice.record.validUntil && choice.record.validUntil < asOf) return { ok: false, reason: `Срок действия записи истёк ${choice.record.validUntil}` };
   if (choice.datasetAgeDays !== null && choice.datasetAgeDays > STALE_DAYS) return { ok: false, reason: "Выбор сделан по устаревшей выгрузке реестра — повторите поиск по свежей" };
+  if (unverified) return { ok: true, registryNumber: choice.registryNumber, line: registryLineUnverified(choice.registryNumber, choice.registryKind, choice.options), unverified: true, ...(choice.options !== undefined && { options: choice.options }) };
   return { ok: true, registryNumber: choice.registryNumber, line: registryLine(choice.registryNumber, choice.registryKind) };
 }
 

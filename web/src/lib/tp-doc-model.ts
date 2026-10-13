@@ -1,7 +1,7 @@
 import type { PartBlock, PartDoc } from "@/lib/part-doc";
 import { ANKETA, anketaExtraRows, fillFromProfile, type Profile } from "@/lib/profile";
 import { formatRubles, rublesInWords } from "@/lib/rub-words";
-import type { RegistryKind } from "@/lib/registry-types";
+import { registryUnverifiedField, type RegistryKind } from "@/lib/registry-types";
 import { REGISTRY_CHECK, REGISTRY_NEEDED, characteristicsWithRegistry, goodsWithRegistry, isOriginRow } from "@/lib/registry-lines";
 import type { DetectedForm, TpForm } from "@/lib/tp";
 import { PART_TITLES, type TpPart } from "@/lib/tp-parts";
@@ -19,7 +19,7 @@ export type TpDocx = {
   // registryNumber — номер реестровой записи, который участник выбрал и подтвердил (lib/registry-log.ts); без него поле не пишется.
   // registryRejected — перед сборкой файла сервер не нашёл эту запись среди действующих: вместо номера в файле жёлтая пометка.
   // registryNeeded — закупка требует реестровый номер: если его нет, на месте строки ОКПД жёлтое поле «впишите номер».
-  goods: { name: string; characteristics: string; quantity: string; registryNumber?: string; registryKind?: RegistryKind; registryRejected?: boolean; registryNeeded?: boolean }[];
+  goods: { name: string; characteristics: string; quantity: string; registryNumber?: string; registryKind?: RegistryKind; registryUnverified?: boolean; registryOptions?: number; registryRejected?: boolean; registryNeeded?: boolean }[];
   items: { clause: string; requirement: string; offer: string }[];
   // Дополнительные бланки, найденные ИИ в документах закупки (кроме главной формы).
   detectedForms?: DetectedForm[];
@@ -126,7 +126,7 @@ function goodsTableOf(rawGoods: TpDocx["goods"], headers: string[]): Table {
   const country = originRow ? /страна происхождения товара:[ \t]*([^\n]+)/i.exec(originRow.characteristics)?.[1].trim() : undefined;
   const kept = rawGoods.map((_, i) => i).filter((i) => !(hasCountry && isOriginRow(rawGoods[i])));
   const fillCol = (h: string, g: TpDocx["goods"][number], raw: TpDocx["goods"][number]): Cell => {
-    if (isRegistryColumn(h) && raw.registryNumber) return textCell(raw.registryNumber, colW);
+    if (isRegistryColumn(h) && raw.registryNumber) return raw.registryUnverified ? cell([para(withFields(registryUnverifiedField(raw.registryNumber, raw.registryOptions)))], colW) : textCell(raw.registryNumber, colW);
     if (isRegistryColumn(h) && raw.registryRejected) return cell([para(withFields(REGISTRY_CHECK))], colW);
     if (isRegistryColumn(h) && raw.registryNeeded) return cell([para(withFields(REGISTRY_NEEDED))], colW);
     if (/наименован/i.test(h)) return textCell(g.name, colW);
