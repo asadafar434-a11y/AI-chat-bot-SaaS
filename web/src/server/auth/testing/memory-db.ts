@@ -88,7 +88,8 @@ class MemoryTable {
     const row: Row = { ...(DEFAULTS[this.name]?.() ?? {}), ...data };
     if (typeof row.id !== "string") {
       this.counter += 1;
-      row.id = `${this.name.slice(0, 3)}_${this.counter}` as string;
+      // Идентификатор организации проверяется на вид cuid (orgScope), поэтому и здесь он такого вида: «c» и 20 знаков.
+      row.id = (this.name === "organization" ? `c${String(this.counter).padStart(20, "0")}` : `${this.name.slice(0, 3)}_${this.counter}`) as string;
     }
     this.rows.push(row);
     return row;

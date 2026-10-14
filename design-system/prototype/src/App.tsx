@@ -5,6 +5,7 @@ import { TendersDashboard } from './components/TendersDashboard';
 import { TenderSearch } from './components/TenderSearch';
 import { BidHistory } from './components/BidHistory';
 import { Profile } from './components/Profile';
+import { Settings } from './components/Settings';
 import { Tariffs } from './components/Tariffs';
 import { ChatAssistant } from './components/ChatAssistant';
 import { Badge, Tooltip } from './components/ui';
@@ -19,6 +20,7 @@ import { usePurchases } from '@/lib/use-purchases';
 import { PurchaseAnalysis, useProfile } from './real/analysis';
 import { PurchaseProvider, usePurchase } from './real/purchase-provider';
 import { toTender } from './real/tenders';
+import { AuthGate } from './real/auth';
 import { ConsentGate } from './real/consent';
 import { PurchasePackage } from './real/package';
 import { PurchasePricing } from './real/pricing';
@@ -45,7 +47,7 @@ function parseHash(): { view: View; activeId: string | null; step: number } {
     return { view: 'workflow', activeId: second, step: idx >= 0 ? idx : 0 };
   }
   if (first === 'new') return { view: 'workflow', activeId: null, step: 0 };
-  if (first === 'search' || first === 'history' || first === 'profile' || first === 'tariffs') {
+  if (first === 'search' || first === 'history' || first === 'profile' || first === 'settings' || first === 'tariffs') {
     return { view: first, activeId: null, step: 0 };
   }
   return { view: 'tenders', activeId: null, step: 0 };
@@ -77,7 +79,9 @@ function systemPrefersDark(): boolean {
 export default function App() {
   return (
     <ConsentGate>
-      <Product />
+      <AuthGate>
+        <Product />
+      </AuthGate>
     </ConsentGate>
   );
 }
@@ -179,6 +183,7 @@ function Product() {
             {view === 'search' && <TenderSearch onAdd={() => {}} />}
             {view === 'history' && <BidHistory purchases={purchases} />}
             {view === 'profile' && <Profile />}
+            {view === 'settings' && <Settings dark={dark} setDark={setDark} />}
             {view === 'tariffs' && <Tariffs />}
             {view === 'workflow' &&
               (activeId ? (

@@ -1,6 +1,4 @@
 import { useEffect, useId, useRef, useState, type DragEvent, type ReactNode } from 'react';
-import { exportBackup, restoreBackup } from '@/lib/backup';
-import { parseBackup } from '@/lib/backup-format';
 import {
   deleteMyDocument,
   fillProfileFromDocuments,
@@ -20,13 +18,10 @@ import { plural } from '@/lib/plural';
 import { filledCount, PROFILE_GROUPS, PROFILE_KEYS, type Profile as ProfileData, type ProfileKey } from '@/lib/profile';
 import { ACCEPTED_FILES, readDocuments, type FailedFile } from '@/lib/read-documents';
 import { profileProblems } from '@/lib/requisites-check';
-import { saveFile } from '@/lib/save-file';
-import { wipeAll } from '@/lib/wipe';
 import {
   AlertTriangle,
   Building2,
   Check,
-  Download,
   FileText,
   Info,
   Loader2,
@@ -38,24 +33,23 @@ import {
   Upload,
 } from '../lib/icons';
 import { EvidenceBase } from './EvidenceBase';
+import { Notice, type Tone } from './Notice';
 import { Badge, Button, Card, HelpTip, IconButton, TabPanel, Tabs, Tooltip, cx } from './ui';
 
-type TabKey = 'profile' | 'evidence' | 'docs' | 'data';
+type TabKey = 'profile' | 'evidence' | 'docs';
 const TAB_LABELS: Record<TabKey, string> = {
   profile: 'Реквизиты',
   evidence: 'База доказательств',
   docs: 'Образцы и документы',
-  data: 'Данные',
 };
 
 // «Профиль компании»: реквизиты для анкеты, декларации и цены, база доказательств (лицензии, договоры, сотрудники, оборудование,
-// финансы — с источником и сроком), образцы прошлых заявок и копия данных. Вид — прототипа,
+// финансы — с источником и сроком), образцы прошлых заявок. Вид — прототипа,
 // данные — настоящие, из браузера (IndexedDB). Реквизиты сохраняются сами, пока их вписывают: «Отмена» возвращает то, что
 // было до правки, а потерять набранное из-за закрытой вкладки нельзя.
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'failed';
 type Stage = 'reading' | 'sorting' | 'profile';
-type Tone = 'ok' | 'info' | 'warn';
 type Outcome = { tone: Tone; text: string };
 
 const STAGE_TEXT: Record<Stage, string> = {
@@ -102,35 +96,6 @@ function groupSuggestions(items: FoundField[]): FoundField[][] {
 // Виды, по которым пишутся части заявки: у них бывает «образцов уже достаточно».
 const SAMPLE_KINDS: DocKind[] = ['tp', ...Object.values(PART_SAMPLE_KIND)];
 const pages = (text: string) => Math.max(1, Math.round(text.length / 2500));
-
-// «1 закупка, 2 образца, 3 факта и реквизиты» — только то, что есть.
-function contents({ purchases, samples, facts, profile }: { purchases: number; samples: number; facts: number; profile: boolean }) {
-  const parts = [
-    purchases > 0 && `${purchases} ${plural(purchases, 'закупка', 'закупки', 'закупок')}`,
-    samples > 0 && `${samples} ${plural(samples, 'образец', 'образца', 'образцов')}`,
-    facts > 0 && `${facts} ${plural(facts, 'факт', 'факта', 'фактов')} базы доказательств`,
-    profile && 'реквизиты',
-  ].filter((part): part is string => Boolean(part));
-  return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} и ${parts.at(-1)}` : (parts[0] ?? '');
-}
-
-function Notice({ tone, children }: { tone: Tone; children: ReactNode }) {
-  const Icon = tone === 'ok' ? Check : tone === 'warn' ? AlertTriangle : Info;
-  return (
-    <p
-      role={tone === 'warn' ? 'alert' : 'status'}
-      className={cx(
-        'flex items-start gap-2 rounded-md px-3 py-2 text-[13px] leading-snug',
-        tone === 'ok' && 'bg-success/10 text-success',
-        tone === 'warn' && 'bg-warn-surface/50 text-warn-foreground',
-        tone === 'info' && 'bg-info/10 text-info',
-      )}
-    >
-      <Icon className="mt-0.5 size-4 shrink-0" />
-      <span className="min-w-0">{children}</span>
-    </p>
-  );
-}
 
 // Другие значения из документов: например, старый расчётный счёт в анкете позапрошлого года.
 function Suggestions({ items, onAccept, onDismiss }: { items: FoundField[]; onAccept: (g: FoundField[]) => void; onDismiss: (g: FoundField[]) => void }) {
@@ -229,12 +194,6 @@ export function Profile() {
   const [confirmDoc, setConfirmDoc] = useState<string | null>(null);
   const [drag, setDrag] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
-
-  // Копия данных и удаление
-  const [backupBusy, setBackupBusy] = useState(false);
-  const [backupNote, setBackupNote] = useState<Outcome | null>(null);
-  const backupInput = useRef<HTMLInputElement>(null);
-  const [wipe, setWipe] = useState<'idle' | 'confirm' | 'wiping' | 'blocked' | 'failed'>('idle');
 
   // Реквизиты и документы перечитываются и после загрузки копии: из неё могли прийти и те, и другие.
   function read() {
@@ -411,72 +370,6 @@ export function Profile() {
     if (files.length && stage === null) void add(files);
   };
 
-  // Данные живут только в этом браузере: копия файлом — единственный способ вернуть их, если браузер их стёр,
-  // и перенести на другой компьютер.
-  async function saveBackup() {
-    setBackupBusy(true);
-    setBackupNote(null);
-    try {
-      const { backup, ...counts } = await exportBackup();
-      const inside = contents(counts);
-      if (!inside) {
-        setBackupNote({ tone: 'info', text: 'Сохранять пока нечего: в этом браузере нет ни закупок, ни образцов, ни фактов, ни реквизитов.' });
-        return;
-      }
-      const name = `Тендерный юрист — копия ${new Date(backup.savedAt).toLocaleDateString('ru-RU')}.json`;
-      saveFile(new Blob([JSON.stringify(backup)], { type: 'application/json' }), name);
-      setBackupNote({ tone: 'ok', text: `Копия сохранена — файл «${name}» в загрузках браузера. В нём ${inside}.` });
-    } catch {
-      setBackupNote({ tone: 'warn', text: 'Браузер не дал прочитать данные — копия не сохранилась. Обновите страницу и попробуйте ещё раз.' });
-    } finally {
-      setBackupBusy(false);
-    }
-  }
-
-  async function loadBackup(file: File) {
-    setBackupBusy(true);
-    setBackupNote(null);
-    try {
-      let raw: unknown = null;
-      try {
-        raw = JSON.parse(await file.text());
-      } catch {
-        // Не JSON — parseBackup скажет, что это не копия.
-      }
-      const parsed = parseBackup(raw);
-      if (!parsed.ok) {
-        setBackupNote({ tone: 'warn', text: parsed.reason });
-        return;
-      }
-      const added = contents(await restoreBackup(parsed.dump));
-      setBackupNote(
-        added
-          ? { tone: 'ok', text: `Из копии добавлено: ${added}. То, что уже было в браузере, не тронуто.` }
-          : { tone: 'info', text: 'Всё из копии уже есть в этом браузере — ничего не менял.' },
-      );
-      read();
-    } catch {
-      setBackupNote({ tone: 'warn', text: 'Браузер не дал записать данные — возможно, на диске кончилось место. Освободите место и загрузите копию ещё раз.' });
-    } finally {
-      setBackupBusy(false);
-    }
-  }
-
-  async function wipeAllData() {
-    setWipe('wiping');
-    try {
-      if ((await wipeAll()) === 'blocked') {
-        setWipe('blocked');
-        return;
-      }
-      // Приложение открывается заново, с чистого листа: с вопроса о согласии. Нужна полная перезагрузка — она сбрасывает
-      // открытые соединения с базами и всё, что приложение держит в памяти.
-      window.location.assign('/');
-    } catch {
-      setWipe('failed');
-    }
-  }
-
   const problems = profile ? profileProblems(profile) : {};
   const used = new Map(SAMPLE_KINDS.map((kind) => [kind, new Set(samplesOf(docs, kind).map((d) => d.id))]));
   const saveText = save === 'saving' ? 'Сохраняю…' : save === 'saved' ? 'Сохранено' : save === 'failed' ? 'Не сохранилось — попробуйте ещё раз' : '';
@@ -486,7 +379,7 @@ export function Profile() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Профиль компании</h1>
         <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
-          Реквизиты для заявок, база доказательств компании, образцы прошлых документов и хранение данных.
+          Реквизиты для заявок, база доказательств компании и образцы прошлых документов. Копия данных и удаление — в «Настройках».
         </p>
       </div>
 
@@ -500,7 +393,6 @@ export function Profile() {
           { key: 'profile', label: TAB_LABELS.profile },
           { key: 'evidence', label: TAB_LABELS.evidence },
           { key: 'docs', label: TAB_LABELS.docs, badge: docs.length > 0 ? <Badge>{docs.length}</Badge> : undefined },
-          { key: 'data', label: TAB_LABELS.data },
         ]}
       />
 
@@ -809,81 +701,6 @@ export function Profile() {
         </Card>
       </TabPanel>
 
-      <TabPanel idPrefix={tabId} tabKey="data" active={tab}>
-        {/* Копия данных */}
-        <Card className="space-y-3 p-5">
-          <div>
-            <span className="text-sm font-medium">Копия данных</span>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">Закупки, документы, реквизиты, образцы и база доказательств</p>
-          </div>
-          <p className="max-w-[70ch] text-[13px] leading-snug text-muted-foreground">
-            Всё это хранится только в этом браузере. Если очистить браузер — пропадёт, а Safari может стереть данные сам, если сервис не
-            открывать неделю. Сохраняйте копию файлом: из неё всё вернётся, и так же данные переносятся на другой компьютер. В файле
-            реквизиты и тексты документов — храните его так же бережно, как сами документы.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" disabled={backupBusy} onClick={() => void saveBackup()}>
-              <Download className="size-4" /> Сохранить копию
-            </Button>
-            <Button variant="secondary" disabled={backupBusy} onClick={() => backupInput.current?.click()}>
-              <Upload className="size-4" /> Загрузить копию
-            </Button>
-            <input
-              ref={backupInput}
-              type="file"
-              accept=".json,application/json"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.currentTarget.files?.[0];
-                e.currentTarget.value = '';
-                if (file) void loadBackup(file);
-              }}
-            />
-          </div>
-          <div aria-live="polite" className="empty:hidden">
-            {backupNote && <Notice tone={backupNote.tone}>{backupNote.text}</Notice>}
-          </div>
-        </Card>
-
-        {/* Удалить все данные */}
-        <Card className="space-y-3 p-5">
-          <div>
-            <span className="text-sm font-medium">Удалить все данные</span>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">Из этого браузера — всё сразу</p>
-          </div>
-          <p className="max-w-[70ch] text-[13px] leading-snug text-muted-foreground">
-            Удалятся все закупки с документами и черновиками, реквизиты, образцы, база доказательств, настройки и отметка о согласии. Вернуть их можно будет
-            только из копии — сохраните её выше. На сервере данные не хранятся; то, что уже отправлено ИИ, хранится у Anthropic по её
-            условиям — подробнее в{' '}
-            <a href="/privacy" target="_blank" rel="noreferrer" className="underline underline-offset-4 hover:text-foreground">
-              политике
-            </a>
-            .
-          </p>
-          {wipe === 'confirm' || wipe === 'wiping' ? (
-            <div className="space-y-2.5">
-              <p className="text-[13px] font-medium">Удалить всё? Вернуть данные можно будет только из копии.</p>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="danger" size="sm" disabled={wipe === 'wiping'} onClick={() => void wipeAllData()}>
-                  {wipe === 'wiping' ? 'Удаляю…' : 'Удалить всё'}
-                </Button>
-                {/* Фокус — на безопасном ответе: случайный Enter ничего не удалит. */}
-                <Button variant="secondary" size="sm" autoFocus disabled={wipe === 'wiping'} onClick={() => setWipe('idle')}>
-                  Отмена
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <Button variant="ghost" size="sm" className="text-danger hover:text-danger" onClick={() => setWipe('confirm')}>
-              <Trash2 className="size-3.5" /> Удалить все мои данные
-            </Button>
-          )}
-          <div aria-live="polite" className="empty:hidden">
-            {wipe === 'blocked' && <Notice tone="warn">Сервис открыт ещё в другой вкладке — закройте её: удаление закончится, когда она закроется. Потом обновите эту страницу.</Notice>}
-            {wipe === 'failed' && <Notice tone="warn">Браузер не дал удалить данные. Удалите их в настройках браузера — «Очистить данные сайта».</Notice>}
-          </div>
-        </Card>
-      </TabPanel>
     </div>
   );
 }

@@ -15,6 +15,7 @@
     "eis:extract": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/eis-extract.ts",
     "kb:folder": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/kb-folder.ts",
     "kb:laws": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/kb-laws.ts",
+    "owner:create": "node --env-file=.env.local --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/create-owner.ts",
     "registry:import": "node --max-old-space-size=6144 --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/registry-import.ts",
     "jobs:worker": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/jobs-worker.ts",
     "backup:create": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/backup-create.ts",
@@ -45,6 +46,7 @@
     "nanoid": "^6.0.1",
     "next": "16.3.6",
     "next-auth": "^5.0.0-beta.32",
+    "nodemailer": "7.0.13",
     "pdf-parse": "^2.4.5",
     "pdfmake": "^0.3.11",
     "pg-boss": "12.36.0",
@@ -59,14 +61,15 @@
     "uuid": ">=11.1.1"
   },
   "devDependencies": {
-    "shadcn": "^4.21.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/nodemailer": "7.0.12",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
     "prisma": "^6.19.3",
+    "shadcn": "^4.21.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   },

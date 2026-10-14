@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
@@ -15,6 +15,11 @@ export default defineConfig(({ mode }) => {
   // отдаёт его (rewrites в web/next.config.ts): у продукта один адрес — экран, /api, вход по паролю и правовые страницы.
   // Пути в нём идут от /product/. Шрифты остаются отдельными файлами: политика содержимого сервера не пускает шрифты из data:.
   const host = mode === 'host'
+  // Где хранятся закупки: server — в базе на сервере, вход по почте и паролю (так будет на настоящем хостинге); browser — только в
+  // браузере, без входа. Для сборки на сервер (host) по умолчанию server; в паре для правок экрана — browser. Меняется PRODUCT_STORAGE
+  // в окружении или в web/.env.local (npm run build:host читает оба).
+  const stored = process.env.PRODUCT_STORAGE ?? loadEnv(mode, path.resolve(import.meta.dirname, '../../web'), '').PRODUCT_STORAGE
+  const storage = stored === 'server' || stored === 'browser' ? stored : host ? 'server' : 'browser'
   return {
     base: host ? '/product/' : './',
     build: host
@@ -25,8 +30,11 @@ export default defineConfig(({ mode }) => {
         }
       : // Картинки (логотип) и шрифты — внутрь сборки: прототип публикуется одной страницей.
         { assetsInlineLimit: 100_000 },
-    // Прототип всегда хранит закупки в браузере (IndexedDB), а не на сервере — серверные чтения не нужны.
-    define: { 'process.env.NEXT_PUBLIC_SERVER_READS': JSON.stringify('0') },
+    // server: чтение закупок с сервера и запись на сервер (после записи в браузер, как задумано в S5); browser: только IndexedDB.
+    define:
+      storage === 'server'
+        ? { 'process.env.NEXT_PUBLIC_SERVER_READS': JSON.stringify('1'), 'process.env.NEXT_PUBLIC_SERVER_WRITES': JSON.stringify('1') }
+        : { 'process.env.NEXT_PUBLIC_SERVER_READS': JSON.stringify('0'), 'process.env.NEXT_PUBLIC_SERVER_WRITES': JSON.stringify('0') },
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: [

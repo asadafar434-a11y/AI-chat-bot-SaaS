@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Briefcase, User, Plus, Sun, Moon, Search, History, Bell, Clock, ChevronRight, Menu, X, Wallet } from '../lib/icons';
+import { Briefcase, Cog, Plus, Sun, Moon, Search, History, Bell, Clock, ChevronRight, LogOut, Menu, X, Wallet } from '../lib/icons';
+import { useAccount } from '../lib/account';
 import { Button, Soon, Tooltip, IconButton, cx, useDialogFocus } from './ui';
 import { BrandMark } from './BrandMark';
 import { BotMark } from './BotMark';
 
-export type View = 'tenders' | 'search' | 'history' | 'profile' | 'tariffs' | 'workflow';
+export type View = 'tenders' | 'search' | 'history' | 'profile' | 'settings' | 'tariffs' | 'workflow';
 
 // Уведомление о проверке специалистом по одной заявке.
 export type Notice = { id: string; title: string; status: 'sent' | 'replied'; read: boolean };
@@ -14,8 +15,8 @@ const nav: { id: View; label: string; icon: typeof Briefcase; soon?: string }[] 
   { id: 'tenders', label: 'Мои закупки', icon: Briefcase },
   { id: 'search', label: 'Поиск закупок', icon: Search, soon: 'Поиск по площадкам — в разработке. Сейчас на экране пример.' },
   { id: 'history', label: 'История заявок', icon: History },
-  { id: 'profile', label: 'Профиль компании', icon: User },
   { id: 'tariffs', label: 'Тарифы', icon: Wallet },
+  { id: 'settings', label: 'Настройки', icon: Cog },
 ];
 
 type Props = {
@@ -93,11 +94,14 @@ export function Sidebar(props: Props) {
           <div ref={menuBox} tabIndex={-1} className="fixed inset-0 z-50 outline-none lg:hidden" role="dialog" aria-modal="true" aria-label="Меню">
             <div className="animate-tip absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setMenuOpen(false)} />
             <div className="animate-slide-in absolute inset-y-0 left-0 flex w-[min(320px,86vw)] flex-col gap-5 overflow-y-auto border-r border-border bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] shadow-2xl">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <Logo />
-                <IconButton label="Закрыть меню" onClick={() => setMenuOpen(false)} side="bottom" align="end">
-                  <X className="size-5" />
-                </IconButton>
+                <div className="flex shrink-0 items-center gap-1">
+                  <ThemeButton dark={props.dark} setDark={props.setDark} />
+                  <IconButton label="Закрыть меню" onClick={() => setMenuOpen(false)} side="bottom" align="end">
+                    <X className="size-5" />
+                  </IconButton>
+                </div>
               </div>
               <Body {...inMenu} />
             </div>
@@ -107,16 +111,28 @@ export function Sidebar(props: Props) {
 
       {/* Компьютер: боковая панель */}
       <aside className="hidden shrink-0 flex-col gap-5 rounded-2xl border border-border bg-card p-4 shadow-sm lg:flex lg:h-full lg:w-[248px] lg:overflow-y-auto">
-        <Logo />
+        <div className="flex items-start justify-between gap-2">
+          <Logo />
+          <ThemeButton dark={props.dark} setDark={props.setDark} />
+        </div>
         <Body {...props} />
       </aside>
     </>
   );
 }
 
+// Светлая и тёмная тема — значком в шапке меню, рядом с местом уведомлений.
+function ThemeButton({ dark, setDark }: { dark: boolean; setDark: (v: boolean) => void }) {
+  return (
+    <IconButton label={dark ? 'Светлая тема' : 'Тёмная тема'} onClick={() => setDark(!dark)} side="bottom" align="end" className="size-8">
+      {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+    </IconButton>
+  );
+}
+
 function Logo() {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex min-w-0 items-center gap-3">
       <BrandMark className="size-9 shrink-0" />
       <div className="leading-none">
         <p className="text-sm font-semibold tracking-tight">Тендерный юрист</p>
@@ -127,7 +143,9 @@ function Logo() {
 }
 
 // Содержимое панели — одно и то же на компьютере и в меню телефона.
-function Body({ view, onNavigate, onNewTender, onOpenChat, dark, setDark, notices, onOpenNotice, credits, company }: Props) {
+function Body({ view, onNavigate, onNewTender, onOpenChat, notices, onOpenNotice, credits, company }: Props) {
+  // Вошедший пользователь — когда закупки хранятся на сервере; в режиме «в браузере» входа нет и блока тоже.
+  const account = useAccount();
   // Сначала непрочитанные ответы, потом ожидающие проверки, прочитанные — в конце.
   const sorted = [...notices].sort((a, b) => rank(a) - rank(b));
   const unread = notices.some((n) => n.status === 'replied' && !n.read);
@@ -188,30 +206,40 @@ function Body({ view, onNavigate, onNewTender, onOpenChat, dark, setDark, notice
           </div>
         )}
 
-        <button
-          onClick={() => onNavigate('profile')}
-          className="relative flex w-full items-center gap-2.5 rounded-md border border-border p-2.5 text-left transition-colors hover:bg-secondary"
-        >
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold">
-            {(company.name.replace(/[^\p{L}]/gu, '').slice(0, 2) || '—').toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-[13px] font-medium">{company.name || 'Моя компания'}</p>
-            <p className="truncate font-mono text-[10px] text-muted-foreground">
-              {company.inn ? `ИНН ${company.inn}` : 'Заполните профиль'}
-              {credits > 0 && ` · заявок на балансе: ${credits}`}
-            </p>
-          </div>
-          {unread && <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-danger" />}
-        </button>
-
-        <button
-          onClick={() => setDark(!dark)}
-          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-[13px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-        >
-          {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
-          {dark ? 'Светлая тема' : 'Тёмная тема'}
-        </button>
+        {/* Компания и вход — одна карточка: сверху компания (ведёт в профиль), снизу кто вошёл и «Выйти». */}
+        <div className="relative overflow-hidden rounded-md border border-border">
+          <button
+            onClick={() => onNavigate('profile')}
+            aria-current={view === 'profile' ? 'page' : undefined}
+            className={cx('relative flex w-full items-center gap-2.5 p-2.5 text-left transition-colors hover:bg-secondary', view === 'profile' && 'bg-secondary')}
+          >
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold">
+              {(company.name.replace(/[^\p{L}]/gu, '').slice(0, 2) || '—').toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-[13px] font-medium">{company.name || 'Моя компания'}</p>
+              <p className="truncate font-mono text-[10px] text-muted-foreground">
+                {company.inn ? `ИНН ${company.inn}` : 'Заполните профиль'}
+                {credits > 0 && ` · заявок на балансе: ${credits}`}
+              </p>
+            </div>
+            {unread && <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-danger" />}
+          </button>
+          {account && (
+            <div className="flex items-center justify-between gap-2 border-t border-border bg-secondary/30 px-2.5 py-1.5">
+              <p className="min-w-0 truncate font-mono text-[10px] text-muted-foreground" title={account.email ?? undefined}>
+                {account.email ?? 'Вы вошли'}
+              </p>
+              <button
+                onClick={account.logout}
+                className="flex shrink-0 items-center gap-1.5 rounded-md px-1.5 py-1 text-[12px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              >
+                <LogOut className="size-3.5" />
+                Выйти
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </>
   );
