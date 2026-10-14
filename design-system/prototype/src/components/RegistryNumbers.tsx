@@ -36,6 +36,8 @@ export type PositionView = {
   autofill: AutofillCheck;
   /** Сведения о товаре изменились после выбора записи. */
   cardChanged: boolean;
+  /** Участник отказался от номера для этой позиции («Номер не нужен»): автоподбор её не трогает. */
+  skipped: boolean;
 };
 
 /** Выгрузка одного реестра, по которой идёт поиск. */
@@ -352,7 +354,7 @@ const optionLabel = (v: CandidateView) =>
  * Номер позиции под её названием: выпадающий список вариантов, а у подобранного автоматически — заметная пометка «Проверьте обязательно»
  * и кнопка «Всё верно». Выбор в списке — это решение участника: пометка снимается.
  */
-function NumberPicker({ position, onSelect }: { position: PositionView; onSelect: (number: string) => void }) {
+function NumberPicker({ position, onSelect, onSkip }: { position: PositionView; onSelect: (number: string) => void; onSkip: () => void }) {
   const { card, decision, choice } = position;
   const current = choice && !position.cardChanged ? choice : undefined;
   const unverified = Boolean(current && !current.confirmedAt && current.basis === 'auto_picked');
@@ -383,6 +385,9 @@ function NumberPicker({ position, onSelect }: { position: PositionView; onSelect
           </span>
         </p>
       )}
+      {position.skipped && !current && (
+        <p className="text-[12px] text-muted-foreground">Вы отказались от номера для этой позиции. Если он всё-таки нужен — выберите в списке.</p>
+      )}
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-0 flex-1">
           <label htmlFor={`rg-pick-${card.key}`} className="mb-1 block text-[12px] font-medium">
@@ -403,10 +408,15 @@ function NumberPicker({ position, onSelect }: { position: PositionView; onSelect
           </select>
         </div>
         {unverified && current && (
-          <Button size="sm" onClick={() => onSelect(current.registryNumber)}>
-            <CheckCircle2 className="size-3.5" />
-            Всё верно
-          </Button>
+          <>
+            <Button size="sm" onClick={() => onSelect(current.registryNumber)}>
+              <CheckCircle2 className="size-3.5" />
+              Всё верно
+            </Button>
+            <Button size="sm" variant="secondary" onClick={onSkip}>
+              Номер не нужен
+            </Button>
+          </>
         )}
       </div>
     </div>
@@ -466,7 +476,7 @@ function PositionCard({
           <ChevronDown className={cx('size-4 text-muted-foreground transition-transform', open && 'rotate-180')} />
         </span>
       </button>
-      <NumberPicker position={position} onSelect={(number) => props.onSelect(card.key, number, '')} />
+      <NumberPicker position={position} onSelect={(number) => props.onSelect(card.key, number, '')} onSkip={() => props.onCancel(card.key)} />
       {open && (
         <div className="space-y-4 border-t border-border px-3 py-3">
           {position.error && (
@@ -656,7 +666,7 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
           {demand.status === 'none' && (
             <p className="text-muted-foreground">
               В документах закупки не найдено требование о номере реестровой записи. Если оно всё же есть (например, в документе, который не загружен),
-              найти запись можно: поиск идёт сразу в обоих реестрах.
+              найти запись можно: поиск идёт сразу в обоих реестрах, номер подставится сам и будет помечен «проверьте обязательно» — если он не нужен, нажмите «Номер не нужен».
             </p>
           )}
           {demand.status === 'found' && !demand.unsupported && demand.registry && (

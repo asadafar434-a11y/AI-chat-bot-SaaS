@@ -35,8 +35,14 @@ export async function handleRegistrySearch(request: Request, deps: SearchDeps): 
     // Ищем сразу во всех загруженных реестрах: участнику выбирать реестр не нужно.
     const datasets = await latestDatasets(store);
     const limit = cards.length > 20 ? 12 : 30;
+    // Одинаковые позиции (то же название и сведения; количество на поиск не влияет) ищутся один раз: в закупке «куртка для самбо» бывает в десяти строках.
+    const done = new Map<string, ReturnType<typeof resolveCard>>();
     const results = [];
-    for (const card of cards) results.push({ key: card.key, decision: await resolveCard(store, card, { registry, asOf, now, datasets, limit }) });
+    for (const card of cards) {
+      const same = JSON.stringify([card.name, card.offeredName, card.fields]);
+      if (!done.has(same)) done.set(same, resolveCard(store, card, { registry, asOf, now, datasets, limit }));
+      results.push({ key: card.key, decision: await done.get(same)! });
+    }
     return Response.json({
       registry,
       asOf,

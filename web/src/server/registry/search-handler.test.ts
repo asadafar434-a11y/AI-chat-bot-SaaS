@@ -164,3 +164,25 @@ test("поиск идёт сразу в обоих реестрах: запис�
   assert.equal(chair.results[0].decision.proposed, "00003001");
   assert.equal(chair.results[0].decision.candidates[0].registryKind, "gisp_rpp_719");
 });
+
+test("одинаковые позиции (то же название и сведения, другое количество) ищутся один раз", async () => {
+  const store = await seededStore([fixtureRecord({ registryNumber: "00003001", ...A, productName: "Кресло офисное тестовое КО-1" })]);
+  let calls = 0;
+  const original = store.search;
+  store.search = async (q) => ((calls += 1), original(q));
+  const d = await deps({ getStore: () => store });
+  const ask = async (items: unknown[]) => {
+    calls = 0;
+    const res = await handleRegistrySearch(post({ asOf: "2026-11-20", items }), d);
+    assert.equal(res.status, 200);
+    return { json: await res.json(), calls };
+  };
+  const one = await ask([item({ key: "1:a", quantity: "5 шт" })]);
+  const same = await ask([item({ key: "1:a", quantity: "5 шт" }), item({ key: "2:b", quantity: "17 шт" }), item({ key: "3:c", quantity: "1 шт" })]);
+  assert.equal(same.calls, one.calls, "три одинаковые строки — столько же запросов к базе, сколько на одну");
+  assert.equal(same.json.results.length, 3, "а ответ — по каждой строке");
+  assert.deepEqual(same.json.results.map((r: { key: string }) => r.key), ["1:a", "2:b", "3:c"]);
+  assert.equal(same.json.results[1].decision.status, same.json.results[0].decision.status);
+  const different = await ask([item({ key: "1:a" }), item({ key: "2:b", name: "Стол письменный" })]);
+  assert.ok(different.calls > one.calls, "разные названия ищутся отдельно");
+});

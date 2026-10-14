@@ -67,9 +67,8 @@ export function RegistryBlock() {
     };
   }, [required, cards.length, request]);
 
-  // Закупка требует номер: тогда лучший найденный номер подставляется сам и помечается «проверьте» (решение владельца 13.10.2026).
-  const needed = required !== null;
-
+  // Поиск и подбор идут сами во всех закупках с товарами (решение владельца 14.10.2026: «почему не ищет сразу?»): лучший номер подставляется
+  // и помечается «проверьте»; если номер не нужен, участник нажимает «Номер не нужен» — отказ запоминается.
   const search = useCallback(
     async (targets: ProductCard[], options: { quiet?: boolean } = {}) => {
       if (targets.length === 0) return;
@@ -96,7 +95,7 @@ export function RegistryBlock() {
             });
           }
           const card = byKey.get(x.key);
-          if (needed && card) next = autoPick(next, { card, decision: x.decision, now });
+          if (card) next = autoPick(next, { card, decision: x.decision, now });
         }
         if (next !== stateRef.current) save(next);
       } catch (error) {
@@ -106,21 +105,30 @@ export function RegistryBlock() {
         setLoading((prev) => new Set([...prev].filter((k) => !keys.includes(k))));
       }
     },
-    [needed, required, request, save],
+    [required, request, save],
   );
 
   // Поиск бесплатный и быстрый, поэтому идёт сам: при открытии блока и после правки товара. Каждую карточку — один раз за открытие.
   const attempted = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (!needed || demand.unsupported || cards.length === 0) return;
+    if (demand.unsupported || cards.length === 0) return;
     const targets = cards.filter((c) => {
       const id = `${c.key}:${cardHash(c)}`;
       return !attempted.current.has(id) && !loading.has(c.key) && found[c.key]?.hash !== cardHash(c);
     });
     if (targets.length === 0) return;
     for (const c of targets) attempted.current.add(`${c.key}:${cardHash(c)}`);
-    void search(targets, { quiet: true });
-  }, [needed, demand.unsupported, cards, found, loading, search]);
+    // Порциями: первые позиции показываются сразу, не дожидаясь всего списка.
+    // Одинаковые названия — рядом, чтобы сервер искал каждое один раз внутри порции.
+    const ordered = [...targets].sort((a, b) => a.name.localeCompare(b.name));
+    const chunks: ProductCard[][] = [];
+    for (let i = 0; i < ordered.length; i += 5) chunks.push(ordered.slice(i, i + 5));
+    const next = { value: 0 };
+    const worker = async () => {
+      while (next.value < chunks.length) await search(chunks[next.value++], { quiet: true });
+    };
+    void Promise.all([worker(), worker(), worker()]);
+  }, [demand.unsupported, cards, found, loading, search]);
 
   const positions: PositionView[] = cards.map((card) => {
     const entry = found[card.key];
@@ -134,6 +142,7 @@ export function RegistryBlock() {
       status: loading.has(card.key) ? 'searching' : statusOf(demand, decision),
       autofill: autofillCheck({ choice, card, requiredRegistry: required, asOf }),
       cardChanged: Boolean(choice && choice.cardHash !== cardHash(card)),
+      skipped: state.skipped?.[card.key] === cardHash(card),
     };
   });
 

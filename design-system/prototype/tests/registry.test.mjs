@@ -347,3 +347,18 @@ test('номер ещё не выбран, варианты найдены — �
   const wait = render({ positions: [position({ status: 'searching' })] });
   assert.match(wait, /Ищем варианты номера/);
 });
+
+test('«Номер не нужен»: рядом с «Всё верно» есть кнопка отказа; после отказа сказано, что номер не указывается, и список остаётся', () => {
+  const a = view({ registryNumber: '00000061', productName: 'Куртка зимняя' });
+  const auto = { ...choiceOf('user_selected'), basis: 'auto_picked', confirmedAt: '', options: 1, registryNumber: '00000061', record: { ...choiceOf('user_selected').record, registryNumber: '00000061', productName: 'Куртка зимняя' } };
+  const withChoice = render({
+    positions: [position({ status: 'need_data', decision: decision('need_data', { candidates: [a] }), choice: auto, autofill: { ok: true, registryNumber: '00000061', line: 'x', unverified: true, options: 1 } })],
+  });
+  assert.match(withChoice, /Всё верно/);
+  assert.match(withChoice, /Номер не нужен/);
+
+  const declined = render({ positions: [position({ status: 'need_data', decision: decision('need_data', { candidates: [a] }), skipped: true })] });
+  assert.match(declined, /Вы отказались от номера для этой позиции/);
+  assert.match(declined, /<option value="" selected="">— выберите номер —<\/option>/);
+  assert.equal(/Номер не нужен/.test(declined), false, 'кнопка отказа есть только у подобранного автоматически номера');
+});

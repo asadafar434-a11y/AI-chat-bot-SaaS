@@ -74,6 +74,8 @@ export type RegistryState = {
   choices: Record<string, RegistryChoice>;
   /** Реестр, который выбрал участник, когда документы его не назвали. */
   registry?: RegistryKind;
+  /** Позиции, где участник отказался от номера («Номер не нужен»): ключ позиции → отпечаток карточки. Автоподбор их не трогает, пока данные те же. */
+  skipped?: Record<string, string>;
   /** Журнал событий, только дополняется (не больше LOG_LIMIT последних). */
   log: RegistryLogEntry[];
 };
@@ -146,6 +148,7 @@ export function autoPick(state: RegistryState, input: { card: ProductCard; decis
   const now = input.now ?? new Date();
   const existing = state.choices[card.key];
   const hash = cardHash(card);
+  if (state.skipped?.[card.key] === hash) return state;
   if (existing && existing.basis !== "auto_picked" && existing.cardHash === hash) return state;
 
   const options = optionsOf(decision);
@@ -181,16 +184,25 @@ export function selectRecord(state: RegistryState, input: { card: ProductCard; d
   const text = proven
     ? `Подтверждена запись ${registryNumber}: система доказала совпадение (${view.identity.join(", ")}), участник подтвердил.`
     : `Участник выбрал запись ${registryNumber} сам; объективных подтверждений недостаточно, выбор отмечен как решение участника.`;
-  const next = appendLog({ ...state, choices: { ...state.choices, [card.key]: choice } }, { at: now.toISOString(), positionKey: card.key, event: "select", text, registryNumber, status: decision.status });
+  // Участник сам выбрал номер — прежний отказ от него снимается.
+  const kept = state.skipped && card.key in state.skipped ? Object.fromEntries(Object.entries(state.skipped).filter(([key]) => key !== card.key)) : state.skipped;
+  const next = appendLog({ ...state, ...(kept !== undefined && { skipped: kept }), choices: { ...state.choices, [card.key]: choice } }, { at: now.toISOString(), positionKey: card.key, event: "select", text, registryNumber, status: decision.status });
   return { ok: true, state: next, choice };
 }
 
+/**
+ * Участник отказался от номера для позиции («Номер не нужен» или «Отменить выбор»). Отказ запоминается до смены данных о товаре: иначе
+ * автоподбор подставил бы номер снова при следующем заходе. Выбрать номер в списке можно в любой момент — отказ тогда снимается.
+ */
 export function cancelChoice(state: RegistryState, positionKey: string, now = new Date()): RegistryState {
   const choice = state.choices[positionKey];
   if (!choice) return state;
   const rest = { ...state.choices };
   delete rest[positionKey];
-  return appendLog({ ...state, choices: rest }, { at: now.toISOString(), positionKey, event: "cancel", text: `Выбор записи ${choice.registryNumber} отменён.`, registryNumber: choice.registryNumber });
+  return appendLog(
+    { ...state, choices: rest, skipped: { ...state.skipped, [positionKey]: choice.cardHash } },
+    { at: now.toISOString(), positionKey, event: "cancel", text: `Выбор записи ${choice.registryNumber} отменён.`, registryNumber: choice.registryNumber },
+  );
 }
 
 // ── Подстановка в заявку ───────────────────────────────────────────────────────────────────────────

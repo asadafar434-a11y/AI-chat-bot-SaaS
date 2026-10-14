@@ -9,7 +9,7 @@ import { applyEdits, cardHash, type ProductCard } from "./product-card.ts";
 import { registryCardsOf, registryFillFor, registryNumbersFor, registryUnverifiedFor, registryView } from "./registry-fill.ts";
 import { fixtureRecord, seededStore } from "./registry-fixtures.ts";
 import { goodsWithRegistry } from "./registry-lines.ts";
-import { EMPTY_REGISTRY_STATE, autoPick, autofillCheck, optionsOf, selectRecord, type RegistryState } from "./registry-log.ts";
+import { EMPTY_REGISTRY_STATE, autoPick, autofillCheck, cancelChoice, optionsOf, selectRecord, type RegistryState } from "./registry-log.ts";
 import { resolveCard } from "./registry-service.ts";
 import { registryLine, registryLineUnverified, registryUnverifiedField } from "./registry-types.ts";
 import { fileFromRequest } from "./tp-docx-request.ts";
@@ -210,4 +210,31 @@ test("строка про страну происхождения: неподт�
     { name: "Страна происхождения – Россия", characteristics: ORIGIN, quantity: "" },
   ]);
   assert.ok(out[2].characteristics.includes("Куртка — [ПРОВЕРЬТЕ номер реестровой записи: 00009001 — подобран автоматически, вариантов: 2]; Брюки — 00009002"));
+});
+
+test("«Номер не нужен»: отказ запоминается — автоподбор не подставляет номер снова, пока данные о товаре те же; выбор в списке отказ снимает", async () => {
+  const { card, decision } = await searched();
+  const auto = autoPick(EMPTY_REGISTRY_STATE, { card, decision, now: NOW });
+  const declined = cancelChoice(auto, card.key, NOW);
+  assert.equal(declined.choices[card.key], undefined, "номер убран");
+  assert.equal(declined.skipped?.[card.key], cardHash(card), "отказ запомнен");
+  // Снова пришли результаты поиска (например, при следующем заходе на шаг) — номер не возвращается.
+  assert.equal(autoPick(declined, { card, decision, now: NOW }), declined);
+  assert.equal(registryFillFor(purchaseOf(declined), DOCS, NOW).length, 0, "в документе номера нет");
+  // Данные о товаре изменились — это уже другой товар, подбор идёт заново.
+  const edited = applyEdits(card, { model: "Север" });
+  assert.equal(autoPick(declined, { card: edited, decision, now: NOW }).choices[card.key]?.basis, "auto_picked");
+  // Участник сам выбрал номер — отказ снят.
+  const picked = selectRecord(declined, { card, decision, registryNumber: optionsOf(decision)[0].registryNumber, now: NOW });
+  assert.ok(picked.ok);
+  assert.equal(picked.state.skipped?.[card.key], undefined);
+  assert.ok(picked.state.choices[card.key].confirmedAt);
+});
+
+test("отмена выбора человека тоже запоминается: после перезагрузки страницы номер сам не возвращается", async () => {
+  const { card, decision } = await searched();
+  const picked = selectRecord(EMPTY_REGISTRY_STATE, { card, decision, registryNumber: "00009002", now: NOW });
+  assert.ok(picked.ok);
+  const cancelled = cancelChoice(picked.state, card.key, NOW);
+  assert.equal(autoPick(cancelled, { card, decision, now: NOW }), cancelled);
 });

@@ -246,7 +246,9 @@ export function createDbRegistryStore(db: RegistryDb): RegistryStore {
         // Начало слова берётся без окончания: «куртки» находит «Куртка…». Слово состоит только из букв и цифр — шаблон LIKE безопасен.
         const first = words[0].replace(/ё/g, "е");
         const starts = add(`${first.slice(0, Math.max(3, Math.min(5, first.length - 1)))}%`);
-        rank = `(replace(lower("productName"), 'ё', 'е') LIKE ${starts}) DESC, ts_rank_cd(to_tsvector('russian', "productName"), to_tsquery('russian', ${q})) DESC, `;
+        // У запроса из одного слова плотность совпадения одинакова у всех записей, а считать её для тысяч строк дорого (около секунды): не считаем.
+        const density = words.length > 1 ? `ts_rank_cd(to_tsvector('russian', "productName"), to_tsquery('russian', ${q})) DESC, ` : "";
+        rank = `(replace(lower("productName"), 'ё', 'е') LIKE ${starts}) DESC, ${density}`;
       }
       for (const word of (query.enterpriseWords ?? []).flatMap((w) => w.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [])) {
         where.push(`position(${add(word.replace(/ё/g, "е"))} in replace(lower("enterpriseName"), 'ё', 'е')) > 0`);
