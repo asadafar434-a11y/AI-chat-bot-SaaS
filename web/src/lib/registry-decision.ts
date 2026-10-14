@@ -302,6 +302,10 @@ export function decide(input: DecideInput): Decision {
     differences: differencesOf(usable.length > 1 ? usable : views),
     assumptions,
   };
+  if (search.broadened && views.length > 0) {
+    const { wanted, used } = search.broadened;
+    out.reasons.push(`Точного названия «${wanted}» в реестре нет — показаны записи по общему названию «${used}»${search.truncated || search.matchedTotal > views.length ? ` (показано ${views.length} из ${search.matchedTotal})` : ""}. Сверьте с вашим товаром и выберите нужный номер.`);
+  }
   if (stale) out.reasons.push(`Выгрузка реестра ${ageDays} дн. назад — старше ${STALE_DAYS}: загрузите свежую и повторите поиск.`);
 
   // Сценарий 1 / 2: есть доказанные записи.

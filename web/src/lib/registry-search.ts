@@ -1,7 +1,7 @@
 import { searchName, type ProductCard } from "@/lib/product-card";
 import { matchCandidate, type Matching } from "@/lib/registry-match";
 import type { RegistryStore, RegistrySearchQuery } from "@/lib/registry-store";
-import { compact, isInn, nameWords, orgWords, standardRefs } from "@/lib/registry-text";
+import { compact, isInn, nameBroadenings, nameWords, orgWords, standardRefs } from "@/lib/registry-text";
 import { REGISTRY_KINDS, REGISTRY_SHORT, type RegistryKind, type StoredRegistryRecord } from "@/lib/registry-types";
 
 // Поиск кандидатов в реестре. Идёт по уровням, от самого надёжного идентификатора к названию:
@@ -44,6 +44,8 @@ export type CandidateSearch = {
   truncated: boolean;
   /** Записей с похожим названием и ОКПД2 у ДРУГИХ производителей — только справка, кандидатами они не считаются. */
   similarElsewhere: number | null;
+  /** Точного названия в реестре нет: искали по общему («куртки для самбо» → «куртки»). wanted — что искали сначала, used — по чему нашли. */
+  broadened: { wanted: string; used: string } | null;
 };
 
 export type SearchOptions = { registryKind: RegistryKind; limit?: number; fetchLimit?: number };
@@ -58,6 +60,7 @@ export async function findCandidates(store: RegistryStore, card: ProductCard, op
   const tierTotals: Partial<Record<SearchTier, number>> = {};
   const filters: string[] = [`Реестр: ${REGISTRY_SHORT[kind]}`];
   let matchedTotal = 0;
+  let broadened: CandidateSearch["broadened"] = null;
 
   const run = async (tier: SearchTier, query: Omit<RegistrySearchQuery, "registryKind" | "limit">) => {
     const result = await store.search({ registryKind: kind, limit: fetchLimit, ...query });
@@ -162,10 +165,16 @@ export async function findCandidates(store: RegistryStore, card: ProductCard, op
     if (found.size === 0 || designations.length === 0) {
       let hit = false;
       if (words.length) {
+        // От точного названия к общему: нет «куртки для самбо» — берём просто «куртки» (nameBroadenings).
+        const steps = nameBroadenings(words);
+        const noteBroader = (used: string[]) => {
+          if (used.length < words.length) broadened = { wanted: words.join(" "), used: used.join(" ") };
+        };
         for (const digits of okpdLevels()) {
-          for (let n = words.length; n >= 1; n--) {
-            if (await run("name_okpd2", { okpd2Prefix: digits, nameWords: words.slice(0, n) })) {
-              filters.push(`ОКПД2 ${okpd}${digits.length < (okpd ?? "").replace(/\D/g, "").length ? ` (ветка ${digits})` : ""}; слова названия: ${words.slice(0, n).join(", ")}`);
+          for (const used of steps) {
+            if (await run("name_okpd2", { okpd2Prefix: digits, nameWords: used })) {
+              filters.push(`ОКПД2 ${okpd}${digits.length < (okpd ?? "").replace(/\D/g, "").length ? ` (ветка ${digits})` : ""}; слова названия: ${used.join(", ")}`);
+              noteBroader(used);
               hit = true;
               break;
             }
@@ -173,9 +182,10 @@ export async function findCandidates(store: RegistryStore, card: ProductCard, op
           if (hit) break;
         }
         if (!hit) {
-          for (let n = words.length; n >= Math.min(words.length, 2); n--) {
-            if (await run("name", { nameWords: words.slice(0, n) })) {
-              filters.push(`слова названия: ${words.slice(0, n).join(", ")} (без ОКПД2)`);
+          for (const used of steps) {
+            if (await run("name", { nameWords: used })) {
+              filters.push(`слова названия: ${used.join(", ")} (без ОКПД2)${used.length < words.length ? " — точного названия в реестре нет, взято общее" : ""}`);
+              noteBroader(used);
               hit = true;
               break;
             }
@@ -196,9 +206,9 @@ export async function findCandidates(store: RegistryStore, card: ProductCard, op
 
   const candidates = [...found.values()]
     .map(({ record, tiers }): Candidate => ({ record, tiers: [...tiers], matching: matchCandidate(card, record), registries: [record.registryKind] }))
-    .sort((a, b) => b.matching.rank - a.matching.rank || a.record.registryNumber.localeCompare(b.record.registryNumber));
+    .sort((a, b) => b.matching.rank - a.matching.rank || a.record.productName.length - b.record.productName.length || a.record.registryNumber.localeCompare(b.record.registryNumber));
   const shown = candidates.slice(0, limit);
-  return { candidates: shown, filters, tierTotals, matchedTotal: Math.max(matchedTotal, found.size), shown: shown.length, truncated: candidates.length > limit || matchedTotal > fetchLimit, similarElsewhere };
+  return { candidates: shown, filters, tierTotals, matchedTotal: Math.max(matchedTotal, found.size), shown: shown.length, truncated: candidates.length > limit || matchedTotal > fetchLimit, similarElsewhere, broadened };
 }
 
 /**
@@ -264,5 +274,6 @@ export function mergeSearches(searches: CandidateSearch[], options: { demanded?:
     shown: shown.length,
     truncated: all.length > limit || searches.some((s) => s.truncated),
     similarElsewhere: sum((s) => s.similarElsewhere),
+    broadened: searches.find((s) => s.broadened)?.broadened ?? null,
   };
 }

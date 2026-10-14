@@ -214,7 +214,8 @@ export function matchCandidate(card: ProductCard, record: StoredRegistryRecord):
   const producer = identity.includes("inn") || identity.includes("manufacturer");
   const specific = identity.includes("model") || identity.includes("article") || identity.includes("madeBy");
   const provenIdentity = (producer && specific) || (identity.includes("registryNumber") && producer);
-  const rank = identity.length * 10 + (confirmed.length - identity.length) * 2 + ratio * 5 + (nameExact ? 3 : 0) - critical.length * 30 - (contradictions.length - critical.length) * 5;
+  const startsWithHead = Boolean(nameTerms(want)[0]) && nameTerms(want)[0] === nameTerms(record.productName)[0];
+  const rank = identity.length * 10 + (confirmed.length - identity.length) * 2 + ratio * 5 + (nameExact ? 3 : 0) + (startsWithHead ? 1 : 0) - critical.length * 30 - (contradictions.length - critical.length) * 5;
 
   return {
     signals,

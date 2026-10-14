@@ -242,7 +242,11 @@ export function createDbRegistryStore(db: RegistryDb): RegistryStore {
       if (words.length) {
         const q = add(words.join(" & "));
         where.push(`to_tsvector('russian', "productName") @@ to_tsquery('russian', ${q})`);
-        rank = `ts_rank_cd(to_tsvector('russian', "productName"), to_tsquery('russian', ${q})) DESC, `;
+        // Сначала записи, чьё название начинается с главного слова («Куртка …», а не «Комплект … куртка»), потом по плотности совпадения.
+        // Начало слова берётся без окончания: «куртки» находит «Куртка…». Слово состоит только из букв и цифр — шаблон LIKE безопасен.
+        const first = words[0].replace(/ё/g, "е");
+        const starts = add(`${first.slice(0, Math.max(3, Math.min(5, first.length - 1)))}%`);
+        rank = `(replace(lower("productName"), 'ё', 'е') LIKE ${starts}) DESC, ts_rank_cd(to_tsvector('russian', "productName"), to_tsquery('russian', ${q})) DESC, `;
       }
       for (const word of (query.enterpriseWords ?? []).flatMap((w) => w.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [])) {
         where.push(`position(${add(word.replace(/ё/g, "е"))} in replace(lower("enterpriseName"), 'ё', 'е')) > 0`);
@@ -252,7 +256,7 @@ export function createDbRegistryStore(db: RegistryDb): RegistryStore {
       const clause = where.join(" AND ");
       const limit = add(Math.max(1, Math.min(500, Math.floor(query.limit))));
       const records = await db.$queryRawUnsafe<RecordRow[]>(
-        `SELECT ${COLUMNS} FROM "RegistryRecord" WHERE ${clause} ORDER BY ${rank}("status" = 'active') DESC, "registryNumber" ASC LIMIT ${limit}`,
+        `SELECT ${COLUMNS} FROM "RegistryRecord" WHERE ${clause} ORDER BY ${rank}("status" = 'active') DESC, length("productName") ASC, "registryNumber" ASC LIMIT ${limit}`,
         ...params,
       );
       const counted = await db.$queryRawUnsafe<{ n: bigint | number }[]>(`SELECT count(*) AS n FROM "RegistryRecord" WHERE ${clause}`, ...params.slice(0, -1));
