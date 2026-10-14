@@ -20,8 +20,9 @@ import { DocsChanged } from '../components/DocsChanged';
 import { OwnCheck } from '../components/OwnCheck';
 import { StepReview } from '../components/StepReview';
 import { useProfile } from './analysis';
-import { useMyDocs } from './hooks';
+import { useFacts, useMyDocs } from './hooks';
 import { usePurchase } from './purchase-provider';
+import { useSubmission } from './submission';
 
 // Составить документы заявки: ИИ находит в документах закупки форму заявки и заполняет её — техническое предложение,
 // декларацию, цену. Это платный запрос к ИИ, по кнопке. В примере — заготовка без запроса.
@@ -115,6 +116,9 @@ export function PurchaseReview({
   const { purchases } = usePurchases();
   const profile = useProfile();
   const my = useMyDocs();
+  const factsData = useFacts();
+  // Замечания финальной проверки — те же, что на шаге «Пакет»: по ним показан риск отклонения.
+  const { audit } = useSubmission({ purchase, documents, profile, myDocs: my.docs, facts: factsData.facts });
   const [focusKey, setFocusKey] = useState<string | null>(null);
   const tp = purchase.tp;
   // Где в файлах закупки стоят цитаты состава исполнителей (lib/doc-locate.ts).
@@ -184,6 +188,7 @@ export function PurchaseReview({
       fields={fields}
       final={final}
       warnings={warnings}
+      audit={audit}
       notice={changes && <DocsChanged changes={changes} onConfirm={() => update({ tpDocs: purchase.docs })} />}
       whereOf={whereOf}
       snippetOf={snippetOf}

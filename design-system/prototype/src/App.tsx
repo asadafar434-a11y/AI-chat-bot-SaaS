@@ -180,7 +180,7 @@ function Product() {
                 }}
               />
             )}
-            {view === 'search' && <TenderSearch onAdd={() => {}} />}
+            {view === 'search' && <TenderSearch onNew={newTender} />}
             {view === 'history' && <BidHistory purchases={purchases} />}
             {view === 'profile' && <Profile />}
             {view === 'settings' && <Settings dark={dark} setDark={setDark} />}

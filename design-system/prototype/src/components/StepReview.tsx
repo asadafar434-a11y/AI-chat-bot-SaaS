@@ -17,7 +17,9 @@ import { Button, Card, Badge, Soon, Tooltip, HelpTip, cx, type Tone } from './ui
 import { kindMeta, type FieldKind } from '../lib/data';
 import { acceptableValue, parseHint } from '@/lib/conditions';
 import { fieldQueue, fieldSummary, type ApplicationField, type Completeness } from '@/lib/fields';
+import { plural } from '@/lib/plural';
 import type { Purchase } from '@/lib/purchase';
+import type { AuditReport, AuditSeverity } from '@/lib/submission-audit';
 import { ApplicationPreview } from './ApplicationPreview';
 
 // Шаг «Проверка». Вид — прототипа; поля — настоящая карта полей заявки приложения (web/src/lib/fields.ts):
@@ -90,9 +92,26 @@ export function DocSnippetToggle({ snippet, where }: { snippet?: DocSnippet; whe
   );
 }
 
-// Вес открытого пункта в «риске отклонения»: ошибка — 35, не определено — 18, пустое обязательное — 10, подтвердить — 7, остальное — 3.
-const weightOf = (f: ApplicationField) =>
-  f.status === 'invalid' ? 35 : f.kind === 'unknown' ? 18 : f.status === 'needs_input' ? (f.required ? 10 : 3) : f.status === 'needs_confirmation' ? 7 : 0;
+// Пункт ещё требует действия участника: ошибка, не определено, пусто или нужно подтвердить.
+const isOpenField = (f: ApplicationField) => f.status === 'invalid' || f.kind === 'unknown' || f.status === 'needs_input' || f.status === 'needs_confirmation';
+
+// Риск отклонения — не вероятность, а вывод по правилам: что в заявке не заполнено, не подтверждено или не подходит под требования закупки
+// (замечания финальной проверки, lib/submission-audit.ts — те же, что на шаге «Пакет»). Процента нет: без статистики прошлых торгов он был бы выдумкой.
+const RISK_NAME: Record<AuditReport['risk'], string> = { high: 'Высокий', medium: 'Средний', low: 'Низкий' };
+const RISK_TONE: Record<AuditReport['risk'], Tone> = { high: 'danger', medium: 'warn', low: 'success' };
+const FINDING: Record<AuditSeverity, { tone: Tone; label: string }> = {
+  CRITICAL: { tone: 'danger', label: 'Критично' },
+  WARNING: { tone: 'warn', label: 'Предупреждение' },
+  INFO: { tone: 'neutral', label: 'Инфо' },
+};
+
+function riskReason(audit: AuditReport): string {
+  const parts: string[] = [];
+  if (audit.critical > 0) parts.push(`${audit.critical} ${plural(audit.critical, 'критичное замечание', 'критичных замечания', 'критичных замечаний')}`);
+  if (audit.warnings > 0) parts.push(`${audit.warnings} ${plural(audit.warnings, 'предупреждение', 'предупреждения', 'предупреждений')}`);
+  if (parts.length === 0) return 'замечаний нет';
+  return `${parts.join(' и ')} — ${audit.critical > 0 ? 'заявку могут отклонить' : 'нужна ваша проверка'}`;
+}
 
 const badgeOf = (f: ApplicationField): { tone: Tone; text: string } =>
   f.status === 'invalid'
@@ -105,12 +124,74 @@ const badgeOf = (f: ApplicationField): { tone: Tone; text: string } =>
           ? { tone: 'warn', text: 'Подтвердить' }
           : { tone: 'info', text: 'Ввести' };
 
+// Причины риска: замечания финальной проверки с тем, что сделать и откуда требование. Первые 12, остальное — на шаге «Пакет».
+export function RiskReasons({ audit }: { audit: AuditReport }) {
+  return (
+    <div className="space-y-2.5 px-4 py-3 text-[12px]">
+      {audit.findings.length === 0 ? (
+        <p className="text-success">Замечаний нет — по правилам закона и требованиям закупки заявку не за что отклонить.</p>
+      ) : (
+        audit.findings.slice(0, 12).map((x) => (
+          <div key={x.id} className="space-y-0.5">
+            <div className="flex items-start gap-2">
+              <span className="min-w-0 flex-1 text-[13px]">{x.what}</span>
+              <Badge tone={FINDING[x.severity].tone}>{FINDING[x.severity].label}</Badge>
+            </div>
+            <p className="text-muted-foreground">
+              Что сделать: {x.fix} · Источник: {x.source}
+            </p>
+          </div>
+        ))
+      )}
+      {audit.findings.length > 12 && <p className="text-muted-foreground">…и ещё {audit.findings.length - 12}: полный список — на шаге «Пакет».</p>}
+      <p className="text-muted-foreground">
+        Это не вероятность, а вывод по правилам: что в заявке не заполнено, не подтверждено или не подходит под требования закупки. Процент не показываем —
+        без статистики прошлых торгов он был бы выдумкой. ИИ не вызывается.
+      </p>
+    </div>
+  );
+}
+
+// Блок «Риск отклонения»: уровень и причины по замечаниям финальной проверки. Раскрывается кнопкой «Почему такой риск?».
+export function RiskBlock({ audit }: { audit: AuditReport }) {
+  const [why, setWhy] = useState(false);
+  const allClear = audit.findings.every((x) => x.severity === 'INFO');
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+          {allClear ? <ShieldCheck className="size-5 text-success" /> : <ShieldAlert className={cx('size-5', audit.risk === 'high' ? 'text-danger' : 'text-warn')} />}
+          <span className="text-[13px] font-medium">Риск отклонения</span>
+          <Badge tone={RISK_TONE[audit.risk]}>{RISK_NAME[audit.risk]}</Badge>
+          <span className="text-[12px] text-muted-foreground">{riskReason(audit)}</span>
+        </div>
+        <button
+          onClick={() => setWhy(!why)}
+          aria-expanded={why}
+          className="inline-flex items-center gap-1 text-[12px] font-medium text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground"
+        >
+          <HelpCircle className="size-3.5" /> Почему такой риск?
+        </button>
+        <div className="ml-auto">
+          <Tooltip content="Полный повторный разбор заявки ИИ с учётом ваших правок — в разработке. Правки полей проверяются бесплатно и сразу." align="end">
+            <Button size="sm" variant="secondary" disabled>
+              <RefreshCw className="size-3.5" /> Пересчитать с ИИ <Soon className="ml-1" />
+            </Button>
+          </Tooltip>
+        </div>
+      </div>
+      {why && <RiskReasons audit={audit} />}
+    </>
+  );
+}
+
 export function StepReview({
   purchase,
   fields,
   final,
   focusKey,
   warnings,
+  audit,
   notice,
   before,
   after,
@@ -128,6 +209,8 @@ export function StepReview({
   final: Completeness;
   // Предупреждения по заявке: утечка реквизитов в ТП, цитаты без подтверждения, сканы.
   warnings: string[];
+  // Замечания финальной проверки (lib/submission-audit.ts): по ним показан риск отклонения. Нет — блок риска не показывается.
+  audit?: AuditReport;
   // Блок под заголовком шага — например, «документы закупки изменились».
   notice?: ReactNode;
   // Блок над списком пунктов — например, состав исполнителей.
@@ -148,7 +231,6 @@ export function StepReview({
   onBack: () => void;
 }) {
   const [filter, setFilter] = useState<FieldKind | 'all'>('all');
-  const [whyRisk, setWhyRisk] = useState(false);
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const summary = fieldSummary(fields);
@@ -158,11 +240,8 @@ export function StepReview({
   const own = queue.filter((f) => !isProfile(f));
   const ownEmpty = own.filter((f) => f.status === 'needs_input' && !f.key.startsWith('file:')).length;
 
-  const open = queue.filter((f) => weightOf(f) > 0);
-  const weight = open.reduce((s, f) => s + weightOf(f), 0);
-  const risk = { pct: weight === 0 ? 3 : Math.min(74, weight + 2), critical: open.some((f) => f.status === 'invalid' || f.kind === 'unknown') };
-  const allClear = open.length === 0;
-  const level = risk.pct >= 50 ? 'высокий' : risk.pct >= 25 ? 'средний' : 'низкий';
+  const open = queue.filter(isOpenField);
+  const critical = audit ? audit.risk === 'high' : open.some((f) => f.status === 'invalid' || f.kind === 'unknown');
 
   const select = (key: string) => {
     setFilter('all');
@@ -235,61 +314,7 @@ export function StepReview({
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
-          <div className="flex items-center gap-2.5">
-            {allClear ? (
-              <ShieldCheck className="size-5 text-success" />
-            ) : (
-              <ShieldAlert className={cx('size-5', risk.critical ? 'text-danger' : 'text-warn')} />
-            )}
-            <span className="text-[13px] font-medium">Риск отклонения</span>
-            <Tooltip content="Оценка по открытым пунктам: ошибка — 35 баллов, не определено — 18, пустое обязательное поле — 10, подтвердить — 7. Не вероятность, а шкала." align="start">
-              <span
-                className={cx(
-                  'font-mono text-lg font-semibold tabular-nums',
-                  allClear ? 'text-success' : risk.critical ? 'text-danger' : 'text-warn-foreground',
-                )}
-              >
-                {risk.pct}%
-              </span>
-            </Tooltip>
-            <span className="text-[12px] text-muted-foreground">{allClear ? 'минимальный' : level}</span>
-          </div>
-          <button
-            onClick={() => setWhyRisk(!whyRisk)}
-            className="inline-flex items-center gap-1 text-[12px] font-medium text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground"
-          >
-            <HelpCircle className="size-3.5" /> Почему такой риск?
-          </button>
-          <div className="ml-auto">
-            <Tooltip content="Полный повторный разбор заявки ИИ с учётом ваших правок — в разработке. Правки полей проверяются бесплатно и сразу." align="end">
-              <Button size="sm" variant="secondary" disabled>
-                <RefreshCw className="size-3.5" /> Пересчитать с ИИ <Soon className="ml-1" />
-              </Button>
-            </Tooltip>
-          </div>
-        </div>
-
-        {whyRisk && (
-          <div className="space-y-1.5 px-4 py-3 text-[12px]">
-            {open.length === 0 ? (
-              <p className="text-success">Открытых пунктов нет — риск минимальный.</p>
-            ) : (
-              open
-                .slice()
-                .sort((a, b) => weightOf(b) - weightOf(a))
-                .slice(0, 12)
-                .map((f) => (
-                  <button key={f.key} onClick={() => select(f.key)} className="flex w-full items-center gap-2 text-left hover:text-foreground">
-                    <span className="w-9 shrink-0 text-right font-mono tabular-nums text-muted-foreground">+{weightOf(f)}</span>
-                    <span className="min-w-0 flex-1 truncate">{f.label}</span>
-                    <Badge tone={badgeOf(f).tone}>{badgeOf(f).text}</Badge>
-                  </button>
-                ))
-            )}
-            <p className="text-muted-foreground">Считается в браузере по открытым пунктам — ИИ не вызывается.</p>
-          </div>
-        )}
+        {audit && <RiskBlock audit={audit} />}
       </Card>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -374,7 +399,7 @@ export function StepReview({
         <Button variant="ghost" onClick={onBack}>
           ← Назад
         </Button>
-        <Button variant={risk.critical ? 'secondary' : 'primary'} onClick={onNext} className="ml-auto">
+        <Button variant={critical ? 'secondary' : 'primary'} onClick={onNext} className="ml-auto">
           {final.ready ? 'Сформировать пакет →' : 'Продолжить с открытыми пунктами →'}
         </Button>
       </div>

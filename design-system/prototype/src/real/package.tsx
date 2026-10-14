@@ -1,16 +1,12 @@
 import { useCallback, useMemo, useState } from 'react';
-import { auditReport, type AuditReport } from '@/lib/submission-audit';
 import { scoringReport, type ScoringReport } from '@/lib/scoring-engine';
-import { validate } from '@/lib/validation-engine';
 import { NO_CRITERIA } from '@/lib/criteria';
 import { fileRows, submitItems, toggleReady } from '@/lib/application-files';
 import { tpChanges } from '@/lib/doc-changes';
 import { createLocator, describeSource } from '@/lib/doc-locate';
-import { completeness, fieldsOf } from '@/lib/fields';
 import { FILE_FORMATS, type FileFormat } from '@/lib/file-format';
 import type { PartDoc } from '@/lib/part-doc';
 import { filledCount, PROFILE_KEYS } from '@/lib/profile';
-import { fulfillmentOf } from '@/lib/fulfillment';
 import type { PartKey } from '@/lib/my-docs';
 import { PART_TITLES, partsOf, type TpPart } from '@/lib/tp-parts';
 import type { DetectedForm } from '@/lib/tp';
@@ -24,8 +20,8 @@ import { StepPackage, type PackagePreview, type PackageRow } from '../components
 import { AlertTriangle } from '../lib/icons';
 import { useProfile } from './analysis';
 import { useFacts, useMyDocs } from './hooks';
-import { registryView } from '@/lib/registry-fill';
 import { usePurchase } from './purchase-provider';
+import { useSubmission } from './submission';
 import { RegistryBlock } from './registry';
 
 // Документ, который ИИ составил по форме заказчика: заголовок, абзацы и таблицы; пропуски «[…]» — жёлтые.
@@ -91,25 +87,19 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
   const profile = useProfile();
   const my = useMyDocs();
   const factsData = useFacts();
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const tp = purchase.tp;
   // Word или PDF — выбор действует на все скачивания этого шага.
   const [format, setFormat] = useState<FileFormat>('docx');
 
-  const evidence = useMemo(
-    () => ({
-      experience: my.docs.filter((d) => d.kinds.includes('experience')).length,
-      staff: my.docs.filter((d) => d.kinds.includes('staff')).length,
-    }),
-    [my.docs],
-  );
   // ТП, как он будет в файлах: без кода ОКПД, с реестровыми номерами (lib/registry-fill.ts). Предпросмотр и проверка полей смотрят на него.
-  const registryDocs = useMemo(() => source.documents.map((d) => ({ name: d.name, text: d.text })), [source.documents]);
-  const shown = useMemo(() => {
-    const view = registryView(purchase, registryDocs);
-    return view ? { ...purchase, tp: view.tp, tpDraft: view.tpDraft } : purchase;
-  }, [purchase, registryDocs]);
-  const fields = useMemo(() => fieldsOf({ purchase: shown, profile, evidence }), [shown, profile, evidence]);
+  // Карта полей, итоговая проверка, замечания и риск — общий расчёт с шагом «Проверка» (real/submission.ts).
+  const { shown, final, audit: appAuditReport } = useSubmission({
+    purchase,
+    documents: source.documents,
+    profile,
+    myDocs: my.docs,
+    facts: factsData.facts,
+  });
   // Где в файлах закупки стоит цитата пункта «Что требует заказчик» (lib/doc-locate.ts).
   const locator = useMemo(() => createLocator(source.documents), [source.documents]);
   // Страницы каждого бланка — из текста документов (код), а не из ответа ИИ.
@@ -121,17 +111,6 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
     const place = quote ? locator.locate(quote) : null;
     return place ? describeSource(place) : undefined;
   };
-  const final = useMemo(() => completeness(shown, fields, profile), [shown, fields, profile]);
-
-  const plans = useMemo(() => fulfillmentOf(purchase, { profile, fields }), [purchase, profile, fields]);
-  const validationResult = useMemo(
-    () => validate({ purchase, profile, facts: factsData.facts, fields, today }),
-    [purchase, profile, factsData.facts, fields, today],
-  );
-  const appAuditReport = useMemo(
-    (): AuditReport => auditReport({ final, plans, fields, validation: validationResult, today, deadline: purchase.deadline }),
-    [final, plans, fields, validationResult, today, purchase.deadline],
-  );
   const appScoringReport = useMemo(
     (): ScoringReport => scoringReport({ criteria: purchase.criteria ?? NO_CRITERIA, facts: factsData.facts }),
     [purchase.criteria, factsData.facts],
