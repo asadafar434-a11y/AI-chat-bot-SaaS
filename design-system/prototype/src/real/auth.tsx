@@ -143,6 +143,9 @@ function ServerAuthGate({ children }: { children: ReactNode }) {
         loginWithPassword(email, password).then(
           async () => {
             setNotice(null);
+            // После входа — всегда «Мои закупки», а не то место, где человек был до выхода (например, «Настройки»). Экран продукта
+            // читает адрес при открытии, поэтому адрес меняем до того, как он появится.
+            window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#/`);
             await check();
           },
           (e: Error) => setError(e.message),
