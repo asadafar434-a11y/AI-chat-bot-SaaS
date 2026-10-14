@@ -74,7 +74,7 @@ export type RegistryState = {
   choices: Record<string, RegistryChoice>;
   /** Реестр, который выбрал участник, когда документы его не назвали. */
   registry?: RegistryKind;
-  /** Позиции, где участник отказался от номера («Номер не нужен»): ключ позиции → отпечаток карточки. Автоподбор их не трогает, пока данные те же. */
+  /** Позиции, где участник отказался от номера («Нет в реестре»): ключ позиции → отпечаток карточки. Автоподбор их не трогает, пока данные те же. */
   skipped?: Record<string, string>;
   /** Журнал событий, только дополняется (не больше LOG_LIMIT последних). */
   log: RegistryLogEntry[];
@@ -143,7 +143,7 @@ export const optionsOf = (decision: Decision): CandidateView[] => decision.candi
  * система доказала (decision.proposed), иначе первый по совпадению. Выбор человека не трогаем, пока сведения о товаре те же; подобранный
  * автоматически — пересчитываем при каждом новом поиске. Состояние возвращается тем же объектом, если менять нечего.
  */
-export function autoPick(state: RegistryState, input: { card: ProductCard; decision: Decision; now?: Date }): RegistryState {
+export function autoPick(state: RegistryState, input: { card: ProductCard; decision: Decision; now?: Date; demanded?: boolean }): RegistryState {
   const { card, decision } = input;
   const now = input.now ?? new Date();
   const existing = state.choices[card.key];
@@ -152,12 +152,16 @@ export function autoPick(state: RegistryState, input: { card: ProductCard; decis
   if (existing && existing.basis !== "auto_picked" && existing.cardHash === hash) return state;
 
   const options = optionsOf(decision);
-  const best = options.find((v) => v.registryNumber === decision.proposed) ?? options[0];
+  // Реестровый номер нужен всегда (решение владельца 14.10.2026), поиск идёт всегда. Но если закупка про номер не говорит, сам номер ставим,
+  // только когда запись доказана по названию и характеристикам товара (decision.proposed); иначе варианты остаются списком на выбор участнику.
+  const sure = input.demanded !== false || Boolean(decision.proposed);
+  const best = sure ? (options.find((v) => v.registryNumber === decision.proposed) ?? options[0]) : undefined;
   if (!best) {
     if (!existing || existing.basis !== "auto_picked") return state;
     const rest = { ...state.choices };
     delete rest[card.key];
-    return appendLog({ ...state, choices: rest }, { at: now.toISOString(), positionKey: card.key, event: "skip", text: `Подобранный ранее номер ${existing.registryNumber} больше не подходит: подходящих записей нет.`, registryNumber: existing.registryNumber });
+    const why = sure ? "подходящих записей нет" : "закупка про номер не говорит, а совпадение не доказано — выберите номер из списка сами";
+    return appendLog({ ...state, choices: rest }, { at: now.toISOString(), positionKey: card.key, event: "skip", text: `Подобранный ранее номер ${existing.registryNumber} больше не подходит: ${why}.`, registryNumber: existing.registryNumber });
   }
   if (existing && existing.basis === "auto_picked" && existing.registryNumber === best.registryNumber && existing.cardHash === hash && existing.options === options.length) return state;
 
@@ -191,7 +195,7 @@ export function selectRecord(state: RegistryState, input: { card: ProductCard; d
 }
 
 /**
- * Участник отказался от номера для позиции («Номер не нужен» или «Отменить выбор»). Отказ запоминается до смены данных о товаре: иначе
+ * Участник отказался от номера для позиции («Нет в реестре» или «Отменить выбор»). Отказ запоминается до смены данных о товаре: иначе
  * автоподбор подставил бы номер снова при следующем заходе. Выбрать номер в списке можно в любой момент — отказ тогда снимается.
  */
 export function cancelChoice(state: RegistryState, positionKey: string, now = new Date()): RegistryState {

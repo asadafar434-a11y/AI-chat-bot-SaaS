@@ -212,7 +212,7 @@ test("строка про страну происхождения: неподт�
   assert.ok(out[2].characteristics.includes("Куртка — [ПРОВЕРЬТЕ номер реестровой записи: 00009001 — подобран автоматически, вариантов: 2]; Брюки — 00009002"));
 });
 
-test("«Номер не нужен»: отказ запоминается — автоподбор не подставляет номер снова, пока данные о товаре те же; выбор в списке отказ снимает", async () => {
+test("«Нет в реестре»: отказ запоминается — автоподбор не подставляет номер снова, пока данные о товаре те же; выбор в списке отказ снимает", async () => {
   const { card, decision } = await searched();
   const auto = autoPick(EMPTY_REGISTRY_STATE, { card, decision, now: NOW });
   const declined = cancelChoice(auto, card.key, NOW);
@@ -237,4 +237,36 @@ test("отмена выбора человека тоже запоминаетс
   assert.ok(picked.ok);
   const cancelled = cancelChoice(picked.state, card.key, NOW);
   assert.equal(autoPick(cancelled, { card, decision, now: NOW }), cancelled);
+});
+
+test("закупка про номер не говорит: слабое совпадение сам не подставляется, доказанная запись — подставляется; требование есть — как раньше", async () => {
+  const weak = await searched();
+  assert.notEqual(weak.decision.status, "confirmed");
+  assert.equal(weak.decision.proposed, null);
+  assert.ok(optionsOf(weak.decision).length >= 3, "варианты остаются списком на выбор");
+  // Требование есть — подставляется, как раньше.
+  assert.ok(autoPick(EMPTY_REGISTRY_STATE, { card: weak.card, decision: weak.decision, now: NOW, demanded: true }).choices[weak.card.key]);
+  // Требования нет — номер сам не ставится, в журнале ничего не появляется.
+  const none = autoPick(EMPTY_REGISTRY_STATE, { card: weak.card, decision: weak.decision, now: NOW, demanded: false });
+  assert.equal(none.choices[weak.card.key], undefined);
+  assert.equal(none, EMPTY_REGISTRY_STATE);
+
+  // Запись доказана: ИНН и известный участнику номер совпали — подставляется и без требования.
+  const proven = await searched({ inn: "9900000001", registryNumber: "00009001" });
+  assert.equal(proven.decision.status, "confirmed");
+  const picked = autoPick(EMPTY_REGISTRY_STATE, { card: proven.card, decision: proven.decision, now: NOW, demanded: false });
+  assert.equal(picked.choices[proven.card.key]?.registryNumber, "00009001");
+});
+
+test("требования нет: прежний слабый автоподбор снимается, а выбор человека остаётся", async () => {
+  const { card, decision } = await searched();
+  const auto = autoPick(EMPTY_REGISTRY_STATE, { card, decision, now: NOW, demanded: true });
+  assert.ok(auto.choices[card.key]);
+  const cleared = autoPick(auto, { card, decision, now: NOW, demanded: false });
+  assert.equal(cleared.choices[card.key], undefined, "неподтверждённый номер снят");
+  assert.match(cleared.log.at(-1)!.text, /закупка про номер не говорит, а совпадение не доказано/);
+  // Человек выбрал номер сам — повторный поиск без требования его не трогает.
+  const chosen = selectRecord(EMPTY_REGISTRY_STATE, { card, decision, registryNumber: "00009002", now: NOW });
+  assert.ok(chosen.ok);
+  assert.equal(autoPick(chosen.state, { card, decision, now: NOW, demanded: false }), chosen.state);
 });

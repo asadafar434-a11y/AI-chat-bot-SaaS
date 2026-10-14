@@ -68,7 +68,7 @@ export function RegistryBlock() {
   }, [required, cards.length, request]);
 
   // Поиск и подбор идут сами во всех закупках с товарами (решение владельца 14.10.2026: «почему не ищет сразу?»): лучший номер подставляется
-  // и помечается «проверьте»; если номер не нужен, участник нажимает «Номер не нужен» — отказ запоминается.
+  // и помечается «проверьте»; если товара нет в реестрах, участник нажимает «Нет в реестре» — отказ запоминается. Номер нужен всегда; сам он подставляется, когда закупка о нём говорит или совпадение доказано.
   const search = useCallback(
     async (targets: ProductCard[], options: { quiet?: boolean } = {}) => {
       if (targets.length === 0) return;
@@ -95,7 +95,7 @@ export function RegistryBlock() {
             });
           }
           const card = byKey.get(x.key);
-          if (card) next = autoPick(next, { card, decision: x.decision, now });
+          if (card) next = autoPick(next, { card, decision: x.decision, now, demanded: demand.status !== 'none' });
         }
         if (next !== stateRef.current) save(next);
       } catch (error) {
@@ -105,7 +105,7 @@ export function RegistryBlock() {
         setLoading((prev) => new Set([...prev].filter((k) => !keys.includes(k))));
       }
     },
-    [required, request, save],
+    [required, demand.status, request, save],
   );
 
   // Поиск бесплатный и быстрый, поэтому идёт сам: при открытии блока и после правки товара. Каждую карточку — один раз за открытие.

@@ -156,12 +156,14 @@ test('требование найдено: показано, откуда оно
   assert.match(out, /Требование о реестровом номере обнаружено — поиск не выполнен/);
 });
 
-test('требования нет: об этом сказано, но искать всё равно можно — реестр выбирать не нужно', () => {
+test('требования нет: сказано, что в документах о номере не говорится, но номер нужен; искать можно — реестр выбирать не нужно', () => {
   const out = render({ demand: demandNone, required: null, positions: [position({ status: 'no_requirement' })] });
-  assert.match(out, /Требование не обнаружено/);
+  assert.match(out, /В документах о номере не сказано/);
+  assert.match(out, /но он нужен у каждого товара/);
+  assert.equal(/Требование не обнаружено/.test(out), false, 'старой формулировки, будто номер не нужен, нет');
   assert.equal(/В каком реестре искать/.test(out), false, 'вопроса про реестр нет');
   assert.equal(/type="radio"/.test(out), false, 'выбора реестра нет');
-  assert.match(out, /поиск идёт сразу в обоих реестрах/);
+  assert.match(out, /Поиск идёт сразу в обоих реестрах/);
   assert.match(out, /Найти в реестре/);
 });
 
@@ -348,17 +350,18 @@ test('номер ещё не выбран, варианты найдены — �
   assert.match(wait, /Ищем варианты номера/);
 });
 
-test('«Номер не нужен»: рядом с «Всё верно» есть кнопка отказа; после отказа сказано, что номер не указывается, и список остаётся', () => {
+test('«Нет в реестре»: рядом с «Всё верно» есть кнопка отказа; после отказа сказано, что номер не указывается, и список остаётся', () => {
   const a = view({ registryNumber: '00000061', productName: 'Куртка зимняя' });
   const auto = { ...choiceOf('user_selected'), basis: 'auto_picked', confirmedAt: '', options: 1, registryNumber: '00000061', record: { ...choiceOf('user_selected').record, registryNumber: '00000061', productName: 'Куртка зимняя' } };
   const withChoice = render({
     positions: [position({ status: 'need_data', decision: decision('need_data', { candidates: [a] }), choice: auto, autofill: { ok: true, registryNumber: '00000061', line: 'x', unverified: true, options: 1 } })],
   });
   assert.match(withChoice, /Всё верно/);
-  assert.match(withChoice, /Номер не нужен/);
+  assert.match(withChoice, /Нет в реестре/);
+  assert.equal(/Номер не нужен/.test(withChoice), false);
 
   const declined = render({ positions: [position({ status: 'need_data', decision: decision('need_data', { candidates: [a] }), skipped: true })] });
-  assert.match(declined, /Вы отказались от номера для этой позиции/);
+  assert.match(declined, /Вы отметили, что товара нет в реестрах/);
   assert.match(declined, /<option value="" selected="">— выберите номер —<\/option>/);
-  assert.equal(/Номер не нужен/.test(declined), false, 'кнопка отказа есть только у подобранного автоматически номера');
+  assert.equal(/Нет в реестре<\/button>/.test(declined), false, 'кнопка отказа есть только у подобранного автоматически номера');
 });

@@ -36,7 +36,7 @@ export type PositionView = {
   autofill: AutofillCheck;
   /** Сведения о товаре изменились после выбора записи. */
   cardChanged: boolean;
-  /** Участник отказался от номера для этой позиции («Номер не нужен»): автоподбор её не трогает. */
+  /** Участник отказался от номера для этой позиции («Нет в реестре»): автоподбор её не трогает. */
   skipped: boolean;
 };
 
@@ -374,8 +374,14 @@ function NumberPicker({ position, onSelect, onSkip }: { position: PositionView; 
   }
   if (items.length === 0) return null;
   const many = (current?.options ?? found.length) > 1;
+  const choosing = !current && !position.skipped;
   return (
     <div className={cx('space-y-2 border-t px-3 py-2.5', unverified ? 'border-warn/50 bg-warn-surface' : 'border-border')}>
+      {choosing && (
+        <p className="text-[12px] text-muted-foreground">
+          Номер сам не подставлен: совпадения по названию недостаточно, чтобы быть уверенным. Выберите подходящую запись из списка — номер пойдёт в заявку.
+        </p>
+      )}
       {unverified && (
         <p className="flex items-start gap-1.5 text-[12px] font-medium text-warn-foreground">
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
@@ -386,7 +392,7 @@ function NumberPicker({ position, onSelect, onSkip }: { position: PositionView; 
         </p>
       )}
       {position.skipped && !current && (
-        <p className="text-[12px] text-muted-foreground">Вы отказались от номера для этой позиции. Если он всё-таки нужен — выберите в списке.</p>
+        <p className="text-[12px] text-muted-foreground">Вы отметили, что товара нет в реестрах, — номер в заявку не пойдёт. Если он всё-таки есть — выберите его в списке.</p>
       )}
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-0 flex-1">
@@ -414,7 +420,7 @@ function NumberPicker({ position, onSelect, onSkip }: { position: PositionView; 
               Всё верно
             </Button>
             <Button size="sm" variant="secondary" onClick={onSkip}>
-              Номер не нужен
+              Нет в реестре
             </Button>
           </>
         )}
@@ -634,13 +640,13 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
         <div className="flex items-center gap-2">
           <ListChecks className="size-4" />
           <span className="text-sm font-medium">Реестровые номера товаров</span>
-          <HelpTip content="Если закупка требует подтвердить российское происхождение, в заявке нужен номер записи из реестра. Программа ищет записи в обоих реестрах и подставляет лучший номер, но помечает его «проверьте обязательно»: по одному названию товар не определить, подтверждает номер человек." align="start" />
+          <HelpTip content="В заявке у каждого товара нужен номер записи из реестра российской продукции. Программа ищет записи в обоих реестрах. Когда закупка требует номер, подставляет лучший и помечает его «проверьте обязательно»; когда не говорит о нём — подставляет, только если уверена, иначе даёт список на выбор. По одному названию товар не определить: подтверждает номер человек." align="start" />
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           {demand.status === 'found' && <Badge tone="info">Требование обнаружено</Badge>}
           {demand.status === 'unclear' && <Badge tone="warn">Требуется уточнение реестра</Badge>}
-          {demand.status === 'none' && <Badge tone="neutral">Требование не обнаружено</Badge>}
-          {positions.length > 0 && demand.status !== 'none' && (
+          {demand.status === 'none' && <Badge tone="neutral">В документах о номере не сказано</Badge>}
+          {positions.length > 0 && (
             <span className="font-mono text-[11px] text-muted-foreground">в заявку попадёт номеров: {withNumber} из {positions.length}</span>
           )}
           {unverifiedCount > 0 && (
@@ -665,8 +671,9 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
         <section aria-label="Что требует закупка" className="space-y-2 text-[13px]">
           {demand.status === 'none' && (
             <p className="text-muted-foreground">
-              В документах закупки не найдено требование о номере реестровой записи. Если оно всё же есть (например, в документе, который не загружен),
-              найти запись можно: поиск идёт сразу в обоих реестрах, номер подставится сам и будет помечен «проверьте обязательно» — если он не нужен, нажмите «Номер не нужен».
+              В документах закупки о номере реестровой записи не сказано, но он нужен у каждого товара. Поиск идёт сразу в обоих реестрах. Если программа
+              уверена в записи, номер подставится сам и будет помечен «проверьте обязательно»; если нет — под товаром появится список вариантов, выберите
+              нужный. Товара нет в реестрах — нажмите «Нет в реестре».
             </p>
           )}
           {demand.status === 'found' && !demand.unsupported && demand.registry && (
@@ -739,7 +746,9 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
               {props.searching ? <Loader2 className="size-3.5 animate-spin" /> : <Search className="size-3.5" />}
               Найти для всех позиций
             </Button>
-            <span className="text-[12px] text-muted-foreground">Если вариантов несколько, лучший номер подставится сам и будет помечен «проверьте обязательно».</span>
+            <span className="text-[12px] text-muted-foreground">{demand.status === 'none'
+                ? 'Если программа уверена в записи, номер подставится сам и будет помечен «проверьте обязательно»; иначе выберите из списка.'
+                : 'Если вариантов несколько, лучший номер подставится сам и будет помечен «проверьте обязательно».'}</span>
           </div>
         )}
 
