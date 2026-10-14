@@ -1,3 +1,4 @@
+import { requireAiAuth } from "@/lib/ai-guard";
 import { claudeErrorText, MY_DOCS_NO_KEY_TEXT } from "@/lib/claude-errors";
 import { askJson, ModelStop } from "@/lib/claude-request";
 import { PROFILE_INSTRUCTIONS, ProfileFoundSchema, SORT_SYSTEM, type FoundField, type ProfileFound } from "@/lib/my-docs";
@@ -19,6 +20,8 @@ const digits = (s: string) => s.replace(/\D/g, "");
 // Реквизиты участника из его документов. Каждое значение сверяем с текстом: номера — по цифрам,
 // остальное — по цитате. Чего в документах нет, в реквизиты не попадает.
 export async function POST(request: Request) {
+  const denied = await requireAiAuth(request);
+  if (denied) return denied;
   const body = await readJson(request);
   if (!body) return badRequest();
   const documents: { name: string; text: string }[] = [];

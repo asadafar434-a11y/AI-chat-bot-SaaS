@@ -42,7 +42,7 @@ export function StepAnalysis({
   rows,
   requirements = [],
   kindText,
-  fromPlatform,
+  platformNote,
   hidden,
   snippetOf,
   onNext,
@@ -55,7 +55,8 @@ export function StepAnalysis({
   // «на электронный аукцион» — способ закупки для описания; пусто, если не определён.
   kindText: string;
   // 44-ФЗ, электронная процедура: сведения об участнике передаёт площадка.
-  fromPlatform: boolean;
+  // Пояснение, почему сведений об участнике в заявке нет (зависит от способа закупки); null — не нужно.
+  platformNote: string | null;
   // Сколько пунктов для этой заявки не требуется — в список не входят.
   hidden: number;
   // Контекст цитаты в документе: до, сама цитата, после — для кнопки «Показать в тексте».
@@ -208,11 +209,10 @@ export function StepAnalysis({
         </p>
       )}
 
-      {fromPlatform && (
+      {platformNote && (
         <p className="flex items-start gap-1.5 text-[12px] text-muted-foreground">
           <Info className="mt-0.5 size-3.5 shrink-0" />
-          Наименование, ИНН и адрес в заявку на аукцион не пишут: по ч. 1 ст. 49 44-ФЗ заявка содержит сведения из пп.
-          «м»–«п» п. 1, пп. «а»–«в» п. 2 и п. 5 ч. 1 ст. 43, остальное площадка передаёт сама.
+          {platformNote}
         </p>
       )}
 

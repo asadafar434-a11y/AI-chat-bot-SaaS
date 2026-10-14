@@ -1,3 +1,4 @@
+import { requireAiAuth } from "@/lib/ai-guard";
 import { claudeErrorText, MY_DOCS_NO_KEY_TEXT } from "@/lib/claude-errors";
 import { askJson, ModelStop } from "@/lib/claude-request";
 import { clipForSort, SORT_BATCH, SORT_INSTRUCTIONS, SORT_SYSTEM, SortSchema, type SortedDoc } from "@/lib/my-docs";
@@ -9,6 +10,8 @@ const fail = (message: string, status: number) => new Response(message, { status
 
 // Раскладка документов участника по видам. Нужно только начало и конец документа, поэтому это дёшево.
 export async function POST(request: Request) {
+  const denied = await requireAiAuth(request);
+  if (denied) return denied;
   const body = await readJson(request);
   if (!body) return badRequest();
   const documents = (Array.isArray(body.documents) ? body.documents : []).slice(0, SORT_BATCH).map((doc, i) => ({

@@ -16,6 +16,7 @@ export function PurchasePricing({ onNext, onBack }: { onNext: () => void; onBack
 
   return (
     <StepPricing
+      kind={purchase.kind}
       calc={calc}
       set={set}
       tpPrice={purchase.tpPrice}

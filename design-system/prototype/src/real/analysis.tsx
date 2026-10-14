@@ -4,7 +4,7 @@ import { onDataChanged } from '@/lib/data-events';
 import { createLocator, describeSource, type Located } from '@/lib/doc-locate';
 import { fieldsOf } from '@/lib/fields';
 import { fulfillmentOf, type PlanStatus } from '@/lib/fulfillment';
-import { participantFromPlatform } from '@/lib/law-kind';
+import { platformNote } from '@/lib/law-kind';
 import { getProfile } from '@/lib/me-store';
 import { EMPTY_PROFILE, type Profile } from '@/lib/profile';
 import { requirementViews, STATUS_TEXT, type Offer, type RequirementView } from '@/lib/requirement-offers';
@@ -129,7 +129,7 @@ export function PurchaseAnalysis({ onNext, onBack, onFix }: { onNext: () => void
       rows={rows}
       requirements={requirements}
       kindText={way}
-      fromPlatform={participantFromPlatform(purchase.kind)}
+      platformNote={platformNote(purchase.kind)}
       hidden={hidden}
       snippetOf={snippetOf}
       onNext={onNext}

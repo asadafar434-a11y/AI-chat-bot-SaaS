@@ -617,7 +617,7 @@ function PositionCard({
 }
 
 export function RegistryNumbers(props: RegistryNumbersProps) {
-  const { demand, required, datasets, positions } = props;
+  const { demand, datasets, positions } = props;
   const [openKey, setOpenKey] = useState<string | null>(positions.length === 1 ? positions[0].card.key : null);
   // Возраст считаем по самой старой из выгрузок: честнее, чем по самой свежей.
   const stamps = (datasets ?? []).map((d) => d.exportedAt).filter((x): x is string => Boolean(x)).map((x) => Date.parse(x));

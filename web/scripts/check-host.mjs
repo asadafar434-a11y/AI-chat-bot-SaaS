@@ -31,7 +31,8 @@ const base = `http://127.0.0.1:${port}`;
 let log = "";
 const server = spawn(process.execPath, [nextBin, "start", "-p", String(port), "-H", "127.0.0.1"], {
   cwd: web,
-  env: { ...process.env, NODE_ENV: "production", ACCESS_PASSWORD: password, ANTHROPIC_API_KEY: "" },
+  // AUTH_SECRET пустой: проверяется вход по общему паролю, а не вход по почте из репетиции (.env.local), иначе проверка зависит от файла на этом компьютере.
+  env: { ...process.env, NODE_ENV: "production", ACCESS_PASSWORD: password, ANTHROPIC_API_KEY: "", AUTH_SECRET: "" },
   stdio: ["ignore", "pipe", "pipe"],
 });
 server.stdout.on("data", (chunk) => (log += chunk));

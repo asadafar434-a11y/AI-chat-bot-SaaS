@@ -6,7 +6,6 @@ import {
   ruleApplies,
   ruleVersionAt,
   rulesAt,
-  type LegalRule,
 } from "./legal-rules.ts";
 
 // ——— ruleApplies ——————————————————————————————————————————————————————————————

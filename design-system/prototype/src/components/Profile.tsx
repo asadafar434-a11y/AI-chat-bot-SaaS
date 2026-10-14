@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type DragEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type DragEvent } from 'react';
 import {
   deleteMyDocument,
   fillProfileFromDocuments,
@@ -23,7 +23,6 @@ import {
   Building2,
   Check,
   FileText,
-  Info,
   Loader2,
   Pencil,
   Plus,

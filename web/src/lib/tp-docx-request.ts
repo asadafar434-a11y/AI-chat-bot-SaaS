@@ -1,4 +1,5 @@
 import "server-only";
+import { requireAiAuth } from "@/lib/ai-guard";
 import { FILE_FORMATS, type FileFormat } from "@/lib/file-format";
 import { buildPartDocx, buildTpDocx } from "@/lib/tp-docx";
 import { buildPartOdt, buildTpOdt } from "@/lib/tp-odt";
@@ -172,6 +173,9 @@ export const attachment = (name: string, fallback: string) =>
 
 // Ответ api/tp/docx, api/tp/pdf и api/tp/odt: один файл части заявки. Имя по-русски — в заголовке, не в адресе.
 export async function fileRoute(request: Request, format: FileFormat): Promise<Response> {
+  // Файл собирается без ИИ, но тоже только для вошедшего: иначе любой посетитель нагружал бы сервер сборкой PDF.
+  const denied = await requireAiAuth(request);
+  if (denied) return denied;
   const body = (await readJson(request)) as DocxRequest | null;
   if (!body) return badRequest();
   const made = await fileFromRequest(body, format);

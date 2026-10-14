@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import { requireAiAuth } from "@/lib/ai-guard";
 import { FILE_FORMATS, formatOf } from "@/lib/file-format";
 import { attachment, fileFromRequest, type DocxRequest } from "@/lib/tp-docx-request";
 import { badRequest, readJson } from "@/lib/read-json";
@@ -16,6 +17,8 @@ const cleanName = (name: string) =>
     .slice(0, 120);
 
 export async function POST(request: Request) {
+  const denied = await requireAiAuth(request);
+  if (denied) return denied;
   const body = await readJson(request);
   if (!body) return badRequest();
   const files = Array.isArray(body.files) ? body.files : [];

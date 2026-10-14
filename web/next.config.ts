@@ -53,6 +53,13 @@ const nextConfig: NextConfig = {
       { source: "/product/assets/:path*", headers: [{ key: "Cache-Control", value: "private, max-age=31536000, immutable" }] },
     ];
   },
+  // Прежний интерфейс приложения (/new, /me, /purchases, /tariffs, /p/…, /chat) остаётся в коде, но в выпуске с экраном продукта
+  // второго интерфейса быть не должно: он не связан с экраном продукта и хранит данные отдельно. Ведём на экран продукта.
+  async redirects() {
+    return HAS_PRODUCT_SCREEN
+      ? ["/new", "/me", "/me/:path*", "/purchases", "/tariffs", "/p/:path*", "/chat"].map((source) => ({ source, destination: "/", permanent: false }))
+      : [];
+  },
   async rewrites() {
     return HAS_PRODUCT_SCREEN ? { beforeFiles: [{ source: "/", destination: "/product/index.html" }] } : [];
   },

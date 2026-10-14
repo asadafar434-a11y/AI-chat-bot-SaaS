@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { TrendingDown, Info, ChevronDown, AlertTriangle, CheckCircle2 } from '../lib/icons';
 import { Button, Card, HelpTip, Tooltip, cx } from './ui';
+import { priceIntro } from '@/lib/law-kind';
 import { priceFloor, type PriceCalc } from '@/lib/price-floor';
 
 const MAX = 99; // шкала ползунка, % снижения — закон потолок не ставит, антидемпинг свой, независимо от шкалы
@@ -15,6 +16,7 @@ const rub = (n: number) => n.toLocaleString('ru-RU', { maximumFractionDigits: 2 
 // Шаг «Цена». Вид — прототипа; расчёт — тот же, что в приложении (web/src/lib/price-floor.ts), без ИИ.
 // Значения — из закупки: начальная цена и обеспечение из документов, расходы вписывает участник.
 export function StepPricing({
+  kind,
   calc,
   set,
   tpPrice,
@@ -23,6 +25,8 @@ export function StepPricing({
   onNext,
   onBack,
 }: {
+  // Способ закупки из документов («44-ФЗ · запрос котировок»): от него зависит вводный текст.
+  kind?: string;
   calc: PriceCalc;
   set: (patch: Partial<PriceCalc>) => void;
   // Цена, которая сейчас стоит в заявке.
@@ -60,8 +64,7 @@ export function StepPricing({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Цена</h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          На аукционе цену подают во время торгов (ч. 2 ст. 49 44-ФЗ). Здесь — до какой цены можно снижаться, чтобы
-          контракт не ушёл в убыток. Расчёт по вашим расходам, без ИИ.
+          {priceIntro(kind)}
         </p>
       </div>
 

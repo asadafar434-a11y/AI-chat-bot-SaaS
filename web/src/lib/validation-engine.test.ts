@@ -5,7 +5,6 @@ import { makeFact, type Fact, type FactInput } from "./evidence-base.ts";
 import { EMPTY_PROFILE, type Profile } from "./profile.ts";
 import type { Purchase } from "./purchase.ts";
 import type { ReqItem } from "./requirements.ts";
-import { NO_ANTI_DUMPING, PLAIN_FORM, type TpResult } from "./tp.ts";
 import { validate, worstStatus, categorySummary, type ValidationInput } from "./validation-engine.ts";
 import type { ApplicationField } from "./fields.ts";
 
@@ -15,13 +14,6 @@ const makeFact_ = (input: FactInput, over: Partial<Fact> = {}): Fact => ({ ...ma
 const doc = (docName = "Файл.pdf", quote = ""): FactInput["source"] => ({ type: "document", docId: "d1", docName, quote });
 
 const req = (text: string): ReqItem => ({ text, source: "Извещение", quote: text, verified: true });
-
-const tp = (offer: string): TpResult => ({
-  form: { ...PLAIN_FORM },
-  goods: [],
-  items: [{ clause: "2.1", topic: "Зал", requirement: "Зал не менее 150 мест", quote: "не менее 150 мест", offer, verified: true }],
-  antiDumping: NO_ANTI_DUMPING,
-});
 
 function makePurchase(over: Partial<Purchase> = {}): Purchase {
   return {

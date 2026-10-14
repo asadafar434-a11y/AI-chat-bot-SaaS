@@ -1,11 +1,10 @@
 import { useState, type ReactNode } from 'react';
-import { AlertTriangle, Archive, Check, CheckCircle2, Clock, CreditCard, Download, Eye, FileText, HelpCircle, Info, Loader2, PenLine, RefreshCw, ShieldCheck, UserCheck, XCircle } from '../lib/icons';
+import { AlertTriangle, Archive, Check, CheckCircle2, Clock, CreditCard, Download, Eye, FileText, Info, Loader2, PenLine, RefreshCw, ShieldCheck, UserCheck, XCircle } from '../lib/icons';
 import { AIDisclaimer, Badge, Button, Card, Checkbox, HelpTip, IconButton, Modal, Soon, Tooltip, cx, type Tone } from './ui';
-import { categorySummary, CATEGORY_TITLES, type ValidationReport, type ValidationCategory } from '@/lib/validation-engine';
-import { BUILD_STEP_TITLES, type BuildReport, type BuildStepId, type BuildStepStatus } from '@/lib/application-builder';
 import { type AuditReport, type AuditSeverity } from '@/lib/submission-audit';
 import { type ScoringReport } from '@/lib/scoring-engine';
 import { pointsText } from '@/lib/criteria';
+import { plural } from '@/lib/plural';
 import { FinalCheck } from './StepReview';
 import type { SubmitItem } from '@/lib/application-files';
 import type { Completeness } from '@/lib/fields';
@@ -62,205 +61,6 @@ const FORMATS: { id: FileFormat; ext: string; label: string }[] = [
 const EXT: Record<FileFormat, string> = { docx: 'DOCX', pdf: 'PDF', odt: 'ODT' };
 const NAME: Record<FileFormat, string> = { docx: 'Word', pdf: 'PDF', odt: 'ODT' };
 
-// ——— Детерминированная проверка ———
-
-const STATUS_ICON: Record<string, ReactNode> = {
-  PASS: <CheckCircle2 className="size-3.5 text-success" />,
-  FAIL: <XCircle className="size-3.5 text-danger" />,
-  NEEDS_HUMAN_REVIEW: <HelpCircle className="size-3.5 text-warn" />,
-};
-const STATUS_LABEL: Record<string, string> = {
-  PASS: 'Пройдено',
-  FAIL: 'Нарушение',
-  NEEDS_HUMAN_REVIEW: 'Решает человек',
-};
-const STATUS_TONE: Record<string, Tone> = {
-  PASS: 'success',
-  FAIL: 'danger',
-  NEEDS_HUMAN_REVIEW: 'warn',
-};
-
-const CATEGORY_ORDER: ValidationCategory[] = [
-  'required_documents',
-  'required_fields',
-  'numeric_constraints',
-  'dates',
-  'validity_periods',
-  'requisite_matching',
-  'characteristic_matching',
-  'evidence_presence',
-  'document_contradictions',
-];
-
-function ValidationPanel({ report }: { report: ValidationReport }) {
-  const [expanded, setExpanded] = useState<ValidationCategory | null>(null);
-  const summary = categorySummary(report);
-
-  if (summary.length === 0) {
-    return (
-      <Card className="flex items-center gap-2.5 p-4">
-        <CheckCircle2 className="size-4 shrink-0 text-success" />
-        <p className="text-[13px] text-muted-foreground">Детерминированных нарушений не найдено.</p>
-      </Card>
-    );
-  }
-
-  const sorted = CATEGORY_ORDER.filter((c) => summary.some((s) => s.category === c))
-    .map((c) => summary.find((s) => s.category === c)!)
-    .concat(summary.filter((s) => !CATEGORY_ORDER.includes(s.category)));
-
-  return (
-    <Card className="p-0">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-        <div className="flex items-center gap-2">
-          {report.status === 'PASS' ? (
-            <CheckCircle2 className="size-4 text-success" />
-          ) : report.status === 'FAIL' ? (
-            <XCircle className="size-4 text-danger" />
-          ) : (
-            <HelpCircle className="size-4 text-warn" />
-          )}
-          <span className="text-sm font-medium">Детерминированная проверка</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          {report.fail > 0 && <Badge tone="danger">{report.fail} нарушение</Badge>}
-          {report.needsHuman > 0 && <Badge tone="warn">{report.needsHuman} на проверку</Badge>}
-          {report.fail === 0 && report.needsHuman === 0 && <Badge tone="success">Всё в порядке</Badge>}
-        </div>
-      </div>
-      <ul className="divide-y divide-border">
-        {sorted.map((s) => {
-          const isOpen = expanded === s.category;
-          const findings = report.findings.filter((f) => f.category === s.category && f.status !== 'PASS');
-          return (
-            <li key={s.category}>
-              <button
-                type="button"
-                aria-expanded={isOpen}
-                disabled={findings.length === 0}
-                onClick={() => setExpanded(isOpen ? null : s.category)}
-                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary/50 disabled:cursor-default disabled:hover:bg-transparent"
-              >
-                {STATUS_ICON[s.status]}
-                <span className="min-w-0 flex-1 text-[13px]">{CATEGORY_TITLES[s.category]}</span>
-                <Badge tone={STATUS_TONE[s.status]}>{STATUS_LABEL[s.status]}</Badge>
-              </button>
-              {isOpen && findings.length > 0 && (
-                <ul className="border-t border-border bg-secondary/30 px-4 py-2 space-y-3">
-                  {findings.map((f) => (
-                    <li key={f.id} className="space-y-0.5">
-                      <div className="flex items-start gap-2">
-                        <span className="mt-0.5 shrink-0">{STATUS_ICON[f.status]}</span>
-                        <span className="text-[13px] font-medium">{f.title}</span>
-                      </div>
-                      <ul className="pl-5 space-y-0.5">
-                        {f.reasons.map((r, i) => (
-                          <li key={i} className="text-[12px] text-muted-foreground">{r}</li>
-                        ))}
-                      </ul>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      <div className="flex items-start gap-2 border-t border-border px-4 py-3">
-        <Info className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-        <p className="text-[11px] text-muted-foreground">
-          Критические проверки — без ИИ: числа, сроки, реквизиты, обязательные поля. ИИ интерпретирует текст, правила считают факты.
-        </p>
-      </div>
-    </Card>
-  );
-}
-
-// ——— Сборка заявки: 7 шагов ———
-
-const BUILD_STATUS_ICON: Record<BuildStepStatus, ReactNode> = {
-  done: <CheckCircle2 className="size-3.5 text-success" />,
-  partial: <AlertTriangle className="size-3.5 text-warn" />,
-  pending: <Clock className="size-3.5 text-muted-foreground" />,
-  na: <span className="inline-block size-3.5 text-center text-[10px] leading-[14px] text-muted-foreground">—</span>,
-};
-const BUILD_STATUS_TONE: Record<BuildStepStatus, Tone> = {
-  done: 'success',
-  partial: 'warn',
-  pending: 'neutral',
-  na: 'neutral',
-};
-const BUILD_STATUS_LABEL: Record<BuildStepStatus, string> = {
-  done: 'Готово',
-  partial: 'Частично',
-  pending: 'Ожидает',
-  na: 'Не требуется',
-};
-
-const BUILD_STEP_ORDER: BuildStepId[] = [
-  'required_documents',
-  'existing_documents',
-  'generated_documents',
-  'auto_filled',
-  'confirmed_facts',
-  'unknown_marked',
-  'package_assembled',
-];
-
-function BuildPanel({ report }: { report: BuildReport }) {
-  const [expanded, setExpanded] = useState<BuildStepId | null>(null);
-  const sorted = BUILD_STEP_ORDER.map((id) => report.steps.find((s) => s.id === id)!).filter(Boolean);
-
-  return (
-    <Card className="p-0">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-        <div className="flex items-center gap-2">
-          {BUILD_STATUS_ICON[report.overall]}
-          <span className="text-sm font-medium">Сборка заявки</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          {report.blockingCount > 0 ? (
-            <Badge tone="warn">{report.blockingCount} не готово</Badge>
-          ) : (
-            <Badge tone="success">Все шаги выполнены</Badge>
-          )}
-        </div>
-      </div>
-      <ul className="divide-y divide-border">
-        {sorted.map((step, i) => {
-          const isOpen = expanded === step.id;
-          return (
-            <li key={step.id}>
-              <button
-                type="button"
-                aria-expanded={isOpen}
-                onClick={() => setExpanded(isOpen ? null : step.id)}
-                className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-secondary/50"
-              >
-                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{i + 1}</span>
-                {BUILD_STATUS_ICON[step.status]}
-                <span className="min-w-0 flex-1 text-[13px]">{BUILD_STEP_TITLES[step.id]}</span>
-                <Badge tone={BUILD_STATUS_TONE[step.status]}>{BUILD_STATUS_LABEL[step.status]}</Badge>
-              </button>
-              {isOpen && (
-                <p className="border-t border-border bg-secondary/30 px-4 py-2 text-[12px] text-muted-foreground">
-                  {step.detail}
-                </p>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      <div className="flex items-start gap-2 border-t border-border px-4 py-3">
-        <Info className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-        <p className="text-[11px] text-muted-foreground">
-          Система только вставляет подтверждённые факты и отмечает жёлтым то, что не знает. Предположений нет.
-        </p>
-      </div>
-    </Card>
-  );
-}
-
 // ——— Финальная проверка перед подачей ———
 
 const AUDIT_ICON: Record<AuditSeverity, ReactNode> = {
@@ -314,9 +114,9 @@ function AuditPanel({ report }: { report: AuditReport }) {
           )}
           <span className="text-sm font-medium">Финальная проверка</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          {report.critical > 0 && <Badge tone="danger">{report.critical} критичных</Badge>}
-          {report.warnings > 0 && <Badge tone="warn">{report.warnings} предупреждений</Badge>}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {report.critical > 0 && <Badge tone="danger">{report.critical} {plural(report.critical, 'критичное', 'критичных', 'критичных')}</Badge>}
+          {report.warnings > 0 && <Badge tone="warn">{report.warnings} {plural(report.warnings, 'предупреждение', 'предупреждения', 'предупреждений')}</Badge>}
           {report.info > 0 && <Badge tone="neutral">{report.info} инфо</Badge>}
           <Badge tone={RISK_TONE[report.risk]}>{RISK_LABEL[report.risk]}</Badge>
         </div>
@@ -612,8 +412,6 @@ export function StepPackage({
   onFix,
   onTariffs,
   onBack,
-  validation,
-  buildReport,
   auditReport: auditRep,
   scoringReport: scoringRep,
   detectedForms,
@@ -646,10 +444,6 @@ export function StepPackage({
   onFix: () => void;
   onTariffs: () => void;
   onBack: () => void;
-  // Результат детерминированной проверки (validation-engine.ts): если не задан, блок не показывается.
-  validation?: ValidationReport;
-  // Статус сборки заявки по 7 шагам (application-builder.ts): если не задан, блок не показывается.
-  buildReport?: BuildReport;
   // Финальная проверка перед подачей (submission-audit.ts): если не задан, блок не показывается.
   auditReport?: AuditReport;
   // Оценка по критериям (scoring-engine.ts): если не задан или howWins ≠ points, блок не показывается.
@@ -825,9 +619,6 @@ export function StepPackage({
           {/* Реестровые номера товаров */}
           {registry}
 
-          {/* Сборка заявки по 7 шагам */}
-          {buildReport && <BuildPanel report={buildReport} />}
-
           {/* Что требует заказчик */}
           <Card className="p-0">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
@@ -858,9 +649,6 @@ export function StepPackage({
           </Card>
           {/* Финальная проверка перед подачей */}
           {auditRep && <AuditPanel report={auditRep} />}
-
-          {/* Детерминированная проверка */}
-          {validation && <ValidationPanel report={validation} />}
 
           {/* Оценка по критериям */}
           {scoringRep && <ScoringPanel report={scoringRep} />}

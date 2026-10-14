@@ -4,7 +4,6 @@ import {
   ShieldCheck,
   Check,
   HelpCircle,
-  Pencil,
   AlertTriangle,
   CheckCircle2,
   XCircle,
@@ -36,14 +35,15 @@ function holeText(p: Purchase, key: string): { text: string; hole: number } | nu
 
 function Snippet({ text, hole }: { text: string; hole: number }) {
   const parts = text.split(/(\[[^\]]+\])/).filter(Boolean);
-  let n = -1;
+  const isHole = parts.map((part) => /^\[[^\]]+\]$/.test(part));
+  // Порядковый номер каждого жёлтого места среди всех: считаем заранее, а не во время отрисовки.
+  const holeNo = isHole.map((hole, i) => (hole ? isHole.slice(0, i + 1).filter(Boolean).length - 1 : -1));
   return (
     <p className="whitespace-pre-wrap rounded-md bg-secondary/60 px-3 py-2 text-[12px] leading-relaxed text-muted-foreground">
       {parts.map((part, i) => {
-        if (!/^\[[^\]]+\]$/.test(part)) return <span key={i}>{part}</span>;
-        n += 1;
+        if (!isHole[i]) return <span key={i}>{part}</span>;
         return (
-          <mark key={i} className={cx('highlight', n === hole && 'ring-1 ring-warn')}>
+          <mark key={i} className={cx('highlight', holeNo[i] === hole && 'ring-1 ring-warn')}>
             {part}
           </mark>
         );
@@ -229,7 +229,8 @@ export function StepReview({
 
         {/* Виды полей — нажатие показывает только их */}
         <div className="flex flex-wrap gap-1.5 px-4 py-2.5">
-          {(['auto', 'confirm', 'manual', 'unknown', 'sign'] as FieldKind[]).map((kind) => (
+          {/* Виды, которых в заявке нет (счёт ноль), не показываем: «Нельзя определить 0» ничего не говорит. Выбранный вид остаётся. */}
+          {(['auto', 'confirm', 'manual', 'unknown', 'sign'] as FieldKind[]).filter((kind) => counts[kind] > 0 || filter === kind).map((kind) => (
             <KindChip key={kind} kind={kind} n={counts[kind]} active={filter === kind} onClick={() => setFilter(filter === kind ? 'all' : kind)} />
           ))}
         </div>

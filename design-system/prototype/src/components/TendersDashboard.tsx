@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Search, Plus, Calendar, FileText, ChevronRight, Trash2, Clock, Bell } from '../lib/icons';
+import { Search, Plus, Calendar, FileText, ChevronRight, Trash2 } from '../lib/icons';
 import { Button, Card, Badge, Modal, AIDisclaimer, Tooltip, IconButton, cx } from './ui';
 import { statusLabels, procedureMeta, rub, type TenderCard, type TenderStatus } from '../lib/data';
 

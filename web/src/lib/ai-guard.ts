@@ -1,4 +1,5 @@
 import "server-only";
+import { aiAuthDenial, type AiAuthState } from "@/lib/ai-auth";
 import { currentSession } from "@/server/auth/guards";
 import { isSameOrigin } from "@/server/auth/request";
 import { costUsd, rubOf, usdText, type AiUsage } from "@/lib/ai-cost";
@@ -17,23 +18,23 @@ const budget = usdRub > 0 && budgetRub > 0 ? createBudget(budgetRub / usdRub) : 
 export const dedup = createDedup();
 
 /**
- * CSRF + сессионная проверка для AI-маршрутов.
- * Возвращает Response(401) при отказе, null при успехе.
- * Сессия требуется только когда AUTH_SECRET задан (production/dev с DB):
- * в dev без БД пропускаем, чтобы не сломать тестирование.
+ * CSRF + сессионная проверка для маршрутов, которые тратят ИИ или читают файлы участника.
+ * Возвращает Response(401/503) при отказе, null при успехе. Решение — в ai-auth.ts (там и правила, и тесты).
+ * Сессия требуется только когда AUTH_SECRET задан (хостинг или репетиция с базой).
+ * Если базу не удалось спросить: на компьютере разработчика без базы пропускаем, в боевом режиме — 503.
  */
 export async function requireAiAuth(request: Request): Promise<Response | null> {
-  if (!isSameOrigin(request)) {
-    return new Response("Требуется вход", { status: 401 });
-  }
-  if (process.env.AUTH_SECRET) {
+  const sessionRequired = Boolean(process.env.AUTH_SECRET);
+  let session: AiAuthState["session"] = "none";
+  if (sessionRequired) {
     try {
-      if (!(await currentSession())) return new Response("Требуется вход", { status: 401 });
+      session = (await currentSession()) ? "valid" : "none";
     } catch {
-      // БД недоступна (dev без миграций) — пропускаем; rate-limit всё равно работает
+      session = "unavailable";
     }
   }
-  return null;
+  const denial = aiAuthDenial({ sameOrigin: isSameOrigin(request), sessionRequired, session, production: process.env.NODE_ENV === "production" });
+  return denial ? new Response(denial.text, { status: denial.status }) : null;
 }
 
 // Номер заявки приходит от браузера в заголовке: закупка — это и есть заявка. Без номера — только общий журнал.

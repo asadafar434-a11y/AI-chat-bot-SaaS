@@ -1,3 +1,4 @@
+import { requireAiAuth } from "@/lib/ai-guard";
 import type { ChatDocument } from "@/lib/chat-types";
 import { extractText } from "@/lib/extract-text";
 import { unzipFiles } from "@/lib/zip-files";
@@ -12,6 +13,8 @@ const fail = (message: string, status: number) =>
   new Response(message, { status, headers: { "Content-Type": "text/plain; charset=utf-8" } });
 
 export async function POST(request: Request) {
+  const denied = await requireAiAuth(request);
+  if (denied) return denied;
   // Браузер шлёт файлы по одному. Тело больше предела прокси (next.config.ts) приходит обрезанным и не разбирается.
   let form: FormData;
   try {

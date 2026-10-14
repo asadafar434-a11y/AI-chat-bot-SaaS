@@ -1,3 +1,4 @@
+import { requireAiAuth } from "@/lib/ai-guard";
 import { claudeErrorText, MY_DOCS_NO_KEY_TEXT } from "@/lib/claude-errors";
 import { askJson, ModelStop } from "@/lib/claude-request";
 import { FACTS_DOC_LIMIT, FACTS_INSTRUCTIONS, FACTS_TOTAL_LIMIT, FactsFoundSchema, verifyFacts, type SentDoc } from "@/lib/evidence-extract";
@@ -12,6 +13,8 @@ const fail = (message: string, status: number) => new Response(message, { status
 // проверяет каждый факт по тексту документа (evidence-extract.ts): цитата, номера, даты, сроки и числа должны в нём стоять,
 // остальное из ответа убирается. Сервер ничего не хранит: факты возвращаются браузеру, он кладёт их в базу и просит человека подтвердить.
 export async function POST(request: Request) {
+  const denied = await requireAiAuth(request);
+  if (denied) return denied;
   const body = await readJson(request);
   if (!body) return badRequest();
   const documents: SentDoc[] = [];

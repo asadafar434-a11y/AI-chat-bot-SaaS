@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from 'react';
-import { buildReport, type BuildReport } from '@/lib/application-builder';
 import { auditReport, type AuditReport } from '@/lib/submission-audit';
 import { scoringReport, type ScoringReport } from '@/lib/scoring-engine';
 import { validate } from '@/lib/validation-engine';
@@ -125,17 +124,8 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
   const final = useMemo(() => completeness(shown, fields, profile), [shown, fields, profile]);
 
   const plans = useMemo(() => fulfillmentOf(purchase, { profile, fields }), [purchase, profile, fields]);
-  const generatedParts = useMemo((): TpPart[] => {
-    if (!purchase.tp) return [];
-    return ['tp', ...(Object.keys(purchase.parts ?? {}) as TpPart[])];
-  }, [purchase.tp, purchase.parts]);
-  const appBuildReport = useMemo(
-    (): BuildReport => buildReport({ plans, fields, final, hasTp: !!purchase.tp, generatedParts }),
-    [plans, fields, final, purchase.tp, generatedParts]
-  );
   const validationResult = useMemo(
     () => validate({ purchase, profile, facts: factsData.facts, fields, today }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [purchase, profile, factsData.facts, fields, today],
   );
   const appAuditReport = useMemo(
@@ -249,8 +239,6 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
       onFix={onFix}
       onTariffs={onTariffs}
       onBack={onBack}
-      buildReport={appBuildReport}
-      validation={validationResult}
       auditReport={appAuditReport}
       scoringReport={appScoringReport}
       detectedForms={detectedForms}
