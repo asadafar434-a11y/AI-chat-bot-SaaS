@@ -198,18 +198,24 @@ function ScoringPanel({ report }: { report: ScoringReport }) {
         {report.groups.map((group) => (
           <div key={group.name}>
             <div className="flex items-center justify-between gap-2 bg-secondary/40 px-4 py-2">
-              <span className="text-[13px] font-medium truncate">{group.name}</span>
+              <span className="min-w-0 break-words text-[13px] font-medium">{group.name}</span>
               {group.weightText && (
                 <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{group.weightText}</span>
               )}
             </div>
-            <table className="w-full text-[12px]">
+            <table className="w-full table-fixed text-[12px]">
+              <colgroup>
+                <col />
+                <col className="w-[5.5rem]" />
+                <col className="w-[4.5rem]" />
+                <col className="w-[4rem] pr-2" />
+              </colgroup>
               <thead>
                 <tr className="border-b border-border">
                   <th className="px-4 py-1.5 text-left font-medium text-muted-foreground">Показатель</th>
                   <th className="px-2 py-1.5 text-right font-medium text-muted-foreground whitespace-nowrap">Макс.</th>
                   <th className="px-2 py-1.5 text-right font-medium text-muted-foreground whitespace-nowrap">База</th>
-                  <th className="px-2 py-1.5 text-right font-medium text-muted-foreground whitespace-nowrap">Балл</th>
+                  <th className="px-2 py-1.5 pr-4 text-right font-medium text-muted-foreground whitespace-nowrap">Балл</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -220,17 +226,15 @@ function ScoringPanel({ report }: { report: ScoringReport }) {
                     c.value.kind === 'present' ? (c.value.yes ? 'Есть' : 'Нет') : '—';
                   return (
                     <tr key={i}>
-                      <td className="px-4 py-2 leading-snug">
-                        <p className="truncate" title={label}>{label}</p>
-                        {c.gap && (
-                          <p className="mt-0.5 text-[11px] text-muted-foreground truncate" title={c.gap}>{c.gap}</p>
-                        )}
+                      <td className="break-words px-4 py-2 leading-snug">
+                        <p>{label}</p>
+                        {c.gap && <p className="mt-0.5 text-[11px] text-muted-foreground">{c.gap}</p>}
                       </td>
                       <td className="px-2 py-2 text-right text-muted-foreground whitespace-nowrap">
                         {c.maxPoints !== null ? pointsText(c.maxPoints) : '?'}
                       </td>
                       <td className="px-2 py-2 text-right text-muted-foreground whitespace-nowrap">{compVal}</td>
-                      <td className="px-2 py-2 text-right font-medium whitespace-nowrap">
+                      <td className="px-2 py-2 pr-4 text-right font-medium whitespace-nowrap">
                         {c.points !== null ? pointsText(c.points) : '—'}
                       </td>
                     </tr>
@@ -581,7 +585,33 @@ export function StepPackage({
       )}
       {note && <p role="status" className="rounded-md bg-info/10 px-3 py-2 text-[13px] text-info">{note}</p>}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+      {/* Проверка специалистом — пока не работает; узкая строка над документами (решение владельца 17.10.2026) */}
+      <Card className="flex flex-wrap items-center gap-x-6 gap-y-3 p-4">
+        <div className="min-w-0 flex-1 basis-80">
+          <div className="flex flex-wrap items-center gap-2">
+            <UserCheck className="size-4" />
+            <span className="text-sm font-medium">Проверка специалистом</span>
+            <Soon />
+            <HelpTip content="Живой тендерный юрист вручную сверит пакет с извещением и даст письменное заключение." />
+          </div>
+          <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
+            Пакет проверил ИИ. Тендерный юрист вручную сверит документы с извещением и даст заключение перед подачей — разовая услуга. Пока
+            недоступно: подключим вместе с оплатой.
+          </p>
+          <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px]">
+            {['Ручная сверка с извещением', 'То, чего не видит ИИ: сроки, подписи, формы', 'Заключение за 2 часа'].map((t) => (
+              <li key={t} className="flex items-center gap-1.5 text-muted-foreground">
+                <Check className="size-3.5 shrink-0 text-success" /> {t}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <Button variant="accent" className="h-10 max-sm:w-full" disabled>
+          <UserCheck className="size-4" /> Отправить специалисту · {rubShort(PRICE_EXPERT)}
+        </Button>
+      </Card>
+
+      <div className="grid grid-cols-1 gap-4">
         <div className="min-w-0 space-y-4">
           {/* Состав пакета */}
           <Card className="p-0">
@@ -653,36 +683,6 @@ export function StepPackage({
           {/* Оценка по критериям */}
           {scoringRep && <ScoringPanel report={scoringRep} />}
         </div>
-
-        {/* Проверка специалистом — пока не работает */}
-        <Card className="flex flex-col self-start p-5">
-          <div className="flex items-center gap-2">
-            <UserCheck className="size-4" />
-            <span className="text-sm font-medium">Проверка специалистом</span>
-            <Soon />
-            <HelpTip content="Живой тендерный юрист вручную сверит пакет с извещением и даст письменное заключение." align="end" />
-          </div>
-          <p className="mt-2 text-[13px] leading-snug text-muted-foreground">
-            Пакет проверил ИИ. Тендерный юрист вручную сверит документы с извещением и даст заключение перед подачей. Пока недоступно:
-            подключим вместе с оплатой.
-          </p>
-          <ul className="mt-3 space-y-1.5 text-[13px]">
-            {['Ручная сверка с извещением', 'То, чего не видит ИИ: сроки, подписи, формы', 'Заключение за 2 часа'].map((t) => (
-              <li key={t} className="flex items-center gap-2 text-muted-foreground">
-                <Check className="size-3.5 text-success" /> {t}
-              </li>
-            ))}
-          </ul>
-          <div className="mt-auto pt-4">
-            <div className="mb-2 flex items-baseline justify-between">
-              <span className="text-xs text-muted-foreground">Разовая услуга</span>
-              <span className="font-mono text-xl font-semibold">{rubShort(PRICE_EXPERT)}</span>
-            </div>
-            <Button variant="accent" className="h-10 w-full" disabled>
-              <UserCheck className="size-4" /> Отправить специалисту · {rubShort(PRICE_EXPERT)}
-            </Button>
-          </div>
-        </Card>
       </div>
 
       <div className="flex items-center justify-between gap-3">

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Briefcase, Cog, Plus, Sun, Moon, Search, History, Bell, Clock, ChevronRight, LogOut, Menu, X, Wallet } from '../lib/icons';
+import { Briefcase, Cog, Plus, Sun, Moon, Search, History, Bell, Clock, ChevronRight, Menu, X, Wallet } from '../lib/icons';
 import { useAccount } from '../lib/account';
 import { Button, Soon, Tooltip, IconButton, cx, useDialogFocus } from './ui';
 import { BrandMark } from './BrandMark';
@@ -206,7 +206,7 @@ function Body({ view, onNavigate, onNewTender, onOpenChat, notices, onOpenNotice
           </div>
         )}
 
-        {/* Компания и вход — одна карточка: сверху компания (ведёт в профиль), снизу кто вошёл и «Выйти». */}
+        {/* Компания и вход — одна карточка: сверху компания (ведёт в профиль), снизу кто вошёл. «Выйти» — в «Настройках» (решение владельца 16.10.2026). */}
         <div className="relative overflow-hidden rounded-md border border-border">
           <button
             onClick={() => onNavigate('profile')}
@@ -218,25 +218,20 @@ function Body({ view, onNavigate, onNewTender, onOpenChat, notices, onOpenNotice
             </div>
             <div className="min-w-0">
               <p className="truncate text-[13px] font-medium">{company.name || 'Моя компания'}</p>
-              <p className="truncate font-mono text-[10px] text-muted-foreground">
-                {company.inn ? `ИНН ${company.inn}` : 'Заполните профиль'}
-                {credits > 0 && ` · заявок на балансе: ${credits}`}
-              </p>
+              {(company.inn || credits > 0) && (
+                <p className="truncate font-mono text-[10px] text-muted-foreground">
+                  {company.inn && `ИНН ${company.inn}`}
+                  {credits > 0 && `${company.inn ? ' · ' : ''}заявок на балансе: ${credits}`}
+                </p>
+              )}
             </div>
             {unread && <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-danger" />}
           </button>
           {account && (
-            <div className="flex items-center justify-between gap-2 border-t border-border bg-secondary/30 px-2.5 py-1.5">
-              <p className="min-w-0 truncate font-mono text-[10px] text-muted-foreground" title={account.email ?? undefined}>
+            <div className="border-t border-border bg-secondary/30 px-2.5 py-1.5">
+              <p className="truncate font-mono text-[10px] text-muted-foreground" title={account.email ?? undefined}>
                 {account.email ?? 'Вы вошли'}
               </p>
-              <button
-                onClick={account.logout}
-                className="flex shrink-0 items-center gap-1.5 rounded-md px-1.5 py-1 text-[12px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              >
-                <LogOut className="size-3.5" />
-                Выйти
-              </button>
             </div>
           )}
         </div>

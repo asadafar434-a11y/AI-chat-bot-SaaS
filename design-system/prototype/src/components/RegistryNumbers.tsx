@@ -101,7 +101,7 @@ const inputClass =
 function StatusBadge({ status }: { status: DecisionStatus | 'searching' }) {
   const style = STATUS_STYLE[status];
   return (
-    <Badge tone={style.tone}>
+    <Badge tone={style.tone} wrap>
       {style.icon}
       {STATUS_LABEL[status]}
     </Badge>
@@ -196,14 +196,14 @@ function CandidateRow({
             )}
             {selected && !autoPicked && <Badge tone="neutral">Выбрана</Badge>}
             {selected && autoPicked && (
-              <Badge tone="warn">
-                <AlertTriangle className="size-3" />
+              <Badge tone="warn" wrap>
+                <AlertTriangle className="size-3 shrink-0" />
                 Подобрана автоматически — проверьте
               </Badge>
             )}
             {duplicates > 0 && (
-              <Badge tone="warn">
-                <AlertTriangle className="size-3" />
+              <Badge tone="warn" wrap>
+                <AlertTriangle className="size-3 shrink-0" />
                 Такое же название ещё у {duplicates} {duplicates === 1 ? 'записи' : 'записей'} — выберите свой номер
               </Badge>
             )}
@@ -463,13 +463,13 @@ function PositionCard({
         </span>
         <span className="flex flex-wrap items-center gap-1.5">
           {choice && !position.cardChanged && autoPicked && (
-            <Badge tone="warn">
-              <AlertTriangle className="size-3" />№ {choice.registryNumber} · проверьте обязательно
+            <Badge tone="warn" wrap>
+              <AlertTriangle className="size-3 shrink-0" />№ {choice.registryNumber} · проверьте обязательно
             </Badge>
           )}
           {choice && !position.cardChanged && !autoPicked && (
-            <Badge tone="neutral">
-              <ListChecks className="size-3" />№ {choice.registryNumber} · {choice.basis === 'auto_proven' ? 'подтверждена совпадением' : 'выбрана вами'}
+            <Badge tone="neutral" wrap>
+              <ListChecks className="size-3 shrink-0" />№ {choice.registryNumber} · {choice.basis === 'auto_proven' ? 'подтверждена совпадением' : 'выбрана вами'}
             </Badge>
           )}
           {position.cardChanged && (

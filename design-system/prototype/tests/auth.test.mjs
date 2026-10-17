@@ -111,12 +111,23 @@ test('ожидание: «Проверяем вход…»; если серве�
 
 const sidebarProps = { view: 'tenders', onNavigate: noop, onNewTender: noop, onOpenChat: noop, dark: false, setDark: noop, notices: [], onOpenNotice: noop, credits: 0, company: { name: '', inn: '' } };
 
-test('меню: у вошедшего показаны почта и «Выйти»; без входа (закупки в браузере) этого блока нет', () => {
+test('меню: у вошедшего показана почта, но не «Выйти» (он в «Настройках»); без входа (закупки в браузере) этого блока нет', () => {
   const withAccount = html(h(account.AccountContext.Provider, { value: { email: 'owner@example.com', logout: noop } }, h(sidebar.Sidebar, sidebarProps)));
   assert.match(withAccount, /owner@example\.com/);
-  assert.match(withAccount, /Выйти/);
+  assert.equal(/Выйти/.test(withAccount), false, 'в карточке меню кнопки «Выйти» нет');
   const without = html(h(sidebar.Sidebar, sidebarProps));
+  assert.equal(/owner@example\.com/.test(without), false);
   assert.equal(/Выйти/.test(without), false);
+});
+
+test('меню: у пустого профиля подсказки «Заполните профиль» нет; ИНН и баланс заявок показываются, когда есть', () => {
+  const empty = html(h(sidebar.Sidebar, sidebarProps));
+  assert.equal(/Заполните профиль/.test(empty), false);
+  assert.match(empty, /Моя компания/);
+  const filled = html(h(sidebar.Sidebar, { ...sidebarProps, company: { name: 'ИП Щурова', inn: '123456789012' }, credits: 2 }));
+  assert.match(filled, /ИНН 123456789012 · заявок на балансе: 2/);
+  const onlyCredits = html(h(sidebar.Sidebar, { ...sidebarProps, credits: 3 }));
+  assert.match(onlyCredits, />заявок на балансе: 3</);
 });
 
 test('меню: тема — значком в шапке (рядом с будущими уведомлениями), а не строкой внизу; компания и вход — одна карточка', () => {
@@ -126,9 +137,9 @@ test('меню: тема — значком в шапке (рядом с буд�
   assert.match(aside, /aria-label="Тёмная тема"/);
   assert.ok(aside.indexOf('aria-label="Тёмная тема"') < aside.indexOf('Новая закупка'), 'значок темы — в шапке, выше всего остального');
   assert.equal((aside.match(/Тёмная тема/g) ?? []).length, 2, 'только значок и его подсказка, без отдельной строки внизу');
-  // Компания, почта и «Выйти» — внутри одной рамки.
+  // Компания и почта — внутри одной рамки.
   const card = aside.slice(aside.indexOf('overflow-hidden rounded-md border border-border'));
-  assert.ok(card.indexOf('ИП Щурова') > 0 && card.indexOf('ИП Щурова') < card.indexOf('owner@example.com') && card.indexOf('owner@example.com') < card.indexOf('Выйти'));
+  assert.ok(card.indexOf('ИП Щурова') > 0 && card.indexOf('ИП Щурова') < card.indexOf('owner@example.com') && card.indexOf('owner@example.com') > 0);
   assert.equal((aside.match(/overflow-hidden rounded-md border border-border/g) ?? []).length, 1, 'одна карточка, а не две');
   const light = html(h(sidebar.Sidebar, { ...sidebarProps, dark: true }));
   assert.match(light.slice(light.indexOf('<aside')), /aria-label="Светлая тема"/);

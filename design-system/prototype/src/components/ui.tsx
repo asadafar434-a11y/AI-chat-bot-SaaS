@@ -152,7 +152,8 @@ export function Card({ className, children }: { className?: string; children: Re
 
 export type Tone = 'neutral' | 'warn' | 'danger' | 'success' | 'info';
 
-export function Badge({ tone = 'neutral', children }: { tone?: Tone; children: ReactNode }) {
+// wrap — фраза, а не метка: переносится на строки и не шире места, где стоит (иначе на узком экране выезжает за край).
+export function Badge({ tone = 'neutral', wrap, children }: { tone?: Tone; wrap?: boolean; children: ReactNode }) {
   const tones = {
     neutral: 'bg-secondary text-muted-foreground border-border',
     warn: 'bg-warn-surface text-warn-foreground border-warn/40',
@@ -163,7 +164,8 @@ export function Badge({ tone = 'neutral', children }: { tone?: Tone; children: R
   return (
     <span
       className={cx(
-        'inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none tracking-tight',
+        'inline-flex items-center gap-1 border px-2 py-0.5 text-[11px] font-medium tracking-tight',
+        wrap ? 'max-w-full rounded-xl text-left leading-snug' : 'whitespace-nowrap rounded-full leading-none',
         tones[tone],
       )}
     >
