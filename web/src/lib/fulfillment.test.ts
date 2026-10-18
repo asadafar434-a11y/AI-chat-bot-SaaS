@@ -3,8 +3,10 @@
 // и информационная карта запроса котировок только для МСП (223-ФЗ).
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { fileRows } from "./application-files.ts";
 import { fieldsOf } from "./fields.ts";
-import { contextOf, fulfillmentOf, planSummary, ruleOf, type PlanContext } from "./fulfillment.ts";
+import { contextOf, fulfillmentOf, planSummary, ruleOf, tpOptional, type PlanContext } from "./fulfillment.ts";
+import { priceIntro } from "./law-kind.ts";
 import { EMPTY_PROFILE, type Profile } from "./profile.ts";
 import type { Purchase } from "./purchase.ts";
 import type { ReqItem } from "./requirements.ts";
@@ -206,4 +208,54 @@ test("статусы: составленное — проверить, пока 
   // Пустое жёлтое место в ТП — «сделать», даже если отмечено.
   const open = { ...checked, tp: tp("Зал на [число, не меньше 150] мест") };
   assert.equal(fulfillmentOf(open, { profile: PROFILE, fields: fieldsOf({ purchase: open, profile: PROFILE }) })[0].status, "todo");
+});
+
+// ——— Неконкурентная закупка среди МСП (ПП № 1352, п. 20(1)): Школа № 196 ———
+
+const NONCOMP_KIND = "223-ФЗ · неконкурентная закупка, участниками которой могут быть только субъекты МСП";
+const noncomp = (submit: string[] = ["Информация об участнике: наименование, адрес, ИНН", "Декларация о соответствии на дату подачи"]) =>
+  purchase({ kind: NONCOMP_KIND, requirements: { ...purchase().requirements, submit: submit.map(req) } });
+
+test("неконкурентная закупка среди МСП узнаётся по способу; конкурентная для МСП и закупка у единственного поставщика — нет", () => {
+  const ctx = contextOf(noncomp());
+  assert.deepEqual([ctx.law, ctx.noncompetitive, ctx.sme], ["223", true, false]);
+  const competitive = contextOf(purchase({ kind: "223-ФЗ · запрос котировок среди субъектов МСП" }));
+  assert.deepEqual([competitive.noncompetitive, competitive.sme], [false, true]);
+  assert.equal(contextOf(purchase({ kind: "223-ФЗ · неконкурентная закупка у единственного поставщика" })).noncompetitive, false);
+  assert.equal(contextOf(purchase({ kind: "44-ФЗ · электронный аукцион" })).noncompetitive, false);
+});
+
+test("неконкурентная закупка: основание пунктов — извещение, закрытый перечень ч. 19.1 ст. 3.4 не применяется", () => {
+  const ctx = contextOf(noncomp());
+  const charter = ruleOf({ text: "Копия устава", quote: "Копия устава" }, ctx).plan;
+  assert.equal(charter.basis, "извещение закупки (ПП № 1352, п. 20(1))");
+  assert.ok(!charter.extra, "устав здесь не «лишнее требование»: состав задаёт извещение");
+  const fns = ruleOf({ text: "Выписка из сервиса оценки юридических лиц", quote: "Выписка из сервиса оценки" }, ctx).plan;
+  assert.notEqual(fns.mode, "not_required", "про МСП-закупку по ч. 19.1 это правило здесь не действует");
+  const competitiveCharter = ruleOf({ text: "Копия устава", quote: "Копия устава" }, contextOf(purchase())).plan;
+  assert.match(competitiveCharter.basis, /ч\. 19\.1/, "в конкурентной закупке для МСП прежнее основание");
+});
+
+test("шаг «Цена» для неконкурентной закупки: цену называют в предварительном предложении, про торги и ст. 49 ни слова", () => {
+  const text = priceIntro(NONCOMP_KIND);
+  assert.match(text, /предварительном предложении/);
+  assert.ok(!/торг|ст\. 49/.test(text));
+});
+
+test("техническое предложение «по желанию»: заказчик пишет «не требуются» или это неконкурентная закупка без пункта о предложении по товару", () => {
+  assert.equal(tpOptional(noncomp()), true, "в извещении школы про предложение по товару нет ни слова");
+  assert.equal(tpOptional(noncomp(["Предложение участника в отношении объекта закупки"])), false, "а если пункт есть — ТП нужно");
+  const explicit = purchase({ kind: "44-ФЗ · электронный аукцион", requirements: { ...purchase().requirements, submit: [req("Характеристики предлагаемого участником закупки товара, соответствующие показателям — не требуются;")] } });
+  assert.equal(tpOptional(explicit), true, "питание детей: характеристики «не требуются»");
+  assert.equal(tpOptional(purchase()), false, "обычная закупка: ТП нужно");
+  assert.equal(tpOptional(purchase({ requirements: { ...purchase().requirements, submit: [] } })), false, "сведений нет — считаем, что нужно");
+});
+
+test("в списке файлов ТП помечено «по желанию» только когда заказчик его не требует", () => {
+  const state = { missing: 0, evidence: { experience: 0, staff: 0 }, writing: null };
+  const optional = fileRows(noncomp(), state)[0];
+  assert.deepEqual([optional.part, optional.badge.text], ["tp", "по желанию"]);
+  assert.match(optional.sub, /заказчик технического предложения не требует/);
+  const normal = fileRows(purchase(), state)[0];
+  assert.deepEqual([normal.badge.text, normal.sub], ["не составлено", "первая часть заявки — без названия и реквизитов участника"]);
 });

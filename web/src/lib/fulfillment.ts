@@ -1,5 +1,5 @@
 import type { ApplicationField } from "@/lib/fields";
-import { isElectronic, lawOfKind, type Law } from "@/lib/law-kind";
+import { isElectronic, isNoncompetitiveSme, lawOfKind, type Law } from "@/lib/law-kind";
 import type { Profile } from "@/lib/profile";
 import type { Purchase } from "@/lib/purchase";
 import type { ReqItem } from "@/lib/requirements";
@@ -29,6 +29,8 @@ export type PlanContext = {
   electronic: boolean;
   // 223-ФЗ: закупка только для субъектов МСП — закрытый перечень того, что можно требовать (ч. 19.1 ст. 3.4).
   sme: boolean;
+  // 223-ФЗ: неконкурентная закупка среди МСП (ПП № 1352, п. 20(1)): состав предварительного предложения задаёт извещение, а не ч. 19.1 ст. 3.4.
+  noncompetitive?: boolean;
   participant: Participant | null;
   // Заявку подписывает руководитель, а не представитель по доверенности.
   headSigns: boolean;
@@ -88,7 +90,8 @@ const plan = (mode: FulfillMode, basis: string, todo: string, over: Partial<Rule
 const law44 = (ref: string) => `${ref} 44-ФЗ`;
 const sme223 = (ref: string) => `${ref} ст. 3.4 223-ФЗ`;
 // Состав заявки по 223-ФЗ задаёт заказчик в документации (п. 2 ч. 10 ст. 4 223-ФЗ).
-const docs = (ctx: PlanContext) => (ctx.law === "223" ? "документация закупки (п. 2 ч. 10 ст. 4 223-ФЗ)" : "документы закупки");
+const docs = (ctx: PlanContext) =>
+  ctx.noncompetitive ? "извещение закупки (ПП № 1352, п. 20(1))" : ctx.law === "223" ? "документация закупки (п. 2 ч. 10 ст. 4 223-ФЗ)" : "документы закупки";
 // Основание по закону: 44-ФЗ, 223-ФЗ для МСП или документация.
 const basisOf = (ctx: PlanContext, ref44: string, refSme: string) =>
   ctx.law === "44" ? law44(ref44) : ctx.law === "223" && ctx.sme ? sme223(refSme) : docs(ctx);
@@ -437,10 +440,13 @@ export const smeOnly = (p: Pick<Purchase, "kind" | "requirements">) =>
 
 export function contextOf(p: Purchase, profile?: Profile): PlanContext {
   const law = lawOfKind(p.kind);
+  const noncompetitive = law === "223" && isNoncompetitiveSme(p.kind);
   return {
     law,
     electronic: isElectronic(p.kind),
-    sme: law === "223" && smeOnly(p),
+    // Закрытый перечень ч. 19.1 ст. 3.4 — для конкурентной закупки только для МСП; в неконкурентной состав задаёт извещение.
+    sme: law === "223" && smeOnly(p) && !noncompetitive,
+    noncompetitive,
     participant: participantOf(profile),
     headSigns: headSignsOf(profile),
     points: p.criteria?.howWins === "points",
@@ -451,6 +457,15 @@ export function contextOf(p: Purchase, profile?: Profile): PlanContext {
 // Пункт держит подачу, если без отметки участника заявку подавать нельзя. Площадка передаст сама, «не требуется»,
 // баллы и «по желанию» отметки не ждут — иначе участник отмечал бы «готово» то, что приложение само называет лишним.
 export const holdsSubmission = (plan: Pick<RulePlan, "mandatory" | "blocks">) => plan.mandatory && plan.blocks;
+
+// Технического предложения заказчик не требует: сам пишет «не требуются» или это неконкурентная закупка среди МСП, где в извещении нет пункта
+// о предложении по товару. Про это нет сведений — считаем, что ТП нужно: лишнее безопаснее, чем недостающее.
+export function tpOptional(p: Purchase, profile?: Profile): boolean {
+  const ctx = contextOf(p, profile);
+  const found = p.requirements.submit.map((item) => ruleOf(item, ctx));
+  if (found.some((x) => x.rule === "proposal" && x.plan.mandatory)) return false;
+  return found.some((x) => x.rule === "proposal") || Boolean(ctx.noncompetitive);
+}
 
 // Пункты «Что подать», которые держат подачу. profile — по нему узнаём ИП (у него нет устава) или организацию;
 // без реквизитов пункты, зависящие от участника, считаются нужными: лишний раз приложить безопаснее, чем не приложить.

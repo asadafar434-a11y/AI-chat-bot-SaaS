@@ -4,7 +4,7 @@ import { plural } from "@/lib/plural";
 import { titleOf, type Purchase } from "@/lib/purchase";
 import type { ReqItem } from "@/lib/requirements";
 import { fieldsOf } from "@/lib/fields";
-import { contextOf, holdsSubmission, ruleOf } from "@/lib/fulfillment";
+import { contextOf, holdsSubmission, ruleOf, tpOptional } from "@/lib/fulfillment";
 import { EMPTY_PROFILE, type Profile } from "@/lib/profile";
 import { PART_TITLES, partsOf, type TpPart } from "@/lib/tp-parts";
 
@@ -38,13 +38,15 @@ export function fileRows(p: Purchase, state: FilesState): FileRow[] {
   const fill = p.tp
     ? fieldsOf({ purchase: p, profile: EMPTY_PROFILE }).filter((f) => f.part === "tp" && (f.status === "needs_input" || f.status === "invalid")).length
     : 0;
+  // Заказчик технического предложения не требует — в списке оно «по желанию», а не недостающее.
+  const optional = tpOptional(p);
   const rows: FileRow[] = [
     {
       part: "tp",
       title: PART_TITLES.tp,
-      sub: "первая часть заявки — без названия и реквизитов участника",
+      sub: optional ? "заказчик технического предложения не требует — по желанию" : "первая часть заявки — без названия и реквизитов участника",
       badge: !p.tp
-        ? { tone: "calm", text: "не составлено" }
+        ? { tone: "calm", text: optional ? "по желанию" : "не составлено" }
         : stale
           ? REVIEW
           : fill
