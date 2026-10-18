@@ -9,7 +9,7 @@ import { GOLD_FOLDER } from "./gold-folder.ts";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../Татьяна-Примеры документов");
 const onDisk = (readdirSync(ROOT, { recursive: true }) as string[])
   .map((f) => f.split(path.sep).join("/"))
-  .filter((f) => /\.(docx|doc|pdf|zip)$/i.test(f))
+  .filter((f) => /\.(docx|doc|xlsx|pdf|zip)$/i.test(f))
   .sort();
 
 test("каждый документ папки размечен, и нет разметки на несуществующий файл", () => {
