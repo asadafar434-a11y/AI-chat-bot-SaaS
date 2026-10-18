@@ -246,3 +246,36 @@ test("scoringReport: totalMax = 100 если все веса заданы", () =
   const r = scoringReport({ criteria: c, facts: [fact("license")] });
   assert.equal(r.totalMax, 100);
 });
+
+// ——— Относительные формулы (конкурс МСП «Форумная дирекция»: Кi / Кmax и Цmin / Цi) ———
+
+test("parseFormula: относительная — Кi / Кmax, чем больше, тем лучше", () => {
+  assert.deepEqual(parseFormula("Баллы = 100 × Кi / Кmax, где Кi — число договоров участника, Кmax — наибольшее число среди участников"), { kind: "relative", best: "max" });
+  // формула записана только в цитате, а пересказ модели общий
+  assert.deepEqual(parseFormula("Пропорционально числу договоров", "Кi = К / Кmax × 100"), { kind: "relative", best: "max" });
+  assert.deepEqual(parseFormula("Балл — отношение числа договоров участника к наибольшему числу среди участников × 100"), { kind: "relative", best: "max" });
+});
+
+test("parseFormula: относительная — Цmin / Цi, чем меньше, тем лучше; но «Цена контракта» остаётся ценой для площадки", () => {
+  assert.deepEqual(parseFormula("Баллы = Цmin / Цi × 100", ""), { kind: "relative", best: "min" });
+  assert.equal(parseFormula("Цена контракта: баллы = Цmin / Цi × 100").kind, "price");
+});
+
+test("относительная формула: балла нет, объяснение — словами, а не «формула не распознана»", () => {
+  const c: Criteria = {
+    howWins: "points",
+    rows: [row("Квалификация", "60 %", "Опыт", "100 %", "Баллы = 100 × Кi / Кmax, где Кmax — наибольшее число среди участников", "Договоры")],
+  };
+  const r = scoringReport({ criteria: c, facts: [fact("experience")] });
+  const x = r.groups[0]!.criteria[0]!;
+  assert.equal(x.points, null);
+  assert.match(x.gap ?? "", /Оценка относительная: ваше значение делят на лучшее среди участников/);
+  assert.match(x.gap ?? "", /заранее не посчитать/);
+  assert.ok(!/не распознана/.test(x.gap ?? ""));
+});
+
+test("прежние формулы не изменились: пороговая и за единицу не принимаются за относительные", () => {
+  assert.equal(parseFormula("Не менее 3 договоров — 20 баллов").kind, "threshold");
+  assert.equal(parseFormula("5 баллов за каждый договор").kind, "per_unit");
+  assert.equal(parseFormula("").kind, "unknown");
+});

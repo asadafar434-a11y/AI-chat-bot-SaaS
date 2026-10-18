@@ -105,3 +105,16 @@ export function pointsText(share: number): string {
 
 // Цена — отдельно от остального: сколько из сотни решает цена, а сколько — всё остальное.
 export const isPrice = (name: string) => /цен/i.test(name) && !/квалификац|характеристик|качеств/i.test(name);
+
+// Строка для шага «Цена»: сколько баллов решает цена. Только то, что написано в документах закупки: нет значимости цены — нет и строки;
+// остальные критерии называем, лишь когда значимости сходятся в 100 %.
+export function priceWeightNote(criteria: Criteria | undefined): string | null {
+  if (!criteria || criteria.howWins !== "points") return null;
+  const groups = groupCriteria(criteria.rows);
+  const price = groups.find((g) => isPrice(g.name) && g.weight !== null);
+  if (!price || price.weight === null) return null;
+  const head = `В оценке заявок цена весит ${pointsText(price.weight)} из 100: за снижение цены дают не больше этого`;
+  const rest = groups.filter((g) => g !== price);
+  if (!weightsAddUp(groups) || rest.length === 0) return head;
+  return `${head}, остальное — за ${rest.map((g) => `«${g.name}»`).join(", ")}`;
+}

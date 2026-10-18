@@ -180,10 +180,24 @@ export function requirementOf(item: ReqItem, group: ReqGroupKey): Requirement {
 export const supplierChoices = (r: Pick<Requirement, "numbers">): Condition[] => r.numbers.filter((c) => !c.term && c.op !== "exact");
 
 // Как проверить, что предложение участника подходит: слова модели, если есть, и числа условий.
-export function checkText(r: Pick<Requirement, "check" | "numbers" | "evidence">): string {
+// Показатель товара «Название: значение» без слов «не менее», «не более», «или эквивалент» и без диапазона: заказчик назвал точное значение,
+// и предложенный товар должен совпасть с ним. Слова о границе в цитате — значит, значения не точные, и пометки нет.
+const BOUND_WORDS = /не\s+(?:менее|более|ниже|выше|хуже|меньше|больше|уже|шире|превыша)|эквивалент|аналог|(?<![а-яa-z0-9])(?:min|max)(?![а-яa-z0-9])|\d\s*[–-]\s*\d|в\s+пределах|диапазон/i;
+const SPEC_PAIR = /[А-ЯЁA-Za-zа-яё][^:;|]{2,60}:\s*-?\d/;
+export const exactValuesNote = (r: Partial<Pick<Requirement, "quote" | "type" | "numbers">>): string | null =>
+  r.type === "product" && r.quote && SPEC_PAIR.test(r.quote) && !BOUND_WORDS.test(r.quote) && !(r.numbers ?? []).some((c) => c.op !== "exact" && !c.term)
+    ? "Значение точное: слов «не менее», «не более» и «или эквивалент» нет — предложенный товар должен совпасть с ним"
+    : null;
+
+export function checkText(r: Pick<Requirement, "check" | "numbers" | "evidence"> & Partial<Pick<Requirement, "quote" | "type">>): string {
   const choices = supplierChoices(r).map((c) => `${c.what ? `${c.what}: ` : ""}${describeCondition(c)}`);
   const terms = r.numbers.filter((c) => c.term).map((c) => describeCondition(c));
-  return [r.check, choices.length ? `в предложении участника — ${choices.join("; ")}` : "", terms.length ? `${terms.join("; ")} — условие заказчика, принимается как написано` : ""]
+  return [
+    r.check,
+    choices.length ? `в предложении участника — ${choices.join("; ")}` : "",
+    terms.length ? `${terms.join("; ")} — условие заказчика, принимается как написано` : "",
+    exactValuesNote(r) ?? "",
+  ]
     .filter(Boolean)
     .join(". ");
 }

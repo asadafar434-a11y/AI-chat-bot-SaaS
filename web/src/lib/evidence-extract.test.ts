@@ -151,3 +151,28 @@ test("инструкция для ИИ перечисляет виды и пол
   assert.match(FACTS_INSTRUCTIONS, /пустое поле лучше угаданного/);
   assert.match(FACTS_INSTRUCTIONS, /Реквизиты компании.*не выписывай/);
 });
+
+test("номер договора в реестре ЕИС: берётся, только если он написан в документе (форма «Сведения об опыте» просит этот номер)", () => {
+  const eis = [
+    "ДОГОВОР № 15 от 10.06.2026",
+    "Реестровый номер договора в ЕИС 2616450124026000012. Цена договора 1 200 000,00 руб. Акт приёмки № 1 от 25.06.2026.",
+  ].join("\n");
+  const doc = [{ id: "d3", name: "Договор ЕИС.pdf", text: eis }];
+  const fact = (value: string): FoundFact => ({
+    kind: "experience",
+    title: "Договор № 15",
+    fields: [{ key: "contractNo", value: "15" }, { key: "eisNo", value: value }],
+    measures: [],
+    validFrom: "",
+    validUntil: "",
+    perpetual: false,
+    source: "Договор ЕИС.pdf",
+    quote: "Реестровый номер договора в ЕИС 2616450124026000012",
+  });
+  const ok = verifyFacts([fact("2616450124026000012")], doc);
+  assert.equal(ok.facts[0].fields.eisNo, "2616450124026000012");
+  const wrong = verifyFacts([fact("2616450124026099999")], doc);
+  assert.equal(wrong.facts[0].fields.eisNo, undefined, "номер, которого нет в документе, не записывается");
+  assert.match(wrong.issues.join(" "), /номер «2616450124026099999» не найден в документе — поле «eisNo» оставлено пустым/);
+  assert.match(FACTS_INSTRUCTIONS, /eisNo \(номер договора в реестре еис\)/);
+});

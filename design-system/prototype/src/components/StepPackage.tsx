@@ -190,7 +190,7 @@ function ScoringPanel({ report }: { report: ScoringReport }) {
               {pointsText(report.totalPoints)} из {pointsText(report.totalMax)}
             </Badge>
           ) : (
-            <Badge tone="neutral">Не все формулы распознаны</Badge>
+            <Badge tone="neutral">Баллы посчитаны не полностью</Badge>
           )}
         </div>
       </div>

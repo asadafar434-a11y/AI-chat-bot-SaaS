@@ -394,20 +394,32 @@ function paragraphText(p: XEl, ctx: Ctx): string {
   return [full, ...inner].filter(Boolean).join(" ");
 }
 
-// Всё, что лежит в ячейке: абзацы, вложенные таблицы — одной строкой с пробелами.
+// Всё, что лежит в ячейке: абзацы, вложенные таблицы — одной строкой. Если в ячейке перечень (три абзаца и больше), абзацы отделены «; »,
+// пока предыдущий не кончается знаком («Системный блок:», «Цвет: чёрный.»): в ТЗ так записан перечень показателей — по строке на показатель,
+// и без разделителя 92 показателя сливались бы в сплошную строку («…формат: A4 Цветность печати: …»). Два абзаца — это обычно название,
+// перенесённое на вторую строку («Ручки» / «шариковые»), их склеивает пробел. Ячейки вложенной таблицы — через пробел.
 function cellText(container: XEl, ctx: Ctx, depth = 0): string {
   if (depth > 20) return "";
-  const parts: string[] = [];
+  const parts: { text: string; para: boolean }[] = [];
   for (const k of elements(container)) {
-    if (k.name === "w:p") parts.push(paragraphText(k, ctx));
+    if (k.name === "w:p") parts.push({ text: paragraphText(k, ctx), para: true });
     else if (k.name === "w:tbl") {
-      for (const tr of kids(k, "w:tr")) for (const tc of kids(tr, "w:tc")) parts.push(cellText(tc, ctx, depth + 1));
+      for (const tr of kids(k, "w:tr")) for (const tc of kids(tr, "w:tc")) parts.push({ text: cellText(tc, ctx, depth + 1), para: false });
     } else if (k.name === "w:sdt") {
       const content = kid(k, "w:sdtContent");
-      if (content) parts.push(cellText(content, ctx, depth + 1));
+      if (content) parts.push({ text: cellText(content, ctx, depth + 1), para: false });
     }
   }
-  return parts.filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+  const list = parts.filter((p) => p.para && p.text.trim()).length >= 3;
+  let out = "";
+  let prevPara = false;
+  for (const { text, para } of parts) {
+    const t = text.replace(/\s+/g, " ").trim();
+    if (!t) continue;
+    out += out ? (list && prevPara && para && !/[.;:!?]$/.test(out) ? "; " : " ") + t : t;
+    prevPara = para;
+  }
+  return out;
 }
 
 function emitTable(tbl: XEl, ctx: Ctx): void {

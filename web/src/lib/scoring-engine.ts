@@ -13,6 +13,7 @@ export type ScoringFormula =
   | { kind: "binary"; points: number }                               // X баллов при наличии / 0 при отсутствии
   | { kind: "threshold"; levels: Array<{ min: number; points: number }> } // не менее N → X баллов
   | { kind: "price" }                                                // цена — считается площадкой
+  | { kind: "relative"; best: "max" | "min" }                        // Кi/Кmax или Цmin/Цi: балл зависит от лучшего значения среди участников
   | { kind: "unknown" };                                             // формулу не удалось распознать
 
 // ——— Значение компании ———
@@ -66,9 +67,20 @@ export type ScoringInput = {
 
 // ——— Разбор формулы баллов ———
 
-export function parseFormula(scoring: string): ScoringFormula {
+// Относительная оценка: «Кi / Кmax × 100» (чем больше, тем лучше) и «Цmin / Цi × 100» (чем меньше, тем лучше). Формулу записывает
+// заказчик условными буквами, поэтому ищем и в пересказе модели, и в дословной цитате.
+const REL_MAX = /[КK]\s*[iᵢ]?\s*\/\s*[КK]\s*max|(?:отношени|доля|делит)[а-яё]*[^.;]{0,80}(?:максимальн|наибольш|лучш)[а-яё]*[^.;]{0,60}(?:среди|участник|предложени)/i;
+const REL_MIN = /[ЦC]\s*min\s*\/\s*[ЦC]\s*[iᵢ]|(?:минимальн|наименьш|лучш)[а-яё]*[^.;]{0,60}(?:делит|отношени)[а-яё]*[^.;]{0,60}(?:на\s+(?:предложен|ваш|значени)|участник)/i;
+
+export function parseFormula(scoring: string, quote = ""): ScoringFormula {
   if (!scoring.trim()) return { kind: "unknown" };
   const t = scoring;
+
+  const both = `${scoring} ${quote}`;
+  if (!/^цена/i.test(t.trimStart()) && !/ценов.*контракт/i.test(t)) {
+    if (REL_MAX.test(both)) return { kind: "relative", best: "max" };
+    if (REL_MIN.test(both)) return { kind: "relative", best: "min" };
+  }
 
   // Ценовой критерий — отдельный расчёт площадки
   if (/^цена/i.test(t.trimStart()) || /ценов.*контракт/i.test(t)) return { kind: "price" };
@@ -143,7 +155,7 @@ export function extractValue(facts: Fact[], kinds: FactKind[]): CompanyValue {
 // ——— Применение формулы ———
 
 export function applyFormula(formula: ScoringFormula, share: number | null, value: CompanyValue): number | null {
-  if (formula.kind === "unknown" || formula.kind === "price") return null;
+  if (formula.kind === "unknown" || formula.kind === "price" || formula.kind === "relative") return null;
   const maxFromShare = share !== null ? share : null;
 
   if (formula.kind === "binary") {
@@ -170,6 +182,11 @@ export function applyFormula(formula: ScoringFormula, share: number | null, valu
 function gapFor(formula: ScoringFormula, value: CompanyValue, kinds: FactKind[]): string | null {
   if (formula.kind === "unknown") return "Формула начисления баллов не распознана автоматически";
   if (formula.kind === "price") return "Баллы за цену считает площадка при сравнении заявок";
+  if (formula.kind === "relative") {
+    return formula.best === "max"
+      ? "Оценка относительная: ваше значение делят на лучшее среди участников и умножают на 100. Лучшее станет известно после вскрытия заявок — балл заранее не посчитать; чем больше ваше значение, тем выше балл"
+      : "Оценка относительная: лучшее (наименьшее) значение среди участников делят на ваше и умножают на 100. Оно станет известно после вскрытия заявок — балл заранее не посчитать; чем ниже ваше значение, тем выше балл";
+  }
   if (kinds.length === 0) return "Документы для подтверждения не указаны — баллы не рассчитаны";
   if (value.kind === "present" && !value.yes) return "Нет подходящих документов в базе доказательств";
   if (value.kind === "count" && value.n === 0) return "Нет подходящих фактов в базе доказательств";
@@ -192,7 +209,7 @@ export function scoringReport({ criteria, facts }: ScoringInput): ScoringReport 
     let groupMax: number | null = 0;
 
     const criteriaRows: ScoredCriterion[] = group.rows.map((row): ScoredCriterion => {
-      const formula = parseFormula(row.scoring);
+      const formula = parseFormula(row.scoring, row.quote);
       const kinds = proofKinds(row.proof);
       const matching = kinds.length > 0 ? facts.filter((f) => kinds.includes(f.kind as FactKind)) : [];
       const value = extractValue(matching, kinds);

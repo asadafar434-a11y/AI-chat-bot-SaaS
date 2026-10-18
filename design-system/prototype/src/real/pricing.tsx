@@ -1,3 +1,4 @@
+import { priceWeightNote } from '@/lib/criteria';
 import { calcFor } from '@/lib/price-calc';
 import type { PriceCalc } from '@/lib/price-floor';
 import { StepPricing } from '../components/StepPricing';
@@ -13,6 +14,8 @@ export function PurchasePricing({ onNext, onBack }: { onNext: () => void; onBack
   const notes: string[] = [];
   if ((calc.securityPct ?? 0) > 0) notes.push(`Обеспечение исполнения: ${calc.securityPct}% НМЦК — из документов закупки`);
   else notes.push('Обеспечения исполнения в документах закупки не нашлось');
+  const weight = priceWeightNote(purchase.criteria);
+  if (weight) notes.push(weight);
 
   return (
     <StepPricing

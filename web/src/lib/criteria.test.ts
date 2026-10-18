@@ -1,7 +1,7 @@
 // Критерии оценки заявок: значимость, доля в итоговых баллах, пример закупки — npm test.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { groupCriteria, isPrice, percentOf, pointsText, weightsAddUp, type ScoreRow } from "./criteria.ts";
+import { groupCriteria, isPrice, percentOf, pointsText, priceWeightNote, weightsAddUp, type Criteria, type ScoreRow } from "./criteria.ts";
 import { quoteFound } from "./quotes.ts";
 import { SAMPLE_CRITERIA } from "./requirements-sample.ts";
 import { SAMPLE_DOCUMENTS } from "./sample-purchase.ts";
@@ -97,4 +97,20 @@ test("пример закупки: цитаты есть в документах
     groups.flatMap((g) => g.rows.map((r) => r.share)),
     [60, 10, 15, 15]
   );
+});
+
+test("вес цены для шага «Цена»: сколько баллов решает цена и что даёт остальное (конкурс МСП: цена 40, квалификация 60)", () => {
+  const criteria: Criteria = {
+    howWins: "points",
+    rows: [row({ criterion: "Цена контракта", criterionWeight: "40 %" }), row({ criterion: "Квалификация участников закупки", criterionWeight: "60 %" })],
+  };
+  assert.equal(priceWeightNote(criteria), "В оценке заявок цена весит 40 баллов из 100: за снижение цены дают не больше этого, остальное — за «Квалификация участников закупки»");
+});
+
+test("вес цены: значимости не сходятся в 100 % — остальное не называем; нет значимости цены, нет баллов или побеждает цена — строки нет", () => {
+  const price = row({ criterion: "Цена контракта", criterionWeight: "40 %" });
+  assert.equal(priceWeightNote({ howWins: "points", rows: [price, row({ criterionWeight: "30 %" })] }), "В оценке заявок цена весит 40 баллов из 100: за снижение цены дают не больше этого");
+  assert.equal(priceWeightNote({ howWins: "points", rows: [row({ criterion: "Цена контракта", criterionWeight: "" }), row({ criterionWeight: "60 %" })] }), null);
+  assert.equal(priceWeightNote({ howWins: "price", rows: [price] }), null);
+  assert.equal(priceWeightNote(undefined), null);
 });

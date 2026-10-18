@@ -56,6 +56,7 @@ export const FACT_KINDS = {
       { key: "contractDate", label: "Дата договора", date: true },
       { key: "actNo", label: "Номер акта о приёмке" },
       { key: "actDate", label: "Дата акта", date: true },
+      { key: "eisNo", label: "Номер договора в реестре ЕИС", example: "из реестра контрактов или договоров в ЕИС; не путать с реестровым номером товара" },
     ],
     validity: "none",
   },
