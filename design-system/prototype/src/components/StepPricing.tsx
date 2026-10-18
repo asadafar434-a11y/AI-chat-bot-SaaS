@@ -3,6 +3,7 @@ import { TrendingDown, Info, ChevronDown, AlertTriangle, CheckCircle2 } from '..
 import { Button, Card, HelpTip, Tooltip, cx } from './ui';
 import { priceIntro } from '@/lib/law-kind';
 import { priceFloor, type PriceCalc } from '@/lib/price-floor';
+import { splitPrice, toKop } from '@/lib/price-split';
 
 const MAX = 99; // шкала ползунка, % снижения — закон потолок не ставит, антидемпинг свой, независимо от шкалы
 const ANTI_DUMPING = 25; // ч. 1–2 ст. 37 44-ФЗ
@@ -22,6 +23,7 @@ export function StepPricing({
   tpPrice,
   onPutPrice,
   notes,
+  unitSum,
   onNext,
   onBack,
 }: {
@@ -34,6 +36,8 @@ export function StepPricing({
   onPutPrice: (price: number) => void;
   // Что взято из документов закупки — мелким шрифтом под расходами.
   notes: string[];
+  // Торг по сумме цен единиц (документы закупки): начальная сумма и цены единиц, из которых она сложена, в рублях.
+  unitSum?: { start: number; parts: number[] };
   onNext: () => void;
   onBack: () => void;
 }) {
@@ -53,6 +57,17 @@ export function StepPricing({
   const here = shownPrice > 0 ? at(shownPrice) : null;
   const profit = here?.profit ?? null;
   const loss = profit !== null && profit < 0;
+
+  // Сумма цен единиц при выбранном снижении и цены единиц пропорционально начальным (копейки сходятся с суммой).
+  const unitBid = (() => {
+    if (!unitSum || nmck <= 0) return null;
+    const start = toKop(unitSum.start);
+    const split = splitPrice(
+      unitSum.parts.map((p, i) => ({ name: String(i), qty: 1, baseKop: toKop(p) })),
+      Math.round((start * (100 - discount)) / 100),
+    );
+    return split && { start, total: split.totalKop, units: split.lines.map((l) => l.unitKop) };
+  })();
 
   const setNum = (key: keyof PriceCalc) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/[\s ]/g, '').replace(',', '.');
@@ -131,6 +146,12 @@ export function StepPricing({
           <div className="mt-3 space-y-2.5 text-sm">
             <Row label="НМЦК" value={nmck > 0 ? rub(nmck) : 'не указана — впишите в «Моих расходах»'} muted />
             <Row label="Ваше предложение" value={price !== null ? rub(price) : '—'} strong />
+            {unitBid && (
+              <>
+                <Row label="Торг: сумма цен единиц" value={`${rub(unitBid.total / 100)} из ${rub(unitBid.start / 100)}`} strong />
+                <Row label="Цены единиц" value={unitBid.units.map((u) => rub(u / 100)).join(' + ')} />
+              </>
+            )}
             <Row
               label="Экономия для заказчика"
               value={

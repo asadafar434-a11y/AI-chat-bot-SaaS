@@ -33,6 +33,7 @@ before(async () => {
   mods.base = await server.ssrLoadModule('@/lib/evidence-base.ts');
   mods.form = await server.ssrLoadModule('@/lib/evidence-form.ts');
   mods.history = await server.ssrLoadModule('/src/components/BidHistory.tsx');
+  mods.pricing = await server.ssrLoadModule('/src/components/StepPricing.tsx');
 });
 
 after(async () => {
@@ -541,4 +542,16 @@ test('форма факта: открытая форма — внутри раз
   assert.match(out, /aria-label="Новый факт"/);
   assert.ok(out.indexOf('aria-label="Новый факт"') < out.indexOf('Реквизиты компании'));
   assert.doesNotMatch(evidence(), /aria-label="Новый факт"/);
+});
+
+test('шаг «Цена»: торг по сумме цен единиц — сумма и цены единиц на выбранном снижении, без нового блока; без режима строк нет', () => {
+  const calc = { nmck: 17_000_000, price: 12_750_000, costs: null, extra: null, taxPct: null, guaranteeRatePct: null, days: null, securityPct: 1 };
+  const props = { kind: '44-ФЗ · электронный аукцион', calc, set() {}, onPutPrice() {}, notes: [], onNext() {}, onBack() {} };
+  // снижение на 25 %: 373 ₽ → 279,75 ₽, цены единиц 173 и 200 — пропорционально, в сумме ровно 279,75
+  const on = html(h(mods.pricing.StepPricing, { ...props, unitSum: { start: 373, parts: [173, 200] } }));
+  assert.match(on, /Торг: сумма цен единиц/);
+  assert.match(on, /279,75 ₽ из 373 ₽/);
+  assert.ok(on.includes('129,75 ₽ + 150 ₽'), 'цены единиц: 173 × 0,75 и 200 × 0,75');
+  const off = html(h(mods.pricing.StepPricing, props));
+  assert.doesNotMatch(off, /Торг: сумма цен единиц|Цены единиц/);
 });

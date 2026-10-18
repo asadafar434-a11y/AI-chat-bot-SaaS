@@ -22,10 +22,10 @@ const HEADING = /^\s*(СПЕЦИФИКАЦИЯ|РАСЧ[ЕЁ]Т\s+ЦЕНЫ[^\n]{
 const STOP = /^\s*(итого|всего)(?![а-яё])/i;
 
 // Ячейки строки: таблица Word после .doc — через табуляцию, после .docx и Excel — « | ».
-const cellsOf = (line: string) => (line.includes("\t") ? line.split("\t") : line.split(" | ")).map((c) => c.replace(/\s+/g, " ").trim());
+export const cellsOf = (line: string) => (line.includes("\t") ? line.split("\t") : line.split(" | ")).map((c) => c.replace(/\s+/g, " ").trim());
 
 const NUMBER = /^\d+(?:[.,]\d+)?$/;
-const numberOf = (text: string) => (NUMBER.test(text) ? Number(text.replace(",", ".")) : null);
+export const numberOf = (text: string) => (NUMBER.test(text) ? Number(text.replace(",", ".")) : null);
 
 // Строка позиции: название, единица и количество в конце; номер строки впереди — необязателен.
 function rowOf(line: string): SpecRow | null {
