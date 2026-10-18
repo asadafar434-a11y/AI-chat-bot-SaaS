@@ -1,13 +1,16 @@
 import { priceWeightNote } from '@/lib/criteria';
 import { calcFor } from '@/lib/price-calc';
 import type { PriceCalc } from '@/lib/price-floor';
+import { specNotes } from '@/lib/spec-notes';
 import { StepPricing } from '../components/StepPricing';
+import { useProfile } from './analysis';
 import { usePurchase } from './purchase-provider';
 
 // Шаг «Цена» на настоящей закупке: начальная цена и обеспечение — из документов, расходы вписывает участник.
 // Всё вписанное сохраняется в закупке; цену, которую поставили в заявку, подхватят ТП и предложение о цене.
 export function PurchasePricing({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
-  const { purchase, update } = usePurchase();
+  const { purchase, documents, update } = usePurchase();
+  const profile = useProfile();
   const calc = calcFor(purchase);
   const set = (patch: Partial<PriceCalc>) => update({ priceCalc: { ...purchase.priceCalc, ...patch } });
 
@@ -16,6 +19,8 @@ export function PurchasePricing({ onNext, onBack }: { onNext: () => void; onBack
   else notes.push('Обеспечения исполнения в документах закупки не нашлось');
   const weight = priceWeightNote(purchase.criteria);
   if (weight) notes.push(weight);
+  // Бланк «Спецификация» заказчика: цены за единицу, ставка НДС в его шапке, копейка сверх начальной цены.
+  notes.push(...specNotes({ documents, profile, nmck: calc.nmck ?? null }));
 
   return (
     <StepPricing
