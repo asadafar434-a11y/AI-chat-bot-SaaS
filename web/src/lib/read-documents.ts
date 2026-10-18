@@ -1,6 +1,7 @@
 import type { ChatDocument } from "@/lib/chat-types";
 import { classifyDoc, DOC_KIND_LABELS, isCustomerForm } from "@/lib/doc-classify";
 import { summaryOf } from "@/lib/doc-source";
+import { fitDocuments } from "@/lib/doc-trim";
 import { errorText } from "@/lib/http-error";
 import { readScanOcr } from "./scan-setting.ts";
 
@@ -8,8 +9,9 @@ export type SentDocument = Pick<ChatDocument, "name" | "text" | "scan" | "map">;
 export type FailedFile = { name: string; reason: string };
 
 // Документы для запроса к серверу: без карты (откуда какой кусок текста). Сервер её не читает, а запрос от неё заметно тяжелее.
+// Закупка длиннее предела запроса к ИИ уходит без самых больших таблиц-справочников (doc-trim.ts); короткая — как есть.
 export const forServer = (documents: SentDocument[]): SentDocument[] =>
-  documents.map(({ name, text, scan }) => ({ name, text, ...(scan && { scan }) }));
+  fitDocuments(documents.map(({ name, text, scan }) => ({ name, text, ...(scan && { scan }) }))).documents;
 
 // Что можно загрузить: сканы и фото распознаёт ИИ, старый Word и RTF читаются без него.
 export const ACCEPTED_FILES = ".pdf,.docx,.doc,.rtf,.xlsx,.xlsm,.zip,.txt,.md,.jpg,.jpeg,.png";

@@ -65,6 +65,8 @@ export type RuleId =
   | "sme"
   | "declaration"
   | "license"
+  | "criminal"
+  | "administrative"
   | "additional"
   | "security"
   | "bank"
@@ -91,6 +93,12 @@ const docs = (ctx: PlanContext) => (ctx.law === "223" ? "документаци�
 const basisOf = (ctx: PlanContext, ref44: string, refSme: string) =>
   ctx.law === "44" ? law44(ref44) : ctx.law === "223" && ctx.sme ? sme223(refSme) : docs(ctx);
 const strictLaw = (ctx: PlanContext) => ctx.law === "44" || (ctx.law === "223" && ctx.sme);
+
+// Документы по дополнительным требованиям (ч. 2 ст. 31 44-ФЗ): в электронной закупке по 44-ФЗ их передаёт площадка из реестра участников, иначе — прикладывает участник.
+const registryPlan = (ctx: PlanContext, how: string): RulePlan =>
+  ctx.law === "44" && ctx.electronic
+    ? plan("confirm", law44("ч. 2 ст. 31, п. 3 ч. 6 ст. 43"), `В заявку не прикладывают — площадка передаст из реестра участников. ${how}, и загрузите в реестр на площадке заранее`)
+    : plan("upload", ctx.law === "44" ? law44("ч. 2 ст. 31") : docs(ctx), `Приложите. ${how}`);
 
 const EXTRA_TODO = "закон требовать это не разрешает. Надёжнее приложить, требование можно обжаловать";
 
@@ -219,6 +227,19 @@ const RULES: Rule[] = [
           )
         : plan("upload", basis, "Приложите копию лицензии или выписку из реестра членов СРО");
     },
+  },
+  {
+    id: "criminal",
+    title: "Справка об отсутствии судимости",
+    // Справка и требование «нет судимости по ст. 236 УК». Общую судимость «за преступления в сфере экономики» в декларации о соответствии (ч. 1 ст. 31) не берём.
+    match: /справк[а-яё]*[^.;]{0,100}судимост|(?:ст(?:\.|атьей|атьёй|атьи)\s*236|236\s+(?:УК|Уголовного))/i,
+    plan: (ctx) => registryPlan(ctx, "Справку об отсутствии судимости получите на каждого, кого называет заказчик (руководитель, члены исполнительного органа, главный бухгалтер): в МВД через Госуслуги или МФЦ"),
+  },
+  {
+    id: "administrative",
+    title: "Декларация о непривлечении к административной ответственности",
+    match: /(?:непривлечени|не\s+привлека)[а-яё]*[^.;]{0,250}административн[а-яё]*\s+ответственност/i,
+    plan: (ctx) => registryPlan(ctx, "Декларацию о непривлечении к административной ответственности подпишите сами; составить её приложение пока не умеет — берите форму заказчика, если она приложена к закупке"),
   },
   {
     id: "additional",
@@ -358,8 +379,19 @@ const RULES: Rule[] = [
 // Не узнали пункт — просим приложить, как требует заказчик.
 const unknownPlan = (ctx: PlanContext) => plan("upload", docs(ctx), "Приложите, как требует заказчик");
 
+// Заказчик сам пишет, что в этой закупке пункт не нужен: «… — не требуются», «в настоящей закупке не требуется». Берём только пункт целиком в одной строке
+// и без «;» внутри: рядом с такой фразой в длинной цитате может стоять обязательное, его прятать нельзя.
+const NOT_REQUIRED = /(?:^|[\s,–—-])(?:в\s+(?:настоящей|данной|этой)\s+закупке\s+)?не\s+требу(?:ется|ются)\s*[;.]?$/i;
+const saysNotRequired = (text: string) => {
+  const t = text.trim();
+  return NOT_REQUIRED.test(t) && !t.includes("\n") && !t.replace(/[;.]$/, "").includes(";");
+};
+
 export function ruleOf(item: Pick<ReqItem, "text" | "quote">, ctx: PlanContext): { rule: RuleId | null; title: string; plan: RulePlan } {
   const found = findRule(item, ctx);
+  if (saysNotRequired(item.text) || saysNotRequired(item.quote)) {
+    return { ...found, plan: plan("not_required", "так указано в документах закупки", "Заказчик пишет, что в этой закупке не требуется") };
+  }
   // Заказчик сам пишет, что без этого не отклонят, — пункт для оценки, а не для допуска.
   if (found.plan.mandatory && (NOT_GROUNDS.test(item.text) || NOT_GROUNDS.test(item.quote))) {
     return { ...found, plan: { ...found.plan, mandatory: false, blocks: false } };

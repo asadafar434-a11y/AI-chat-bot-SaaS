@@ -5,8 +5,10 @@ import { createLocator, describeSource, type Located } from '@/lib/doc-locate';
 import { fieldsOf } from '@/lib/fields';
 import { fulfillmentOf, type PlanStatus } from '@/lib/fulfillment';
 import { platformNote } from '@/lib/law-kind';
+import { priceShare } from '@/lib/price-share';
 import { getProfile } from '@/lib/me-store';
 import { EMPTY_PROFILE, type Profile } from '@/lib/profile';
+import { parseRubles } from '@/lib/rub-words';
 import { requirementViews, STATUS_TEXT, type Offer, type RequirementView } from '@/lib/requirement-offers';
 import { MANDATORY_TEXT, TYPE_TEXT } from '@/lib/requirements';
 import type { CheckStatus } from '../lib/data';
@@ -28,14 +30,18 @@ function offerNote(o: Offer): string {
   return bits.length > 0 ? bits.join(' · ') : 'ИИ написал ответ словами — проверьте его на шаге «Проверка»';
 }
 
-function toRow(v: RequirementView, whereOf: (quote: string) => string | undefined): RequirementRowView {
+function toRow(v: RequirementView, whereOf: (quote: string) => string | undefined, nmck: number | null): RequirementRowView {
   return {
     id: v.id,
     group: v.group,
     text: v.text,
     mandatory: { text: MANDATORY_TEXT[v.mandatory], tone: MANDATORY_TONE[v.mandatory] },
     type: TYPE_TEXT[v.type],
-    conditions: v.numbers.map((c) => ({ text: describeCondition(c), kind: c.term ? 'term' : c.op === 'exact' ? 'exact' : 'choice' })),
+    // Процент от начальной цены — рядом сумма в рублях: «не менее 20 процентов ≈ 3 400 000 ₽ от начальной цены».
+    conditions: v.numbers.map((c) => {
+      const share = priceShare(c, v.quote, nmck);
+      return { text: share ? `${describeCondition(c)} ${share}` : describeCondition(c), kind: c.term ? 'term' : c.op === 'exact' ? 'exact' : 'choice' };
+    }),
     deadline: v.deadline,
     status: v.status,
     statusText: STATUS_TEXT[v.status],
@@ -100,7 +106,8 @@ export function PurchaseAnalysis({ onNext, onBack, onFix }: { onNext: () => void
       const place = locate(quote);
       return place ? describeSource(place) : undefined;
     };
-    const requirements = requirementViews(purchase, { locate, fields, plans }).map((v) => toRow(v, whereOf));
+    const nmck = parseRubles(purchase.price);
+    const requirements = requirementViews(purchase, { locate, fields, plans }).map((v) => toRow(v, whereOf, nmck));
     const rows: AnalysisRow[] = plans
       .filter((p) => p.status !== 'none')
       .map((p, i) => {
