@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { describeCondition } from '@/lib/conditions';
+import { findCustomers } from '@/lib/customers-table';
 import { onDataChanged } from '@/lib/data-events';
 import { createLocator, describeSource, type Located } from '@/lib/doc-locate';
 import { fieldsOf } from '@/lib/fields';
@@ -30,7 +31,7 @@ function offerNote(o: Offer): string {
   return bits.length > 0 ? bits.join(' · ') : 'ИИ написал ответ словами — проверьте его на шаге «Проверка»';
 }
 
-function toRow(v: RequirementView, whereOf: (quote: string) => string | undefined, nmck: number | null): RequirementRowView {
+function toRow(v: RequirementView, whereOf: (quote: string) => string | undefined, nmck: number | null, contracts: number[]): RequirementRowView {
   return {
     id: v.id,
     group: v.group,
@@ -39,7 +40,7 @@ function toRow(v: RequirementView, whereOf: (quote: string) => string | undefine
     type: TYPE_TEXT[v.type],
     // Процент от начальной цены — рядом сумма в рублях: «не менее 20 процентов ≈ 3 400 000 ₽ от начальной цены».
     conditions: v.numbers.map((c) => {
-      const share = priceShare(c, v.quote, nmck);
+      const share = priceShare(c, v.quote, nmck, contracts);
       return { text: share ? `${describeCondition(c)} ${share}` : describeCondition(c), kind: c.term ? 'term' : c.op === 'exact' ? 'exact' : 'choice' };
     }),
     deadline: v.deadline,
@@ -107,7 +108,9 @@ export function PurchaseAnalysis({ onNext, onBack, onFix }: { onNext: () => void
       return place ? describeSource(place) : undefined;
     };
     const nmck = parseRubles(purchase.price);
-    const requirements = requirementViews(purchase, { locate, fields, plans }).map((v) => toRow(v, whereOf, nmck));
+    // Совместная закупка: максимум цены у каждого заказчика свой.
+    const contracts = findCustomers(documents)?.rows.map((r) => r.max) ?? [];
+    const requirements = requirementViews(purchase, { locate, fields, plans }).map((v) => toRow(v, whereOf, nmck, contracts));
     const rows: AnalysisRow[] = plans
       .filter((p) => p.status !== 'none')
       .map((p, i) => {
@@ -128,7 +131,7 @@ export function PurchaseAnalysis({ onNext, onBack, onFix }: { onNext: () => void
         } satisfies AnalysisRow;
       });
     return { rows, hidden: plans.length - rows.length, requirements };
-  }, [purchase, profile, locator]);
+  }, [purchase, profile, locator, documents]);
 
   const way = purchase.kind.split('·').slice(1).join('·').trim();
   return (

@@ -10,11 +10,13 @@ const AFTER = 90;
 const money = (x: number) => `${formatRubles(Math.round(x * 100) / 100).replace(",00", "")} ₽`;
 
 // «≈ 3 400 000 ₽ от начальной цены» или null, если условие не про процент от цены или начальная цена не известна.
-export function priceShare(c: Condition, quote: string, nmck: number | null): string | null {
+// contracts — максимумы цены по договорам, когда заказчиков несколько: процент можно считать и от цены одного договора.
+export function priceShare(c: Condition, quote: string, nmck: number | null, contracts: number[] = []): string | null {
   if (!nmck || c.term || unitKey(c.unit) !== "%") return null;
   const at = quote.indexOf(c.raw);
   if (at < 0 || !PRICE_BASE.test(quote.slice(at + c.raw.length, at + c.raw.length + AFTER))) return null;
   const of = (percent: number) => (nmck * percent) / 100;
   const sum = c.op === "range" ? `от ${money(of(c.value))} до ${money(of(c.value2 ?? c.value))}` : money(of(c.value));
-  return `≈ ${sum} от начальной цены`;
+  const own = contracts.length > 1 && c.op !== "range" ? `; от цены одного договора — от ${money((Math.min(...contracts) * c.value) / 100)} до ${money((Math.max(...contracts) * c.value) / 100)}` : "";
+  return `≈ ${sum} от начальной цены${own}`;
 }

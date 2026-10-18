@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { priceWeightNote } from '@/lib/criteria';
+import { customersNotes } from '@/lib/customers-table';
 import { calcFor } from '@/lib/price-calc';
 import type { PriceCalc } from '@/lib/price-floor';
 import { specNotes } from '@/lib/spec-notes';
@@ -26,8 +27,10 @@ export function PurchasePricing({ onNext, onBack }: { onNext: () => void; onBack
       // Торг по сумме цен единиц: начальная сумма и порог снижения на 25 %.
       unit: findUnitSum(documents),
       unitNotes: unitSumNotes(documents),
+      // Совместная закупка: заказчики, максимум цены по договорам и обеспечение по каждому.
+      customers: customersNotes(documents, { nmck, securityPct: calc.securityPct ?? null }),
     }),
-    [documents, profile, nmck],
+    [documents, profile, nmck, calc.securityPct],
   );
 
   const notes: string[] = [];
@@ -35,7 +38,7 @@ export function PurchasePricing({ onNext, onBack }: { onNext: () => void; onBack
   else notes.push('Обеспечения исполнения в документах закупки не нашлось');
   const weight = priceWeightNote(purchase.criteria);
   if (weight) notes.push(weight);
-  notes.push(...fromDocs.spec, ...fromDocs.unitNotes);
+  notes.push(...fromDocs.customers, ...fromDocs.spec, ...fromDocs.unitNotes);
 
   return (
     <StepPricing
