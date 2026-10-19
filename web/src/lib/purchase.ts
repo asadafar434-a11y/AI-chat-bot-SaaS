@@ -1,6 +1,7 @@
 import type { ChatMessage } from "@/lib/chat-types";
 import type { DocStamp } from "@/lib/doc-changes";
 import { errorText } from "@/lib/http-error";
+import { priceOf } from "@/lib/customers-table";
 import type { CheckResult } from "@/lib/check";
 import type { PartKey } from "@/lib/my-docs";
 import type { PartDoc } from "@/lib/part-doc";
@@ -69,7 +70,8 @@ export async function extractRequirements(documents: SentDocument[], purchaseId?
     body: JSON.stringify({ documents: forServer(documents) }),
   });
   if (!res.ok) throw new Error(await errorText(res, "Не удалось выписать требования."));
-  return res.json();
+  const body: RequirementsResponse = await res.json();
+  return { ...body, price: priceOf(body.price, documents) };
 }
 
 export const fromRequirements = ({ groups, criteria, ...summary }: RequirementsResponse) => ({ ...summary, requirements: groups, criteria });

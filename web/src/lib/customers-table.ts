@@ -3,6 +3,7 @@
 // модуль без зависимостей от браузера и сервера. Нет такой таблицы — один заказчик, ничего не придумываем.
 import { rubText, toKop } from "@/lib/price-split";
 import { cellsOf, numberOf } from "@/lib/spec-table";
+import { findUnitSum } from "@/lib/unit-sum";
 
 type Doc = { name: string; text: string };
 export type CustomerRow = { name: string; short: string; max: number };
@@ -34,6 +35,15 @@ export function findCustomers(documents: Doc[]): Customers | null {
     }
   }
   return null;
+}
+
+// Начальная цена закупки для сведений о ней. При торге по сумме цен единиц модель нередко пишет в «цену» саму сумму цен единиц (373 ₽) — а начальная цена
+// закупки, от которой считаются проценты, обеспечение и шкала на шаге «Цена», — сумма максимальных значений цен договоров (17 млн ₽). Тогда берём её.
+export function priceOf(price: string, documents: Doc[]): string {
+  const unit = findUnitSum(documents);
+  const customers = unit && findCustomers(documents);
+  if (!unit || !customers) return price;
+  return `${rubText(toKop(customers.total))} (сумма максимальных значений цен ${customers.rows.length} договоров; торг — по сумме цен единиц ${rubText(toKop(unit.sum))})`;
 }
 
 // «2,2 млн», «950 тыс.»: для строки пометки, где перечень должен быть коротким.

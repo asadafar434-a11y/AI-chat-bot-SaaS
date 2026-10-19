@@ -4,8 +4,9 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { customersNotes, findCustomers } from "./customers-table.ts";
+import { customersNotes, findCustomers, priceOf } from "./customers-table.ts";
 import { extractText } from "./extract-text.ts";
+import { parseRubles } from "./rub-words.ts";
 
 const FOLDER = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../Татьяна-Примеры документов");
 async function read(dir: string, name: string) {
@@ -53,4 +54,15 @@ test("один заказчик или нет таблицы — списка н
   const one = ["Максимальное значение цены контракта каждого заказчика (руб.)", "Муниципальное бюджетное учреждение «Один» | 2 | 1000000,00"].join("\n");
   assert.equal(findCustomers([{ name: "а.docx", text: one }]), null);
   assert.deepEqual(customersNotes([{ name: "а.docx", text: "Обычный текст" }], { nmck: 100, securityPct: 1 }), []);
+});
+
+test("начальная цена при торге по сумме цен единиц: берётся сумма максимумов по договорам (17 млн), а не сама сумма цен единиц (373 ₽), которую часто пишет модель", async () => {
+  const docs = [await read(FOOD, "Приложение № 4 Проект контракта.docx"), await read(FOOD, GROUNDS)];
+  const liveAnswer = "Сумма цен единиц 373 ₽ (173 ₽ + 200 ₽ за ребёнка в день); максимальные значения цен договоров 9 заказчиков в сумме 17 000 000 ₽ (наш подсчёт)";
+  const price = priceOf(liveAnswer, docs);
+  assert.equal(price, "17 000 000,00 ₽ (сумма максимальных значений цен 9 договоров; торг — по сумме цен единиц 373,00 ₽)");
+  assert.equal(parseRubles(price), 17_000_000);
+  // нет торга по сумме цен единиц или нет списка заказчиков — цена не меняется
+  assert.equal(priceOf("1 704 386,67 ₽", [await read("Школа № 196 (неконкурентная закупка СМСП)", "Проект договора.doc")]), "1 704 386,67 ₽");
+  assert.equal(priceOf("373 ₽", [docs[0]]), "373 ₽");
 });
