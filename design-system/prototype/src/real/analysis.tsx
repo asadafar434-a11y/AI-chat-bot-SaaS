@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { describeCondition } from '@/lib/conditions';
 import { findCustomers } from '@/lib/customers-table';
 import { onDataChanged } from '@/lib/data-events';
+import { afterWinDuties } from '@/lib/after-win';
 import { createLocator, describeSource, type Located } from '@/lib/doc-locate';
+import { priceDiscrepancies } from '@/lib/doc-discrepancies';
 import { fieldsOf } from '@/lib/fields';
 import { fulfillmentOf, type PlanStatus } from '@/lib/fulfillment';
 import { platformNote } from '@/lib/law-kind';
@@ -133,9 +135,17 @@ export function PurchaseAnalysis({ onNext, onBack, onFix }: { onNext: () => void
     return { rows, hidden: plans.length - rows.length, requirements };
   }, [purchase, profile, locator, documents]);
 
+  // Что заказчик написал про цену неверно и что потребует после победы — только из его документов, без ИИ.
+  const docNotes = useMemo(
+    () => ({ discrepancies: priceDiscrepancies(documents, parseRubles(purchase.price)), afterWin: afterWinDuties(documents) }),
+    [documents, purchase.price],
+  );
+
   const way = purchase.kind.split('·').slice(1).join('·').trim();
   return (
     <StepAnalysis
+      discrepancies={docNotes.discrepancies}
+      afterWin={docNotes.afterWin}
       rows={rows}
       requirements={requirements}
       kindText={way}

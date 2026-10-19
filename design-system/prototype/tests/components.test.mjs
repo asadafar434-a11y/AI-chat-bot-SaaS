@@ -34,6 +34,7 @@ before(async () => {
   mods.form = await server.ssrLoadModule('@/lib/evidence-form.ts');
   mods.history = await server.ssrLoadModule('/src/components/BidHistory.tsx');
   mods.pricing = await server.ssrLoadModule('/src/components/StepPricing.tsx');
+  mods.analysis = await server.ssrLoadModule('/src/components/StepAnalysis.tsx');
 });
 
 after(async () => {
@@ -573,4 +574,34 @@ test('шаг «Цена»: у единственного поставщика ц
   // Цены в документах нет — просим вписать, а не рисуем нули.
   const empty = html(h(mods.pricing.StepPricing, { ...props, calc: { ...calc, nmck: null } }));
   assert.match(empty, /Цена в документах не нашлась/);
+});
+
+test('шаг «Анализ»: расхождения в цене и «что потребуется после победы» — только когда они найдены, без лишнего', () => {
+  const base = { rows: [], requirements: [], kindText: '', platformNote: null, hidden: 0, onNext() {}, onBack() {}, onFix() {} };
+  const empty = html(h(mods.analysis.StepAnalysis, base));
+  assert.doesNotMatch(empty, /Расхождения в цене|Что потребуется после победы/);
+
+  const out = html(
+    h(mods.analysis.StepAnalysis, {
+      ...base,
+      discrepancies: ['«Расчёт.xls»: строки расчёта дают 2 539 112,20 ₽, а «Итого без НДС» — 2 539 113,20 ₽ (разница 1,00 ₽)'],
+      afterWin: {
+        duties: [
+          { clause: '5.22', term: 'в течение 10 календарных дней с момента заключения договора', text: 'Подрядчик должен предоставить Согласие.', doc: 'Договор.doc' },
+          { clause: '5.26', term: 'каждый вторник', text: 'Подрядчик предоставляет информацию о работах.', doc: 'Договор.doc' },
+        ],
+        more: { count: 7, range: 'п. 5.14–5.20' },
+      },
+    }),
+  );
+  assert.match(out, /Расхождения в цене в документах заказчика/);
+  assert.match(out, /запросом разъяснений до подачи заявки/);
+  assert.match(out, /разница 1,00 ₽/);
+  assert.match(out, /Что потребуется после победы/);
+  assert.match(out, /п\. 5\.22 · /);
+  assert.match(out, /<b[^>]*>каждый вторник<\/b> — Подрядчик предоставляет информацию о работах\./);
+  assert.match(out, /Ещё 7 обязанностей предоставить документы без срока — п\. 5\.14–5\.20\./);
+  // Одна обязанность без срока — «обязанность», не «обязанностей».
+  const one = html(h(mods.analysis.StepAnalysis, { ...base, afterWin: { duties: [], more: { count: 1, range: 'п. 5.1' } } }));
+  assert.match(one, /Ещё 1 обязанность предоставить/);
 });

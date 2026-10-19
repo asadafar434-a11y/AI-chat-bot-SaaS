@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { CheckCircle2, AlertTriangle, XCircle, Sparkles, ChevronRight, Info } from '../lib/icons';
+import { CheckCircle2, AlertTriangle, XCircle, Sparkles, ChevronRight, Info, Clock } from '../lib/icons';
+import { plural } from '@/lib/plural';
+import type { AfterWin } from '@/lib/after-win';
 import { Button, Card, Badge, Dot, Tooltip } from './ui';
 import type { CheckStatus } from '../lib/data';
 import { RequirementsList, type RequirementRowView } from './RequirementsList';
@@ -39,6 +41,8 @@ export type AnalysisRow = {
 };
 
 export function StepAnalysis({
+  discrepancies = [],
+  afterWin = null,
   rows,
   requirements = [],
   kindText,
@@ -49,6 +53,10 @@ export function StepAnalysis({
   onBack,
   onFix,
 }: {
+  // Расхождения в цене внутри документов заказчика (web/src/lib/doc-discrepancies.ts): повод для запроса разъяснений.
+  discrepancies?: string[];
+  // Обязанности после заключения договора из его проекта (web/src/lib/after-win.ts); null — в договоре их не нашлось.
+  afterWin?: AfterWin | null;
   rows: AnalysisRow[];
   // Все требования заказчика со сроком, числами, обязательностью, проверкой и предложением участника.
   requirements?: RequirementRowView[];
@@ -214,6 +222,59 @@ export function StepAnalysis({
           <Info className="mt-0.5 size-3.5 shrink-0" />
           {platformNote}
         </p>
+      )}
+
+      {discrepancies.length > 0 && (
+        <Card className="space-y-2 border-warn/40 bg-warn-surface/30 p-4">
+          <p className="flex items-center gap-2 text-sm font-medium">
+            <AlertTriangle className="size-4 shrink-0 text-warn" /> Расхождения в цене в документах заказчика
+          </p>
+          <p className="text-[13px] text-muted-foreground">Стоит спросить заказчика запросом разъяснений до подачи заявки.</p>
+          <ul className="space-y-1 text-[13px]">
+            {discrepancies.map((d) => (
+              <li key={d} className="min-w-0 break-words">
+                {d}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      {afterWin && (
+        <Card className="space-y-2 p-4">
+          <p className="flex items-center gap-2 text-sm font-medium">
+            <Clock className="size-4 shrink-0" /> Что потребуется после победы
+          </p>
+          <p className="text-[13px] text-muted-foreground">Из проекта договора: в заявку это не входит, но влияет на решение участвовать.</p>
+          <ul className="space-y-1.5 text-[13px]">
+            {afterWin.duties.map((d) => {
+              // Срок или периодичность выделены в самой фразе договора; нет в тексте (сокращён) — стоят впереди.
+              const at = d.text.toLowerCase().indexOf(d.term.toLowerCase());
+              return (
+                <li key={`${d.clause}:${d.text}`} className="min-w-0 break-words">
+                  {d.clause && <span className="font-mono text-[12px] text-muted-foreground">п. {d.clause} · </span>}
+                  {at >= 0 ? (
+                    <>
+                      {d.text.slice(0, at)}
+                      <b className="font-medium">{d.text.slice(at, at + d.term.length)}</b>
+                      {d.text.slice(at + d.term.length)}
+                    </>
+                  ) : (
+                    <>
+                      <b className="font-medium">{d.term}</b> — {d.text}
+                    </>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          {afterWin.more && (
+            <p className="text-[12px] text-muted-foreground">
+              Ещё {afterWin.more.count} {plural(afterWin.more.count, 'обязанность', 'обязанности', 'обязанностей')} предоставить документы без срока
+              {afterWin.more.range ? ` — ${afterWin.more.range}` : ''}.
+            </p>
+          )}
+        </Card>
       )}
 
       <RequirementsList rows={requirements} onFix={() => onFix('review')} />

@@ -1,15 +1,18 @@
 // Эталон «ЖКС Петродворца»: аукцион в электронной форме по 223-ФЗ, ремонт 28 балконов в 10 домах. Настоящие файлы заказчика читает код продукта — npm test.
 // Запросов к ИИ тут нет. Разбор — «Татьяна-Примеры документов/ЖКС Петродворца (аукцион 223-ФЗ, ремонт балконов)/РАЗБОР.md».
-// Пробелы 33–37 закрыты 19.10.2026; 38–41 — в списке «Чего продукт пока не умеет».
+// Пробелы 33–37 и 39–41 закрыты 19.10.2026; 38 (скан сметы на живом ИИ) — в списке «Чего продукт пока не умеет».
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { afterWinDuties } from "./after-win.ts";
 import { MAX_CONTEXT_CHARS } from "./chat-types.ts";
+import { priceDiscrepancies } from "./doc-discrepancies.ts";
 import { extractText } from "./extract-text.ts";
 import { ruleOf, type PlanContext } from "./fulfillment.ts";
 import { forbidsHidden } from "./hidden-content.ts";
+import { auctionStepNote, reductionCoefficientNote } from "./price-terms.ts";
 import { detectRegistryDemand } from "./registry-demand.ts";
 
 const DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../Татьяна-Примеры документов/ЖКС Петродворца (аукцион 223-ФЗ, ремонт балконов)");
@@ -228,4 +231,42 @@ test("заказчик пишет «меры национального режи
   // Настоящее требование по-прежнему находится.
   const real = detectRegistryDemand([{ name: "Извещение.docx", text: "Участник должен указать реестровый номер записи в реестре российской промышленной продукции по постановлению Правительства № 719." }]);
   assert.equal(real.status, "found");
+});
+
+// ——— Пункты 39–41 (сделаны 19.10.2026) ———
+
+const flat = (s: string) => s.replace(/\s/g, " ");
+const allDocs = () => Promise.all(TEXT_FILES.map(async (n) => ({ name: n, text: await read(n) })));
+
+test("расхождения в цене: строка расчёта на рубль меньше итога и «тыс. руб.» при рублях; опечатки без цены не выводятся (пункт 39)", async () => {
+  const notes = priceDiscrepancies(await allDocs(), 3_097_718.1).map(flat);
+  assert.deepEqual(notes, [
+    "«Приложение № 3 Расчёт НМЦД.xls»: строки расчёта дают 2 539 112,20 ₽, а «Итого без НДС» — 2 539 113,20 ₽ (разница 1,00 ₽)",
+    "«Приложение № 3 Расчёт НМЦД.xls»: столбец назван «тыс. руб.», а числа в нём — в рублях (итог совпадает с начальной ценой в рублях)",
+  ]);
+  assert.ok(!notes.some((n) => /ЛС-2723|35|37/.test(n)), "«ЛС-2723» и нумерация карты — не про цену");
+});
+
+test("после победы: налоговая тайна за 10 дней, два квартальных отчёта, отчёт каждый вторник; ещё 7 обязанностей без срока (пункт 40)", async () => {
+  const result = afterWinDuties(await allDocs())!;
+  assert.deepEqual(
+    result.duties.map((d) => [d.clause, d.term]),
+    [
+      ["5.22", "в течение 10 календарных дней с момента заключения договора"],
+      ["5.24", "ежеквартально"],
+      ["5.25", "ежеквартально"],
+      ["5.26", "каждый вторник"],
+    ],
+  );
+  assert.deepEqual(result.more, { count: 7, range: "п. 5.14–5.20" });
+});
+
+test("шаг аукциона и коэффициент снижения называются на шаге «Цена» (пункт 41)", async () => {
+  const docs = await allDocs();
+  assert.equal(
+    flat(auctionStepNote(docs, 3_097_718.1)!),
+    "Шаг аукциона по документам — от 0,5 % до 5 % начальной цены: от 15 488,59 ₽ до 154 885,91 ₽ за один шаг",
+  );
+  assert.match(flat(reductionCoefficientNote(docs, 3_097_718.1, 2_633_020.39)!), /при вашей цене коэффициент 0,8500$/);
+  assert.match(reductionCoefficientNote(docs, 3_097_718.1, null)!, /Выберите цену/);
 });
