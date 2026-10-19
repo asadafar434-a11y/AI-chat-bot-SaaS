@@ -23,7 +23,7 @@ export type DocxRequest = {
   goods?: Loose<{ name: string; characteristics: string; quantity: string; registryNumber: string; registryKind: string; registryUnverified: boolean; registryOptions: number; registryNeeded: boolean }>[];
   items?: Loose<{ clause: string; requirement: string; offer: string }>[];
   // Дополнительные бланки заказчика, найденные ИИ в документах закупки.
-  detectedForms?: Loose<{ source: string; title: string; pages?: string; fields: Loose<{ label: string; value: string }>[] }>[];
+  detectedForms?: Loose<{ source: string; title: string; pages?: string; table?: string[][]; footer?: string; fields: Loose<{ label: string; value: string }>[] }>[];
   // Скачивание одного доп. бланка — файл только из него.
   blankOnly?: unknown;
   cast?: { clause?: unknown; rows?: Loose<CastLine>[] };
@@ -103,6 +103,11 @@ function sourceFromRequest(body: DocxRequest): SourceResult {
         source: text(df.source, 300),
         title: text(df.title, 300),
         pages: typeof df.pages === "string" ? df.pages.slice(0, 40) : undefined,
+        // Бланк-таблица (spec-form.ts): строки таблицы приводим к строкам нужной длины.
+        ...(Array.isArray(df.table) && df.table.length > 0 && {
+          table: list<unknown>(df.table).slice(0, 300).map((r) => list<unknown>(r).slice(0, 14).map((c) => text(c, 600))),
+        }),
+        ...(typeof df.footer === "string" && df.footer.trim() && { footer: df.footer.slice(0, 1500) }),
         fields: list<{ label?: unknown; value?: unknown }>(df.fields)
           .slice(0, 100)
           .map((f) => ({ label: text(f.label, 300), value: text(f.value, 2000) })),

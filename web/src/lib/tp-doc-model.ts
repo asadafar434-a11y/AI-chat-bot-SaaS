@@ -303,10 +303,28 @@ const appNote = (text: string): Row => ({ cells: [textCell("", APP_COLS[0]), cel
 // Произвольная форма заказчика: структура из данных, которые ИИ вытащил при анализе документов.
 // Подходит для любого бланка, где заказчик прописал разделы о сведениях участника, согласии, цене и декларации МСП.
 // Строки одного доп. бланка: откуда он, название и таблица «Наименование сведений | Значение».
+// Таблица бланка заказчика с готовой шапкой: первая строка — названия столбцов; ширина столбца — по длине текста в нём.
+function gridTable(rows: string[][]): Table {
+  const columns = Math.max(...rows.map((r) => r.length));
+  const weights = Array.from({ length: columns }, (_, c) => Math.max(3, rows.reduce((sum, r) => sum + (r[c] ?? "").length, 0) / rows.length));
+  const total = weights.reduce((a, b) => a + b, 0);
+  const widths = weights.map((w) => Math.max(7, Math.round((w / total) * 100)));
+  const [head, ...body] = rows;
+  const inCell = (text: string) => (text.trim() ? paragraphs(text) : [para([])]);
+  return table([
+    { header: true, cells: widths.map((width, c) => cell([para([run(head[c] ?? "", { bold: true })])], width)) },
+    ...body.map((r): Row => ({ cells: widths.map((width, c) => cell(inCell(r[c] ?? ""), width)) })),
+  ]);
+}
+
 function detectedFormBlocks(df: DetectedForm): Block[] {
-  return [
+  const top = [
     para([run([df.source || df.title, df.pages ?? ""].filter(Boolean).join(" · "), { size: 10 })], { align: "right", after: 6 }),
     para([run(df.title, { bold: true })], { align: "center", before: 18, after: 8 }),
+  ];
+  if (df.table && df.table.length > 0) return [...top, gridTable(df.table), ...(df.footer?.trim() ? [para([], { after: 6 }), ...paragraphs(df.footer)] : [])];
+  return [
+    ...top,
     table([
       headerRow([["Наименование сведений", 60], ["Значение", 40]]),
       ...df.fields.map((f): Row => ({

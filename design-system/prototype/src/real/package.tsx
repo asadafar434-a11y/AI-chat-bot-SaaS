@@ -7,6 +7,8 @@ import { createLocator, describeSource } from '@/lib/doc-locate';
 import { FILE_FORMATS, type FileFormat } from '@/lib/file-format';
 import type { PartDoc } from '@/lib/part-doc';
 import { filledCount, PROFILE_KEYS } from '@/lib/profile';
+import { parseRubles } from '@/lib/rub-words';
+import { specificationForms } from '@/lib/spec-form';
 import type { PartKey } from '@/lib/my-docs';
 import { PART_TITLES, partsOf, type TpPart } from '@/lib/tp-parts';
 import type { DetectedForm } from '@/lib/tp';
@@ -107,6 +109,15 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
     () => (tp?.detectedForms ?? []).map((df) => fillBlank({ ...df, pages: formPages(locator, df) }, profile)),
     [tp?.detectedForms, locator, profile],
   );
+  // «Спецификация» и «Расчёт цены» заказчика с ценами участника (lib/spec-form.ts) стоят среди бланков заказчика: свой файл у каждого, и в архиве они есть.
+  const specForms = useMemo(
+    () =>
+      purchase.sample
+        ? []
+        : specificationForms({ documents: source.documents, profile, nmck: parseRubles(purchase.price), tpPrice: purchase.tpPrice }),
+    [purchase.sample, purchase.price, purchase.tpPrice, source.documents, profile],
+  );
+  const blanks = useMemo(() => [...detectedForms, ...specForms], [detectedForms, specForms]);
   const whereOf = (quote: string) => {
     const place = quote ? locator.locate(quote) : null;
     return place ? describeSource(place) : undefined;
@@ -203,7 +214,7 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
       onFormat={setFormat}
       final={final}
       rows={rows}
-      count={(tp ? partsOf(tp.form, purchase.criteria, purchase.kind, tp.detectedForms).length : 1) + detectedForms.length}
+      count={(tp ? partsOf(tp.form, purchase.criteria, purchase.kind, tp.detectedForms).length : 1) + blanks.length}
       items={submitItems(purchase, profile)}
       whereOf={whereOf}
       downloading={files.downloading}
@@ -214,13 +225,13 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
       onToggleReady={(text) => update({ submitReady: toggleReady(purchase, text) })}
       onDownload={(part) => tp && void files.downloadPart(tp, part, { format })}
       onRedo={(part) => tp && void files.downloadPart(tp, part, { redo: true, format })}
-      onDownloadAll={() => tp && void files.downloadAll(tp, format, detectedForms)}
+      onDownloadAll={() => tp && void files.downloadAll(tp, format, blanks)}
       onFix={onFix}
       onTariffs={onTariffs}
       onBack={onBack}
       auditReport={appAuditReport}
       scoringReport={appScoringReport}
-      detectedForms={detectedForms}
+      detectedForms={blanks}
       onDownloadForm={downloadDetectedForm}
       registry={tp ? <RegistryBlock /> : undefined}
     />

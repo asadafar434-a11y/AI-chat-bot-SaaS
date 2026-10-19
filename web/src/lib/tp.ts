@@ -20,8 +20,9 @@ const DetectedFormSchema = z.object({
     .describe("Строки бланка в том порядке, как они идут в документе"),
 });
 
-// Страницы бланка добавляет код (form-pages.ts), ИИ их не пишет.
-export type DetectedForm = z.infer<typeof DetectedFormSchema> & { pages?: string };
+// Страницы бланка добавляет код (form-pages.ts), ИИ их не пишет. table и footer — бланк-таблица заказчика («Спецификация», «Расчёт цены»),
+// которую заполняет код (spec-form.ts): первая строка таблицы — названия столбцов, footer — строка под таблицей. У бланков от ИИ их нет.
+export type DetectedForm = z.infer<typeof DetectedFormSchema> & { pages?: string; table?: string[][]; footer?: string };
 
 export const TpDraftSchema = z.object({
   form: z.object({
