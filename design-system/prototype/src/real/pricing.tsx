@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { priceWeightNote } from '@/lib/criteria';
 import { customersNotes } from '@/lib/customers-table';
 import { calcFor } from '@/lib/price-calc';
-import { auctionStepNote, mentionsReductionCoefficient, reductionCoefficientText } from '@/lib/price-terms';
+import { auctionStepNote, mentionsReductionCoefficient, reductionCoefficientText, vatOnTopNote } from '@/lib/price-terms';
 import type { PriceCalc } from '@/lib/price-floor';
 import { specNotes } from '@/lib/spec-notes';
 import { findUnitSum, unitSumNotes } from '@/lib/unit-sum';
@@ -32,6 +32,7 @@ export function PurchasePricing({ onNext, onBack }: { onNext: () => void; onBack
       customers: customersNotes(documents, { nmck, securityPct: calc.securityPct ?? null }),
       // Шаг аукциона и «коэффициент снижения» сметной цены — только если они названы в документах.
       step: auctionStepNote(documents, nmck),
+      vatOnTop: vatOnTopNote(documents),
       coefficient: mentionsReductionCoefficient(documents),
     }),
     [documents, profile, nmck, calc.securityPct],
@@ -44,6 +45,7 @@ export function PurchasePricing({ onNext, onBack }: { onNext: () => void; onBack
   if (weight) notes.push(weight);
   notes.push(...fromDocs.customers, ...fromDocs.spec, ...fromDocs.unitNotes);
   if (fromDocs.step) notes.push(fromDocs.step);
+  if (fromDocs.vatOnTop) notes.push(fromDocs.vatOnTop);
   if (fromDocs.coefficient) notes.push(reductionCoefficientText(nmck, calc.price ?? null));
 
   return (

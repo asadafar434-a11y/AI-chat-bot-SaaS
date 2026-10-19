@@ -58,6 +58,10 @@ const ORIGIN_COUNTRY = /(?:страна|страны|стран[уе])\s+про�
 const REQUIRE = /(долж[а-яё]*|обязан[а-яё]*|необходим[а-яё]*|требуется|требуются|предоставля[а-яё]*|указыва[а-яё]*|указать|подтвержда[а-яё]*|представля[а-яё]*|содерж[а-яё]*|приложить|наличи[а-яё]*|в\s+составе\s+заявки)/i;
 const EXEMPT = /(не\s+применя[а-яё]*|не\s+устанавлива[а-яё]*|не\s+установлен[а-яё]*|не\s+предусмотрен[а-яё]*|отсутству[а-яё]*|не\s+требуется|не\s+требу[а-яё]*)/i;
 
+// «В случае, если закупаемый товар включён в единый реестр радиоэлектронной продукции…» — условие про товар определённого рода, а не требование ко всем закупкам.
+// Реестры, где искать номер товара, мы проверяем всегда по самому товару участника, поэтому такие абзацы требованием не считаем.
+const CONDITIONAL_GOODS = /в\s+случае,?\s*(?:если|когда)[^.;]{0,80}(?:товар|продукци)[^.;]{0,60}включ[её]н/i;
+
 const MAX_MENTIONS = 8;
 const QUOTE_MAX = 400;
 
@@ -84,7 +88,7 @@ export function detectRegistryDemand(docs: LocatableDoc[], goods: { name: string
   for (const doc of docs) {
     for (const sentence of sentencesOf(doc.text)) {
       const kinds = kindsIn(sentence);
-      if (!kinds.length) continue;
+      if (!kinds.length || CONDITIONAL_GOODS.test(sentence)) continue;
       const quote = sentence.slice(0, QUOTE_MAX);
       sentencesWithKinds.push({ sentence, kinds });
       const exempt = EXEMPT.test(sentence);

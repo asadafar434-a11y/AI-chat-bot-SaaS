@@ -56,3 +56,15 @@ export function reductionCoefficientText(nmck: number | null, price: number | nu
 
 export const reductionCoefficientNote = (documents: Doc[], nmck: number | null, price: number | null): string | null =>
   mentionsReductionCoefficient(documents) ? reductionCoefficientText(nmck, price) : null;
+
+// Цена в документах — без НДС, а налог покупатель платит сверху («Сумма НДС должна быть оплачена Покупателем при оплате стоимости Товара»).
+// Говорим об этом, только когда названо и то и другое: одно «без НДС» в обосновании цены ещё ничего не значит для того, как участник называет цену.
+const PRICE_WITHOUT_VAT = /(?:цен[а-яё]*|стоимост[а-яё]*)[^.;]{0,120}(?:без\s+учета\s+НДС|без\s+учёта\s+НДС|не\s+включая\s+НДС|без\s+НДС)/i;
+const VAT_ON_TOP = /НДС[^.;]{0,80}(?:оплачен|оплачивается|уплачивается|уплачивает|платит|оплачивает)[^.;]{0,60}(?:Покупател|Заказчик)|(?:Покупател|Заказчик)[^.;]{0,60}(?:уплачивает|оплачивает|платит)[^.;]{0,40}(?:сумму\s+)?НДС/i;
+
+export function vatOnTopNote(documents: Doc[]): string | null {
+  const text = documents.map((d) => d.text).join("\n");
+  return PRICE_WITHOUT_VAT.test(text) && VAT_ON_TOP.test(text)
+    ? "Цена по документам — без НДС: налог покупатель платит сверху. Свою цену считайте без НДС"
+    : null;
+}

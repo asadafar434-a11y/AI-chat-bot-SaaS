@@ -289,3 +289,13 @@ test("«решение об одобрении крупной сделки … �
   assert.equal(found.rule, "bigdeal");
   assert.equal(ruleOf({ text: "Копия устава", quote: "" }, ctx).rule, "charter", "просто устав остался уставом");
 });
+
+test("условия к участнику без слова «декларация» ведут в декларацию; «наличие в реестре МСП» — проверяет заказчик; «согласие участника аукциона» и «наименование, фирменное наименование» узнаются", () => {
+  const ctx = contextOf(purchase({ kind: "223-ФЗ · аукцион в электронной форме", requirements: { ...purchase().requirements, who: [] } }));
+  assert.equal(ruleOf({ text: "Непроведение ликвидации участника закупки и отсутствие решения о признании банкротом", quote: "" }, ctx).rule, "declaration");
+  assert.equal(ruleOf({ text: "Наличие информации об участнике закупки в едином реестре субъектов малого и среднего предпринимательства", quote: "" }, ctx).rule, "smeRegistry");
+  assert.equal(ruleOf({ text: "Согласие участника аукциона на поставку товара", quote: "" }, ctx).rule, "proposal");
+  assert.equal(ruleOf({ text: "Наименование, фирменное наименование, адрес юридического лица", quote: "" }, ctx).rule, "participant");
+  // Обычная анкета и декларация МСП — как раньше.
+  assert.equal(ruleOf({ text: "Анкета участника", quote: "" }, ctx).rule, "participant");
+});

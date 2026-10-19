@@ -1,7 +1,7 @@
 // Шаг аукциона и «коэффициент снижения» из документов закупки — npm test (без ИИ).
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { auctionStepNote, findAuctionStep, mentionsReductionCoefficient, reductionCoefficientNote } from "./price-terms.ts";
+import { auctionStepNote, findAuctionStep, mentionsReductionCoefficient, reductionCoefficientNote, vatOnTopNote } from "./price-terms.ts";
 
 // Пробелы в числах (неразрывные, узкие) приводим к обычным.
 const flat = (s: string | null) => s?.replace(/\s/g, " ") ?? null;
@@ -30,4 +30,11 @@ test("коэффициент снижения: показываем, тольк�
   assert.match(reductionCoefficientNote(docs, 3_097_718.1, null) ?? "", /Выберите цену — покажу коэффициент$/);
   assert.match(flat(reductionCoefficientNote(docs, 3_097_718.1, 2_633_020.39)) ?? "", /при вашей цене коэффициент 0,8500$/);
   assert.equal(reductionCoefficientNote(doc("Цена договора фиксированная."), 3_097_718.1, 2_633_020.39), null);
+});
+
+test("цена без НДС и налог сверху — пометка только при обоих признаках", () => {
+  const both = [{ name: "Договор.docx", text: "2. Цена за 1 тонну Товара составляет 8 000 рублей, без учета НДС. Сумма НДС должна быть оплачена Покупателем при оплате стоимости Товара." }];
+  assert.equal(vatOnTopNote(both), "Цена по документам — без НДС: налог покупатель платит сверху. Свою цену считайте без НДС");
+  assert.equal(vatOnTopNote([{ name: "Договор.docx", text: "Цена договора составляет 8 000 рублей, в том числе НДС 22 %." }]), null);
+  assert.equal(vatOnTopNote([{ name: "Договор.docx", text: "Цена договора 8 000 рублей без НДС." }]), null);
 });

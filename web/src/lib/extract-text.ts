@@ -140,6 +140,10 @@ async function wordText(buffer: Buffer): Promise<ExtractResult> {
 
 // ocr: false — сканы и фото не распознаются: картинки не уходят в ИИ (выключено в браузере).
 export async function extractText(file: File, { ocr = true, deps = REAL_OCR }: { ocr?: boolean; deps?: OcrDeps } = {}): Promise<ExtractResult> {
+  // «~$…» — временный файл, который Word кладёт рядом с открытым документом (в нём только имя владельца): документа в нём нет.
+  if (file.name.startsWith("~$")) {
+    return { ok: false, reason: "это временный файл Word («~$…»), а не документ — настоящий файл лежит рядом, загрузите его" };
+  }
   const kind = kindOf(file);
 
   try {

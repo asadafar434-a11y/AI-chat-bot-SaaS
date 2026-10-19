@@ -133,3 +133,9 @@ test(".xlsx читается по листам: формулы — значен�
   // Старый .xls читается сам (xls-reader.ts); файл, который не Excel, — понятная причина.
   assert.deepEqual(old, { ok: false, reason: "не файл Excel — пересохраните файл как .xlsx" });
 });
+
+test("временный файл Word «~$…» — не документ: причина названа прямо, а не «повреждён»", async () => {
+  const lock = file("~$формационная карта.docx", new Uint8Array(162));
+  const result = await extractText(lock);
+  assert.deepEqual(result, { ok: false, reason: "это временный файл Word («~$…»), а не документ — настоящий файл лежит рядом, загрузите его" });
+});
