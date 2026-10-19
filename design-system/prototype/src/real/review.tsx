@@ -10,6 +10,7 @@ import { identityValues } from '@/lib/profile';
 import { aiHeaders } from '@/lib/purchase';
 import { createLocator, describeSource } from '@/lib/doc-locate';
 import { trimWarning } from '@/lib/doc-trim';
+import { flatTableWarning } from '@/lib/flat-tables';
 import { forServer, scanWarning } from '@/lib/read-documents';
 import { sampleTp } from '@/lib/sample-purchase';
 import type { TpResult } from '@/lib/tp';
@@ -201,6 +202,7 @@ export function PurchaseReview({
         `В ${unverified} ${plural(unverified, 'строке', 'строках', 'строках')} цитата не найдена в документах дословно — сверьте их вручную.`,
       scanWarning(documents),
       trimWarning(documents),
+      flatTableWarning(documents),
     ].filter((w): w is string => Boolean(w));
   }, [tp, profile, documents]);
 

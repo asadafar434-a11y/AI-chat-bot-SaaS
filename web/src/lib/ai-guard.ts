@@ -3,7 +3,9 @@ import { aiAuthDenial, type AiAuthState } from "@/lib/ai-auth";
 import { currentSession } from "@/server/auth/guards";
 import { isSameOrigin } from "@/server/auth/request";
 import { costUsd, rubOf, usdText, type AiUsage } from "@/lib/ai-cost";
-import { createBudget, createDedup } from "@/lib/ai-meter";
+import { createDedup } from "@/lib/ai-meter";
+import { spendStoreSource } from "@/lib/limit-stores";
+import { sharedBudget } from "@/lib/shared-limits";
 
 // Контроль расходов на ИИ на сервере: журнал стоимости каждого ответа модели, бюджет на заявку
 // и склейка одинаковых одновременных запросов. Всё — в памяти процесса: сервер не хранит ни документов,
@@ -13,7 +15,8 @@ import { createBudget, createDedup } from "@/lib/ai-meter";
 // AI_BUDGET_RUB (по умолчанию 250 ₽ на заявку). Курс в код не зашит — он меняется.
 const usdRub = Number(process.env.USD_RUB) || 0;
 const budgetRub = Number(process.env.AI_BUDGET_RUB) || 250;
-const budget = usdRub > 0 && budgetRub > 0 ? createBudget(budgetRub / usdRub) : null;
+// Счёт — в памяти сервера или, при SHARED_LIMITS=db, общий для нескольких серверов (shared-limits.ts).
+const budget = usdRub > 0 && budgetRub > 0 ? sharedBudget(budgetRub / usdRub, spendStoreSource) : null;
 
 export const dedup = createDedup();
 
@@ -40,7 +43,7 @@ export async function requireAiAuth(request: Request): Promise<Response | null> 
 // Номер заявки приходит от браузера в заголовке: закупка — это и есть заявка. Без номера — только общий журнал.
 export const appIdOf = (request: Request) => (request.headers.get("x-application-id") ?? "").trim().slice(0, 100) || null;
 
-export const budgetOver = (appId: string | null) => !!budget && !!appId && budget.left(appId) <= 0;
+export const budgetOver = async (appId: string | null): Promise<boolean> => !!budget && !!appId && (await budget.left(appId)) <= 0;
 
 export const BUDGET_TEXT =
   "На эту заявку потрачен весь бюджет ИИ. Всё, что уже сделано, сохранено: смотрите, правьте и скачивайте документы. Новые запросы к ИИ по этой закупке — через владельца сервиса.";
@@ -51,7 +54,7 @@ export function chargeAi(label: string, appId: string | null, message: { model: 
   const { usd, known } = costUsd(message.model, message.usage);
   if (budget && appId) budget.charge(appId, usd);
   const rub = usdRub ? ` ≈ ${rubOf(usd, usdRub)} ₽` : "";
-  const app = appId && budget ? ` · заявка ${appId}: потрачено ${rubOf(budget.spent(appId), usdRub)} из ${budgetRub} ₽` : appId ? ` · заявка ${appId}` : "";
+  const app = appId && budget ? ` · заявка ${appId}: потрачено ${rubOf(budget.spentHere(appId), usdRub)} из ${budgetRub} ₽` : appId ? ` · заявка ${appId}` : "";
   console.log(`[ИИ] ${label} ${message.model}: ${usdText(usd)}${rub}${known ? "" : " (цены модели нет в таблице — по самой дорогой)"}${app}`);
   return usd;
 }

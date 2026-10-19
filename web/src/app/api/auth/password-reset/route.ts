@@ -2,7 +2,9 @@ import { createHash } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
-import { clientIp, createLimiter, RESET_PER_EMAIL, RESET_PER_IP, waitText } from "@/lib/rate-limit";
+import { hitStoreSource } from "@/lib/limit-stores";
+import { clientIp, RESET_PER_EMAIL, RESET_PER_IP, waitText } from "@/lib/rate-limit";
+import { sharedLimiter } from "@/lib/shared-limits";
 import { tryNormalizeEmail } from "@/server/auth/email";
 import { AuthError } from "@/server/auth/errors";
 import { resetPasswordWithToken } from "@/server/auth/password-reset";
@@ -11,8 +13,8 @@ import { requestPasswordReset } from "@/server/auth/reset-request";
 import { getDb, getTransactionRunner } from "@/server/db/client";
 import { mailerFromEnv } from "@/server/mail/mailer";
 
-const perIp = createLimiter(RESET_PER_IP);
-const perEmail = createLimiter(RESET_PER_EMAIL);
+const perIp = sharedLimiter("reset-ip", RESET_PER_IP, hitStoreSource);
+const perEmail = sharedLimiter("reset-email", RESET_PER_EMAIL, hitStoreSource);
 
 const tooMany = (text: string, seconds: number) =>
   new Response(text, { status: 429, headers: { "Content-Type": "text/plain; charset=utf-8", "Retry-After": String(seconds) } });
@@ -33,14 +35,14 @@ export async function POST(request: Request) {
     return new Response("Недопустимый источник запроса", { status: 403 });
   }
 
-  const byIp = perIp(clientIp(request.headers.get("x-forwarded-for")));
+  const byIp = await perIp(clientIp(request.headers.get("x-forwarded-for")));
   if (byIp) return tooMany(`Слишком много запросов — попробуйте ${waitText(byIp)}.`, byIp);
 
   const body = (await request.json().catch(() => null)) as { email?: unknown } | null;
   // Лимит на почту считается по любой правдоподобной почте, существует она или нет, и хранится в виде хеша.
   const email = tryNormalizeEmail(body?.email);
   if (email) {
-    const byMail = perEmail(createHash("sha256").update(email).digest("hex"));
+    const byMail = await perEmail(createHash("sha256").update(email).digest("hex"));
     if (byMail) return tooMany(`Ссылку на эту почту уже отправляли — попробуйте ещё раз ${waitText(byMail)}.`, byMail);
   }
 

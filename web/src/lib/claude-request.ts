@@ -141,7 +141,7 @@ type AskJson<T> = {
 // Расходы: бюджет заявки кончился — запрос не уходит; каждый ответ модели — строкой в журнал с ценой;
 // такой же запрос уже идёт (двойной клик, повтор) — ждём его ответ, а не платим второй раз.
 export async function askJson<T>(ask: AskJson<T>): Promise<T> {
-  if (budgetOver(ask.appId ?? null)) throw new BudgetOver();
+  if (await budgetOver(ask.appId ?? null)) throw new BudgetOver();
   // Отпечаток — по настоящим данным, а не по тексту с метками: у двух разных участников метки совпадут.
   const { label, documents, extra, instructions, schema, system, cache, effort } = ask;
   const task = typeof instructions === "function" ? instructions((text) => text) : instructions;

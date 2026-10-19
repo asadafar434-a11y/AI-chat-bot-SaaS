@@ -3,7 +3,10 @@ import { describeCondition } from '@/lib/conditions';
 import { findCustomers } from '@/lib/customers-table';
 import { onDataChanged } from '@/lib/data-events';
 import { afterWinDuties } from '@/lib/after-win';
+import { contradictionsStale } from '@/lib/contradictions';
 import { createLocator, describeSource, type Located } from '@/lib/doc-locate';
+import { errorMessage } from '@/lib/http-error';
+import { findContradictions } from '@/lib/purchase';
 import { priceDiscrepancies } from '@/lib/doc-discrepancies';
 import { fieldsOf } from '@/lib/fields';
 import { fulfillmentOf, type PlanStatus } from '@/lib/fulfillment';
@@ -77,8 +80,22 @@ export function useProfile(): Profile {
 
 // Шаг «Анализ» на настоящей закупке: пункты «Что подать» и способ их выполнить.
 export function PurchaseAnalysis({ onNext, onBack, onFix }: { onNext: () => void; onBack: () => void; onFix: (at: 'review' | 'package') => void }) {
-  const { purchase, documents } = usePurchase();
+  const { purchase, documents, update } = usePurchase();
   const profile = useProfile();
+  // Противоречия в документах заказчика — платный запрос к ИИ, только по кнопке; результат хранится в закупке.
+  const [contradicting, setContradicting] = useState(false);
+  const [contradictionsError, setContradictionsError] = useState('');
+  const runContradictions = async () => {
+    setContradicting(true);
+    setContradictionsError('');
+    try {
+      update({ contradictions: await findContradictions(documents, purchase.id) });
+    } catch (e) {
+      setContradictionsError(errorMessage(e));
+    } finally {
+      setContradicting(false);
+    }
+  };
   // Где в файлах закупки стоит цитата каждого пункта — страница, таблица, строка, пункт (lib/doc-locate.ts).
   const locator = useMemo(() => createLocator(documents), [documents]);
   const snippetOf = useMemo(
@@ -144,6 +161,18 @@ export function PurchaseAnalysis({ onNext, onBack, onFix }: { onNext: () => void
   const way = purchase.kind.split('·').slice(1).join('·').trim();
   return (
     <StepAnalysis
+      contradictions={
+        // В примере запроса к ИИ нет — и кнопки тоже.
+        purchase.sample
+          ? undefined
+          : {
+              result: purchase.contradictions ?? null,
+              stale: purchase.contradictions ? contradictionsStale(purchase.contradictions, documents) : false,
+              running: contradicting,
+              error: contradictionsError,
+              onRun: () => void runContradictions(),
+            }
+      }
       discrepancies={docNotes.discrepancies}
       afterWin={docNotes.afterWin}
       rows={rows}

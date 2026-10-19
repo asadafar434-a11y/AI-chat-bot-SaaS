@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { CheckCircle2, AlertTriangle, XCircle, Sparkles, ChevronRight, Info, Clock } from '../lib/icons';
+import { CheckCircle2, AlertTriangle, XCircle, Sparkles, ChevronRight, Info, Clock, Loader2 } from '../lib/icons';
+import { contradictionsSummary, type ContradictionsResult } from '@/lib/contradictions';
 import { plural } from '@/lib/plural';
 import type { AfterWin } from '@/lib/after-win';
 import { Button, Card, Badge, Dot, Tooltip } from './ui';
@@ -18,6 +19,71 @@ const statusMeta: Record<
 
 // Строка «Что подать»: пункт из документов закупки и как его выполнить. Вид — как в прототипе, данные — настоящие:
 // план выполнения требований считает приложение (web/src/lib/fulfillment.ts).
+function ContradictionsBlock({ card }: { card: ContradictionsCard }) {
+  const { result, stale, running, error, onRun } = card;
+  return (
+    <Card className="space-y-3 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="flex items-center gap-2 text-sm font-medium">
+            <AlertTriangle className="size-4 shrink-0" /> Противоречия в документах заказчика
+          </p>
+          <p className="mt-0.5 max-w-[70ch] text-[13px] text-muted-foreground">
+            ИИ перечитает все документы и найдёт места, которые противоречат друг другу или оставляют вопрос. Это повод спросить заказчика
+            или оспорить требование. Платный запрос к ИИ — только по кнопке.
+          </p>
+        </div>
+        <Button size="sm" variant={result ? 'secondary' : 'primary'} disabled={running} onClick={onRun}>
+          {running ? <Loader2 className="size-3.5 animate-spin" /> : null}
+          {running ? 'ИИ читает документы…' : result ? 'Проверить заново' : 'Найти противоречия'}
+        </Button>
+      </div>
+      {running && <p className="text-[12px] text-muted-foreground">Это занимает до двух минут.</p>}
+      {error && (
+        <p role="alert" className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" /> <span className="min-w-0 break-words">{error}</span>
+        </p>
+      )}
+      {result && (
+        <>
+          <p className="text-[13px] font-medium">{contradictionsSummary(result)}</p>
+          {stale && <p className="text-[12px] text-warn">Документы изменились после проверки — результат мог устареть.</p>}
+          <ul className="space-y-3">
+            {result.findings.map((f, i) => (
+              <li key={`${i}:${f.what}`} className="min-w-0 space-y-1.5 rounded-md border border-border p-3 text-[13px]">
+                <p className="flex flex-wrap items-center gap-2">
+                  <Badge tone={f.kind === 'conflict' ? 'danger' : 'warn'}>{f.kind === 'conflict' ? 'Противоречие' : 'Неясность'}</Badge>
+                  <span className="min-w-0 break-words font-medium">{f.what}</span>
+                </p>
+                <Quote label={f.firstSource} at={f.firstAt} quote={f.firstQuote} verified={f.firstVerified} />
+                {f.secondQuote && <Quote label={f.secondSource} at={f.secondAt} quote={f.secondQuote} verified={f.secondVerified} />}
+                {f.ask && (
+                  <p className="min-w-0 break-words text-muted-foreground">
+                    <b className="font-medium text-foreground">Вопрос заказчику:</b> {f.ask}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </Card>
+  );
+}
+
+function Quote({ label, at, quote, verified }: { label: string; at?: string; quote: string; verified: boolean }) {
+  return (
+    <div className="min-w-0 break-words rounded bg-secondary/50 px-2.5 py-1.5">
+      <p className="font-mono text-[11px] text-muted-foreground">
+        {label || 'Документы закупки'}
+        {at ? ` · ${at}` : ''}
+      </p>
+      <p>«{quote}»</p>
+      {!verified && <p className="text-[12px] text-warn">Цитата не найдена в документах дословно — сверьте вручную.</p>}
+    </div>
+  );
+}
+
 export type AnalysisRow = {
   id: string;
   title: string;
@@ -40,7 +106,18 @@ export type AnalysisRow = {
   fixAt?: 'review' | 'package';
 };
 
+// Противоречия внутри документов заказчика: платная проверка по кнопке (web/src/lib/contradictions.ts).
+export type ContradictionsCard = {
+  result: ContradictionsResult | null;
+  // Документы изменились после проверки.
+  stale: boolean;
+  running: boolean;
+  error: string;
+  onRun: () => void;
+};
+
 export function StepAnalysis({
+  contradictions,
   discrepancies = [],
   afterWin = null,
   rows,
@@ -53,6 +130,8 @@ export function StepAnalysis({
   onBack,
   onFix,
 }: {
+  // Проверка документов на противоречия; не задана — карточки нет (например, в примере закупки).
+  contradictions?: ContradictionsCard;
   // Расхождения в цене внутри документов заказчика (web/src/lib/doc-discrepancies.ts): повод для запроса разъяснений.
   discrepancies?: string[];
   // Обязанности после заключения договора из его проекта (web/src/lib/after-win.ts); null — в договоре их не нашлось.
@@ -239,6 +318,8 @@ export function StepAnalysis({
           </ul>
         </Card>
       )}
+
+      {contradictions && <ContradictionsBlock card={contradictions} />}
 
       {afterWin && (
         <Card className="space-y-2 p-4">

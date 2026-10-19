@@ -645,3 +645,25 @@ model RegistryChange {
   @@index([datasetId, kind])
   @@map("RegistryChange")
 }
+
+/// Лимиты частоты запросов, общие для нескольких серверов (включаются SHARED_LIMITS=db). Строка — один запрос: корзина лимита (вход, ИИ, файлы, реестр…),
+/// ключ (адрес клиента или почта) и время. Хранится не дольше самого длинного окна лимита; ни документов, ни текстов в таблице нет.
+model RateHit {
+  id     BigInt   @id @default(autoincrement())
+  bucket String   @db.VarChar(40)
+  key    String   @db.VarChar(200)
+  at     DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([bucket, key, at])
+  @@map("RateHit")
+}
+
+/// Потрачено на ИИ по заявке в долларах — бюджет ИИ на заявку, общий для нескольких серверов (включается SHARED_LIMITS=db).
+/// Только номер заявки и сумма: ни документов, ни ответов модели.
+model AiSpend {
+  appId     String   @id @db.VarChar(100)
+  usd       Float
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@map("AiSpend")
+}

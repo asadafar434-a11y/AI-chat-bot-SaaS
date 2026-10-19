@@ -3,6 +3,7 @@ import type { DocStamp } from "@/lib/doc-changes";
 import { errorText } from "@/lib/http-error";
 import { priceOf } from "@/lib/customers-table";
 import type { CheckResult } from "@/lib/check";
+import { contradictionsKey, type ContradictionsResponse, type ContradictionsResult } from "@/lib/contradictions";
 import type { PartKey } from "@/lib/my-docs";
 import type { PartDoc } from "@/lib/part-doc";
 import type { PriceCalc } from "@/lib/price-floor";
@@ -47,6 +48,8 @@ export type Purchase = PurchaseSummary & {
   parts?: Partial<Record<PartKey, PurchasePart>>;
   // Последняя проверка заявки перед подачей.
   check?: CheckResult;
+  // Противоречия внутри документов заказчика (платная проверка по кнопке на шаге «Анализ», lib/contradictions.ts).
+  contradictions?: ContradictionsResult;
   // Какие документы из «Что подать» участник отметил готовыми — по тексту пункта (lib/application-files.ts).
   submitReady?: string[];
   chat?: ChatMessage[];
@@ -72,6 +75,18 @@ export async function extractRequirements(documents: SentDocument[], purchaseId?
   if (!res.ok) throw new Error(await errorText(res, "Не удалось выписать требования."));
   const body: RequirementsResponse = await res.json();
   return { ...body, price: priceOf(body.price, documents) };
+}
+
+// Противоречия внутри документов заказчика: платный запрос к ИИ, только по кнопке. Цитаты уже проверены сервером по тексту документов.
+export async function findContradictions(documents: SentDocument[], purchaseId?: string): Promise<ContradictionsResult> {
+  const res = await fetch("/api/contradictions", {
+    method: "POST",
+    headers: aiHeaders(purchaseId),
+    body: JSON.stringify({ documents: forServer(documents) }),
+  });
+  if (!res.ok) throw new Error(await errorText(res, "Не удалось проверить документы на противоречия."));
+  const body: ContradictionsResponse = await res.json();
+  return { ...body, docsKey: contradictionsKey(documents), checkedAt: new Date().toISOString() };
 }
 
 export const fromRequirements = ({ groups, criteria, ...summary }: RequirementsResponse) => ({ ...summary, requirements: groups, criteria });

@@ -11,7 +11,9 @@ import { assemblePdf, GARBLED_PLACEHOLDER, letters, pageQuality, type PdfPage } 
 import { plural } from "@/lib/plural";
 import { xlsxText } from "@/lib/xlsx-text";
 import { XlsError, xlsText } from "@/lib/xls-reader";
-import { createLimiter, OCR_PAGES_TOTAL } from "@/lib/rate-limit";
+import { hitStoreSource } from "@/lib/limit-stores";
+import { OCR_PAGES_TOTAL } from "@/lib/rate-limit";
+import { sharedLimiter } from "@/lib/shared-limits";
 
 // scan — текст распознан со скана или фото: в цифрах возможны ошибки. map — откуда в файле каждый кусок текста:
 // страница, таблица, строка, лист и ячейка (lib/doc-source.ts); у простого текста её нет. hidden — что в файле скрыто (лист Excel, строки,
@@ -43,7 +45,7 @@ const OCR_OFF = "это скан, а распознавание сканов в�
 const OCR_LIMIT = "это скан, а дневной лимит распознавания сканов на сервисе исчерпан — загрузите файл с текстом или повторите завтра";
 
 // Каждая страница скана — отдельный запрос к ИИ: за сутки на всех распознаём не больше OCR_PAGES_TOTAL страниц.
-const ocrPages = createLimiter(OCR_PAGES_TOTAL);
+const ocrPages = sharedLimiter("ocr-pages", OCR_PAGES_TOTAL, hitStoreSource);
 
 // Таблицы PDF ищем пачками по страницам и не дольше бюджета: у документа с тысячей чертежей разметка могла бы считаться минутами.
 type TableSource = { getTable: (params: { partial: number[] }) => Promise<{ pages: { num: number; tables: string[][][] }[] }> };
@@ -91,7 +93,7 @@ async function pdfText(data: Uint8Array, ocr: boolean, deps: OcrDeps): Promise<E
           const n = unreadable.length;
           return { ok: false, reason: `скан на ${n} ${plural(n, "страницу", "страницы", "страниц")} — распознаю не больше ${MAX_SCAN_PAGES}; разделите файл на части` };
         }
-      } else if (ocrPages("all", unreadable.length)) {
+      } else if (await ocrPages("all", unreadable.length)) {
         if (allUnreadable) return { ok: false, reason: OCR_LIMIT };
       } else {
         const texts = await deps.transcribe(await deps.renderPages(parser, unreadable));
@@ -179,7 +181,7 @@ export async function extractText(file: File, { ocr = true, deps = REAL_OCR }: {
       if (!ocr) return { ok: false, reason: OCR_OFF };
       if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: NO_KEY_SCAN };
       if (file.size > MAX_IMAGE_BYTES) return { ok: false, reason: "фото больше 5 МБ — уменьшите его или отсканируйте документ в PDF" };
-      if (ocrPages("all")) return { ok: false, reason: OCR_LIMIT };
+      if (await ocrPages("all")) return { ok: false, reason: OCR_LIMIT };
       const mediaType = file.type === "image/png" || /\.png$/i.test(file.name) ? "image/png" : "image/jpeg";
       const [recognized] = await deps.transcribe([{ data: Buffer.from(await file.arrayBuffer()), mediaType }]);
       if (letters(recognized) < 20) return { ok: false, reason: "на картинке не нашлось текста" };

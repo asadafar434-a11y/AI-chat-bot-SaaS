@@ -5,6 +5,7 @@
 
 import type { ApplicationField } from "@/lib/fields";
 import type { Fact } from "@/lib/evidence-base";
+import { checkFillRules, fillRulesOf, type OfferedValue } from "@/lib/fill-rules";
 import { validityAt, EXPIRING_DAYS, dayOf } from "@/lib/evidence-base";
 import { checkPurchase, onDateOf } from "@/lib/evidence-match";
 import type { Base } from "@/lib/evidence-match";
@@ -58,6 +59,8 @@ export type ValidationInput = {
   fields: ApplicationField[];
   // Сегодня — ГГГГ-ММ-ДД: на какую дату проверять.
   today: string;
+  // Тексты документов закупки: из них берутся правила заполнения заявки («не должно сопровождаться словом «эквивалент»»). Нет — проверки правил нет.
+  documents?: { name: string; text: string }[];
 };
 
 const SEVERITY: Record<ValidationStatus, number> = { PASS: 0, NEEDS_HUMAN_REVIEW: 1, FAIL: 2 };
@@ -258,6 +261,30 @@ function checkCharacteristicMatching(input: ValidationInput): ValidationFinding[
     }));
 }
 
+// Правила заполнения из документов заказчика: то, что участник предлагает в ТП, не должно нарушать то, что заказчик запретил писать.
+function checkCustomerFillRules(input: ValidationInput): ValidationFinding[] {
+  const tp = input.purchase.tp;
+  if (!tp || !input.documents) return [];
+  const rules = fillRulesOf(input.documents);
+  if (rules.length === 0) return [];
+  const values: OfferedValue[] = [
+    ...tp.goods.map((g): OfferedValue => ({ where: g.name.trim() || "Товар", text: `${g.name}\n${g.characteristics}`, kind: "good" })),
+    ...tp.items.map((it): OfferedValue => ({ where: it.clause.trim() ? `п. ${it.clause.trim()} ТЗ` : it.topic.trim() || "Пункт ТЗ", text: it.offer, kind: "item" })),
+  ];
+  return checkFillRules(rules, values).map((v) => ({
+    id: `fillrule:${v.rule.id}:${v.where}`,
+    category: "characteristic_matching" as const,
+    // «Эквивалент» в строке товара — прямое нарушение инструкции, заявку могут отклонить; остальное — пусть решит человек.
+    status: v.rule.id === "no_equivalent" && v.kind === "good" ? ("FAIL" as const) : ("NEEDS_HUMAN_REVIEW" as const),
+    title: `«${v.where}»: ${v.found.map((f) => `«${f}»`).join(", ")} — заказчик такие слова не допускает`,
+    reasons: [
+      `${v.rule.doc}: «${v.rule.quote}»`,
+      v.rule.id === "no_equivalent" ? "Предложение с этим словом могут признать не соответствующим документации" : "Нужно одно конкретное значение — без «не менее», «не более» и вариантов",
+    ],
+    ref: v.where,
+  }));
+}
+
 // ——— 7. Наличие доказательств ———
 // Каждое требование закупки сверяется с базой доказательств компании.
 
@@ -397,6 +424,7 @@ export function validate(input: ValidationInput): ValidationReport {
     ...checkDates(input),
     ...checkRequisiteMatching(input),
     ...checkCharacteristicMatching(input),
+    ...checkCustomerFillRules(input),
     ...checkEvidencePresence(input),
     ...checkDocumentContradictions(input),
     ...checkRequiredFields(input),

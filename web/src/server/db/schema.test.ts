@@ -50,6 +50,13 @@ const KB_MODELS = ["KnowledgeDocument", "KnowledgeChunk"] as const;
  */
 const REGISTRY_MODELS = ["RegistryDataset", "RegistryRecord", "RegistryChange"] as const;
 
+/**
+ * Счётчики лимитов и бюджета ИИ, общие для нескольких серверов (S14, включаются SHARED_LIMITS=db). Служебные таблицы сервера: ни организации,
+ * ни пользователя в них нет — только корзина лимита, адрес или почта (хэш) и время; у бюджета — номер заявки и сумма. Идентификатор строки счётчика —
+ * порядковый номер, у бюджета — номер заявки: непрозрачным cuid они быть не могут и не должны.
+ */
+const LIMIT_MODELS = ["RateHit", "AiSpend"] as const;
+
 /** Таблицы, которые заведены в более поздних этапах и не должны появляться сейчас. */
 const LATER_STAGE_MODELS = ["Payment", "pgboss"] as const;
 
@@ -65,8 +72,8 @@ function modelNames(): string[] {
   return [...schema.matchAll(/^model\s+(\w+)\s*\{/gm)].map((match) => match[1]);
 }
 
-test("в схеме ровно 20 моделей: 11 приложения (S1), 4 аутентификации (S2), 2 базы знаний (S12) и 3 реестра (S13)", () => {
-  assert.deepEqual(modelNames().sort(), [...S1_MODELS, ...S2_MODELS, ...KB_MODELS, ...REGISTRY_MODELS].sort());
+test("в схеме ровно 22 модели: 11 приложения (S1), 4 аутентификации (S2), 2 базы знаний (S12), 3 реестра (S13) и 2 счётчика лимитов (S14)", () => {
+  assert.deepEqual(modelNames().sort(), [...S1_MODELS, ...S2_MODELS, ...KB_MODELS, ...REGISTRY_MODELS, ...LIMIT_MODELS].sort());
 });
 
 test("моделей более поздних этапов в схеме нет", () => {
@@ -82,7 +89,7 @@ test("моделей более поздних этапов в схеме нет
  * организациях, `UserProfile` принадлежит пользователю, а не арендатору. Таблицы Auth.js
  * привязаны к `userId` текущей сессии, а не к арендатору (data-model.md §7).
  */
-const TABLES_WITHOUT_ORG_ID = ["Organization", "User", "UserProfile", ...AUTH_MODELS, ...KB_MODELS, ...REGISTRY_MODELS];
+const TABLES_WITHOUT_ORG_ID = ["Organization", "User", "UserProfile", ...AUTH_MODELS, ...KB_MODELS, ...REGISTRY_MODELS, ...LIMIT_MODELS];
 
 /**
  * Таблицы, у которых вместо `createdAt`/`updatedAt` собственные отметки времени:
@@ -94,6 +101,9 @@ const TABLES_WITH_OWN_TIMESTAMPS: Record<string, { created: string; updated: str
   KnowledgeChunk: { created: "createdAt", updated: "createdAt" },
   // Журнал изменений записей реестра только дополняется: прошлое не правится.
   RegistryChange: { created: "createdAt", updated: "createdAt" },
+  // Счётчики лимитов: строка — один запрос (время и есть отметка); у бюджета — время последней траты.
+  RateHit: { created: "at", updated: "at" },
+  AiSpend: { created: "updatedAt", updated: "updatedAt" },
 };
 
 test("модели без organizationId — только корень и таблицы пользователя", () => {
@@ -154,7 +164,8 @@ test("у каждой таблицы приложения есть отметк�
 
     // Аудит, пакет импорта и приглашение только дополняются — метка правки им не нужна:
     // приглашение фиксирует принятие через `acceptedAt`, а не через `updatedAt`.
-    if (name === "AuditEvent" || name === "Invitation" || own) {
+    // У счётчика бюджета ИИ единственная отметка — updatedAt (время последней траты): она же «изменения», отдельной «создания» нет.
+    if (name === "AuditEvent" || name === "Invitation" || (own && updated !== "updatedAt")) {
       assert.doesNotMatch(block, /updatedAt\s+DateTime/, `${name}: не должен обновляться, поэтому updatedAt не нужен`);
       continue;
     }
@@ -167,6 +178,10 @@ test("все идентификаторы непрозрачные и генер
     // У `VerificationToken` составной ключ `@@unique([identifier, token])` вместо `id`:
     // такова стандартная модель Auth.js, и собственный `id` здесь ничего не улучшает.
     if (name === "VerificationToken") {
+      continue;
+    }
+    // Счётчики лимитов (S14): порядковый номер строки и номер заявки — это не идентификаторы объектов арендатора.
+    if ((LIMIT_MODELS as readonly string[]).includes(name)) {
       continue;
     }
     assert.match(modelBlock(name), /id\s+String\s+@id\s+@default\(cuid\(\)\)/, `${name}: id должен быть cuid()`);

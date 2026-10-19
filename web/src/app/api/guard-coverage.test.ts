@@ -33,7 +33,7 @@ test("страж видит то, что должен: известные адр
   const guarded = routes(API)
     .filter((file) => readFileSync(file, "utf8").includes("requireAiAuth"))
     .map((file) => relative(API, file).split(sep).join("/"));
-  for (const name of ["requirements/route.ts", "tp/route.ts", "check/route.ts", "chat/route.ts", "documents/route.ts", "my-docs/facts/route.ts", "my-docs/profile/route.ts", "my-docs/sort/route.ts", "tp/zip/route.ts"]) {
+  for (const name of ["requirements/route.ts", "tp/route.ts", "check/route.ts", "contradictions/route.ts", "chat/route.ts", "documents/route.ts", "my-docs/facts/route.ts", "my-docs/profile/route.ts", "my-docs/sort/route.ts", "tp/zip/route.ts"]) {
     assert.ok(guarded.includes(name), `${name} должен проверять вход`);
   }
 });

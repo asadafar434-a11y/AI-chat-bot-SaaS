@@ -30,8 +30,8 @@ export function useSubmission(input: { purchase: Purchase; documents: { name: st
   const final = useMemo(() => completeness(shown, fields, profile), [shown, fields, profile]);
   const plans = useMemo(() => fulfillmentOf(purchase, { profile, fields }), [purchase, profile, fields]);
   const validation = useMemo(
-    () => validate({ purchase, profile, facts, fields, today }),
-    [purchase, profile, facts, fields, today],
+    () => validate({ purchase, profile, facts, fields, today, documents }),
+    [purchase, profile, facts, fields, today, documents],
   );
   const audit = useMemo(
     (): AuditReport => auditReport({ final, plans, fields, validation, today, deadline: purchase.deadline }),

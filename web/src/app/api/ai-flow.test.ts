@@ -7,9 +7,11 @@ import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { after, before, test } from "node:test";
 import ExcelJS from "exceljs";
+import { MAX_CONTEXT_CHARS } from "../../lib/chat-types.ts";
 import { readAnswer, streamEvents } from "../../lib/chat-stream.ts";
 import { POST as chat } from "./chat/route.ts";
 import { POST as check } from "./check/route.ts";
+import { POST as contradictions } from "./contradictions/route.ts";
 import { POST as documents } from "./documents/route.ts";
 import { POST as facts } from "./my-docs/facts/route.ts";
 import { POST as requirements } from "./requirements/route.ts";
@@ -342,6 +344,7 @@ test("без ключа ИИ сервер честно отвечает 503 и �
   try {
     for (const route of [requirements, tp, facts]) assert.equal((await route(json({ documents: docs }))).status, 503);
     assert.equal((await check(json({ documents: docs, application: [{ name: "a", text: "b" }] }))).status, 503);
+    assert.equal((await contradictions(json({ documents: docs }))).status, 503);
   } finally {
     process.env.ANTHROPIC_API_KEY = key;
   }
@@ -388,4 +391,48 @@ test("разбор потока: склеенные и оборванные ку
   assert.equal(await readAnswer(stream(['data: не json\n\ndata: {"type":"text-delta","delta":"конец"}'])), "конец");
   // Сбой на стороне сервера приходит событием error — и становится исключением с причиной.
   await assert.rejects(readAnswer(stream(['data: {"type":"error","errorText":"Лимит запросов исчерпан"}\n\n'])), /Лимит запросов исчерпан/);
+});
+
+test("противоречия в документах: цитаты ищутся в документах закупки, у найденных есть место, выдуманные помечены; прямые противоречия идут раньше неясностей", async () => {
+  const docs = [
+    { name: "Договор.docx", text: "1. Предмет\n10.2. Права и обязанности по настоящему Договору не могут быть переданы третьим лицам.\n10.12. Поставщик вправе без согласия Покупателя уступить права и обязанности по настоящему Договору." },
+    { name: "ТЗ.docx", text: "Срок поставки — 30 дней." },
+  ];
+  reply = JSON.stringify({
+    findings: [
+      { kind: "unclear", what: "Срок без даты", firstQuote: "Срок поставки — 30 дней.", firstSource: "ТЗ", secondQuote: "", secondSource: "", ask: "С какой даты считать 30 дней?" },
+      {
+        kind: "conflict",
+        what: "Передача прав и запрещена, и разрешена",
+        firstQuote: "Права и обязанности по настоящему Договору не могут быть переданы третьим лицам",
+        firstSource: "Договор, п. 10.2",
+        secondQuote: "Поставщик вправе без согласия Покупателя уступить права и обязанности",
+        secondSource: "Договор, п. 10.12",
+        ask: "Вправе ли поставщик уступить права?",
+      },
+      { kind: "conflict", what: "Выдуманное противоречие", firstQuote: "Такого текста в документах нет", firstSource: "Договор", secondQuote: "И такого тоже", secondSource: "ТЗ", ask: "?" },
+    ],
+  });
+  seen.length = 0;
+  const res = await contradictions(json({ documents: docs }));
+  assert.equal(res.status, 200);
+  const out = await res.json();
+  assert.deepEqual(out.findings.map((f: { kind: string }) => f.kind), ["conflict", "conflict", "unclear"]);
+  assert.deepEqual([out.findings[0].firstVerified, out.findings[0].secondVerified], [true, true]);
+  assert.match(out.findings[0].firstAt, /10\.2/);
+  assert.match(out.findings[0].secondAt, /10\.12/);
+  assert.deepEqual([out.findings[1].firstVerified, out.findings[1].secondVerified], [false, false], "выдуманные цитаты помечаются");
+  assert.equal(out.findings[1].firstAt, undefined);
+  assert.equal(out.findings[2].secondVerified, true, "пустая вторая цитата — не ошибка");
+  // Модели ушли документы и задание про противоречия, заявки в запросе нет.
+  assert.match(seen[0].blocks.at(-1)!.text, /найти противоречия и неясности внутри документов закупки/);
+  assert.ok(seen[0].blocks.every((b) => !/Заявка участника/.test(b.title ?? "")));
+});
+
+test("противоречия: без документов — 400, документы больше лимита — 413, пустой ответ модели — пустой список", async () => {
+  assert.equal((await contradictions(json({ documents: [] }))).status, 400);
+  assert.equal((await contradictions(json({ documents: [{ name: "Огромный.docx", text: "а".repeat(MAX_CONTEXT_CHARS + 1) }] }))).status, 413);
+  reply = JSON.stringify({ findings: [] });
+  const res = await contradictions(json({ documents: [{ name: "Договор.docx", text: "Договор без проблем." }] }));
+  assert.deepEqual(await res.json(), { findings: [] });
 });

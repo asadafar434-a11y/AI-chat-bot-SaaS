@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ACCESS_COOKIE, accessPassword, accessToken, closedWithoutPassword, sameToken } from "@/lib/access";
 import { isLegalPath } from "@/lib/legal";
-import { AI_PER_IP, AI_TOTAL, clientIp, createLimiter, FILES_PER_IP, REGISTRY_PER_IP, waitText } from "@/lib/rate-limit";
+import { hitStoreSource } from "@/lib/limit-stores";
+import { AI_PER_IP, AI_TOTAL, clientIp, FILES_PER_IP, REGISTRY_PER_IP, waitText } from "@/lib/rate-limit";
+import { sharedLimiter } from "@/lib/shared-limits";
 import { SECURE_SESSION_COOKIE_NAME, SESSION_COOKIE_NAME } from "@/server/auth/session";
 
 // Cookie серверной сессии Auth.js. Наличие проверяется «оптимистично»: реальная проверка
@@ -15,34 +17,35 @@ const text = (message: string, status: number, retryAfter?: number) =>
     headers: { "Content-Type": "text/plain; charset=utf-8", ...(retryAfter && { "Retry-After": String(retryAfter) }) },
   });
 
-const aiPerIp = createLimiter(AI_PER_IP);
-const aiTotal = createLimiter(AI_TOTAL);
-const filesPerIp = createLimiter(FILES_PER_IP);
-const registryPerIp = createLimiter(REGISTRY_PER_IP);
+// Счёт — в памяти сервера или, при SHARED_LIMITS=db, общий для нескольких серверов (shared-limits.ts).
+const aiPerIp = sharedLimiter("ai-ip", AI_PER_IP, hitStoreSource);
+const aiTotal = sharedLimiter("ai-all", AI_TOTAL, hitStoreSource);
+const filesPerIp = sharedLimiter("files-ip", FILES_PER_IP, hitStoreSource);
+const registryPerIp = sharedLimiter("registry-ip", REGISTRY_PER_IP, hitStoreSource);
 
 // Liveness/readiness probes должны отвечать без входа: их опрашивает балансировщик,
 // а не человек. Данные они не отдают — только состояние процесса/БД.
 const isHealthPath = (pathname: string) => pathname === "/api/health" || pathname.startsWith("/api/health/");
 
 // Запросы, которые тратят бюджет ИИ или силы сервера, — не чаще лимита. Файл Word, PDF или ODT части заявки собирается без ИИ, вход — свой лимит.
-function tooMany(request: NextRequest): NextResponse | null {
+async function tooMany(request: NextRequest): Promise<NextResponse | null> {
   const { pathname } = request.nextUrl;
   if (request.method !== "POST" || !pathname.startsWith("/api/") || pathname === "/api/login" || pathname === "/api/auth/login" || pathname === "/api/tp/docx" || pathname === "/api/tp/pdf" || pathname === "/api/tp/odt") {
     return null;
   }
   const ip = clientIp(request.headers.get("x-forwarded-for"));
   if (pathname === "/api/documents") {
-    const wait = filesPerIp(ip);
+    const wait = await filesPerIp(ip);
     return wait ? text(`Слишком много файлов подряд — продолжите ${waitText(wait)}.`, 429, wait) : null;
   }
   // Поиск по реестру — не запрос к ИИ: бюджет ИИ он не тратит и в его лимит не входит, у него свой.
   if (pathname === "/api/registry/search") {
-    const wait = registryPerIp(ip);
+    const wait = await registryPerIp(ip);
     return wait ? text(`Слишком много поисков по реестру подряд — продолжите ${waitText(wait)}.`, 429, wait) : null;
   }
-  const own = aiPerIp(ip);
+  const own = await aiPerIp(ip);
   if (own) return text(`Слишком много запросов к ИИ подряд — продолжите ${waitText(own)}.`, 429, own);
-  const all = aiTotal("all");
+  const all = await aiTotal("all");
   if (all) {
     return text(
       `Дневной лимит запросов к ИИ на сервисе исчерпан — продолжите ${waitText(all)}. Если срочно, напишите владельцу: контакты на странице «Контакты».`,
@@ -68,7 +71,7 @@ export async function proxy(request: NextRequest) {
     ) {
       return text("Сервис закрыт: владелец не задал пароль входа. Напишите ему — контакты на странице «Контакты».", 503);
     }
-    return tooMany(request) ?? NextResponse.next();
+    return (await tooMany(request)) ?? NextResponse.next();
   }
 
   // Политика, согласие, условия и контакты открыты всем: их нужно прочитать до входа.
@@ -84,16 +87,16 @@ export async function proxy(request: NextRequest) {
     isHealthPath(pathname) ||
     isLegalPath(pathname)
   ) {
-    return tooMany(request) ?? NextResponse.next();
+    return (await tooMany(request)) ?? NextResponse.next();
   }
 
   const token = request.cookies.get(ACCESS_COOKIE)?.value;
-  if (token && sameToken(token, await accessToken(password))) return tooMany(request) ?? NextResponse.next();
+  if (token && sameToken(token, await accessToken(password))) return (await tooMany(request)) ?? NextResponse.next();
 
   // Переходный период: вход по общему паролю работает наравне с серверной сессией. Наличие
   // cookie здесь проверяется оптимистично; реальная проверка сессии — в обработчиках.
   if (AUTH_SESSION_COOKIES.some((name) => request.cookies.get(name)?.value)) {
-    return tooMany(request) ?? NextResponse.next();
+    return (await tooMany(request)) ?? NextResponse.next();
   }
 
   if (pathname.startsWith("/api/")) return text("Нужно снова войти — обновите страницу.", 401);

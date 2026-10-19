@@ -605,3 +605,56 @@ test('шаг «Анализ»: расхождения в цене и «что п
   const one = html(h(mods.analysis.StepAnalysis, { ...base, afterWin: { duties: [], more: { count: 1, range: 'п. 5.1' } } }));
   assert.match(one, /Ещё 1 обязанность предоставить/);
 });
+
+test('шаг «Анализ»: карточка «Противоречия в документах заказчика» — кнопка, ход, результат с цитатами, неподтверждённая цитата, устаревание; в примере карточки нет', () => {
+  const base = { rows: [], requirements: [], kindText: '', platformNote: null, hidden: 0, onNext() {}, onBack() {}, onFix() {} };
+  const card = (over = {}) => ({ result: null, stale: false, running: false, error: '', onRun() {}, ...over });
+  const finding = (over = {}) => ({
+    kind: 'conflict',
+    what: 'п. 10.2 запрещает передачу прав, п. 10.12 разрешает',
+    firstQuote: 'Права и обязанности не могут быть переданы третьим лицам',
+    firstSource: 'Договор, п. 10.2',
+    firstAt: 'Договор.docx — п. 10.2',
+    firstVerified: true,
+    secondQuote: 'Поставщик вправе уступить права',
+    secondSource: 'Договор, п. 10.12',
+    secondVerified: false,
+    ask: 'Вправе ли поставщик уступить права?',
+    ...over,
+  });
+
+  assert.doesNotMatch(html(h(mods.analysis.StepAnalysis, base)), /Противоречия в документах заказчика/, 'в примере закупки карточки нет');
+
+  const before = html(h(mods.analysis.StepAnalysis, { ...base, contradictions: card() }));
+  assert.match(before, /Противоречия в документах заказчика/);
+  assert.match(before, /Платный запрос к ИИ — только по кнопке/);
+  assert.match(before, /Найти противоречия/);
+  assert.doesNotMatch(before, /Найдено:|Проверить заново/);
+
+  const running = html(h(mods.analysis.StepAnalysis, { ...base, contradictions: card({ running: true }) }));
+  assert.match(running, /ИИ читает документы…/);
+  assert.match(running, /до двух минут/);
+  assert.match(running, /<button[^>]*disabled=""/);
+
+  const failed = html(h(mods.analysis.StepAnalysis, { ...base, contradictions: card({ error: 'На эту заявку потрачен весь бюджет ИИ.' }) }));
+  assert.match(failed, /role="alert"[^>]*>[^]*На эту заявку потрачен весь бюджет ИИ\./);
+
+  const done = html(
+    h(mods.analysis.StepAnalysis, {
+      ...base,
+      contradictions: card({ result: { findings: [finding(), finding({ kind: 'unclear', what: 'Срок без даты', secondQuote: '', secondSource: '', firstVerified: true })], docsKey: 'k', checkedAt: '2026-10-19' }, stale: true }),
+    }),
+  );
+  assert.match(done, /Найдено: 1 противоречие, 1 неясность/);
+  assert.match(done, />Противоречие</);
+  assert.match(done, />Неясность</);
+  assert.match(done, /Договор, п\. 10\.2 · Договор\.docx — п\. 10\.2/);
+  assert.match(done, /«Права и обязанности не могут быть переданы третьим лицам»/);
+  assert.match(done, /Вопрос заказчику:<\/b> Вправе ли поставщик уступить права\?/);
+  assert.equal((done.match(/Цитата не найдена в документах дословно/g) ?? []).length, 1, 'помечена только та цитата, которую код не нашёл');
+  assert.match(done, /Документы изменились после проверки/);
+  assert.match(done, /Проверить заново/);
+
+  const none = html(h(mods.analysis.StepAnalysis, { ...base, contradictions: card({ result: { findings: [], docsKey: 'k', checkedAt: '2026-10-19' } }) }));
+  assert.match(none, /Противоречий не найдено/);
+});

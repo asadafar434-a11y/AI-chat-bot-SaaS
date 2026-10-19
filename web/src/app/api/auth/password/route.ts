@@ -1,4 +1,6 @@
-import { clientIp, createLimiter, LOGIN_PER_IP, waitText } from "@/lib/rate-limit";
+import { hitStoreSource } from "@/lib/limit-stores";
+import { clientIp, LOGIN_PER_IP, waitText } from "@/lib/rate-limit";
+import { sharedLimiter } from "@/lib/shared-limits";
 import { AuthError } from "@/server/auth/errors";
 import { changePassword } from "@/server/auth/change-password";
 import { requireSession } from "@/server/auth/guards";
@@ -6,7 +8,7 @@ import { isSameOrigin } from "@/server/auth/request";
 import { getTransactionRunner } from "@/server/db/client";
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const attempts = createLimiter(LOGIN_PER_IP);
+const attempts = sharedLimiter("login-ip", LOGIN_PER_IP, hitStoreSource);
 
 /**
  * Смена пароля из «Настроек»: PUT { current, next }. Только для вошедшего (сессия из cookie, а не из запроса), нужен текущий пароль.
@@ -24,7 +26,7 @@ export async function PUT(request: Request) {
     throw error;
   }
 
-  const later = attempts(clientIp(request.headers.get("x-forwarded-for")));
+  const later = await attempts(clientIp(request.headers.get("x-forwarded-for")));
   if (later) {
     return new Response(`Слишком много попыток — попробуйте ${waitText(later)}.`, {
       status: 429,

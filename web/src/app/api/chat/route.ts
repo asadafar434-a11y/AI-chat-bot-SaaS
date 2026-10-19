@@ -109,7 +109,7 @@ export async function POST(request: Request) {
   if (denied) return denied;
   // Вопрос по закупке считается в бюджет ИИ её заявки. Бюджет кончился — к модели не обращаемся.
   const appId = appIdOf(request);
-  if (budgetOver(appId)) return new Response(BUDGET_TEXT, { status: 429 });
+  if (await budgetOver(appId)) return new Response(BUDGET_TEXT, { status: 429 });
   const body = await readJson(request);
   if (!body) return badRequest();
   const messages = chatMessages(body.messages);

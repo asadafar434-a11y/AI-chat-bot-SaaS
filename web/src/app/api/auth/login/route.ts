@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
-import { clientIp, createLimiter, LOGIN_PER_IP, waitText } from "@/lib/rate-limit";
+import { hitStoreSource } from "@/lib/limit-stores";
+import { clientIp, LOGIN_PER_IP, waitText } from "@/lib/rate-limit";
+import { sharedLimiter } from "@/lib/shared-limits";
 import { authenticateWithPassword } from "@/server/auth/credentials";
 import { isSameOrigin } from "@/server/auth/request";
 import { createSession, sessionCookieName, SESSION_MAX_AGE_SECONDS } from "@/server/auth/session";
@@ -8,7 +10,7 @@ import { getDb } from "@/server/db/client";
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const attempts = createLimiter(LOGIN_PER_IP);
+const attempts = sharedLimiter("login-ip", LOGIN_PER_IP, hitStoreSource);
 
 /**
  * Вход по email и паролю. Сессия создаётся в БД, cookie хранит только её токен.
@@ -22,7 +24,7 @@ export async function POST(request: Request) {
     return new Response("Недопустимый источник запроса", { status: 403 });
   }
 
-  const later = attempts(clientIp(request.headers.get("x-forwarded-for")));
+  const later = await attempts(clientIp(request.headers.get("x-forwarded-for")));
   if (later) {
     return new Response(`Слишком много попыток входа — попробуйте ${waitText(later)}.`, {
       status: 429,

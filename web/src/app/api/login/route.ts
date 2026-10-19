@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { ACCESS_COOKIE, ACCESS_DAYS, accessPassword, accessToken, sameToken } from "@/lib/access";
-import { clientIp, createLimiter, LOGIN_PER_IP, waitText } from "@/lib/rate-limit";
+import { hitStoreSource } from "@/lib/limit-stores";
+import { clientIp, LOGIN_PER_IP, waitText } from "@/lib/rate-limit";
+import { sharedLimiter } from "@/lib/shared-limits";
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const attempts = createLimiter(LOGIN_PER_IP);
+const attempts = sharedLimiter("login-ip", LOGIN_PER_IP, hitStoreSource);
 
 // Вход по паролю закрытой ссылки. Верный пароль — метка входа в cookie на полгода; неверный — ответ
 // с задержкой, а попыток с одного адреса — не больше лимита: так пароль не перебрать ни подряд, ни параллельно.
@@ -12,7 +14,7 @@ export async function POST(request: Request) {
   const password = accessPassword();
   if (!password) return new NextResponse(null, { status: 204 });
 
-  const later = attempts(clientIp(request.headers.get("x-forwarded-for")));
+  const later = await attempts(clientIp(request.headers.get("x-forwarded-for")));
   if (later) {
     return new Response(`Слишком много попыток входа — попробуйте ${waitText(later)}.`, {
       status: 429,

@@ -52,6 +52,21 @@ export const SWEEP_MS = 60 * MINUTE;
 // size — сколько адресов (ключей) лимитер сейчас помнит.
 export type Take = ((key: string, cost?: number) => number) & { size: () => number };
 
+// 0 — запросы list (время каждого, мс) укладываются в окна и ещё cost влезает; иначе — через сколько секунд освободится место.
+// Одно правило и для лимитера в памяти, и для общего счёта в базе (shared-limits.ts): считают одинаково.
+export function waitFor(list: number[], windows: Window[], cost: number, t: number): number {
+  for (const w of windows) {
+    const inWindow = list.filter((x) => x > t - w.ms);
+    const over = inWindow.length + cost - w.max;
+    if (over > 0) {
+      // Место освободится, когда из окна выйдет столько самых ранних запросов, сколько не хватает.
+      const frees = over <= inWindow.length ? inWindow[over - 1] + w.ms : t + w.ms;
+      return Math.max(1, Math.ceil((frees - t) / 1000));
+    }
+  }
+  return 0;
+}
+
 export function createLimiter(windows: Window[], now: () => number = Date.now): Take {
   const hits = new Map<string, number[]>();
   const longest = Math.max(...windows.map((w) => w.ms));
@@ -67,15 +82,8 @@ export function createLimiter(windows: Window[], now: () => number = Date.now): 
     const t = now();
     const list = (hits.get(key) ?? []).filter((x) => x > t - longest);
     hits.set(key, list);
-    for (const w of windows) {
-      const inWindow = list.filter((x) => x > t - w.ms);
-      const over = inWindow.length + cost - w.max;
-      if (over > 0) {
-        // Место освободится, когда из окна выйдет столько самых ранних запросов, сколько не хватает.
-        const frees = over <= inWindow.length ? inWindow[over - 1] + w.ms : t + w.ms;
-        return Math.max(1, Math.ceil((frees - t) / 1000));
-      }
-    }
+    const wait = waitFor(list, windows, cost, t);
+    if (wait > 0) return wait;
     for (let i = 0; i < cost; i++) list.push(t);
     return 0;
   };
