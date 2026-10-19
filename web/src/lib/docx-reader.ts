@@ -11,7 +11,8 @@ import { elements, kid, kids, MAX_XML_CHARS, parseXml, val, type XEl } from "@/l
 
 export class DocxError extends Error {}
 
-export type DocxResult = { text: string; map?: DocMap; stats: { paragraphs: number; tables: number; pages: number } };
+// hiddenText — в тексте есть «скрытый» шрифт (w:vanish): на экране его не видно, но в файле он есть.
+export type DocxResult = { text: string; map?: DocMap; hiddenText: boolean; stats: { paragraphs: number; tables: number; pages: number } };
 
 const PARTS = new Set(["word/document.xml", "word/styles.xml", "word/numbering.xml", "word/footnotes.xml", "word/endnotes.xml"]);
 
@@ -554,7 +555,7 @@ export function readDocx(data: Uint8Array): DocxResult {
     const { text, map } = ctx.b.build(mode !== "none");
     // Прочитано заметно меньше, чем есть в файле, — что-то в разметке нашему чтению незнакомо: пусть читает прежний способ.
     if (text.replace(/\s+/g, "").length < textSize(documentXml) * 0.9) throw new DocxError("прочитана не вся разметка");
-    return { text, map, stats: { paragraphs: ctx.paragraphs, tables: ctx.tables, pages: mode === "none" ? 0 : ctx.page } };
+    return { text, map, hiddenText: /<w:vanish(?![\w:])(?![^>]*w:val="(?:0|false|off)")/.test(documentXml), stats: { paragraphs: ctx.paragraphs, tables: ctx.tables, pages: mode === "none" ? 0 : ctx.page } };
   } catch (e) {
     if (e instanceof DocxError) throw e;
     throw new DocxError(`разбор документа не удался: ${(e as Error).message}`);

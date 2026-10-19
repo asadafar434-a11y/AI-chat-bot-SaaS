@@ -5,7 +5,7 @@ import { fitDocuments } from "@/lib/doc-trim";
 import { errorText } from "@/lib/http-error";
 import { readScanOcr } from "./scan-setting.ts";
 
-export type SentDocument = Pick<ChatDocument, "name" | "text" | "scan" | "map">;
+export type SentDocument = Pick<ChatDocument, "name" | "text" | "scan" | "map" | "hidden">;
 export type FailedFile = { name: string; reason: string };
 
 // Документы для запроса к серверу: без карты (откуда какой кусок текста). Сервер её не читает, а запрос от неё заметно тяжелее.
@@ -88,7 +88,7 @@ async function readOne(file: File, send: Send, ocr: boolean): Promise<OneResult>
     return { documents: [], failed: [{ name: file.name, reason }] };
   }
   const { documents, failed }: { documents: ChatDocument[]; failed: FailedFile[] } = await res.json();
-  return { documents: documents.map(({ name, text, scan, map }) => ({ name, text, ...(scan && { scan }), ...(map && { map }) })), failed };
+  return { documents: documents.map(({ name, text, scan, map, hidden }) => ({ name, text, ...(scan && { scan }), ...(map && { map }), ...(hidden?.length && { hidden }) })), failed };
 }
 
 // Текст из файлов достаёт сервер. Файлы уходят по одному: так запрос не упирается в предел размера,

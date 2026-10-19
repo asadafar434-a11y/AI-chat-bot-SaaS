@@ -5,6 +5,7 @@ import { sampleCheck } from '@/lib/check-sample';
 import { errorMessage, errorText } from '@/lib/http-error';
 import { plural } from '@/lib/plural';
 import { aiHeaders } from '@/lib/purchase';
+import { hiddenWarning } from '@/lib/hidden-content';
 import { ACCEPTED_FILES, forServer, readDocuments } from '@/lib/read-documents';
 import { AlertTriangle, Check, ChevronDown, FileText, ListChecks, Loader2, Upload, X } from '../lib/icons';
 import { usePurchase } from '../real/purchase-provider';
@@ -184,7 +185,10 @@ export function OwnCheck() {
         if (!res.ok) throw new Error(await errorText(res, 'Не удалось проверить заявку.'));
         const body: CheckResponse = withApplicationPlaces(await res.json(), application);
         result = { ...body, files: application.map((d) => d.name), docsKey, checkedAt: new Date().toISOString(), inputKey };
-        if (failed.length) setNotice(`Не прочитаны и не проверены: ${failed.map((f) => `${f.name} — ${f.reason}`).join('; ')}.`);
+        // Не прочитанные файлы и скрытое в файлах (если заказчик это запрещает) — одной строкой под полем загрузки.
+        const unread = failed.length ? `Не прочитаны и не проверены: ${failed.map((f) => `${f.name} — ${f.reason}`).join('; ')}.` : '';
+        const hiddenNote = hiddenWarning(application, documents) ?? '';
+        if (unread || hiddenNote) setNotice([unread, hiddenNote].filter(Boolean).join(' '));
       }
       setOpenFinding(null);
       update({ check: result });

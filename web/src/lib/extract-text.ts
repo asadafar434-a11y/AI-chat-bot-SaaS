@@ -13,9 +13,10 @@ import { xlsxText } from "@/lib/xlsx-text";
 import { createLimiter, OCR_PAGES_TOTAL } from "@/lib/rate-limit";
 
 // scan — текст распознан со скана или фото: в цифрах возможны ошибки. map — откуда в файле каждый кусок текста:
-// страница, таблица, строка, лист и ячейка (lib/doc-source.ts); у простого текста её нет.
+// страница, таблица, строка, лист и ячейка (lib/doc-source.ts); у простого текста её нет. hidden — что в файле скрыто (лист Excel, строки,
+// столбцы, скрытый текст Word): заказчики нередко запрещают скрытое в заявке (lib/hidden-content.ts).
 export type ExtractResult =
-  | { ok: true; text: string; scan?: boolean; map?: DocMap }
+  | { ok: true; text: string; scan?: boolean; map?: DocMap; hidden?: string[] }
   | { ok: false; reason: string };
 
 // Чтение скана — запросы к ИИ; в тестах вместо них — заготовки.
@@ -114,10 +115,10 @@ async function pdfText(data: Uint8Array, ocr: boolean, deps: OcrDeps): Promise<E
 }
 
 // Word читаем напрямую из файла (таблицы, номера пунктов, страницы); не получилось — пересказом текста без разметки.
-async function docxText(buffer: Buffer): Promise<{ text: string; map?: DocMap }> {
+async function docxText(buffer: Buffer): Promise<{ text: string; map?: DocMap; hidden?: string[] }> {
   try {
-    const { text, map } = readDocx(buffer);
-    return { text, map };
+    const { text, map, hiddenText } = readDocx(buffer);
+    return { text, map, ...(hiddenText && { hidden: ["в тексте есть скрытый шрифт"] }) };
   } catch (error) {
     // Файл, который наше чтение не взяло, — обычное дело; а сбой в самом чтении стоит видеть в журнале (имени файла в нём нет).
     if (!(error instanceof DocxError)) console.error("docx-reader", error);
@@ -130,8 +131,8 @@ async function wordText(buffer: Buffer): Promise<ExtractResult> {
   if (isOle(buffer)) return { ok: true, text: docText(buffer) };
   if (buffer.subarray(0, 5).toString("latin1") === "{\\rtf") return { ok: true, text: rtfText(buffer) };
   if (buffer.subarray(0, 2).toString("latin1") === "PK") {
-    const { text, map } = await docxText(buffer);
-    return { ok: true, text, ...(map && { map }) };
+    const { text, map, hidden } = await docxText(buffer);
+    return { ok: true, text, ...(map && { map }), ...(hidden && { hidden }) };
   }
   return { ok: false, reason: "не похоже на файл Word — пересохраните его в .docx" };
 }
@@ -150,13 +151,13 @@ export async function extractText(file: File, { ocr = true, deps = REAL_OCR }: {
     }
 
     if (kind === "docx") {
-      const { text, map } = await docxText(Buffer.from(await file.arrayBuffer()));
-      return { ok: true, text, ...(map && { map }) };
+      const { text, map, hidden } = await docxText(Buffer.from(await file.arrayBuffer()));
+      return { ok: true, text, ...(map && { map }), ...(hidden && { hidden }) };
     }
 
     if (kind === "xlsx") {
-      const { text, map } = await xlsxText(Buffer.from(await file.arrayBuffer()));
-      return { ok: true, text, ...(map && { map }) };
+      const { text, map, hidden } = await xlsxText(Buffer.from(await file.arrayBuffer()));
+      return { ok: true, text, ...(map && { map }), ...(hidden.length > 0 && { hidden }) };
     }
 
     if (kind === "xls") {

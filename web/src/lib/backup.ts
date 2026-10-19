@@ -110,6 +110,43 @@ async function exportLocalBackup(): Promise<{ backup: Backup } & ExportCounts> {
   return { backup: buildBackup(dump), purchases: purchases.length, samples: samples.length, facts: facts.length, profile };
 }
 
+// Что лежит в этом браузере, а на сервере нет: закупки, образцы, факты и реквизиты, созданные раньше в режиме «в браузере». Серверный
+// режим держит в браузере зеркало серверных данных (S5), поэтому в обычной работе здесь пусто. null — серверного режима нет, переносить некуда.
+async function localNotOnServer(): Promise<Dump | null> {
+  if (!serverReadsEnabled()) return null;
+  const [{ backup }, purchases, samples, facts, profile] = await Promise.all([exportLocalBackup(), fetchPurchases(), fetchSamples(), fetchFacts(), fetchProfile()]);
+  return missingFrom(backup, {
+    purchases: new Set(purchases.map((p) => p.id)),
+    samples: new Set(samples.map((s) => s.id)),
+    facts: new Set(facts.map((f) => f.id)),
+    profile: profileFilled(profile.profile),
+  });
+}
+
+const countsOf = (dump: Dump): ExportCounts => ({
+  purchases: dump.purchases.length,
+  samples: dump.samples.length,
+  facts: dump.facts.length,
+  profile: dump.settings.some(([key]) => key === "profile"),
+});
+
+/** Сколько данных лежит только в этом браузере (серверного режима нет — нули). Для строки «перенести на сервер» в настройках. */
+export async function localOnlyCounts(): Promise<ExportCounts> {
+  const dump = await localNotOnServer();
+  return dump ? countsOf(dump) : { purchases: 0, samples: 0, facts: 0, profile: false };
+}
+
+/** Переносит на сервер то, чего там нет, тем же конвейером, что и «Загрузить копию» (/api/writes/import). Повтор ничего не затирает и не дублирует. */
+export async function migrateLocalToServer(): Promise<ExportCounts> {
+  const dump = await localNotOnServer();
+  if (!dump) return { purchases: 0, samples: 0, facts: 0, profile: false };
+  const counts = countsOf(dump);
+  if (counts.purchases + counts.samples + counts.facts === 0 && !counts.profile) return counts;
+  await postServerWrite("/api/writes/import", "PUT", { backup: buildBackup(dump) });
+  notifyDataChanged();
+  return counts;
+}
+
 export async function exportBackup(): Promise<{ backup: Backup } & ExportCounts> {
   return serverReadsEnabled() ? exportServerBackup() : exportLocalBackup();
 }

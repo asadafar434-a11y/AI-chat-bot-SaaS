@@ -1,6 +1,6 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { changePassword } from '@/lib/auth-client';
-import { exportBackup, restoreBackup } from '@/lib/backup';
+import { exportBackup, localOnlyCounts, migrateLocalToServer, restoreBackup } from '@/lib/backup';
 import { parseBackup } from '@/lib/backup-format';
 import { plural } from '@/lib/plural';
 import { saveFile } from '@/lib/save-file';
@@ -175,6 +175,34 @@ function DataCards() {
   const [backupNote, setBackupNote] = useState<Outcome | null>(null);
   const backupInput = useRef<HTMLInputElement>(null);
   const [wipe, setWipe] = useState<'idle' | 'confirm' | 'wiping' | 'blocked' | 'failed'>('idle');
+  // Данные, созданные раньше в режиме «в браузере»: лежат только здесь, на сервере их нет. Строка появляется, только когда они есть.
+  const [local, setLocal] = useState('');
+
+  useEffect(() => {
+    if (!onServer) return;
+    let alive = true;
+    localOnlyCounts().then(
+      (counts) => alive && setLocal(contents(counts)),
+      () => {},
+    );
+    return () => {
+      alive = false;
+    };
+  }, [onServer]);
+
+  async function moveToServer() {
+    setBackupBusy(true);
+    setBackupNote(null);
+    try {
+      const moved = contents(await migrateLocalToServer());
+      setLocal('');
+      setBackupNote({ tone: 'ok', text: moved ? `Перенесено на сервер: ${moved}.` : 'Переносить нечего — всё уже на сервере.' });
+    } catch {
+      setBackupNote({ tone: 'warn', text: 'Не удалось перенести данные на сервер. Повторите через минуту.' });
+    } finally {
+      setBackupBusy(false);
+    }
+  }
 
   async function saveBackup() {
     setBackupBusy(true);
@@ -272,6 +300,14 @@ function DataCards() {
             }}
           />
         </div>
+        {local && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-border px-3 py-2">
+            <p className="min-w-0 flex-1 text-[13px] leading-snug">В этом браузере есть то, чего нет на сервере: {local}.</p>
+            <Button variant="secondary" size="sm" disabled={backupBusy} onClick={() => void moveToServer()}>
+              <Upload className="size-4" /> Перенести на сервер
+            </Button>
+          </div>
+        )}
         <div aria-live="polite" className="empty:hidden">
           {backupNote && <Notice tone={backupNote.tone}>{backupNote.text}</Notice>}
         </div>

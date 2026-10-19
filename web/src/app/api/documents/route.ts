@@ -74,6 +74,8 @@ export async function POST(request: Request) {
         chars: result.text.length,
         text: result.text,
         ...(result.scan && { scan: true }),
+        // Что в файле скрыто — лист, строки, столбцы, скрытый текст (lib/hidden-content.ts).
+        ...(result.hidden && result.hidden.length > 0 && { hidden: result.hidden }),
         // Откуда в файле каждый кусок текста — страница, таблица, строка, лист (lib/doc-source.ts); сервер её не хранит.
         ...(result.map && { map: result.map }),
       });
