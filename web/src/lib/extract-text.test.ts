@@ -130,5 +130,6 @@ test(".xlsx читается по листам: формулы — значен�
   assert.doesNotMatch(text, /секрет/);
 
   const old = await extractText(file("старый.xls", "x"));
-  assert.deepEqual(old, { ok: false, reason: "старый формат .xls не читается — пересохраните файл как .xlsx" });
+  // Старый .xls читается сам (xls-reader.ts); файл, который не Excel, — понятная причина.
+  assert.deepEqual(old, { ok: false, reason: "не файл Excel — пересохраните файл как .xlsx" });
 });

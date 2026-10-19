@@ -15,7 +15,7 @@ export const isOle = (buf: Buffer) => buf.subarray(0, 8).equals(OLE_SIGNATURE);
 
 // Потоки верхнего уровня контейнера по именам. Вложенные объекты (например, вставленная таблица Excel)
 // лежат глубже и сюда не попадают — иначе их поток WordDocument мог бы подменить основной.
-function readContainer(buf: Buffer): Map<string, Buffer> {
+export function readContainer(buf: Buffer): Map<string, Buffer> {
   const sectorSize = 1 << buf.readUInt16LE(0x1e);
   const miniSize = 1 << buf.readUInt16LE(0x20);
   const fatCount = buf.readUInt32LE(0x2c);

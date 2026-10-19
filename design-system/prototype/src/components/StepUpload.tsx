@@ -105,7 +105,7 @@ export function StepUpload({
             ref={input}
             type="file"
             multiple
-            accept=".pdf,.docx,.doc,.rtf,.xlsx,.xlsm,.zip,.txt,.md,.jpg,.jpeg,.png"
+            accept=".pdf,.docx,.doc,.rtf,.xls,.xlsx,.xlsm,.zip,.txt,.md,.jpg,.jpeg,.png"
             className="hidden"
             onChange={(e) => {
               const picked = [...(e.target.files ?? [])];

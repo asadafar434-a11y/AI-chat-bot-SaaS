@@ -10,6 +10,7 @@ import { MAX_SCAN_PAGES, renderPages, transcribe } from "@/lib/ocr";
 import { assemblePdf, GARBLED_PLACEHOLDER, letters, pageQuality, type PdfPage } from "@/lib/pdf-structure";
 import { plural } from "@/lib/plural";
 import { xlsxText } from "@/lib/xlsx-text";
+import { XlsError, xlsText } from "@/lib/xls-reader";
 import { createLimiter, OCR_PAGES_TOTAL } from "@/lib/rate-limit";
 
 // scan — текст распознан со скана или фото: в цифрах возможны ошибки. map — откуда в файле каждый кусок текста:
@@ -161,7 +162,9 @@ export async function extractText(file: File, { ocr = true, deps = REAL_OCR }: {
     }
 
     if (kind === "xls") {
-      return { ok: false, reason: "старый формат .xls не читается — пересохраните файл как .xlsx" };
+      // Старый Excel (BIFF8) читаем сами (xls-reader.ts). Не вышло — просим пересохранить как .xlsx.
+      const { text, map, hidden } = xlsText(Buffer.from(await file.arrayBuffer()));
+      return { ok: true, text, ...(map && { map }), ...(hidden.length > 0 && { hidden }) };
     }
 
     if (kind === "doc") {
@@ -186,6 +189,7 @@ export async function extractText(file: File, { ocr = true, deps = REAL_OCR }: {
     // Имя файла в журнал не пишем: в нём бывают ФИО, а сервер документы не хранит — и журналы тоже.
     console.error(`extract ${kind}`, error);
     if (error instanceof DocTextError) return { ok: false, reason: `${error.message} — пересохраните файл в .docx` };
+    if (error instanceof XlsError) return { ok: false, reason: `${error.message}${/пересохран/.test(error.message) ? "" : " — пересохраните файл как .xlsx"}` };
     if (error instanceof Anthropic.APIError) return { ok: false, reason: `не удалось распознать скан. ${claudeErrorText(error)}` };
     return { ok: false, reason: "не удалось прочитать файл — возможно, он повреждён или защищён паролем" };
   }
