@@ -10,6 +10,10 @@ export type FormCell = {
   // Текст ячейки: для чисел — как записано в файле; пусто — ячейка свободна.
   text: string;
   formula: boolean;
+  // Что записано в ячейке: число, текст, логическое значение, ошибка (нет — число).
+  kind?: "n" | "s" | "b" | "e";
+  // Текст формулы без «=»; у общих формул (одна запись на диапазон) уже пересчитан на эту ячейку. Нужен, чтобы посчитать итоги заново (lib/xlsx-calc.ts).
+  ftext?: string;
   // Ячейка — левая верхняя в объединении: сколько строк и столбцов оно занимает.
   span?: { rows: number; cols: number };
 };
@@ -44,6 +48,22 @@ export function parseRef(ref: string): { col: number; row: number } {
   return { col: columnNumber(m[1]), row: Number(m[2]) };
 }
 export const refOf = (row: number, col: number) => `${columnLetters(col)}${row}`;
+
+// Ссылки формулы, сдвинутые на dRow строк и dCol столбцов: «$F17*G17» → «$F18*G18». Что со знаком «$», не двигается; текст в кавычках не трогается.
+export function shiftFormula(text: string, dRow: number, dCol: number): string {
+  return text
+    .split('"')
+    .map((part, i) =>
+      i % 2 === 1
+        ? part
+        : part.replace(/(?<![A-Za-z0-9_.])(\$?)([A-Z]{1,3})(\$?)(\d{1,7})(?![\dA-Za-z_(])/g, (_w, a: string, letters: string, b: string, digits: string) => {
+            const col = a ? letters : columnLetters(Math.max(1, columnNumber(letters) + dCol));
+            const row = b ? digits : String(Math.max(1, Number(digits) + dRow));
+            return `${a}${col}${b}${row}`;
+          }),
+    )
+    .join('"');
+}
 
 const textOf = (xml: string) =>
   [...xml.replace(/<rPh\b[\s\S]*?<\/rPh>/g, "").matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g)].map((m) => decode(m[1])).join("");
@@ -80,13 +100,18 @@ function sheetList(files: Record<string, Uint8Array>): { name: string; path: str
 
 function readSheet(xml: string, strings: string[]): Map<string, FormCell> {
   const cells = new Map<string, FormCell>();
+  // Общие формулы: полный текст — у одной ячейки, у остальных только номер группы («si»).
+  const masters = new Map<string, { row: number; col: number; text: string }>();
+  const children: { cell: FormCell; si: string }[] = [];
   for (const m of xml.matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
     const head = m[1];
     const ref = attr(` ${head}`, "r");
     if (!ref || !REF.test(ref)) continue;
     const body = m[2] ?? "";
     const type = attr(` ${head}`, "t");
-    const formula = /<f\b/.test(body);
+    const f = /<f\b([^>]*?)(?:\/>|>([\s\S]*?)<\/f>)/.exec(body);
+    const formula = f !== null;
+    const kind: FormCell["kind"] = type === "s" || type === "str" || type === "inlineStr" ? "s" : type === "b" ? "b" : type === "e" ? "e" : "n";
     let text = "";
     if (type === "s") {
       const v = /<v>([\s\S]*?)<\/v>/.exec(body);
@@ -98,7 +123,21 @@ function readSheet(xml: string, strings: string[]): Map<string, FormCell> {
       text = v ? decode(v[1]) : "";
     }
     const { row, col } = parseRef(ref);
-    cells.set(ref, { ref, row, col, text, formula });
+    const cell: FormCell = { ref, row, col, text, formula, kind };
+    if (f) {
+      const own = f[2] ? decode(f[2]).trim() : "";
+      const si = attr(` ${f[1]}`, "si");
+      if (/\st="shared"/.test(` ${f[1]}`) && si !== undefined) {
+        if (own) masters.set(si, { row, col, text: own });
+        else children.push({ cell, si });
+      }
+      if (own) cell.ftext = own;
+    }
+    cells.set(ref, cell);
+  }
+  for (const { cell, si } of children) {
+    const master = masters.get(si);
+    if (master) cell.ftext = shiftFormula(master.text, cell.row - master.row, cell.col - master.col);
   }
   for (const m of xml.matchAll(/<mergeCell\b[^>]*>/g)) {
     const [from, to] = (attr(m[0], "ref") ?? "").split(":");

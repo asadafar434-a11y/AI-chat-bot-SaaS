@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import type { FillItem, ManualPriceRow } from '@/lib/xlsx-plan';
+import type { CheckedTotal, FillItem, ManualPriceRow } from '@/lib/xlsx-plan';
 import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, Info, Plus, Trash2 } from '../lib/icons';
 import { Badge, Button, Card, HelpTip, IconButton } from './ui';
 
@@ -17,6 +17,8 @@ export type ExcelFormView = {
   left: string[];
   /** Строки, где цену за единицу называет только участник: ввод цены. */
   manual?: ManualPriceRow[];
+  /** Итоги по формулам файла после вписанного. */
+  totals?: CheckedTotal[];
 };
 
 export type ExcelFormsProps = {
@@ -33,6 +35,41 @@ export type ExcelFormsProps = {
 const SHOWN = 40;
 const inputClass =
   'h-8 w-28 rounded-md border border-border bg-background px-2 text-right font-mono text-[12px] outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground';
+
+const rub = (n: number) => `${n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽`;
+
+// Итоги, которые Excel покажет в файле после вписанного: приложение считает их по тем же формулам и сверяет с ценой на шаге «Цена» и с НМЦ.
+function Totals({ totals }: { totals: CheckedTotal[] }) {
+  if (totals.length === 0) return null;
+  return (
+    <section aria-label="Итоги по формулам файла" className="border-t border-border px-3 py-2 text-[12px]">
+      <p className="font-medium">Итоги по формулам файла</p>
+      <ul className="mt-1.5 space-y-1">
+        {totals.map((t) => (
+          <li key={`${t.sheet}!${t.ref}`} className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="min-w-0 flex-1 break-words text-muted-foreground">
+              <span className="font-mono">{t.ref}</span> · {t.label}
+            </span>
+            <span className="font-mono text-[13px] font-medium">{rub(t.value)}</span>
+            {t.samePrice && (
+              <Badge tone="success">
+                <CheckCircle2 className="size-3" />
+                равна вашей цене
+              </Badge>
+            )}
+            {t.overNmck && (
+              <Badge tone="danger" wrap>
+                <AlertTriangle className="size-3" />
+                выше начальной цены
+              </Badge>
+            )}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-1.5 text-muted-foreground">Посчитано по формулам вашего файла — Excel при открытии покажет то же. На площадке укажите цену, которая получилась в файле.</p>
+    </section>
+  );
+}
 
 function PriceRows({ form, onPrice }: { form: ExcelFormView; onPrice?: (key: string, value: string) => void }) {
   const rows = form.manual ?? [];
@@ -127,6 +164,7 @@ function FormRow({
         </p>
       )}
       {ready && <PriceRows form={form} onPrice={onPrice} />}
+      {ready && <Totals totals={form.totals ?? []} />}
       {ready && form.filled.length === 0 && (form.manual ?? []).length === 0 && (
         <p className="flex items-start gap-1.5 border-t border-border px-3 py-2 text-[12px] text-muted-foreground">
           <Info className="mt-0.5 size-3.5 shrink-0" />

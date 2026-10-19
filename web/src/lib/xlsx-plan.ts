@@ -6,6 +6,7 @@ import { profileValueOf } from "@/lib/blank-fill";
 import type { Profile } from "@/lib/profile";
 import { lowerWords, nameTerms, stemWord } from "@/lib/registry-text";
 import { refOf, type CellEdit, type FormBook, type FormCell, type FormSheet } from "@/lib/xlsx-form";
+import { totalsOf, type TotalItem } from "@/lib/xlsx-calc";
 import { planPrices, type FillItem, type ManualPriceRow, type PriceInput } from "@/lib/xlsx-price";
 
 export type ExcelGood = {
@@ -35,6 +36,15 @@ export type FillPlan = {
   left: string[];
   /** Строки, где цену за единицу называет только участник: их показываем на ввод. */
   manual: ManualPriceRow[];
+  /** Итоги бланка по его формулам после того, как в него вписано всё из плана (только зависящие от вписанного), и сверка с ценой и НМЦ. */
+  totals: CheckedTotal[];
+};
+
+export type CheckedTotal = TotalItem & {
+  /** Итог равен цене, выбранной на шаге «Цена». */
+  samePrice: boolean;
+  /** Итог выше начальной цены закупки. */
+  overNmck: boolean;
 };
 
 // «…», «___», «-» в пустой графе — подсказка заказчика «впишите сюда», а не значение.
@@ -210,7 +220,7 @@ function planGoods(sheet: FormSheet, rows: Map<number, FormCell[]>, input: FillI
 }
 
 export function planFill(book: FormBook, input: FillInput): FillPlan {
-  const plan: FillPlan = { edits: [], filled: [], left: [], manual: [] };
+  const plan: FillPlan = { edits: [], filled: [], left: [], manual: [], totals: [] };
   const taken = new Set<string>();
   const used = new Set<number>();
   for (const sheet of book.sheets) {
@@ -226,6 +236,14 @@ export function planFill(book: FormBook, input: FillInput): FillPlan {
       plan.manual.push(...prices.manual);
     }
   }
+  // Итоги по формулам файла: считаются заново на вписанных значениях, сверяются с ценой и НМЦ.
+  const overrides = new Map(plan.edits.map((e) => [`${e.sheet}!${e.ref}`, e.value] as const));
+  const { nmck, tpPrice } = input.price ?? {};
+  plan.totals = totalsOf(book, overrides).map((t) => ({
+    ...t,
+    samePrice: Boolean(tpPrice) && Math.abs(t.value - (tpPrice ?? 0)) < 0.005,
+    overNmck: Boolean(nmck) && t.value > (nmck ?? 0) + 0.005,
+  }));
   // Одно и то же «не указано» по десяти позициям — одной строкой.
   const seen = new Set<string>();
   plan.left = plan.left.filter((line) => (seen.has(line) ? false : (seen.add(line), true)));

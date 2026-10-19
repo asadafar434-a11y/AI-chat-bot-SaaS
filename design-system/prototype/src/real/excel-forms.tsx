@@ -81,7 +81,7 @@ export function ExcelFormsBlock() {
     if ('problem' in result) return [{ name, state: 'error', message: result.problem, filled: [], left: [] }];
     const { plan } = result;
     if (nothingToDo(plan)) return [];
-    return [{ name, state: 'ready', filled: plan.filled, left: plan.left, manual: plan.manual }];
+    return [{ name, state: 'ready', filled: plan.filled, left: plan.left, manual: plan.manual, totals: plan.totals }];
   });
 
   async function add(picked: File[]) {

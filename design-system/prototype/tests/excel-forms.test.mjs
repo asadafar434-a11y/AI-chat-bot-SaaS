@@ -108,3 +108,19 @@ test('бланк только с графами цен: скачать нель�
   assert.equal(/Скачать заполненный/.test(out), false);
   assert.equal(/Пока вписывать нечего/.test(out), false);
 });
+
+test('итоги по формулам файла: сумма, пометка «равна вашей цене» и «выше начальной цены», пояснение про площадку', () => {
+  const totals = [
+    { sheet: 'Лист', ref: 'O36', label: 'Итого без НДС', value: 50000000, samePrice: true, overNmck: false },
+    { sheet: 'Лист', ref: 'H47', label: 'Итого за срок действия договора', value: 33333333.5, samePrice: false, overNmck: true },
+  ];
+  const out = render({ forms: [{ name: 'КП.xlsx', state: 'ready', filled: [item('E7', 'Наименование', 'ООО')], left: [], totals }] });
+  assert.match(out, /Итоги по формулам файла/);
+  assert.match(out, /O36<\/span> · Итого без НДС/);
+  assert.match(out, /50[\s ]000[\s ]000,00 ₽/);
+  assert.match(out, /33[\s ]333[\s ]333,50 ₽/);
+  assert.match(out, /равна вашей цене/);
+  assert.match(out, /выше начальной цены/);
+  assert.match(out, /На площадке укажите цену, которая получилась в файле/);
+  assert.equal(/Итоги по формулам файла/.test(render({ forms: [{ name: 'А.xlsx', state: 'ready', filled: [item('C6', 'ИНН', '7701')], left: [] }] })), false, 'без итогов блока нет');
+});
