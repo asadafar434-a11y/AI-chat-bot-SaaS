@@ -396,6 +396,7 @@ function ChecklistItem({ item, onToggle, whereOf }: { item: SubmitItem; onToggle
 
 export function StepPackage({
   hasTp,
+  noApplication = false,
   notice,
   format,
   onFormat,
@@ -423,6 +424,8 @@ export function StepPackage({
   registry,
 }: {
   hasTp: boolean;
+  // Закупка без заявки (у единственного поставщика): файлов нет, остаётся список того, что просит заказчик.
+  noApplication?: boolean;
   // Блок под заголовком шага — например, «документы закупки изменились».
   notice?: ReactNode;
   // Формат файлов: один на все скачивания на этом шаге.
@@ -481,20 +484,22 @@ export function StepPackage({
     <div className="animate-fade-up space-y-5">
       <div>
         <div className="flex items-center gap-2">
-          {hasTp && final.ready ? <ShieldCheck className="size-5 text-success" /> : <AlertTriangle className="size-5 text-warn" />}
+          {!noApplication &&
+            (hasTp && final.ready ? <ShieldCheck className="size-5 text-success" /> : <AlertTriangle className="size-5 text-warn" />)}
           <h1 className="text-2xl font-semibold tracking-tight">
-            {!hasTp ? 'Пакет документов' : final.ready ? 'Пакет документов готов' : 'Пакет почти готов'}
+            {noApplication ? 'Что подготовить' : !hasTp ? 'Пакет документов' : final.ready ? 'Пакет документов готов' : 'Пакет почти готов'}
           </h1>
         </div>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          Скачайте файлы {NAME[format]} по одному или архивом и отметьте, что из списка заказчика уже собрано. Потом подпишите заявку
-          электронной подписью и подайте на площадке.
+          {noApplication
+            ? 'В этой закупке заявки нет: заказчик заключает договор с названным поставщиком. Подготовьте то, что он просит, и отметьте готовое.'
+            : `Скачайте файлы ${NAME[format]} по одному или архивом и отметьте, что из списка заказчика уже собрано. Потом подпишите заявку электронной подписью и подайте на площадке.`}
         </p>
       </div>
 
       {notice}
 
-      {!hasTp ? (
+      {noApplication ? null : !hasTp ? (
         <Card className="flex flex-wrap items-center justify-between gap-3 border-warn/40 bg-warn-surface/30 p-4">
           <div className="flex items-start gap-2.5">
             <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warn" />
@@ -528,9 +533,11 @@ export function StepPackage({
         )
       )}
 
-      {hasTp && <FinalCheck final={final} />}
+      {hasTp && !noApplication && <FinalCheck final={final} />}
 
       {/* Оплата заявки — пока без денег: файлы скачиваются бесплатно */}
+      {!noApplication && (
+      <>
       <Card className="flex flex-wrap items-center justify-between gap-4 p-4">
         <div className="flex items-start gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary">
@@ -610,10 +617,13 @@ export function StepPackage({
           <UserCheck className="size-4" /> Отправить специалисту · {rubShort(PRICE_EXPERT)}
         </Button>
       </Card>
+      </>
+      )}
 
       <div className="grid grid-cols-1 gap-4">
         <div className="min-w-0 space-y-4">
-          {/* Состав пакета */}
+          {/* Состав пакета: без заявки файлов нет, остаются только бланки заказчика, если они есть */}
+          {(!noApplication || (detectedForms?.length ?? 0) > 0) && (
           <Card className="p-0">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
               <div>
@@ -645,6 +655,7 @@ export function StepPackage({
               ))}
             </div>
           </Card>
+          )}
 
           {/* Реестровые номера товаров */}
           {registry}
@@ -655,7 +666,9 @@ export function StepPackage({
               <div>
                 <span className="text-sm font-medium">Что требует заказчик</span>
                 <p className="mt-0.5 text-[12px] text-muted-foreground">
-                  Всё, что заказчик просит приложить. Часть закрывают файлы выше — отметьте, что уже готово.
+                  {noApplication
+                    ? 'Всё, что заказчик просит от участника. Отметьте, что уже готово.'
+                    : 'Всё, что заказчик просит приложить. Часть закрывают файлы выше — отметьте, что уже готово.'}
                 </p>
               </div>
               {items.length > 0 && (

@@ -1,5 +1,5 @@
 import type { Criteria } from "@/lib/criteria";
-import { participantFromPlatform } from "@/lib/law-kind";
+import { hasApplication, participantFromPlatform } from "@/lib/law-kind";
 import type { TpForm } from "@/lib/tp";
 
 // Части заявки собираются отдельными файлами: техническое предложение подают в первую часть,
@@ -50,11 +50,15 @@ export const blankReplaces = (part: TpPart, forms: { title: string }[] = []) => 
   return !!test && forms.some((f) => test(f.title));
 };
 
-export const partsOf = (form: TpForm, criteria?: Criteria, kind?: string, detectedForms?: { title: string }[]): TpPart[] => [
-  "tp",
-  ...(participantFromPlatform(kind) || blankReplaces("participant", detectedForms) ? [] : (["participant"] as const)),
-  ...(form.smeDeclaration && !blankReplaces("declaration", detectedForms) ? (["declaration"] as const) : []),
-  ...(form.hasPrice && !blankReplaces("price", detectedForms) ? (["price"] as const) : []),
-  ...EVIDENCE_RULES.filter(([part]) => criteriaRowsFor(criteria, part).length > 0 && !blankReplaces(part, detectedForms)).map(([part]) => part),
-  ...((form.source.trim() || /запрос котировок/i.test(kind ?? "")) ? (["application"] as const) : []),
-];
+// У закупки без заявки (у единственного поставщика) документов заявки нет совсем.
+export const partsOf = (form: TpForm, criteria?: Criteria, kind?: string, detectedForms?: { title: string }[]): TpPart[] => {
+  if (!hasApplication(kind)) return [];
+  return [
+    "tp",
+    ...(participantFromPlatform(kind) || blankReplaces("participant", detectedForms) ? [] : (["participant"] as const)),
+    ...(form.smeDeclaration && !blankReplaces("declaration", detectedForms) ? (["declaration"] as const) : []),
+    ...(form.hasPrice && !blankReplaces("price", detectedForms) ? (["price"] as const) : []),
+    ...EVIDENCE_RULES.filter(([part]) => criteriaRowsFor(criteria, part).length > 0 && !blankReplaces(part, detectedForms)).map(([part]) => part),
+    ...((form.source.trim() || /запрос котировок/i.test(kind ?? "")) ? (["application"] as const) : []),
+  ];
+};

@@ -2,6 +2,7 @@ import { checkCounts } from "@/lib/check";
 import { tpChanges } from "@/lib/doc-changes";
 import { fieldsOf } from "@/lib/fields";
 import { requiredItems } from "@/lib/fulfillment";
+import { hasApplication } from "@/lib/law-kind";
 import { plural } from "@/lib/plural";
 import { EMPTY_PROFILE, type Profile } from "@/lib/profile";
 import type { Purchase } from "@/lib/purchase";
@@ -63,6 +64,8 @@ export function stepsOf(p: Purchase, profile?: Profile): Step[] {
   const asked = requiredItems(p, profile);
   const ready = asked.filter((d) => (p.submitReady ?? []).includes(d.text)).length;
   const files = p.tp ? partsOf(p.tp.form, p.criteria, p.kind, p.tp.detectedForms).length : 0;
+  // У единственного поставщика заявки нет: цену называет заказчик, документы заявки не составляются, остаётся список того, что просит извещение.
+  const noApplication = !hasApplication(p.kind);
   // Документы закупки изменились после составления ТП: сначала проверить, что оно актуально, потом вписывать (lib/doc-changes.ts).
   const stale = tpChanges(p) !== null;
 
@@ -94,7 +97,11 @@ export function stepsOf(p: Purchase, profile?: Profile): Step[] {
     title: "Цена",
     href: `${base}/price`,
     paths: [`${base}/price`],
-    ...(!price
+    ...(noApplication
+      ? nmck
+        ? { state: "done" as const, status: rubText(nmck), tone: "ok" as const }
+        : { state: "todo" as const, status: "не указана", tone: "calm" as const }
+      : !price
       ? { state: "todo" as const, status: "не выбрана", tone: "calm" as const }
       : nmck && price > nmck
         ? { state: "fix" as const, status: "выше начальной", tone: "bad" as const }
@@ -107,7 +114,9 @@ export function stepsOf(p: Purchase, profile?: Profile): Step[] {
     title: "Проверка",
     href: `${base}/check`,
     paths: [`${base}/check`],
-    ...(!p.tp
+    ...(noApplication
+      ? { state: "done" as const, status: "заявки нет", tone: "calm" as const }
+      : !p.tp
       ? { state: "todo" as const, status: "не составлена", tone: "calm" as const }
       : stale
         ? { state: "fix" as const, status: "документы изменились", tone: "warn" as const }
@@ -128,7 +137,11 @@ export function stepsOf(p: Purchase, profile?: Profile): Step[] {
     title: "Пакет",
     href: `${base}/package`,
     paths: [`${base}/package`, `${base}/tp`],
-    ...(!p.tp
+    ...(noApplication
+      ? ready < asked.length
+        ? { state: "fix" as const, status: `соберите ${asked.length - ready} из ${asked.length}`, tone: "warn" as const }
+        : { state: "done" as const, status: "всё собрано", tone: "ok" as const }
+      : !p.tp
       ? { state: "todo" as const, status: "нет документов", tone: "calm" as const }
       : review.state !== "done"
         ? { state: "todo" as const, status: count(files, "файл", "файла", "файлов"), tone: "calm" as const }

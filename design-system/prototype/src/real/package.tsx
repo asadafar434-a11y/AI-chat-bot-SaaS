@@ -10,6 +10,7 @@ import { filledCount, PROFILE_KEYS } from '@/lib/profile';
 import { parseRubles } from '@/lib/rub-words';
 import { specificationForms } from '@/lib/spec-form';
 import type { PartKey } from '@/lib/my-docs';
+import { hasApplication } from '@/lib/law-kind';
 import { PART_TITLES, partsOf, type TpPart } from '@/lib/tp-parts';
 import type { DetectedForm } from '@/lib/tp';
 import { formPages } from '@/lib/form-pages';
@@ -90,6 +91,8 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
   const my = useMyDocs();
   const factsData = useFacts();
   const tp = purchase.tp;
+  // У единственного поставщика заявки нет: ни файлов, ни итоговой проверки заявки, остаётся список того, что просит заказчик.
+  const noApplication = !hasApplication(purchase.kind);
   // Word или PDF — выбор действует на все скачивания этого шага.
   const [format, setFormat] = useState<FileFormat>('docx');
 
@@ -209,6 +212,7 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
   return (
     <StepPackage
       hasTp={!!tp}
+      noApplication={noApplication}
       notice={changes && <DocsChanged changes={changes} onConfirm={() => update({ tpDocs: purchase.docs })} />}
       format={format}
       onFormat={setFormat}
@@ -229,8 +233,8 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
       onFix={onFix}
       onTariffs={onTariffs}
       onBack={onBack}
-      auditReport={appAuditReport}
-      scoringReport={appScoringReport}
+      auditReport={noApplication ? undefined : appAuditReport}
+      scoringReport={noApplication ? undefined : appScoringReport}
       detectedForms={blanks}
       onDownloadForm={downloadDetectedForm}
       registry={tp ? <RegistryBlock /> : undefined}

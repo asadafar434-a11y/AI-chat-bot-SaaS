@@ -5,6 +5,7 @@ import { applyField, completeness, fieldsOf } from '@/lib/fields';
 import { errorMessage, errorText } from '@/lib/http-error';
 import { samplesOf } from '@/lib/me-store';
 import { plural } from '@/lib/plural';
+import { hasApplication } from '@/lib/law-kind';
 import { identityValues } from '@/lib/profile';
 import { aiHeaders } from '@/lib/purchase';
 import { createLocator, describeSource } from '@/lib/doc-locate';
@@ -100,6 +101,31 @@ function ComposeCard({ onDone }: { onDone: () => void }) {
   );
 }
 
+// Закупка у единственного поставщика: заявки нет, проверять и составлять нечего.
+function NoApplication({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
+  return (
+    <div className="animate-fade-up space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Проверка перед подачей</h1>
+        <p className="mt-1.5 text-sm text-muted-foreground">В этой закупке заявки нет.</p>
+      </div>
+      <Card className="space-y-3 p-5">
+        <p className="text-sm font-medium">Документы заявки не составляются</p>
+        <p className="max-w-[70ch] text-[13px] text-muted-foreground">
+          Закупка у единственного поставщика: заказчик заключает договор с названным поставщиком. Ни технического предложения, ни анкеты, ни цены
+          в заявке подавать не нужно. Что от вас требуется — на следующем шаге, в списке «Что подготовить».
+        </p>
+      </Card>
+      <div className="flex justify-between">
+        <Button variant="ghost" onClick={onBack}>
+          ← Назад
+        </Button>
+        <Button onClick={onNext}>Что подготовить →</Button>
+      </div>
+    </div>
+  );
+}
+
 // Шаг «Проверка» на настоящей закупке: карта полей заявки, вписанное сразу уходит в документы.
 export function PurchaseReview({
   onGo,
@@ -178,6 +204,7 @@ export function PurchaseReview({
     ].filter((w): w is string => Boolean(w));
   }, [tp, profile, documents]);
 
+  if (!hasApplication(purchase.kind)) return <NoApplication onNext={onNext} onBack={onBack} />;
   if (!purchase.tp) return <ComposeCard onDone={() => window.scrollTo({ top: 0 })} />;
   if (!my.ready) return <p className="text-sm text-muted-foreground">Сверяю документы с реквизитами…</p>;
 

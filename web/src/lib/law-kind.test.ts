@@ -1,7 +1,7 @@
 // Закон и способ закупки: тексты на шагах «Цена» и «Анализ» не говорят про аукцион там, где аукциона нет — npm test.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { isAuction, isElectronic, lawOfKind, participantFromPlatform, platformNote, priceIntro } from "./law-kind.ts";
+import { hasApplication, isAuction, isElectronic, isSingleSupplier, lawOfKind, participantFromPlatform, platformNote, priceIntro } from "./law-kind.ts";
 
 test("закон и способ определяются по строке из разбора документов", () => {
   assert.equal(lawOfKind("44-ФЗ · запрос котировок"), "44");
@@ -35,4 +35,23 @@ test("«Анализ»: пояснение о сведениях участни�
   assert.equal(platformNote("223-ФЗ · запрос котировок"), null, "по 223-ФЗ анкету подают, если требует документация");
   assert.equal(platformNote("44-ФЗ · закрытый аукцион"), null, "на бумаге участник подаёт сведения сам");
   assert.equal(participantFromPlatform("44-ФЗ · запрос котировок"), platformNote("44-ФЗ · запрос котировок") !== null);
+});
+
+test("закупка у единственного поставщика: заявки нет, цену называет заказчик, торгов нет", () => {
+  for (const kind of ["223-ФЗ · закупка у единственного поставщика", "закупка у единственного поставщика (исполнителя, подрядчика)", "44-ФЗ · закупка у единственного подрядчика"]) {
+    assert.equal(isSingleSupplier(kind), true, kind);
+    assert.equal(hasApplication(kind), false, kind);
+    assert.match(priceIntro(kind), /^Цену называет заказчик: торгов и заявки нет./, kind);
+  }
+  for (const kind of ["223-ФЗ · аукцион в электронной форме", "44-ФЗ · запрос котировок", "223-ФЗ · неконкурентная закупка среди МСП", ""]) {
+    assert.equal(isSingleSupplier(kind), false, kind);
+    assert.equal(hasApplication(kind), true, kind);
+  }
+});
+
+test("«Анализ»: если закон в документах не назван, об этом сказано; пустая строка — молчим", () => {
+  assert.match(platformNote("электронный аукцион") ?? "", /не назван закон/);
+  assert.equal(platformNote(""), null);
+  assert.equal(platformNote("   "), null);
+  assert.equal(platformNote("223-ФЗ · аукцион в электронной форме"), null);
 });

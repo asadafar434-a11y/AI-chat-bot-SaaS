@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { TrendingDown, Info, ChevronDown, AlertTriangle, CheckCircle2 } from '../lib/icons';
 import { Button, Card, HelpTip, Tooltip, cx } from './ui';
-import { priceIntro } from '@/lib/law-kind';
+import { isSingleSupplier, priceIntro } from '@/lib/law-kind';
 import { priceFloor, type PriceCalc } from '@/lib/price-floor';
 import { splitPrice, toKop } from '@/lib/price-split';
 
@@ -42,6 +42,8 @@ export function StepPricing({
   onBack: () => void;
 }) {
   const [showCosts, setShowCosts] = useState(() => !calc.costs);
+  // Закупка у единственного поставщика: цену называет заказчик, торгов и заявки нет — ползунка снижения нет.
+  const fixed = isSingleSupplier(kind);
 
   const nmck = calc.nmck ?? 0;
   const price = calc.price ?? null;
@@ -84,7 +86,19 @@ export function StepPricing({
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-        {/* Ползунок снижения */}
+        {fixed ? (
+          <Card className="p-5">
+            <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">Цена договора</p>
+            {nmck > 0 ? (
+              <>
+                <p className="mt-3 font-mono text-3xl font-semibold tabular-nums">{rub(nmck)}</p>
+                <p className="mt-1 text-xs text-muted-foreground">названа заказчиком в извещении · торгов нет</p>
+              </>
+            ) : (
+              <p className="mt-3 text-sm text-muted-foreground">Цена в документах не нашлась — впишите её в «Моих расходах» справа.</p>
+            )}
+          </Card>
+        ) : (
         <Card className="p-5">
           <div className="flex items-end justify-between gap-3">
             <div>
@@ -201,13 +215,18 @@ export function StepPricing({
             </div>
           )}
         </Card>
+        )}
 
         {/* До какой цены снижаться — вместо «вероятности победы»: её нечем честно посчитать */}
         <Card className="flex flex-col p-5">
           <p className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-            До какой цены снижаться
+            {fixed ? 'Что останется вам' : 'До какой цены снижаться'}
             <HelpTip
-              content="Самая низкая цена без убытка: ваши расходы, налог с выручки и стоимость обеспечения исполнения. С антидемпингом — с повышенным обеспечением."
+              content={
+                fixed
+                  ? 'Самая низкая цена без убытка: ваши расходы, налог с выручки и стоимость обеспечения исполнения. Цена заказчика выше — договор в плюс.'
+                  : 'Самая низкая цена без убытка: ваши расходы, налог с выручки и стоимость обеспечения исполнения. С антидемпингом — с повышенным обеспечением.'
+              }
               align="end"
             />
           </p>
@@ -215,7 +234,7 @@ export function StepPricing({
             <>
               <p className="mt-3 font-mono text-3xl font-semibold tabular-nums">{rub(floorPrice)}</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                нижняя цена{floorDrop !== null ? ` · −${pctText(floorDrop)}% от НМЦК` : ''}
+                нижняя цена{floorDrop !== null && !fixed ? ` · −${pctText(floorDrop)}% от НМЦК` : ''}
               </p>
             </>
           ) : (
@@ -263,16 +282,18 @@ export function StepPricing({
         </Card>
       </div>
 
-      <p className="flex items-start gap-1.5 text-[12px] text-muted-foreground">
-        <Info className="mt-0.5 size-3.5 shrink-0" />
-        Вероятность победы не показываем: без истории торгов заказчика её нечем честно посчитать.
-      </p>
+      {!fixed && (
+        <p className="flex items-start gap-1.5 text-[12px] text-muted-foreground">
+          <Info className="mt-0.5 size-3.5 shrink-0" />
+          Вероятность победы не показываем: без истории торгов заказчика её нечем честно посчитать.
+        </p>
+      )}
 
       <div className="flex justify-between">
         <Button variant="ghost" onClick={onBack}>
           ← Назад
         </Button>
-        <Button onClick={onNext}>Проверить заявку →</Button>
+        <Button onClick={onNext}>{fixed ? 'Дальше →' : 'Проверить заявку →'}</Button>
       </div>
     </div>
   );

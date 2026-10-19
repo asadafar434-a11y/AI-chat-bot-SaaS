@@ -555,3 +555,22 @@ test('шаг «Цена»: торг по сумме цен единиц — су
   const off = html(h(mods.pricing.StepPricing, props));
   assert.doesNotMatch(off, /Торг: сумма цен единиц|Цены единиц/);
 });
+
+test('шаг «Цена»: у единственного поставщика цену называет заказчик — без ползунка, антидемпинга и «поставить цену в заявку»', () => {
+  const calc = { nmck: 3_736_000, price: null, costs: 3_000_000, extra: null, taxPct: null, guaranteeRatePct: null, days: null, securityPct: null };
+  const props = { kind: '223-ФЗ · закупка у единственного поставщика', calc, set() {}, onPutPrice() {}, notes: [], onNext() {}, onBack() {} };
+  const out = html(h(mods.pricing.StepPricing, props));
+  assert.match(out, /Цену называет заказчик: торгов и заявки нет./);
+  assert.match(out, /3[s ]736[s ]000 ₽/);
+  assert.match(out, /названа заказчиком в извещении · торгов нет/);
+  assert.match(out, /Что останется вам/);
+  assert.match(out, /Дальше →/);
+  assert.doesNotMatch(out, /type="range"|Снижение от НМЦК|антидемпинг|Поставить цену в заявку|Вероятность победы|Проверить заявку/i);
+  // Обычная закупка — ползунок на месте.
+  const usual = html(h(mods.pricing.StepPricing, { ...props, kind: '44-ФЗ · электронный аукцион' }));
+  assert.match(usual, /type="range"/);
+  assert.match(usual, /Проверить заявку →/);
+  // Цены в документах нет — просим вписать, а не рисуем нули.
+  const empty = html(h(mods.pricing.StepPricing, { ...props, calc: { ...calc, nmck: null } }));
+  assert.match(empty, /Цена в документах не нашлась/);
+});

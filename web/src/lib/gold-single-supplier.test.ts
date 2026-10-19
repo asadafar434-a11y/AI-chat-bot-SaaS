@@ -1,6 +1,6 @@
 // Эталон «ДРСУ Камчатка»: закупка дизельного топлива у единственного поставщика (заявки нет). Настоящий файл заказчика читает код продукта — npm test.
 // Запросов к ИИ тут нет. Разбор — «Татьяна-Примеры документов/ДРСУ Камчатка (у единственного поставщика, дизтопливо)/РАЗБОР.md».
-// Тесты с пометкой todo — известные пробелы (список «Чего продукт пока не умеет», пункты 42–45): сейчас не проходят, после исправления пометку снимают.
+// Пробелы 42–45 закрыты 19.10.2026.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -8,7 +8,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { extractText } from "./extract-text.ts";
 import { ruleOf, type PlanContext } from "./fulfillment.ts";
-import { lawOfKind, priceIntro } from "./law-kind.ts";
+import { hasApplication, lawOfKind, platformNote, priceIntro } from "./law-kind.ts";
 import { PLAIN_FORM } from "./tp.ts";
 import { partsOf } from "./tp-parts.ts";
 
@@ -71,17 +71,37 @@ test("закон по строке без «223-ФЗ» не определяет
   assert.equal(lawOfKind(KIND), "223");
 });
 
-// ——— Известные пробелы ———
+// ——— Пробелы 42–45 (закрыты 19.10.2026) ———
 
-test("для закупки у единственного поставщика техническое предложение и анкета не составляются", { todo: "пункт 42 списка: заявки нет, а продукт составляет оба документа" }, () => {
+test("для закупки у единственного поставщика заявки нет: ни технического предложения, ни анкеты (пункт 42)", () => {
   assert.deepEqual(partsOf(PLAIN_FORM, undefined, KIND), []);
+  assert.deepEqual(partsOf(PLAIN_FORM, undefined, "закупка у единственного поставщика (подрядчика, исполнителя)"), []);
+  assert.equal(hasApplication(KIND), false);
+  assert.equal(hasApplication("223-ФЗ · аукцион в электронной форме"), true);
 });
 
-test("на шаге «Цена» для закупки у единственного поставщика не сказано «Цену вы указываете в заявке»", { todo: "пункт 43 списка: цену называет заказчик, заявки нет" }, () => {
-  assert.doesNotMatch(priceIntro(KIND), /в заявке/);
+test("на шаге «Цена» цену называет заказчик, про заявку и торги не сказано (пункт 43)", () => {
+  const text = priceIntro(KIND);
+  assert.match(text, /^Цену называет заказчик: торгов и заявки нет./);
+  assert.doesNotMatch(text, /в заявке|аукцион/);
 });
 
-test("«отсутствие в реестре недобросовестных поставщиков» не принимается за «Сведения об участнике»", { todo: "пункт 44 списка: правило participant совпадает по «сведений об участниках»" }, () => {
+test("«отсутствие в реестре недобросовестных поставщиков» — не «Сведения об участнике», готовить нечего (пункт 44)", () => {
   const found = ruleOf({ text: "Отсутствие сведений об участниках размещения заказа в реестре недобросовестных поставщиков", quote: "" }, CTX);
-  assert.notEqual(found.rule, "participant");
+  assert.deepEqual([found.rule, found.plan.mode, found.plan.mandatory, found.plan.blocks], ["rnp", "confirm", false, false]);
+  assert.match(found.plan.todo, /Отдельного документа не просят/);
+  // Сокращение «РНП» узнаётся, а «сведения об участнике» без реестра — по-прежнему анкета.
+  assert.equal(ruleOf({ text: "Участник не включён в РНП", quote: "" }, CTX).rule, "rnp");
+  assert.equal(ruleOf({ text: "Сведения об участнике закупки", quote: "" }, CTX).rule, "participant");
+});
+
+test("закон в извещении не назван: «Анализ» говорит об этом и про ГУП; у единственного поставщика — что заявки нет (пункт 45)", () => {
+  const text = platformNote("закупка у единственного поставщика") ?? "";
+  assert.match(text, /заявку не подают/);
+  assert.match(text, /не назван закон — 44-ФЗ или 223-ФЗ/);
+  assert.match(text, /унитарные предприятия и госкомпании закупают по 223-ФЗ/);
+  // Закон назван — про закон молчим, но про отсутствие заявки говорим.
+  const named = platformNote(KIND) ?? "";
+  assert.match(named, /заявку не подают/);
+  assert.doesNotMatch(named, /не назван закон/);
 });

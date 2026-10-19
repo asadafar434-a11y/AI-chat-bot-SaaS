@@ -90,3 +90,22 @@ test("пакет: пока проверка не пройдена — число
   const ready = purchase({ tp: tp("Зал на 300 мест"), submitReady: ["Предложение участника", "Выписка из ЕГРЮЛ"] });
   assert.deepEqual(view(ready)[4], ["package", "done", "можно подавать", "ok"]);
 });
+
+test("закупка у единственного поставщика: цена названа заказчиком, заявки нет, остаётся список того, что просит заказчик", () => {
+  const p = purchase({
+    kind: "223-ФЗ · закупка у единственного поставщика",
+    price: "3 736 000,00 ₽",
+    requirements: { who: [], submit: [req("Документ о полномочиях"), req("Товар должен иметь сертификаты качества")], scope: [], terms: [] },
+  });
+  assert.deepEqual(view(p), [
+    ["upload", "done", "2 документа", "calm"],
+    ["analysis", "done", "выписаны: 2 пункта", "calm"],
+    ["price", "done", "3 736 000 ₽", "ok"],
+    ["review", "done", "заявки нет", "calm"],
+    ["package", "fix", "соберите 2 из 2", "warn"],
+  ]);
+  const done = { ...p, submitReady: p.requirements.submit.map((r) => r.text) };
+  assert.deepEqual(view(done)[4], ["package", "done", "всё собрано", "ok"]);
+  // Начальной цены в документах нет — шаг «Цена» ждёт.
+  assert.deepEqual(view({ ...p, price: "" })[2], ["price", "todo", "не указана", "calm"]);
+});

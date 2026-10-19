@@ -106,3 +106,19 @@ test('слово без пробелов (имя файла) переносит�
   const body = css.slice(css.indexOf('\nbody {'), css.indexOf('}', css.indexOf('\nbody {')));
   assert.match(body, /overflow-wrap:\s*anywhere/);
 });
+
+test('«Пакет» без заявки (у единственного поставщика): «Что подготовить» и список заказчика, без файлов, оплаты и проверки специалистом', () => {
+  const items = [
+    { text: 'Документ о полномочиях', source: 'Извещение', quote: 'Документ о полномочиях', verified: true, ready: false, required: true },
+    { text: 'Отсутствие в реестре недобросовестных поставщиков', source: 'Извещение', quote: 'РНП', verified: true, ready: false, required: false, note: 'Отдельного документа не просят' },
+  ];
+  const out = html(h(pkg.StepPackage, props({ hasTp: false, noApplication: true, rows: [], count: 0, items, registry: undefined })));
+  assert.match(out, /Что подготовить/);
+  assert.match(out, /В этой закупке заявки нет: заказчик заключает договор с названным поставщиком/);
+  assert.match(out, /Что требует заказчик/);
+  assert.match(out, /Всё, что заказчик просит от участника. Отметьте, что уже готово./);
+  assert.match(out, /Документ о полномочиях/);
+  assert.doesNotMatch(out, /Состав пакета|Всё архивом|Проверка специалистом|Заявка под ключ|Документы заявки ещё не составлены|Формат:|Пакет документов/);
+  // Обычная закупка без документов — по-прежнему просим составить.
+  assert.match(html(h(pkg.StepPackage, props({ hasTp: false }))), /Документы заявки ещё не составлены/);
+});

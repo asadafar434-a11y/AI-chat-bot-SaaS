@@ -4,6 +4,7 @@ import { plural } from "@/lib/plural";
 import { titleOf, type Purchase } from "@/lib/purchase";
 import type { ReqItem } from "@/lib/requirements";
 import { fieldsOf } from "@/lib/fields";
+import { hasApplication } from "@/lib/law-kind";
 import { contextOf, holdsSubmission, ruleOf, tpOptional } from "@/lib/fulfillment";
 import { EMPTY_PROFILE, type Profile } from "@/lib/profile";
 import { PART_TITLES, partsOf, type TpPart } from "@/lib/tp-parts";
@@ -33,6 +34,8 @@ const REVIEW: BadgeInfo = { tone: "warn", text: "требует проверки
 // Файлы, которые пишет приложение, — по порядку частей заявки, со статусом и тем, что сделать.
 // Документы составляются на шаге «Проверка»: пока их нет, у ТП — «Составить».
 export function fileRows(p: Purchase, state: FilesState): FileRow[] {
+  // Закупка без заявки (у единственного поставщика): файлов, которые составляет приложение, нет.
+  if (!hasApplication(p.kind)) return [];
   const stale = tpChanges(p) !== null;
   // Сколько полей ТП вписать или исправить — тем же счётом, что у шага «Проверка»: жёлтые места и исполнители.
   const fill = p.tp
