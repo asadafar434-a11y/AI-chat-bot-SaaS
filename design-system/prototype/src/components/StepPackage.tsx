@@ -422,6 +422,7 @@ export function StepPackage({
   detectedForms,
   onDownloadForm,
   registry,
+  excelForms,
 }: {
   hasTp: boolean;
   // Закупка без заявки (у единственного поставщика): файлов нет, остаётся список того, что просит заказчик.
@@ -461,6 +462,8 @@ export function StepPackage({
   onDownloadForm?: (df: DetectedForm) => void;
   // Блок «Реестровые номера товаров» (real/registry.tsx); на макете без закупки не задаётся.
   registry?: ReactNode;
+  // Блок «Excel-бланки заказчика» (real/excel-forms.tsx); на макете без закупки не задаётся.
+  excelForms?: ReactNode;
 }) {
   const [openPart, setOpenPart] = useState<TpPart | null>(null);
   const [redo, setRedo] = useState(false);
@@ -659,6 +662,9 @@ export function StepPackage({
 
           {/* Реестровые номера товаров */}
           {registry}
+
+          {/* Excel-бланки заказчика */}
+          {excelForms}
 
           {/* Что требует заказчик */}
           <Card className="p-0">

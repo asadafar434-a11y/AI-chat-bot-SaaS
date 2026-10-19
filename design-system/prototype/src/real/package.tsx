@@ -26,6 +26,7 @@ import { useFacts, useMyDocs } from './hooks';
 import { usePurchase } from './purchase-provider';
 import { useSubmission } from './submission';
 import { RegistryBlock } from './registry';
+import { ExcelFormsBlock } from './excel-forms';
 
 // Документ, который ИИ составил по форме заказчика: заголовок, абзацы и таблицы; пропуски «[…]» — жёлтые.
 function PartBody({ doc }: { doc: PartDoc }) {
@@ -238,6 +239,7 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
       detectedForms={blanks}
       onDownloadForm={downloadDetectedForm}
       registry={tp ? <RegistryBlock /> : undefined}
+      excelForms={noApplication ? undefined : <ExcelFormsBlock />}
     />
   );
 }

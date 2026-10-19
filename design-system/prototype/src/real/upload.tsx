@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { carryReady } from '@/lib/application-files';
+import { saveExcelFiles } from '@/lib/forms-store';
 import { lawText } from '@/lib/dashboard';
 import { extractRequirements, fromRequirements, type Purchase } from '@/lib/purchase';
 import { savePurchaseWithDocuments } from '@/lib/purchase-store';
@@ -25,12 +26,15 @@ export function NewPurchaseUpload({ onCreated }: { onCreated: (id: string) => vo
   const { documents: docs, failed } = upload;
   const [busy, setBusy] = useState<'reading' | 'analyzing' | null>(null);
   const [error, setError] = useState('');
+  // Файлы как они пришли: Excel-бланки заказчика сохраняются целиком, в них потом вписываются реквизиты (lib/forms-store.ts).
+  const sources = useRef(new Map<string, File>());
 
   async function add(files: File[]) {
     setBusy('reading');
     setError('');
     try {
       const read = await readDocuments(files);
+      for (const file of files) sources.current.set(file.name, file);
       setUpload((prev) => mergeUpload(prev, read));
     } catch (e) {
       setError(errorMessage(e));
@@ -54,6 +58,7 @@ export function NewPurchaseUpload({ onCreated }: { onCreated: (id: string) => vo
         unreadable: failed,
       };
       await savePurchaseWithDocuments(purchase, docs);
+      await saveExcelFiles(id, docs.flatMap((d) => sources.current.get(d.name) ?? []));
       onCreated(id);
     } catch (e) {
       setError(errorMessage(e));
@@ -98,6 +103,7 @@ export function PurchaseUpload({ onNext }: { onNext: () => void }) {
         unreadable: merged.failed,
         submitReady: carryReady(latest.requirements.submit, latest.submitReady ?? [], fresh.requirements.submit),
       }));
+      await saveExcelFiles(purchase.id, files);
     } catch (e) {
       setError(`Документы не добавлены. ${errorMessage(e)}`);
     } finally {

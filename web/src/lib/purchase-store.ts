@@ -2,6 +2,7 @@ import { notifyDataChanged } from "@/lib/data-events";
 import { fromStore, toStore } from "@/lib/data-format";
 import { STORES, transaction } from "@/lib/db";
 import { stampsOf } from "@/lib/doc-changes";
+import { deleteFormsOf } from "@/lib/forms-store";
 import type { Purchase } from "@/lib/purchase";
 import type { FailedFile, SentDocument } from "@/lib/read-documents";
 import {
@@ -120,6 +121,7 @@ export const deletePurchase = async (id: string): Promise<void> => {
     tx.objectStore(PURCHASES).delete(id);
     tx.objectStore(DOCUMENTS).delete(id);
   });
+  await deleteFormsOf(id).catch(() => undefined);
   if (serverWritesEnabled()) {
     await deleteServerWrite(`/api/writes/purchases/${encodeURIComponent(id)}`);
   }

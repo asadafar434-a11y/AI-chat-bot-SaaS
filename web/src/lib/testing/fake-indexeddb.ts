@@ -160,7 +160,15 @@ export function installFakeIndexedDB(): FakeIndexedDb {
     return request;
   };
 
-  (globalThis as Record<string, unknown>).indexedDB = { open };
+  // Удаление базы целиком — «Удалить все мои данные» (db.ts → deleteDatabases): следующий open создаёт пустую базу.
+  const deleteDatabase = (name: string) => {
+    const request = new FakeRequest();
+    databases.delete(name);
+    queueMicrotask(() => request.onsuccess?.());
+    return request;
+  };
+
+  (globalThis as Record<string, unknown>).indexedDB = { open, deleteDatabase };
   (globalThis as Record<string, unknown>).window = {
     dispatchEvent: () => true,
     addEventListener: () => {},
