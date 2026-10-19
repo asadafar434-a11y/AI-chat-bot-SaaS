@@ -59,15 +59,27 @@ export async function tablesByPage(
   const out = new Map<number, string[][][]>();
   if (pages.length > MAX_TABLE_PAGES) return out;
   const started = now();
+  let logged = false;
   for (let i = 0; i < pages.length; i += batch) {
     if (now() - started > budgetMs) break;
+    const part = pages.slice(i, i + batch);
     try {
-      const result = await parser.getTable({ partial: pages.slice(i, i + batch) });
+      const result = await parser.getTable({ partial: part });
       for (const page of result.pages) if (page.tables.length) out.set(page.num, page.tables);
     } catch (error) {
-      // Без разметки таблиц текст страниц остаётся как был: это не повод не читать файл.
-      console.error("pdf tables", error);
-      break;
+      // Без разметки таблиц текст страниц остаётся как был: это не повод не читать файл. Одна «сломанная» страница (у библиотеки так бывает на
+      // чертежах и сложных линиях) не должна лишать разметки соседние: пачку, где был сбой, просим по одной странице, дальше идём как обычно.
+      if (!logged) console.error("pdf tables", error);
+      logged = true;
+      for (const num of part) {
+        if (now() - started > budgetMs) break;
+        try {
+          const one = await parser.getTable({ partial: [num] });
+          for (const page of one.pages) if (page.tables.length) out.set(page.num, page.tables);
+        } catch {
+          // эта страница остаётся без разметки
+        }
+      }
     }
   }
   return out;

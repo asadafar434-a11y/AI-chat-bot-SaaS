@@ -68,3 +68,14 @@ test("запрет «скрытых листов, столбцов, строк, 
   assert.equal(forbidsHidden([{ text: "Применение в электронных документах скрытых листов, столбцов, строк, текста и т.п. не допускается." }]), true);
   assert.equal(forbidsHidden([{ text: "Файл содержит листы, столбцы и строки; и т.п. допускается." }]), false);
 });
+
+test("Word: «w:vanish» в свойствах знака абзаца у пустых абзацев (Word ставит сам) — не скрытый текст; в куске с буквами — скрытый", async () => {
+  const file = (xml: string) => new File([new Uint8Array(docx({ body: xml }))], "документация.docx");
+  const empty = '<w:p><w:pPr><w:rPr><w:vanish/></w:rPr></w:pPr></w:p>';
+  const clean = await extractText(file(empty + para("<w:r><w:t>обычный текст</w:t></w:r>")), { ocr: false });
+  assert.equal(clean.ok && clean.hidden, undefined, "пустой абзац со скрытым знаком абзаца — не повод тревожиться");
+  const spaces = await extractText(file(para('<w:r><w:rPr><w:vanish/></w:rPr><w:t xml:space="preserve"> </w:t></w:r>') + para("<w:r><w:t>текст</w:t></w:r>")), { ocr: false });
+  assert.equal(spaces.ok && spaces.hidden, undefined, "скрытый пробел — тоже не текст");
+  const real = await extractText(file(empty + para('<w:r><w:rPr><w:b/><w:vanish/></w:rPr><w:t xml:space="preserve">скрыто </w:t></w:r>')), { ocr: false });
+  assert.deepEqual(real.ok && real.hidden, ["в тексте есть скрытый шрифт"]);
+});

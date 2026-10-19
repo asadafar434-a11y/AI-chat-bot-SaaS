@@ -27,7 +27,9 @@ const CLAUSE = /^\s*((?:\d+\.)+\d*|\d+\))\s*/;
 const MAX_DUTIES = 6;
 const TEXT_MAX = 230;
 
-export const isContract = (doc: Doc) => /договор|контракт/i.test(doc.name) || /^\s*(проект\s+)?(договор|контракт)\s*(№|\n|$)/i.test(doc.text.slice(0, 120));
+// Файл называют по-разному («Приложение № 2 к ДоЗ_ПД»), поэтому договор узнаётся и по первой строке: «Договор поставки № …», «ДОГОВОР ПОДРЯДА №», «Проект контракта».
+export const isContract = (doc: Doc) =>
+  /договор|контракт/i.test(doc.name) || /^\s*(проект\s+)?(договор|контракт)[а-яё]*(\s+[а-яё]+){0,4}\s*(№|N\s|\n|$)/i.test(doc.text.slice(0, 160));
 
 const clean = (s: string) => s.replace(/\s+/g, " ").trim();
 const shorten = (s: string) => (s.length > TEXT_MAX ? `${s.slice(0, TEXT_MAX - 1).trimEnd()}…` : s);

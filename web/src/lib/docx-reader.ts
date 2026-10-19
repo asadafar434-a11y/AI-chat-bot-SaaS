@@ -11,6 +11,11 @@ import { elements, kid, kids, MAX_XML_CHARS, parseXml, val, type XEl } from "@/l
 
 export class DocxError extends Error {}
 
+// Скрытый шрифт — «w:vanish» в свойствах куска текста (w:r/w:rPr), в котором есть буквы. «w:vanish» в свойствах знака абзаца (w:pPr/w:rPr) у пустых
+// абзацев Word ставит сам: текста там нет, прятать нечего (так было в документации «ДГК» и «РВК-Комсомольск» — ложная тревога).
+const HIDDEN_RUN = /<w:r[ >](?:(?!<\/w:r>)[\s\S])*?<w:rPr>(?:(?!<\/w:rPr>)[\s\S])*?<w:vanish(?![\w:])(?![^>]*w:val="(?:0|false|off)")[^>]*>(?:(?!<\/w:r>)[\s\S])*?<w:t(?:\s[^>]*)?>[^<]*[^\s<]/;
+export const hasHiddenRun = (documentXml: string): boolean => HIDDEN_RUN.test(documentXml);
+
 // hiddenText — в тексте есть «скрытый» шрифт (w:vanish): на экране его не видно, но в файле он есть.
 export type DocxResult = { text: string; map?: DocMap; hiddenText: boolean; stats: { paragraphs: number; tables: number; pages: number } };
 
@@ -555,7 +560,7 @@ export function readDocx(data: Uint8Array): DocxResult {
     const { text, map } = ctx.b.build(mode !== "none");
     // Прочитано заметно меньше, чем есть в файле, — что-то в разметке нашему чтению незнакомо: пусть читает прежний способ.
     if (text.replace(/\s+/g, "").length < textSize(documentXml) * 0.9) throw new DocxError("прочитана не вся разметка");
-    return { text, map, hiddenText: /<w:vanish(?![\w:])(?![^>]*w:val="(?:0|false|off)")/.test(documentXml), stats: { paragraphs: ctx.paragraphs, tables: ctx.tables, pages: mode === "none" ? 0 : ctx.page } };
+    return { text, map, hiddenText: hasHiddenRun(documentXml), stats: { paragraphs: ctx.paragraphs, tables: ctx.tables, pages: mode === "none" ? 0 : ctx.page } };
   } catch (e) {
     if (e instanceof DocxError) throw e;
     throw new DocxError(`разбор документа не удался: ${(e as Error).message}`);

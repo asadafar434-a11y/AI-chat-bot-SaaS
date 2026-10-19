@@ -46,10 +46,12 @@ const PATTERNS: Record<Exclude<MentionKind, "origin_country">, RegExp[]> = {
   ],
   national_regime: [
     /национальн[а-яё]*\s+режим/i,
-    /(?<![\d.,])1875(?!\d)/,
+    /(?<![\d.,])1875(?![\d]|[.,]\d)/,
     /(?<![а-яёА-ЯЁ\d])126н(?![а-яёА-ЯЁ\d])/i,
     /ограничени[а-яё]*[^.\n]{0,70}допуск[а-яё]*[^.\n]{0,100}происходящ/i,
     /условия\s+допуска\s+товаров[^.\n]{0,60}происходящих/i,
+    // Строки информационной карты «Запрет закупок товаров… | НЕ УСТАНОВЛЕНО», «Преимущество в отношении товаров российского происхождения… | УСТАНОВЛЕНО».
+    /(?:запрет|ограничени[а-яё]*|преимуществ[а-яё]*)\s+(?:закупок\s+)?(?:в\s+отношении\s+)?товар[а-яё]*[^\n]{0,500}\|\s*(?:не\s+)?установлен[а-яё]*\s*$/i,
   ],
   registry_number: [/номер[а-яё]*\s+реестров[а-яё]*\s+запис/i, /реестров[а-яё]*\s+номер(?!а?\s+(?:закупк|извещени|контракт|договор|аукцион|конкурс|запрос|процедур|лот))/i, /реестров[а-яё]*\s+запис/i],
 };
@@ -61,6 +63,17 @@ const EXEMPT = /(не\s+применя[а-яё]*|не\s+устанавлива[�
 // «В случае, если закупаемый товар включён в единый реестр радиоэлектронной продукции…» — условие про товар определённого рода, а не требование ко всем закупкам.
 // Реестры, где искать номер товара, мы проверяем всегда по самому товару участника, поэтому такие абзацы требованием не считаем.
 const CONDITIONAL_GOODS = /в\s+случае,?\s*(?:если|когда)[^.;]{0,80}(?:товар|продукци)[^.;]{0,60}включ[её]н/i;
+
+// «При осуществлении закупки предоставляется национальный режим» — иностранный товар приравнен к российскому, запрета и ограничений нет.
+// «Национальный режим не предоставляется» — наоборот: ограничения действуют.
+const GRANTED = /(?<!не\s)предоставля[а-яё]*\s+национальн[а-яё]*\s+режим|национальн[а-яё]*\s+режим[а-яё]*\s+(?<!не\s)предоставля[а-яё]*/i;
+// «Если в подразделе 1.2 установлен режим запрета…» — условие про другой раздел (карту закупки), а не требование: настоящее требование стоит в самой карте.
+// То же про основания отказа: «Несоответствия участника правилам предоставления национального режима при условии, что Правительством установлены запрет, ограничение…».
+const CONDITIONAL_CARD = /^\s*(?:\d+(?:\.\d+)*\.?\s+)?(?:если|в\s+случае,?\s+если)\s+(?:в|согласно|по)\s+(?:подраздел|пункт|п\.|раздел|информационн|извещени)[а-яё]*\s*[\d.]*[^,]{0,80}?(?:установлен|предусмотрен|указан)|при\s+условии,?\s+что[^.]{0,140}?(?:установлен|предусмотрен)[а-яё]*/i;
+
+// «Номера реестровых записей» бывают и у договоров в реестре ЕИС (для оценки опыта): «…содержатся в открытых и общедоступных государственных реестрах…»,
+// «информацию о номерах реестровых записей рекомендуется предоставлять в структурированном виде». К реестру промышленной продукции это не относится.
+const NOT_PRODUCT_REGISTRY = /общедоступных\s+государственных\s+реестрах|реестр[а-яё]*\s+(?:договоров|контрактов)|реестров[а-яё]*\s+номер[а-яё]*\s+(?:контракт|договор)|рекомендуется\s+предоставлять\s+в\s+структурированном\s+виде/i;
 
 const MAX_MENTIONS = 8;
 const QUOTE_MAX = 400;
@@ -84,20 +97,24 @@ export function detectRegistryDemand(docs: LocatableDoc[], goods: { name: string
   const mentions: DemandMention[] = [];
   const seen = new Set<string>();
   const sentencesWithKinds: { sentence: string; kinds: MentionKind[] }[] = [];
+  const grantedIn = new Set<string>();
 
   for (const doc of docs) {
     for (const sentence of sentencesOf(doc.text)) {
       const kinds = kindsIn(sentence);
-      if (!kinds.length || CONDITIONAL_GOODS.test(sentence)) continue;
+      if (!kinds.length || CONDITIONAL_GOODS.test(sentence) || CONDITIONAL_CARD.test(sentence)) continue;
       const quote = sentence.slice(0, QUOTE_MAX);
       sentencesWithKinds.push({ sentence, kinds });
       const exempt = EXEMPT.test(sentence);
       const role: MentionRole = exempt ? "exemption" : REQUIRE.test(sentence) ? "requirement" : "mention";
+      const granted = GRANTED.test(sentence);
       for (const kind of kinds) {
+        if (kind === "registry_number" && NOT_PRODUCT_REGISTRY.test(sentence)) continue;
         const key = `${kind}|${quote}`;
         if (seen.has(key) || mentions.length >= MAX_MENTIONS * 3) continue;
         seen.add(key);
-        mentions.push({ kind, role, quote, document: doc.name });
+        if (kind === "national_regime" && granted) grantedIn.add(doc.name);
+        mentions.push({ kind, role: kind === "national_regime" && granted ? "exemption" : role, quote, document: doc.name });
       }
     }
   }
@@ -108,7 +125,7 @@ export function detectRegistryDemand(docs: LocatableDoc[], goods: { name: string
     mentions.filter((m) => m.kind === "national_regime" && m.role === "exemption" && /запрет|ограничени|преимуществ|мер[аы]/i.test(m.quote)).map((m) => m.document),
   );
   for (const m of mentions) {
-    if (m.kind === "national_regime" && m.role !== "exemption" && regimeOff.has(m.document) && !/запрет|ограничени|преимуществ/i.test(m.quote)) m.role = "exemption";
+    if (m.kind === "national_regime" && m.role !== "exemption" && (regimeOff.has(m.document) || grantedIn.has(m.document)) && !/запрет|ограничени|преимуществ/i.test(m.quote)) m.role = "exemption";
   }
 
   const live = (kind: MentionKind) => mentions.filter((m) => m.kind === kind && m.role !== "exemption");
@@ -130,7 +147,7 @@ export function detectRegistryDemand(docs: LocatableDoc[], goods: { name: string
 
   if (named > 1) {
     status = "unclear";
-    notes.push("В документах названо несколько реестров — выберите, какой требуется для этой закупки.");
+    notes.push("В документах названо несколько реестров — номер ищется сразу во всех; проверьте по документам, из какого реестра закупка принимает номер.");
   } else if (rpp.length > 0 && rppStrong) {
     status = "found";
     registry = "gisp_rpp_719";

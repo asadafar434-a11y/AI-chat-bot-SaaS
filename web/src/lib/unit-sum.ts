@@ -39,8 +39,10 @@ export function findUnitSum(documents: Doc[]): UnitSum | null {
       // Сумма в строке самой шапки («Начальная сумма цен услуги … 373»), а цены единиц — в последних столбцах строк выше.
       const own = numbersIn(lines[i]);
       if (own.length === 1) {
+        // Строки про налог («без учёта налога…», «Сумма налога…») — это разбивка цены на НДС, а не цены единиц: 11 456 803,28 + 2 520 496,72 = 13 977 300 (СПО-КР2027-36).
         const above = lines
           .slice(Math.max(0, i - 6), i)
+          .filter((l) => !/налог|ндс/i.test(l))
           .map((l) => numbersIn(l).at(-1))
           .filter((n): n is number => n !== undefined);
         for (let take = 2; take <= Math.min(5, above.length); take++) {

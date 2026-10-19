@@ -44,7 +44,12 @@ export function auctionStepNote(documents: Doc[], nmck: number | null): string |
 
 // Договор считает цену по смете «с учётом коэффициента снижения». Что это за коэффициент, документы обычно не расшифровывают:
 // обычно он равен цене торгов, делённой на начальную цену, — так и говорим, с оговоркой.
-export const mentionsReductionCoefficient = (documents: Doc[]) => documents.some((d) => /коэффициент[а-яё]*\s+снижени/i.test(d.text));
+// Только когда речь о цене: «коэффициент снижения притока воды» в проекте или «коэффициент снижения» объёма заказа — это про другое.
+const REDUCTION = /коэффициент[а-яё]*\s+снижени/i;
+const ABOUT_PRICE = /смет|стоимост/i;
+const NOT_PRICE = /приток|объ[её]м|количеств|расч[её]тн[а-яё]*\s+заказ/i;
+export const mentionsReductionCoefficient = (documents: Doc[]) =>
+  documents.some((d) => d.text.split(/(?<=[.!?;])\s+|\n+/u).some((s) => REDUCTION.test(s) && ABOUT_PRICE.test(s) && !NOT_PRICE.test(s)));
 
 export function reductionCoefficientText(nmck: number | null, price: number | null): string {
   const lead = "Цена договора считается по смете «с учётом коэффициента снижения» — обычно это цена торгов ÷ начальная цена";

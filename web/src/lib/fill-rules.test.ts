@@ -106,3 +106,13 @@ test("движок проверки: «эквивалент» в строке т
   assert.equal(validate(base).findings.filter((f) => f.id.startsWith("fillrule:")).length, 0);
   assert.equal(validate({ ...base, documents: [{ name: "ТЗ.docx", text: "Поставить уголь." }] }).findings.filter((f) => f.id.startsWith("fillrule:")).length, 0);
 });
+
+test("правило «без указания слов „или эквивалент“» из инструкции под формой предложения (Метрострой) находится; слово «эквивалент» в строке товара — нарушение", () => {
+  const instruction = "В столбце 3 «Наименование товара» участником закупки указывается наименование предлагаемого к поставке товара в точном соответствии с Техническим заданием, без указания слов «или эквивалент». В столбце 4 указываются единицы измерения.";
+  const rules = fillRulesOf([{ name: "Форма 1.xls", text: instruction }]);
+  assert.deepEqual(rules.map((r) => r.id), ["no_equivalent"]);
+  assert.match(rules[0].quote, /^без указания слов «или эквивалент»/);
+  const violations = checkFillRules(rules, [{ where: "Сетка стальная", text: "Сетка стальная арматурная или эквивалент", kind: "good" }]);
+  assert.equal(violations.length, 1);
+  assert.equal(fillRulesOf([{ name: "Форма.xls", text: "Допускается указывать товар по ГОСТ." }]).length, 0);
+});

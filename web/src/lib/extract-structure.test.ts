@@ -241,7 +241,18 @@ test("разметка таблиц: бюджет времени кончилс�
       return { pages: partial.map((num) => ({ num, tables: [[["а", "б"]]] })) };
     },
   };
-  assert.equal((await tablesByPage(flaky, pages)).size, 15);
+  // Сбой на одной пачке не лишает таблиц ни её саму (страницы просим по одной), ни остальные пачки.
+  assert.equal((await tablesByPage(flaky, pages)).size, 60);
+  // Одна страница ломает библиотеку всегда: пачка с ней разбирается по одной, нужная страница остаётся без разметки, остальные 59 — с ней.
+  const bad = {
+    getTable: async ({ partial }: { partial: number[] }) => {
+      if (partial.includes(7)) throw new Error("Cannot read properties of undefined (reading 'from')");
+      return { pages: partial.map((num) => ({ num, tables: [[["а", "б"]]] })) };
+    },
+  };
+  const got = await tablesByPage(bad, pages);
+  assert.equal(got.size, 59);
+  assert.ok(!got.has(7));
 
   const calls2: number[][] = [];
   const huge = await tablesByPage(parserOf(() => [[["а", "б"]]], calls2), Array.from({ length: 401 }, (_, i) => i + 1));
