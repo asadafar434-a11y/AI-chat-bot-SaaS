@@ -7,7 +7,7 @@ export type Duty = { clause: string; text: string; term: string; doc: string };
 export type AfterWin = { duties: Duty[]; more: { count: number; range: string } | null };
 
 const SUPPLIER = /(?<![а-яё])(подрядчик|поставщик|исполнитель|продавец)[а-яё]*/i;
-const CUSTOMER = /(?<![а-яё])заказчик[а-яё]*/i;
+const CUSTOMER = /(?<![а-яё])(заказчик|покупатель)[а-яё]*/i;
 const GIVE = /(?<![а-яё])(предостав|представ|направ|передав|передат|сообщ|информир)[а-яё]*/i;
 // Что отдают: списки, справки, копии, согласия, отчёты, сведения. Акты и счета — обычные расчёты, их не берём.
 const OBJECT = /(список|справк|копи[ийя]|согласи|отч[её]т|информаци|сведени|график|приказ|журнал|перечень|реестр)/i;
@@ -35,7 +35,10 @@ const shorten = (s: string) => (s.length > TEXT_MAX ? `${s.slice(0, TEXT_MAX - 1
 // Обязанность поставщика отдать документ: поставщик назван раньше заказчика (иначе это обязанность заказчика), есть глагол «предоставить» и предмет.
 function isDuty(sentence: string): boolean {
   const supplier = SUPPLIER.exec(sentence);
-  if (!supplier || !GIVE.test(sentence) || !OBJECT.test(sentence)) return false;
+  const give = GIVE.exec(sentence);
+  if (!supplier || !give || !OBJECT.test(sentence)) return false;
+  // Поставщик — тот, кто отдаёт: он назван раньше глагола. «Покупатель обязан предоставлять Поставщику Заявку» — обязанность покупателя.
+  if (supplier.index > give.index) return false;
   const customer = CUSTOMER.exec(sentence);
   if (customer && customer.index < supplier.index) return false;
   // Акты, счета, накладные — обычные расчёты, а не обязанность отчитываться; уведомления о смене реквизитов — тоже переписка, а не «после победы».

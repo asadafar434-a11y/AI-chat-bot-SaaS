@@ -71,8 +71,12 @@ function columnsOf(header: string[]): string[] {
   return cells.map((c) => c.replace(/\s*\n\s*/g, " ").replace(/(\p{L})-\s+(\p{L})/gu, "$1-$2").replace(/\s+/g, " ").trim()).filter(Boolean);
 }
 
+// Обоснование начальной цены у заказчика: в нём тоже есть «Расчёт цены единицы товара» с количеством и ценами, но это его расчёт по ценам поставщиков, а не бланк участника.
+const NMCK_CALC = /источников\s+ценовой\s+информации|метод\s+сопоставимых\s+рыночных\s+цен|используемый\s+метод\s+определения\s+НМЦ|обоснование\s+начальной\s*\(максимальной\)\s*цены/i;
+
 export function findSpecification(documents: Doc[]): Specification | null {
   for (const doc of documents) {
+    if (NMCK_CALC.test(doc.text)) continue;
     const lines = doc.text.split("\n");
     for (let i = 0; i < lines.length; i++) {
       if (!HEADING.test(lines[i])) continue;
