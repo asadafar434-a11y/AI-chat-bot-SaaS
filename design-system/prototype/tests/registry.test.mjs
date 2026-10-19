@@ -365,3 +365,16 @@ test('«Нет в реестре»: рядом с «Всё верно» есть
   assert.match(declined, /<option value="" selected="">— выберите номер —<\/option>/);
   assert.equal(/Нет в реестре<\/button>/.test(declined), false, 'кнопка отказа есть только у подобранного автоматически номера');
 });
+
+test('запрет есть, а товара в реестре нет: сказано, что это декларирует заказчик, а не участник; в заявку ничего не добавляется', () => {
+  const note = /этот факт декларирует заказчик, а не вы/;
+  // Закупка требует номер — пометка в разделе «Что требует закупка».
+  assert.match(render({ demand: demandFound, positions: [position({ status: 'pending' })] }), note);
+  assert.match(render({ demand: demandFound, positions: [position({ status: 'pending' })] }), /декларация не добавляется/);
+  // Закупка о номере молчит и отказа нет — пометки нет, лишнего текста не выводим.
+  assert.equal(note.test(render({ demand: demandNone, positions: [position({ status: 'pending' })] })), false);
+  // Участник нажал «Нет в реестре» — пометка появляется и без требования в документах, и у самой позиции.
+  const skipped = render({ demand: demandNone, positions: [position({ status: 'need_data', decision: decision('need_data', { candidates: [view()] }), skipped: true })] });
+  assert.match(skipped, note);
+  assert.match(skipped, /Вы отметили, что товара нет в реестрах/);
+});

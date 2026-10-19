@@ -63,6 +63,11 @@ export type RegistryNumbersProps = {
   now?: number;
 };
 
+// Правило владельца (19.10.2026): товара в реестре нет, а запрет есть — этот факт декларирует заказчик, а не участник. В заявку программа ничего не добавляет
+// и текста декларации не сочиняет: образца в документах закупок из папки примеров нет, поэтому вывод — только пометка с просьбой проверить документы.
+const BAN_DECLARATION_SHORT = 'Если закупка запрещает иностранный товар, а в реестрах его нет, этот факт декларирует заказчик, а не вы.';
+const BAN_DECLARATION_NOTE = `${BAN_DECLARATION_SHORT} В вашу заявку декларация не добавляется. Проверьте, что в документах закупки такая декларация заказчика есть; если её нет — спросите заказчика.`;
+
 const STATUS_STYLE: Record<DecisionStatus | 'searching', { tone: Tone; icon: ReactNode }> = {
   no_requirement: { tone: 'neutral', icon: <Info className="size-3" /> },
   unsupported_registry: { tone: 'neutral', icon: <Info className="size-3" /> },
@@ -392,7 +397,9 @@ function NumberPicker({ position, onSelect, onSkip }: { position: PositionView; 
         </p>
       )}
       {position.skipped && !current && (
-        <p className="text-[12px] text-muted-foreground">Вы отметили, что товара нет в реестрах, — номер в заявку не пойдёт. Если он всё-таки есть — выберите его в списке.</p>
+        <p className="text-[12px] text-muted-foreground">
+          Вы отметили, что товара нет в реестрах, — номер в заявку не пойдёт. Если он всё-таки есть — выберите его в списке. {BAN_DECLARATION_SHORT}
+        </p>
       )}
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-0 flex-1">
@@ -687,6 +694,12 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
               {n}
             </p>
           ))}
+          {(demand.status !== 'none' || positions.some((p) => p.skipped)) && (
+            <p className="flex items-start gap-1.5 text-[12px] text-muted-foreground">
+              <Info className="mt-0.5 size-3.5 shrink-0" />
+              {BAN_DECLARATION_NOTE}
+            </p>
+          )}
           {demand.mentions.length > 0 && (
             <details className="text-[12px]">
               <summary className="cursor-pointer text-muted-foreground">Где в документах об этом сказано ({demand.mentions.length})</summary>
