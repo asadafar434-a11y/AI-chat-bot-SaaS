@@ -75,7 +75,7 @@ test("таблица Word (.docx) — строки «а | б | в», номер 
   ].join("\n");
   const spec = findSpecification([{ name: "Проект контракта.docx", text }])!;
   assert.equal(spec.rows.length, 2);
-  assert.deepEqual(spec.rows[0], { name: "Оказание услуги по организации питания воспитанников возраст 1,5-3 года", unit: "Условная единица", qty: 1 });
+  assert.deepEqual(spec.rows[0], { name: "Оказание услуги по организации питания воспитанников возраст 1,5-3 года", unit: "Условная единица", qty: 1, no: "1" });
   assert.equal(spec.vatRate, null);
   assert.deepEqual(spec.columns.slice(0, 4), ["№ п/п", "Наименование услуги", "Ед. Изм.", "Кол-во"]);
 });
@@ -85,7 +85,7 @@ test("не спецификация: слово в тексте, заголов�
   const spec = findSpecification([
     { name: "б.docx", text: ["СПЕЦИФИКАЦИЯ", "№ | Наименование | Кол-во | Цена", "1 | Бумага А4 | 100", "ИТОГО: | 100", "Конец"].join("\n") },
   ])!;
-  assert.deepEqual(spec.rows, [{ name: "Бумага А4", unit: "", qty: 100 }]);
+  assert.deepEqual(spec.rows, [{ name: "Бумага А4", unit: "", qty: 100, no: "1" }]);
 });
 
 // ——— Пометки на шаге «Цена» ———

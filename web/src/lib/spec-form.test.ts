@@ -105,3 +105,39 @@ test("файл Word из бланка: тот же путь, что у скач�
   assert.match(text, /Всего: 1 650 000,00 руб\., НДС: \[впишите\]\./);
   assert.match(text, /\[впишите\]/);
 });
+
+// ——— «Форумная дирекция»: расчёт цены договора на 12 позиций с заголовками групп ———
+
+async function forumDocs() {
+  const dir = "Форумная дирекция (конкурс МСП)";
+  return [await read(dir, "Конкурсная документация - 130.docx"), await read(dir, "Проект договора - 130.docx")];
+}
+
+test("Форумная дирекция: бланк «Расчёт цены договора» читается целиком — 12 позиций с номерами и два заголовка групп, как у заказчика", async () => {
+  const [form] = specificationForms({ documents: await forumDocs(), profile: { taxSystem: "", vatNote: "" }, nmck: 28_563_643, tpPrice: 25_000_000 });
+  assert.equal(form.title, "РАСЧЕТ ЦЕНЫ ДОГОВОРА");
+  assert.deepEqual(form.table![0], ["№ п/п", "Наименование услуг (работ)", "Ед. измерения", "Кол-во", "Цена за ед. изм., в т.ч. НДС__%/без НДС", "Стоимость, в т.ч. НДС__%/без НДС"]);
+  const body = form.table!.slice(1);
+  assert.deepEqual(body.map((r) => r[0]), ["1.", "2.", "3.", "4.", "5.", "5.1.", "5.2.", "5.3", "5.4.", "6.", "7.", "8.", "8.1.", "8.2."]);
+  // «5.» и «8.» — заголовки групп: без единицы, количества и цен
+  assert.deepEqual(body[4].slice(2), ["", "", "", ""]);
+  assert.deepEqual(body[11].slice(2), ["", "", "", ""]);
+  assert.deepEqual(body[7].slice(1, 4), ["Ужины (4 приема пищи для 484 человек)", "Усл. ед.", "1936"]);
+  assert.deepEqual(body[6].slice(3, 4), ["1936"]);
+});
+
+test("Форумная дирекция: начальных цен по позициям в файлах нет — цены жёлтые; в столбец «Цена за ед. изм.» не попадает единица измерения", async () => {
+  const [form] = specificationForms({ documents: await forumDocs(), profile: { taxSystem: "", vatNote: "" }, nmck: 28_563_643, tpPrice: 25_000_000 });
+  const priced = form.table!.slice(1).filter((r) => r[3]);
+  assert.equal(priced.length, 12);
+  assert.ok(priced.every((r) => r[4] === "[впишите]" && r[5] === "[впишите]"), "цены жёлтые, а не «Усл. ед.»");
+  assert.equal(form.footer, "Итого, [в т.ч. НДС __%/без НДС]: [впишите]");
+});
+
+test("Форумная дирекция: столбец «в т.ч. НДС__%/без НДС» — ставка из реквизитов дописывается к цене и в итог", async () => {
+  const docs = await forumDocs();
+  const [withRate] = specificationForms({ documents: docs, profile: { taxSystem: "ОСН", vatNote: "в том числе НДС 22 %" }, nmck: 28_563_643, tpPrice: 25_000_000 });
+  assert.equal(withRate.footer, "Итого, в т.ч. НДС 22%: [впишите]", "цен по позициям нет, итог не раскладывается");
+  const [free] = specificationForms({ documents: docs, profile: { taxSystem: "УСН", vatNote: "НДС не облагается" }, nmck: 28_563_643, tpPrice: 25_000_000 });
+  assert.equal(free.footer, "Итого, без НДС: [впишите]");
+});

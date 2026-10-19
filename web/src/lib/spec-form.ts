@@ -1,7 +1,7 @@
 // Бланки заказчика «Спецификация» и «Расчёт цены оказываемых услуг» (приложения к договору), заполненные ценами участника. Бланк берётся из документов
-// закупки как есть — столбцы, позиции, количества; код вписывает цены: итоговую цену участника раскладывает пропорционально начальным ценам заказчика
-// (price-split.ts), с копейками и НДС. Начальные цены — из расчёта НМЦК, если он приложен к закупке (spec-table.ts), или цены единиц при торге по сумме
-// цен единиц (unit-sum.ts). Нет начальных цен или нет итоговой цены — цены остаются жёлтыми «[впишите]», ничего не придумывается.
+// закупки как есть — столбцы, номера строк, заголовки групп, позиции, количества; код вписывает цены: итоговую цену участника раскладывает пропорционально
+// начальным ценам заказчика (price-split.ts), с копейками и НДС. Начальные цены — из расчёта НМЦК, если он приложен к закупке (spec-table.ts), или цены
+// единиц при торге по сумме цен единиц (unit-sum.ts). Нет начальных цен или нет итоговой цены — цены остаются жёлтыми «[впишите]», ничего не придумывается.
 // Модуль без зависимостей от браузера и сервера.
 import { findCustomers } from "@/lib/customers-table";
 import { splitPrice, toKop, vatOf, type Split } from "@/lib/price-split";
@@ -19,19 +19,23 @@ const money = (kop: number) =>
 
 export type ColumnKind = "index" | "name" | "unit" | "qty" | "max" | "unitNoVat" | "sumNoVat" | "vat" | "unitVat" | "sumVat" | "unitPrice" | "sum" | "other";
 
+// «в т.ч. НДС__%/без НДС»: в одном столбце участник сам называет ставку — это не столбец «без НДС» и не столбец «с НДС».
+export const combinedVat = (label: string) => /в\s*т\.?\s*ч\.?\s*ндс|включ\S*\s+ндс|ндс\s*_+/.test(label.toLowerCase());
+
 // Что за столбец в бланке — по его названию.
 export function columnKind(label: string): ColumnKind {
   const t = label.toLowerCase().replace(/ё/g, "е");
   if (/максимальн\S*\s+значени/.test(t)) return "max";
   if (/^№|п\/п/.test(t)) return "index";
   if (/наименован/.test(t)) return "name";
-  if (/ед\.?\s*изм/.test(t)) return "unit";
   if (/кол-?\s?во|количеств/.test(t)) return "qty";
   if (/^ндс/.test(t)) return "vat";
-  const noVat = /без\s+ндс/.test(t);
-  const withVat = /\sс\s+ндс/.test(t);
+  const combined = combinedVat(t);
+  const noVat = !combined && /без\s+ндс/.test(t);
+  const withVat = !combined && /\sс\s+ндс/.test(t);
   if (/сумм|стоимост/.test(t)) return noVat ? "sumNoVat" : withVat ? "sumVat" : "sum";
   if (/цен/.test(t)) return noVat ? "unitNoVat" : withVat ? "unitVat" : "unitPrice";
+  if (/ед\.?\s*изм|единиц\S*\s+измерен/.test(t)) return "unit";
   return "other";
 }
 
@@ -64,6 +68,15 @@ export function specificationForms({ documents, profile, nmck, tpPrice }: SpecFo
 
   const holes = new Set<string>();
   const total = { sumVat: 0, sumNoVat: 0, vat: 0 };
+  // Ставка НДС в тексте ячейки, если в шапке она не разнесена по столбцам: «, в т.ч. НДС 5%», «, без НДС» или жёлтое место.
+  const vatSuffix = (label: string, name: string) => {
+    if (!combinedVat(label)) return "";
+    if (rate === null) {
+      holes.add(`НДС: ${name}`);
+      return " [НДС __%/без НДС]";
+    }
+    return rate === 0 ? ", без НДС" : `, в т.ч. НДС ${rate}%`;
+  };
 
   const cellOf = (kind: ColumnKind, label: string, i: number, max: number | null): string => {
     const row = spec.rows[i];
@@ -74,7 +87,7 @@ export function specificationForms({ documents, profile, nmck, tpPrice }: SpecFo
     };
     switch (kind) {
       case "index":
-        return String(i + 1);
+        return row.no ?? String(i + 1);
       case "name":
         return row.name;
       case "unit":
@@ -84,11 +97,13 @@ export function specificationForms({ documents, profile, nmck, tpPrice }: SpecFo
       case "max":
         return max === null ? hole() : money(toKop(max));
       case "unitVat":
-      case "unitPrice":
         return line ? money(line.unitKop) : hole();
+      case "unitPrice":
+        return line ? `${money(line.unitKop)}${vatSuffix(label, row.name)}` : hole();
       case "sumVat":
-      case "sum":
         return line ? money(line.sumKop) : hole();
+      case "sum":
+        return line ? `${money(line.sumKop)}${vatSuffix(label, row.name)}` : hole();
       case "unitNoVat":
         return line && rate !== null ? money(vatOf(line.unitKop, rate).withoutKop) : hole();
       case "sumNoVat":
@@ -100,9 +115,11 @@ export function specificationForms({ documents, profile, nmck, tpPrice }: SpecFo
     }
   };
 
+  // Строки бланка в его порядке: позиции и заголовки групп («5. Оказание услуг по организации питания»).
   const rowsFor = (max: number | null) =>
-    spec.rows.map((_, i) => {
-      const line = split?.lines[i];
+    spec.layout.map((item) => {
+      if (item.kind === "group") return kinds.map((kind) => (kind === "index" ? item.no : kind === "name" ? item.name : ""));
+      const line = split?.lines[item.at];
       if (line && rate !== null) {
         const v = vatOf(line.sumKop, rate);
         total.sumVat += line.sumKop;
@@ -111,7 +128,7 @@ export function specificationForms({ documents, profile, nmck, tpPrice }: SpecFo
       } else if (line) {
         total.sumVat += line.sumKop;
       }
-      return spec.columns.map((label, c) => cellOf(kinds[c], label, i, max));
+      return spec.columns.map((label, c) => cellOf(kinds[c], label, item.at, max));
     });
 
   const table: string[][] = [spec.columns];
@@ -128,23 +145,35 @@ export function specificationForms({ documents, profile, nmck, tpPrice }: SpecFo
 
   let footer: string | undefined;
   if (!bySum) {
-    const sum = kinds.map((kind) => {
-      if (kind === "name") return "ИТОГО:";
-      if (!split) return ["sumVat", "sumNoVat", "sum", "vat"].includes(kind) ? HOLE : "";
-      if (kind === "sumVat" || kind === "sum") return money(total.sumVat);
-      if (kind === "sumNoVat") return rate !== null ? money(total.sumNoVat) : HOLE;
-      if (kind === "vat") return rate === null ? HOLE : rate === 0 ? "без НДС" : money(total.vat);
-      return "";
-    });
-    if (sum.some((cell) => cell && cell !== "ИТОГО:")) table.push(sum);
-    const vatText = !split || rate === null ? HOLE : rate === 0 ? "не облагается" : `${money(total.vat)} руб`;
-    footer = `Всего: ${split ? `${money(total.sumVat)} руб.` : HOLE}, НДС: ${vatText}.`;
-    if (split && split.shortKop > 0) {
-      footer += ` Сумма по позициям на ${split.shortKop} коп. ниже итоговой цены: при этих количествах набрать итог точно нельзя.`;
+    // Итоговая строка в таблице — если в бланке есть столбцы сумм «с НДС», «без НДС» или НДС (как у «Спецификации» школы).
+    if (kinds.some((kind) => kind === "sumVat" || kind === "sumNoVat" || kind === "vat")) {
+      table.push(
+        kinds.map((kind) => {
+          if (kind === "name") return "ИТОГО:";
+          if (kind === "sumVat") return split ? money(total.sumVat) : HOLE;
+          if (kind === "sumNoVat") return split && rate !== null ? money(total.sumNoVat) : HOLE;
+          if (kind === "vat") return split && rate !== null ? (rate === 0 ? "без НДС" : money(total.vat)) : HOLE;
+          return "";
+        }),
+      );
     }
-    if (!split) {
-      holes.add("Всего");
-      holes.add("НДС");
+    const amount = split ? `${money(total.sumVat)} руб.` : HOLE;
+    if (/ндс\s*_+/i.test(spec.totalLabel)) {
+      // Итог под таблицей с выбором ставки («Итого, в т.ч. НДС__%/без НДС:»): ставка подставляется из реквизитов или остаётся жёлтой.
+      const stated = rate === null ? "[в т.ч. НДС __%/без НДС]" : rate === 0 ? "без НДС" : `в т.ч. НДС ${rate}%`;
+      footer = `${spec.totalLabel.replace(/в\s*т\.?\s*ч\.?\s*ндс\s*_+\s*%?\s*\/\s*без\s+ндс/i, stated)}: ${amount}`;
+      if (rate === null) holes.add("Итого: НДС");
+    } else {
+      const vatText = !split || rate === null ? HOLE : rate === 0 ? "не облагается" : `${money(total.vat)} руб`;
+      footer = `Всего: ${amount}, НДС: ${vatText}.`;
+      if (!split) {
+        holes.add("Всего");
+        holes.add("НДС");
+      }
+    }
+    if (!split) holes.add("Итого");
+    if (split && split.shortKop > 0) {
+      footer += `. Сумма по позициям на ${split.shortKop} коп. ниже итоговой цены: при этих количествах набрать итог точно нельзя`;
     }
   }
 
