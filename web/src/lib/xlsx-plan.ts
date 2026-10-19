@@ -6,6 +6,7 @@ import { profileValueOf } from "@/lib/blank-fill";
 import type { Profile } from "@/lib/profile";
 import { lowerWords, nameTerms, stemWord } from "@/lib/registry-text";
 import { refOf, type CellEdit, type FormBook, type FormCell, type FormSheet } from "@/lib/xlsx-form";
+import { planPrices, type FillItem, type ManualPriceRow, type PriceInput } from "@/lib/xlsx-price";
 
 export type ExcelGood = {
   name: string;
@@ -17,14 +18,23 @@ export type ExcelGood = {
   registry?: string;
 };
 
-export type FillInput = { profile: Profile; subject: string; goods: ExcelGood[] };
+export type { FillItem, ManualPriceRow, PriceInput } from "@/lib/xlsx-price";
 
-export type FillItem = { sheet: string; ref: string; label: string; value: string; kind: "requisite" | "position" };
+export type FillInput = {
+  profile: Profile;
+  subject: string;
+  goods: ExcelGood[];
+  /** Цена участника и НМЦ закупки (шаг «Цена») и цены за единицу, введённые участником; нет — цены в бланке остаются как есть. */
+  price?: PriceInput;
+};
+
 export type FillPlan = {
   edits: CellEdit[];
   filled: FillItem[];
   /** Что бланк просит, а у приложения этого нет: участнику вписать самому. */
   left: string[];
+  /** Строки, где цену за единицу называет только участник: их показываем на ввод. */
+  manual: ManualPriceRow[];
 };
 
 // «…», «___», «-» в пустой графе — подсказка заказчика «впишите сюда», а не значение.
@@ -200,7 +210,7 @@ function planGoods(sheet: FormSheet, rows: Map<number, FormCell[]>, input: FillI
 }
 
 export function planFill(book: FormBook, input: FillInput): FillPlan {
-  const plan: FillPlan = { edits: [], filled: [], left: [] };
+  const plan: FillPlan = { edits: [], filled: [], left: [], manual: [] };
   const taken = new Set<string>();
   const used = new Set<number>();
   for (const sheet of book.sheets) {
@@ -208,6 +218,13 @@ export function planFill(book: FormBook, input: FillInput): FillPlan {
     const rows = rowsOf(sheet);
     planRequisites(sheet, rows, input, plan, taken);
     planGoods(sheet, rows, input, plan, taken, used);
+    if (input.price) {
+      const prices = planPrices(sheet, input.price, taken);
+      plan.edits.push(...prices.edits);
+      plan.filled.push(...prices.filled);
+      plan.left.push(...prices.left);
+      plan.manual.push(...prices.manual);
+    }
   }
   // Одно и то же «не указано» по десяти позициям — одной строкой.
   const seen = new Set<string>();

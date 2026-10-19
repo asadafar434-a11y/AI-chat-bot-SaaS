@@ -86,3 +86,25 @@ test('длинный список вписанного обрезается: п�
   assert.match(out, /…и ещё 5/);
   assert.equal(out.includes('Позиция 41'), false);
 });
+
+test('цены по строкам: поля ввода с подписью, сколько введено из скольких, объём; подсказка — цену называет только участник', () => {
+  const manual = [
+    { key: 'Лист!F17', sheet: 'Лист', ref: 'F17', name: 'Учёт основных средств', qty: 3472, value: '1250,50' },
+    { key: 'Лист!F18', sheet: 'Лист', ref: 'F18', name: 'Учёт ТМЦ', qty: 106.5, value: '' },
+  ];
+  const out = render({ forms: [{ name: 'КП.xlsx', state: 'ready', filled: [item('E7', 'Наименование', 'ООО')], left: [], manual }], onPrice: none });
+  assert.match(out, /Цены по строкам: введено 1 из 2/);
+  assert.match(out, /aria-label="Цена за единицу: Учёт основных средств"[^>]*value="1250,50"/);
+  assert.match(out, /aria-label="Цена за единицу: Учёт ТМЦ"[^>]*value=""/);
+  assert.match(out, /3[\s ]472/);
+  assert.match(out, /называет только участник/);
+  assert.match(out, /формулы файла/);
+});
+
+test('бланк только с графами цен: скачать нельзя, пока ничего не введено, но ввод виден; «вписывать нечего» не пугает', () => {
+  const manual = [{ key: 'Лист!G12', sheet: 'Лист', ref: 'G12', name: 'Работы: Вынос контейнеров', qty: 3, value: '' }];
+  const out = render({ forms: [{ name: 'ВОР.xlsx', state: 'ready', filled: [], left: ['Цены за единицу — ещё 1 из 1 строк'], manual }] });
+  assert.match(out, /Цены по строкам: введено 0 из 1/);
+  assert.equal(/Скачать заполненный/.test(out), false);
+  assert.equal(/Пока вписывать нечего/.test(out), false);
+});

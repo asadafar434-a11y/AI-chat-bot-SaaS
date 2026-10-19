@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import type { FillItem } from '@/lib/xlsx-plan';
+import type { FillItem, ManualPriceRow } from '@/lib/xlsx-plan';
 import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, Info, Plus, Trash2 } from '../lib/icons';
 import { Badge, Button, Card, HelpTip, IconButton } from './ui';
 
@@ -15,6 +15,8 @@ export type ExcelFormView = {
   filled: FillItem[];
   /** Что бланк просит, а у приложения этого нет. */
   left: string[];
+  /** Строки, где цену за единицу называет только участник: ввод цены. */
+  manual?: ManualPriceRow[];
 };
 
 export type ExcelFormsProps = {
@@ -24,11 +26,72 @@ export type ExcelFormsProps = {
   onAdd: (files: File[]) => void;
   onDownload: (name: string) => void;
   onRemove: (name: string) => void;
+  /** Участник ввёл цену за единицу в строке бланка. */
+  onPrice?: (name: string, key: string, value: string) => void;
 };
 
 const SHOWN = 40;
+const inputClass =
+  'h-8 w-28 rounded-md border border-border bg-background px-2 text-right font-mono text-[12px] outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground';
 
-function FormRow({ form, onDownload, onRemove }: { form: ExcelFormView; onDownload: () => void; onRemove: () => void }) {
+function PriceRows({ form, onPrice }: { form: ExcelFormView; onPrice?: (key: string, value: string) => void }) {
+  const rows = form.manual ?? [];
+  if (rows.length === 0) return null;
+  const typed = rows.filter((r) => r.value.trim() !== '').length;
+  return (
+    <details className="border-t border-border px-3 py-2 text-[12px]">
+      <summary className="cursor-pointer font-medium">
+        Цены по строкам: введено {typed} из {rows.length}
+      </summary>
+      <p className="mt-2 text-muted-foreground">
+        Цену за единицу в этих строках называет только участник — начальных цен у заказчика нет. Введите число (рубли, без НДС, если так просит бланк); итоги посчитают формулы файла при открытии в Excel. Что вы не
+        введёте здесь, останется пустым в файле.
+      </p>
+      <div className="mt-2 max-h-80 overflow-auto rounded-md border border-border">
+        <table className="w-full table-fixed border-collapse text-[12px]">
+          <thead className="sticky top-0 bg-secondary text-left text-muted-foreground">
+            <tr>
+              <th className="px-2 py-1.5 font-medium">Строка</th>
+              <th className="w-24 px-2 py-1.5 text-right font-medium">Объём</th>
+              <th className="w-32 px-2 py-1.5 text-right font-medium">Цена за единицу</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.key} className="border-t border-border">
+                <td className="break-words px-2 py-1 align-middle">{r.name}</td>
+                <td className="px-2 py-1 text-right align-middle font-mono">{r.qty.toLocaleString('ru-RU')}</td>
+                <td className="px-2 py-1 text-right align-middle">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    aria-label={`Цена за единицу: ${r.name}`}
+                    placeholder="0,00"
+                    value={r.value}
+                    onChange={(e) => onPrice?.(r.key, e.target.value)}
+                    className={inputClass}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  );
+}
+
+function FormRow({
+  form,
+  onDownload,
+  onRemove,
+  onPrice,
+}: {
+  form: ExcelFormView;
+  onDownload: () => void;
+  onRemove: () => void;
+  onPrice?: (key: string, value: string) => void;
+}) {
   const ready = form.state === 'ready';
   return (
     <li className="rounded-lg border border-border">
@@ -63,7 +126,8 @@ function FormRow({ form, onDownload, onRemove }: { form: ExcelFormView; onDownlo
           {form.message}
         </p>
       )}
-      {ready && form.filled.length === 0 && (
+      {ready && <PriceRows form={form} onPrice={onPrice} />}
+      {ready && form.filled.length === 0 && (form.manual ?? []).length === 0 && (
         <p className="flex items-start gap-1.5 border-t border-border px-3 py-2 text-[12px] text-muted-foreground">
           <Info className="mt-0.5 size-3.5 shrink-0" />
           Пока вписывать нечего: заполните «Реквизиты» в карточке компании внизу меню и сведения о товарах в блоке «Реестровые номера» — они появятся в этом файле.
@@ -102,7 +166,7 @@ function FormRow({ form, onDownload, onRemove }: { form: ExcelFormView; onDownlo
   );
 }
 
-export function ExcelForms({ forms, error, note, onAdd, onDownload, onRemove }: ExcelFormsProps) {
+export function ExcelForms({ forms, error, note, onAdd, onDownload, onRemove, onPrice }: ExcelFormsProps) {
   const input = useRef<HTMLInputElement>(null);
   return (
     <Card className="p-0">
@@ -144,7 +208,7 @@ export function ExcelForms({ forms, error, note, onAdd, onDownload, onRemove }: 
         ) : (
           <ul className="space-y-2">
             {forms.map((form) => (
-              <FormRow key={form.name} form={form} onDownload={() => onDownload(form.name)} onRemove={() => onRemove(form.name)} />
+              <FormRow key={form.name} form={form} onDownload={() => onDownload(form.name)} onRemove={() => onRemove(form.name)} onPrice={(key, value) => onPrice?.(form.name, key, value)} />
             ))}
           </ul>
         )}

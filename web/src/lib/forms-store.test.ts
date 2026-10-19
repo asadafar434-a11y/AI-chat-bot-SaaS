@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
 import { deleteDatabases } from "./db.ts";
-import { deleteForm, deleteFormsOf, getForm, isOpenXmlName, listForms, saveExcelFiles, saveForm } from "./forms-store.ts";
+import { deleteForm, deleteFormsOf, getForm, getPrices, isOpenXmlName, listForms, saveExcelFiles, saveForm, savePrices } from "./forms-store.ts";
 import { installFakeIndexedDB, type FakeIndexedDb } from "./testing/fake-indexeddb.ts";
 
 let fake: FakeIndexedDb;
@@ -41,4 +41,18 @@ test("«Удалить все данные» стирает и Excel-бланк�
   assert.equal((await listForms("p1")).length, 1);
   assert.equal(await deleteDatabases(), "done");
   assert.deepEqual(await listForms("p1"), []);
+});
+
+test("введённые цены хранятся рядом с файлом, переживают повторное добавление того же файла и стираются вместе с ним", async () => {
+  await saveForm("p1", "Тариф.xlsx", new Uint8Array([1]).buffer);
+  assert.deepEqual(await getPrices("p1", "Тариф.xlsx"), {});
+  await savePrices("p1", "Тариф.xlsx", { "Лист!F17": "1250,50", "Лист!F18": "0" });
+  assert.deepEqual(await getPrices("p1", "Тариф.xlsx"), { "Лист!F17": "1250,50", "Лист!F18": "0" });
+  await saveForm("p1", "Тариф.xlsx", new Uint8Array([2, 2]).buffer);
+  assert.deepEqual(await getPrices("p1", "Тариф.xlsx"), { "Лист!F17": "1250,50", "Лист!F18": "0" }, "новая версия файла — цены остались");
+  assert.equal((await listForms("p1"))[0].size, 2);
+  await savePrices("p1", "нет.xlsx", { x: "1" });
+  assert.deepEqual(await getPrices("p1", "нет.xlsx"), {}, "для неизвестного файла ничего не создаётся");
+  await deleteForm("p1", "Тариф.xlsx");
+  assert.deepEqual(await getPrices("p1", "Тариф.xlsx"), {});
 });
