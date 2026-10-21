@@ -39,6 +39,7 @@ before(async () => {
     side: await server.ssrLoadModule('/src/components/Sidebar.tsx'),
     sumUi: await server.ssrLoadModule('/src/components/AnalyticsSummary.tsx'),
     collapsible: await server.ssrLoadModule('/src/components/Collapsible.tsx'),
+    chartUi: await server.ssrLoadModule('/src/components/AnalyticsChart.tsx'),
   };
 });
 
@@ -239,7 +240,7 @@ test('риски из договора: договора нет — так и с
 });
 
 const SEVASTOPOL = { text: 'Место поставки: г. Севастополь', region: { name: 'Севастополь', hard: true } };
-const estimateUi = (register, price = 1_000_000) => {
+const estimateUi = (register, price = 1_000_000, extra = {}) => {
   const risks = mods.risksLib.contractRisks(
     contractDocs(
       '6.4. Заказчик вправе потребовать уплаты пени в размере 5 % (Пяти процентов) от Цены ГПД за каждый день просрочки.',
@@ -262,6 +263,7 @@ const estimateUi = (register, price = 1_000_000) => {
       defaultDrivers: mods.hiddenLib.DEFAULT_DRIVERS.goods,
       priceHint: '1000000',
       onChange: none,
+      ...extra,
     }),
   );
 };
@@ -459,4 +461,140 @@ test('резюме: кнопки отчёта блокируются, пока �
   // Подсказка прямо говорит, что это не вероятность победы; вне подсказки ни процентов победы, ни «шансов» нет.
   assert.match(text(summaryUi(summaryOf('go'))), /не балл и не вероятность победы/);
   assert.equal(/\d\s*%\s*побед|шанс/.test(text(summaryUi(summaryOf('go')))), false);
+});
+
+const chartUi = (calcOver = {}, lines = [], price = null, ric = null) => {
+  const risks = mods.risksLib.contractRisks(
+    contractDocs(
+      '7.3. Исполнитель обязан уплатить Заказчику пеню в размере 0,1% от цены Договора за каждый день просрочки.',
+      '3.6. Оплата производится Заказчиком в течение 30 дней с даты акта.',
+      '10.1. Договор заключается после предоставления Исполнителем обеспечения исполнения Договора в размере 5 % от цены.',
+      '2.1. Цена Договора является твёрдой и определяется на весь срок исполнения Договора.',
+      '5.12. Расходы на экспертизу несёт Исполнитель, за исключением случаев, когда экспертизой установлено отсутствие нарушений.',
+      ...lines,
+    ),
+  );
+  const estimate = mods.estLib.estimateRisks({ price: 1_000_000, risks, type: 'goods', region: null, assumptions: mods.estLib.DEFAULT_ASSUMPTIONS });
+  const econ = mods.econLib.economics({ calc: { ...ECON_CALC, ...calcOver }, estimate, settings: mods.econLib.DEFAULT_ECON, price });
+  return renderToStaticMarkup(h(mods.chartUi.AnalyticsChart, { econ, estimate, ric }));
+};
+
+test('диаграмма: метка «Оценка», проценты в карточках, из чего складывается цена с суммами и долями, риски полосками, график прибыли, «процент победы» не показан', () => {
+  const out = chartUi();
+  const t = text(out);
+  assert.match(t, /Оценка/);
+  assert.match(t, /Рентабельность \d+,\d %/);
+  assert.match(t, /Снижение от начальной цены 0,0 %/);
+  assert.match(t, /Риски к цене до \d+,\d %/);
+  assert.match(t, /Из чего складывается цена 1 000 000 ₽/);
+  for (const part of ['Ваши затраты', 'Налог и обеспечение', 'Риски по договору', 'Прибыль']) assert.ok(t.includes(part), part);
+  assert.match(t, /Риски в процентах от цены/);
+  assert.match(t, /Прибыль при снижении цены/);
+  assert.match(t, /Процент победы не показываем/);
+  assert.match(t, /скоро/);
+  assert.equal(/\d\s*%\s*побед|шанс[а-я]* на победу: \d/.test(t), false);
+});
+
+test('диаграмма: полоса цены — картинка с описанием, три сценария переключаются кнопками, у каждого сегмента подсказка и подпись в списке', () => {
+  const out = chartUi();
+  assert.match(out, /role="radiogroup"[^>]*aria-label="Сценарий"/);
+  assert.equal((out.match(/role="radio"/g) ?? []).length, 3);
+  assert.match(out, /aria-checked="true"[^>]*title="Базовый"/);
+  assert.match(out, /role="img" aria-label="Базовый сценарий: Ваши затраты \d+,\d\s%, Налог и обеспечение \d+,\d\s%, Риски по договору \d+,\d\s%, Прибыль \d+,\d\s%"/);
+  assert.match(out, /title="Ваши затраты: [^"]+\s₽\s·\s\d+,\d\s%"/);
+  // Без убытка полоса и есть цена: отдельной метки «цена заявки» на ней нет (она только на графике).
+  assert.equal(/<span[^>]*>цена заявки<\/span>/.test(out), false);
+});
+
+test('диаграмма: при убытке полоса длиннее цены — метка «цена заявки», строка «Убыток», прибыльной части нет', () => {
+  const t = text(chartUi({ costs: 950_000 }));
+  assert.match(t, /Убыток Затраты, налог и риски сверх цены заявки/);
+  const out = chartUi({ costs: 950_000 });
+  assert.match(out, />цена заявки<\/span>/);
+  assert.equal(/aria-label="Базовый сценарий:[^"]*Прибыль \d/.test(out), false);
+  assert.match(out, /aria-label="Базовый сценарий:[^"]*; убыток \d+,\d\s%\sцены"/);
+});
+
+test('диаграмма: затрат нет — просьба их ввести без выдуманных цифр, графика прибыли и процентов рентабельности нет, а риски от договора остаются', () => {
+  const out = chartUi({ costs: null });
+  const t = text(out);
+  assert.match(t, /Введите свои затраты на исполнение — тогда будет видно, из чего складывается цена/);
+  assert.equal(t.includes('Прибыль при снижении цены'), false);
+  assert.equal(t.includes('Рентабельность'), false);
+  assert.match(t, /Риски к цене до \d+,\d %/);
+  assert.match(t, /Риски в процентах от цены/);
+  assert.match(t, /Штраф|Просрочка/);
+});
+
+test('диаграмма: нет начальной цены — так и сказано', () => {
+  assert.match(text(chartUi({ nmck: null })), /Начальная цена в документах не найдена — разложить цену не на что/);
+});
+
+test('диаграмма: график — две линии с метками в легенде, таблица значений под графиком, значения не только в подсказке', () => {
+  const out = chartUi();
+  const t = text(out);
+  assert.match(out, /role="group"[^>]*aria-label="График прибыли при снижении цены/);
+  assert.match(out, /tabindex="0"/);
+  assert.match(t, /Базовый сценарий Стрессовый сценарий/);
+  assert.match(out, /<path d="M[^"]+" fill="none" stroke="var\(--viz-1\)" stroke-width="2"/);
+  assert.match(out, /<path d="M[^"]+" fill="none" stroke="var\(--viz-2\)" stroke-width="2"/);
+  assert.match(out, /<details[^>]*>\s*<summary[^>]*>Таблица значений<\/summary>/);
+  assert.equal((out.match(/<tr>/g) ?? []).length, 7);
+  assert.match(t, /Не ниже [\d ]+ ₽ \(на \d+,\d % ниже начальной\)/);
+});
+
+test('диаграмма: чужой текст из договора остаётся текстом', () => {
+  const t = chartUi({}, ['9.9. Исполнитель оплачивает <img src=x onerror=alert(1)> за свой счёт в размере 5 % от цены Договора.']);
+  assert.equal(t.includes('<img src=x'), false);
+});
+
+const withSearch = { searchContext: { year: 2026, place: 'Севастополь' }, onSearch: async () => null };
+const RECORD = {
+  query: 'тарифы на доставку грузов Севастополь 2026',
+  at: '2026-10-21T10:00:00.000Z',
+  provider: 'DuckDuckGo (пробный бесплатный поиск)',
+  hits: [
+    { title: 'Изменение стоимости грузоперевозок в г. Симферополь и г. Севастополь', url: 'https://kuban-kargo.ru/x/', domain: 'kuban-kargo.ru', snippet: 'С 09 июня 2026 года стоимость перевозки рассчитывается индивидуально' },
+    { title: 'Опасная', url: 'javascript:alert(1)', domain: '', snippet: '' },
+  ],
+};
+
+test('проверка поиском: у гипотез, которые можно проверить в интернете, кнопка и точный запрос — что именно уходит в поиск; число таких гипотез в заголовке', () => {
+  const out = estimateUi(mods.hiddenLib.EMPTY_REGISTER, 1_000_000, withSearch);
+  const t = text(out);
+  assert.match(t, /Ещё риски для такой закупки без оценки: \d+ · можно проверить поиском: \d+/);
+  assert.match(t, /Проверить поиском/);
+  assert.match(t, /В поиск уходит только: «тарифы на доставку грузов Севастополь 2026»/);
+  assert.match(t, /обычным бесплатным поиском: найденное не проверено/);
+  // Гипотеза, которую интернетом не проверить, кнопки не получает: кнопок меньше, чем гипотез.
+  const buttons = (out.match(/Проверить поиском<\/button>|Проверить поиском(?=<\/button>)/g) ?? []).length;
+  assert.ok(buttons >= 1 && buttons < (out.match(/<li class="break-words">/g) ?? []).length);
+  // Данных компании в запросе нет.
+  assert.equal(/Екатеринбург/.test(t.split('В поиск уходит только')[1] ?? ''), false);
+});
+
+test('проверка поиском: без настройки поиска (нет места для запроса) кнопок нет, как раньше', () => {
+  const t = text(estimateUi(mods.hiddenLib.EMPTY_REGISTER));
+  assert.equal(t.includes('Проверить поиском'), false);
+  assert.equal(t.includes('можно проверить поиском'), false);
+});
+
+test('проверка поиском: найденное — со ссылками в новой вкладке, меткой «Не проверено», датой и сайтом; опасная ссылка не становится ссылкой; можно открыть тот же запрос в Яндексе', () => {
+  const register = { ...mods.hiddenLib.EMPTY_REGISTER, searches: { logistics: RECORD } };
+  const out = estimateUi(register, 1_000_000, withSearch);
+  const t = text(out);
+  assert.match(t, /Не проверено/);
+  assert.match(t, /DuckDuckGo \(пробный бесплатный поиск\), 21\.10\.2026\. Страницы программа не читает и чисел из них не берёт/);
+  assert.match(out, /<a href="https:\/\/kuban-kargo\.ru\/x\/" target="_blank" rel="noopener noreferrer"/);
+  assert.match(t, /kuban-kargo\.ru С 09 июня 2026 года стоимость перевозки рассчитывается индивидуально/);
+  assert.equal(out.includes('href="javascript:'), false);
+  assert.match(t, /Искать заново/);
+  assert.match(out, /href="https:\/\/yandex\.ru\/search\/\?text=%D1%82%D0%B0%D1%80%D0%B8%D1%84%D1%8B/);
+});
+
+test('проверка поиском: чужой текст из выдачи остаётся текстом, а не разметкой', () => {
+  const evil = { ...RECORD, hits: [{ title: '<img src=x onerror=alert(1)>', url: 'https://a.ru/', domain: 'a.ru', snippet: '<script>x</script>' }] };
+  const out = estimateUi({ ...mods.hiddenLib.EMPTY_REGISTER, searches: { logistics: evil } }, 1_000_000, withSearch);
+  assert.equal(out.includes('<img src=x'), false);
+  assert.equal(out.includes('<script>x'), false);
 });

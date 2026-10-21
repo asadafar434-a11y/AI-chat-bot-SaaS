@@ -32,7 +32,7 @@ export type SummaryInput = {
   region: RegionNote | null;
 };
 
-export type SectionId = "risks" | "estimate" | "economics" | "nmck" | "ric";
+export type SectionId = "risks" | "estimate" | "economics" | "nmck" | "ric" | "chart";
 export type SectionBrief = { id: SectionId; title: string; brief: string };
 
 export type Summary = {
@@ -47,7 +47,7 @@ export type Summary = {
 // Пробелы внутри суммы и перед «₽» и «%» — неразрывные: число не рвётся на строки («1 / 000 000 ₽»).
 const glue = (s: string) => s.replace(/[   ]/g, " ");
 export const rubles = (n: number) => glue(`${Math.round(n).toLocaleString("ru-RU")} ₽`).replace("-", "−");
-const percent = (n: number) => glue(`${n.toLocaleString("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`);
+export const percent = (n: number) => glue(`${n.toLocaleString("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`).replace("-", "−");
 
 const MAX_RECOMMENDATIONS = 6;
 
@@ -142,6 +142,15 @@ export function buildSummary(i: SummaryInput): Summary {
     { id: "economics", title: "Какую цену ставить", brief: !e.ready ? "нужны ваши затраты" : e.target !== null ? `целевая ${rubles(e.target)}` : e.min !== null ? `не ниже ${rubles(e.min)}` : "убыток по начальной цене" },
     { id: "nmck", title: "Расчёт цены у заказчика", brief: i.calcs.length === 0 ? "не найден" : `замечаний: ${i.calcs.filter((c) => c.issues.some((x) => x.level === "warn")).length} из ${i.calcs.length}` },
     { id: "ric", title: "РИЦ: ваши цены-аналоги", brief: !i.badge ? "не заполнено" : i.badge.status === "insufficient" ? "данных пока мало" : i.badge.title },
+    {
+      id: "chart",
+      title: "Итоговая диаграмма",
+      brief: e.ready
+        ? `рентабельность ${percent(e.scenarios.base.margin)}${i.estimate.totalPct !== null && i.estimate.total > 0 ? ` · риски до ${percent(i.estimate.totalPct)}` : ""}`
+        : i.estimate.totalPct !== null && i.estimate.total > 0
+          ? `риски до ${percent(i.estimate.totalPct)} цены; нужны ваши затраты`
+          : "нужны ваши затраты",
+    },
   ];
   return { verdict: verdictOf(i), text: textOf(i), facts, recommendations: recommendationsOf(i), sections };
 }

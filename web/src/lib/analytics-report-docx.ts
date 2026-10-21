@@ -1,7 +1,7 @@
 // Отчёт по разбору закупки в Word: собирается в браузере, на сервер не уходит. Состав — analytics-report.ts, здесь только оформление.
 // Библиотека docx тяжёлая, поэтому подгружается при нажатии «Скачать Word», а не при открытии экрана.
 
-import type { Report, ReportBlock } from "@/lib/analytics-report";
+import { pct, type Report, type ReportBlock } from "@/lib/analytics-report";
 
 const FONT = "Arial";
 
@@ -30,6 +30,7 @@ export async function reportDocx(report: Report): Promise<Blob> {
   const block = (b: ReportBlock) => {
     if (b.type === "p") return [para(b.text, { bold: b.bold, color: b.muted ? "555555" : undefined, before: b.bold ? 160 : 60 })];
     if (b.type === "bullets") return b.items.map((x) => new Paragraph({ spacing: { before: 30, after: 30 }, bullet: { level: 0 }, children: [run(x)] }));
+    if (b.type === "bars") return [table(["Статья", "Сумма", "Доля цены"], b.items.map((x) => [x.label, x.text, pct(x.pct)])), para("", { before: 0, after: 0 })];
     return [table(b.head, b.rows), para("", { before: 0, after: 0 })];
   };
   const doc = new Document({

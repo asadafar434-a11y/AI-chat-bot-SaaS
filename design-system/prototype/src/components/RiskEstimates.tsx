@@ -1,9 +1,11 @@
 import type { Driver, HypothesisView, RegisterData } from '@/lib/hidden-costs';
 import type { Assumptions, EstimateResult } from '@/lib/risk-estimate';
 import type { SensitivityResult } from '@/lib/sensitivity';
+import { queryFor, type SearchContext } from '@/lib/search-queries';
 import { AlertTriangle, Info, Plus, Trash2 } from '../lib/icons';
 import { CertaintyBadge } from './Certainty';
 import { Frame, frameBody, frameHead } from './Frame';
+import { HypothesisSearch } from './HypothesisSearch';
 import { Badge, Button, HelpTip, IconButton } from './ui';
 
 // «Сколько это может стоить по этому контракту»: программа сама считает риски в рублях по условиям договора и типовым допущениям (lib/risk-estimate.ts) — участнику не нужно ничего отмечать.
@@ -21,6 +23,10 @@ export type RiskEstimatesProps = {
   defaultDrivers: string[];
   priceHint: string;
   onChange: (next: RegisterData) => void;
+  /** Для проверки гипотез поиском: год и регион места поставки из документов. Без него кнопок поиска нет. */
+  searchContext?: SearchContext;
+  /** Искать по запросу гипотезы: возвращает текст ошибки или null, если результат сохранён. */
+  onSearch?: (hypothesisId: string, query: string) => Promise<string | null>;
   /** Внутри раскрывающегося раздела: без карточки и названия. */
   embedded?: boolean;
 };
@@ -158,8 +164,9 @@ function Sensitivity({ data, sens, defaultDrivers, priceHint, onChange, total }:
   );
 }
 
-export function RiskEstimates({ result, price, priceNote, hypotheses, data, sens, defaultDrivers, priceHint, onChange, embedded }: RiskEstimatesProps) {
+export function RiskEstimates({ result, price, priceNote, hypotheses, data, sens, defaultDrivers, priceHint, onChange, searchContext, onSearch, embedded }: RiskEstimatesProps) {
   const rest = hypotheses.filter((h) => !COVERED.has(h.id));
+  const queries = new Map(rest.flatMap((h) => { const q = searchContext && onSearch ? queryFor(h.id, searchContext) : null; return q ? [[h.id, q] as const] : []; }));
   const sorted = [...result.items].sort((a, b) => (a.amount === null ? 1 : 0) - (b.amount === null ? 1 : 0) || (b.amount ?? 0) - (a.amount ?? 0));
   return (
     <Frame embedded={embedded}>
@@ -225,7 +232,7 @@ export function RiskEstimates({ result, price, priceNote, hypotheses, data, sens
         <Sensitivity data={data} sens={sens} defaultDrivers={defaultDrivers} priceHint={priceHint} onChange={onChange} total={result.total} />
         {rest.length > 0 && (
           <details className="text-[12px]">
-            <summary className="cursor-pointer text-muted-foreground">Ещё риски для такой закупки без оценки: {rest.length}</summary>
+            <summary className="cursor-pointer text-muted-foreground">Ещё риски для такой закупки без оценки: {rest.length}{queries.size > 0 && ` · можно проверить поиском: ${queries.size}`}</summary>
             <ul className="mt-2 space-y-1.5">
               {rest.map((h) => (
                 <li key={h.id} className="break-words">
@@ -235,10 +242,14 @@ export function RiskEstimates({ result, price, priceNote, hypotheses, data, sens
                       <span className="font-medium">{h.title}.</span> <span className="text-muted-foreground">{h.check}</span>
                     </span>
                   </span>
+                  {queries.has(h.id) && onSearch && <HypothesisSearch query={queries.get(h.id)!} record={data.searches[h.id]} onSearch={() => onSearch(h.id, queries.get(h.id)!)} />}
                 </li>
               ))}
             </ul>
-            <p className="mt-2 text-muted-foreground">Сумму по ним посчитает ИИ с российским поиском, когда их подключат; сейчас данных для числа нет.</p>
+            <p className="mt-2 text-muted-foreground">
+              Сумму по ним посчитает ИИ с российским поиском, когда их подключат; сейчас данных для числа нет.
+              {queries.size > 0 && ' Кнопка «Проверить поиском» ищет факты в интернете обычным бесплатным поиском: найденное не проверено, смотрите ссылки сами.'}
+            </p>
           </details>
         )}
       </div>

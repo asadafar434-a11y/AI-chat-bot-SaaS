@@ -35,12 +35,15 @@ export type EconInput = {
   price: number | null;
 };
 
+/** Куда относится статья расхода: свои затраты; налог и обеспечение; риски по договору. Сумма статей и прибыль дают цену — на этом строится диаграмма (lib/analytics-chart.ts). */
+export type LineGroup = "costs" | "taxes" | "risks";
+
 export type ScenarioResult = {
   profit: number;
   /** Прибыль к цене, %. */
   margin: number;
-  /** Что вошло: налог, обеспечение, проценты за деньги, гарантийный ремонт, рост затрат, неустойка — в рублях. */
-  lines: { label: string; amount: number }[];
+  /** Что вошло: затраты, налог, обеспечение, проценты за деньги, гарантийный ремонт, неустойка — в рублях. */
+  lines: { label: string; group: LineGroup; amount: number }[];
 };
 
 export type EconResult =
@@ -89,14 +92,14 @@ export function economics({ calc, estimate, settings, price }: EconInput): EconR
     const warranty = scaled("warranty", p) * (scenario === "optimistic" ? 0 : scenario === "stress" ? 2 : 1);
     const penalty = scenario === "stress" && worst ? (worst.amount! * p) / base : 0;
     const profit = b.profit - guarantee - finance - warranty - penalty;
-    const lines = [
-      { label: "Затраты на исполнение", amount: costs },
-      ...(b.extra > 0 ? [{ label: "Расходы на участие", amount: b.extra }] : []),
-      ...(b.tax > 0 ? [{ label: "Налог с выручки", amount: b.tax }] : []),
-      ...(b.securityCost + guarantee > 0 ? [{ label: "Обеспечение исполнения", amount: b.securityCost + guarantee }] : []),
-      ...(finance > 0 ? [{ label: "Проценты за деньги до оплаты", amount: finance }] : []),
-      ...(warranty > 0 ? [{ label: "Гарантийный ремонт", amount: warranty }] : []),
-      ...(penalty > 0 ? [{ label: "Неустойка (один случай)", amount: penalty }] : []),
+    const lines: ScenarioResult["lines"] = [
+      { label: "Затраты на исполнение", group: "costs" as const, amount: costs },
+      ...(b.extra > 0 ? [{ label: "Расходы на участие", group: "costs" as const, amount: b.extra }] : []),
+      ...(b.tax > 0 ? [{ label: "Налог с выручки", group: "taxes" as const, amount: b.tax }] : []),
+      ...(b.securityCost + guarantee > 0 ? [{ label: "Обеспечение исполнения", group: "taxes" as const, amount: b.securityCost + guarantee }] : []),
+      ...(finance > 0 ? [{ label: "Проценты за деньги до оплаты", group: "risks" as const, amount: finance }] : []),
+      ...(warranty > 0 ? [{ label: "Гарантийный ремонт", group: "risks" as const, amount: warranty }] : []),
+      ...(penalty > 0 ? [{ label: "Неустойка (один случай)", group: "risks" as const, amount: penalty }] : []),
     ].map((l) => ({ ...l, amount: round2(l.amount) }));
     return { profit: round2(profit), margin: (profit / p) * 100, lines };
   };

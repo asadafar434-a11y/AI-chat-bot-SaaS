@@ -4,7 +4,7 @@ import { buildSummary, type SectionId } from '@/lib/analytics-summary';
 import { getRegister, getRic, saveRegister, saveRic } from '@/lib/analytics-store';
 import { contractRisks, looksLikeContract } from '@/lib/contract-risks';
 import { DEFAULT_DRIVERS, EMPTY_REGISTER, hypothesesFor, lawOf, placeOf, regionNote, typeOf, type RegisterData } from '@/lib/hidden-costs';
-import { errorMessage } from '@/lib/http-error';
+import { errorMessage, errorText } from '@/lib/http-error';
 import { computeRic, EMPTY_RIC, parseAmount, positionsFromDocuments, type RicData } from '@/lib/indicative-price';
 import { calcFor } from '@/lib/price-calc';
 import { economics, econSettings } from '@/lib/economics';
@@ -14,10 +14,13 @@ import { priceBadge } from '@/lib/price-badge';
 import { titleOf } from '@/lib/purchase';
 import { printHtml } from '@/lib/print-html';
 import { parseRubles } from '@/lib/rub-words';
+import type { SearchContext } from '@/lib/search-queries';
 import { saveFile } from '@/lib/save-file';
 import { computeSensitivity } from '@/lib/sensitivity';
 import { usePurchases } from '@/lib/use-purchases';
+import { normalizeSearches } from '@/lib/web-search';
 import { AnalyticsHome } from '../components/Analytics';
+import { AnalyticsChart } from '../components/AnalyticsChart';
 import { AnalyticsSummary, type ReportBusy } from '../components/AnalyticsSummary';
 import { Collapsible } from '../components/Collapsible';
 import { ContractRisks } from '../components/ContractRisks';
@@ -123,6 +126,25 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
   const sens = useMemo(() => computeSensitivity((register.data ?? EMPTY_REGISTER).sens), [register.data]);
   const priceHint = purchase.tpPrice ? String(purchase.tpPrice) : nmck !== null ? String(nmck) : '0,00';
 
+  // Проверка гипотез обычным поиском: в запрос идут только ключевые слова темы, год и регион места поставки из документов (lib/search-queries.ts). Результат сохраняется у закупки.
+  const searchContext = useMemo<SearchContext>(() => ({ year: new Date().getFullYear(), place: place?.region.name ?? null }), [place]);
+  const registerNow = useRef(register.data);
+  registerNow.current = register.data;
+  const searchHypothesis = async (id: string, query: string): Promise<string | null> => {
+    try {
+      const res = await fetch('/api/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) });
+      if (!res.ok) return await errorText(res, 'Поиск сейчас недоступен. Повторите позже.');
+      const found = (await res.json()) as { query?: string; providerName?: string; at?: string; hits?: unknown };
+      const record = normalizeSearches({ [id]: { query: found.query ?? query, at: found.at ?? new Date().toISOString(), provider: found.providerName ?? 'поиск', hits: found.hits } })[id];
+      const latest = registerNow.current;
+      if (!record || !latest) return 'Поиск вернул непонятный ответ. Повторите позже.';
+      register.change({ ...latest, searches: { ...latest.searches, [id]: record } });
+      return null;
+    } catch (e) {
+      return errorMessage(e);
+    }
+  };
+
   const title = titleOf(purchase);
   const summary = useMemo(
     () =>
@@ -142,8 +164,8 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
     [title, purchase.kind, purchase.tpPrice, nmck, hasContract, risks, estimate, econ, badge, calcs, regionInfo],
   );
   const needCosts = !econ.ready && econ.reason === 'costs';
-  // Разделы закрыты: сверху резюме. Исключение — когда без ваших затрат цену не назвать: раздел с затратами открыт сразу.
-  const [open, setOpen] = useState<Record<SectionId, boolean>>(() => ({ risks: false, estimate: false, economics: needCosts, nmck: false, ric: false }));
+  // Разделы закрыты: сверху резюме. Исключения: без ваших затрат цену не назвать — раздел с затратами открыт сразу; итоговая диаграмма открыта, когда есть что рисовать.
+  const [open, setOpen] = useState<Record<SectionId, boolean>>(() => ({ risks: false, estimate: false, economics: needCosts, nmck: false, ric: false, chart: econ.ready }));
   const toggle = (id: SectionId) => setOpen((o) => ({ ...o, [id]: !o[id] }));
   const goTo = (id: SectionId) => {
     setOpen((o) => ({ ...o, [id]: true }));
@@ -167,6 +189,10 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
       ric: result,
       badge,
       assumptions: assumptionLines(assumptions),
+      searches: Object.entries((register.data ?? EMPTY_REGISTER).searches).flatMap(([id, record]) => {
+        const h = hypotheses.find((x) => x.id === id);
+        return h ? [{ title: h.title, record }] : [];
+      }),
     });
   const downloadWord = async () => {
     setBusy('word');
@@ -211,6 +237,8 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
             defaultDrivers={DEFAULT_DRIVERS[type]}
             priceHint={priceHint}
             onChange={register.change}
+            searchContext={searchContext}
+            onSearch={searchHypothesis}
           />
         ) : (
           loading
@@ -232,6 +260,8 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
         );
       case 'nmck':
         return <NmckCheck embedded calcs={calcs} />;
+      case 'chart':
+        return <AnalyticsChart econ={econ} estimate={estimate} ric={result} />;
       case 'ric':
         return data && result && badge ? (
           <RicPanel embedded data={data} result={result} badge={badge} importSource={source} importNote={note} onImport={importFromDocuments} onChange={ric.change} saveError={null} />

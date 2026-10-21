@@ -62,6 +62,7 @@ test("нет затрат — «мало данных»: причина и ре�
   assert.ok(!s.recommendations.some((r) => /Введите свои затраты/.test(r)));
   assert.equal(s.facts.some((f) => f.label === "Целевая цена"), false);
   assert.match(s.sections.find((x) => x.id === "economics")!.brief, /нужны ваши затраты/);
+  assert.match(s.sections.find((x) => x.id === "chart")!.brief, /^риски до \d+,\d % цены; нужны ваши затраты$/);
 });
 
 test("убыток даже по начальной цене — «не стоит» с суммой убытка", () => {
@@ -129,7 +130,8 @@ test("строки разделов для раскрывающихся заго
   assert.match(brief("economics"), /^целевая [\d  ]+ ₽$/);
   assert.equal(brief("nmck"), "не найден");
   assert.equal(brief("ric"), "не заполнено");
-  assert.deepEqual(s.sections.map((x) => x.id), ["risks", "estimate", "economics", "nmck", "ric"]);
+  assert.match(brief("chart"), /^рентабельность \d+,\d % · риски до \d+,\d %$/);
+  assert.deepEqual(s.sections.map((x) => x.id), ["risks", "estimate", "economics", "nmck", "ric", "chart"]);
 });
 
 test("суммы не рвутся на строки: пробелы внутри числа и перед «₽» и «%» неразрывные", () => {

@@ -173,3 +173,12 @@ test("настоящие закупки: место поставки или ис
   assert.equal((await placeIn("Метрострой СС (аукцион МСП 223-ФЗ, сетка стальная)"))?.region.name, "Санкт-Петербург");
   assert.equal(await placeIn("ДГК (конкурс 223-ФЗ, комплектующие дымососов)"), null, "место поставки в документах не подписано — не угадываем");
 });
+
+test("поиски по гипотезам сохраняются и читаются; повреждённое и опасные ссылки отбрасываются", () => {
+  assert.deepEqual(EMPTY_REGISTER.searches, {});
+  const record = { query: "тарифы на доставку грузов Севастополь 2026", at: "2026-10-21T10:00:00.000Z", provider: "DuckDuckGo", hits: [{ title: "Т", url: "https://a.ru/x", domain: "a.ru", snippet: "с" }] };
+  const data = normalizeRegister({ searches: { logistics: record, broken: "x" } });
+  assert.deepEqual(data.searches, { logistics: record });
+  assert.deepEqual(normalizeRegister({ searches: { logistics: { ...record, hits: [{ title: "Опасная", url: "javascript:alert(1)" }] } } }).searches.logistics.hits, []);
+  assert.deepEqual(normalizeRegister({ assumptions: {} }).searches, {}, "прежние данные без поисков читаются");
+});

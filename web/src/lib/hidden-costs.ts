@@ -5,6 +5,7 @@
 
 import { DEFAULT_ASSUMPTIONS, type Assumptions } from "@/lib/risk-estimate";
 import { regionOf, type Region } from "@/lib/regions";
+import { normalizeSearches, type SearchRecord } from "@/lib/web-search";
 
 type Doc = { name: string; text: string };
 
@@ -156,16 +157,17 @@ export type Driver = { id: string; name: string; amount: string; shock: string }
 export type SensitivityData = { price: string; cost: string; drivers: Driver[] };
 /** Свои затраты участника для экономики участия — только если он не ввёл их на шаге «Цена»: пустое поле значит «взять из шага «Цена»». */
 export type EconInputs = { costs: string; extra: string; taxPct: string };
-export type RegisterData = { assumptions: Assumptions; sens: SensitivityData; econ: EconInputs };
+/** searches — что нашёл обычный поиск по гипотезе (ключ — номер гипотезы): запрос, когда и чем искали, результаты со ссылками; всё «не проверено», пока человек не посмотрел ссылки сам (lib/web-search.ts). */
+export type RegisterData = { assumptions: Assumptions; sens: SensitivityData; econ: EconInputs; searches: Record<string, SearchRecord> };
 
-export const EMPTY_REGISTER: RegisterData = { assumptions: DEFAULT_ASSUMPTIONS, sens: { price: "", cost: "", drivers: [] }, econ: { costs: "", extra: "", taxPct: "" } };
+export const EMPTY_REGISTER: RegisterData = { assumptions: DEFAULT_ASSUMPTIONS, sens: { price: "", cost: "", drivers: [] }, econ: { costs: "", extra: "", taxPct: "" }, searches: {} };
 
 const str = (x: unknown) => (typeof x === "string" ? x : "");
 const positive = (x: unknown, max: number, fallback: number) => (typeof x === "number" && Number.isFinite(x) && x >= 0 && x <= max ? x : fallback);
 
 /** Данные из хранилища могут быть старше или повреждены: берём только то, что понимаем; прежние отметки «учтено / не актуально» больше не нужны и отбрасываются. */
 export function normalizeRegister(raw: unknown): RegisterData {
-  const input = (raw && typeof raw === "object" ? raw : {}) as { assumptions?: Record<string, unknown>; sens?: { price?: unknown; cost?: unknown; drivers?: unknown }; econ?: Record<string, unknown> };
+  const input = (raw && typeof raw === "object" ? raw : {}) as { assumptions?: Record<string, unknown>; sens?: { price?: unknown; cost?: unknown; drivers?: unknown }; econ?: Record<string, unknown>; searches?: unknown };
   const a = input.assumptions ?? {};
   const assumptions: Assumptions = {
     financeRatePct: positive(a.financeRatePct, 100, DEFAULT_ASSUMPTIONS.financeRatePct),
@@ -182,7 +184,7 @@ export function normalizeRegister(raw: unknown): RegisterData {
     d && typeof d === "object" && typeof d.id === "string" ? [{ id: d.id, name: str(d.name), amount: str(d.amount), shock: str(d.shock) }] : [],
   );
   const econ = input.econ ?? {};
-  return { assumptions, sens: { price: str(input.sens?.price), cost: str(input.sens?.cost), drivers }, econ: { costs: str(econ.costs), extra: str(econ.extra), taxPct: str(econ.taxPct) } };
+  return { assumptions, sens: { price: str(input.sens?.price), cost: str(input.sens?.cost), drivers }, econ: { costs: str(econ.costs), extra: str(econ.extra), taxPct: str(econ.taxPct) }, searches: normalizeSearches(input.searches) };
 }
 
 /** Статьи затрат для таблицы чувствительности — по виду закупки; участник добавляет и меняет свои. */
