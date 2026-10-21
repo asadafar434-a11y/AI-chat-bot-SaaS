@@ -3,7 +3,8 @@ import type { Assumptions, EstimateResult } from '@/lib/risk-estimate';
 import type { SensitivityResult } from '@/lib/sensitivity';
 import { AlertTriangle, Info, Plus, Trash2 } from '../lib/icons';
 import { CertaintyBadge } from './Certainty';
-import { Badge, Button, Card, HelpTip, IconButton } from './ui';
+import { Frame, frameBody, frameHead } from './Frame';
+import { Badge, Button, HelpTip, IconButton } from './ui';
 
 // «Сколько это может стоить по этому контракту»: программа сама считает риски в рублях по условиям договора и типовым допущениям (lib/risk-estimate.ts) — участнику не нужно ничего отмечать.
 // Метка «Оценка»: сумма зависит от допущений, которые видно и можно поменять. Чего без данных не посчитать (ремонт, тариф перевозчика), так и сказано — число не выдумывается.
@@ -20,6 +21,8 @@ export type RiskEstimatesProps = {
   defaultDrivers: string[];
   priceHint: string;
   onChange: (next: RegisterData) => void;
+  /** Внутри раскрывающегося раздела: без карточки и названия. */
+  embedded?: boolean;
 };
 
 const inputClass =
@@ -41,6 +44,8 @@ const ASSUMPTIONS: { key: keyof Assumptions; label: string; hint?: string }[] = 
   { key: 'growthPct', label: 'Рост затрат за срок, %' },
   { key: 'warrantyPct', label: 'Гарантийный резерв, % цены' },
   { key: 'keyRatePct', label: 'Ключевая ставка, % (для пени 1/300)' },
+  { key: 'targetMarginPct', label: 'Целевая маржа, % цены', hint: 'От неё считается целевая цена заявки.' },
+  { key: 'optimisticPct', label: 'Оптимистичный сценарий: затраты ниже на, %' },
 ];
 
 function AssumptionsEditor({ data, onChange }: Pick<RiskEstimatesProps, 'data' | 'onChange'>) {
@@ -153,20 +158,20 @@ function Sensitivity({ data, sens, defaultDrivers, priceHint, onChange, total }:
   );
 }
 
-export function RiskEstimates({ result, price, priceNote, hypotheses, data, sens, defaultDrivers, priceHint, onChange }: RiskEstimatesProps) {
+export function RiskEstimates({ result, price, priceNote, hypotheses, data, sens, defaultDrivers, priceHint, onChange, embedded }: RiskEstimatesProps) {
   const rest = hypotheses.filter((h) => !COVERED.has(h.id));
   const sorted = [...result.items].sort((a, b) => (a.amount === null ? 1 : 0) - (b.amount === null ? 1 : 0) || (b.amount ?? 0) - (a.amount ?? 0));
   return (
-    <Card className="p-0">
-      <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
-        <span className="text-sm font-medium">Сколько это может стоить по этому контракту</span>
+    <Frame embedded={embedded}>
+      <div className={frameHead(embedded)}>
+        {!embedded && <span className="text-sm font-medium">Сколько это может стоить по этому контракту</span>}
         <HelpTip
           align="start"
           content="Программа сама считает риски в рублях: условия договора (пеня, срок оплаты, обеспечение, твёрдая цена) плюс типовые допущения (ставка кредита, банковская гарантия, гарантийный резерв). Допущения видны и меняются. Чего без данных не посчитать (ремонт, тариф перевозчика), так и написано — числа не выдумываются."
         />
         <CertaintyBadge kind="estimate" />
       </div>
-      <div className="space-y-3 px-4 py-3 text-[13px]">
+      <div className={frameBody(embedded)}>
         {price === null ? (
           <p className="text-muted-foreground">Цена контракта не найдена в документах, поэтому оценить в рублях нечего. Укажите цену на шаге «Цена» закупки.</p>
         ) : (
@@ -237,6 +242,6 @@ export function RiskEstimates({ result, price, priceNote, hypotheses, data, sens
           </details>
         )}
       </div>
-    </Card>
+    </Frame>
   );
 }

@@ -30,11 +30,15 @@ before(async () => {
     cert: await server.ssrLoadModule('/src/components/Certainty.tsx'),
     estUi: await server.ssrLoadModule('/src/components/RiskEstimates.tsx'),
     estLib: await server.ssrLoadModule('@/lib/risk-estimate.ts'),
+    econUi: await server.ssrLoadModule('/src/components/Economics.tsx'),
+    econLib: await server.ssrLoadModule('@/lib/economics.ts'),
     hiddenLib: await server.ssrLoadModule('@/lib/hidden-costs.ts'),
     sensLib: await server.ssrLoadModule('@/lib/sensitivity.ts'),
     risksUi: await server.ssrLoadModule('/src/components/ContractRisks.tsx'),
     risksLib: await server.ssrLoadModule('@/lib/contract-risks.ts'),
     side: await server.ssrLoadModule('/src/components/Sidebar.tsx'),
+    sumUi: await server.ssrLoadModule('/src/components/AnalyticsSummary.tsx'),
+    collapsible: await server.ssrLoadModule('/src/components/Collapsible.tsx'),
   };
 });
 
@@ -87,8 +91,9 @@ test('раздел: список закупок, «готово» у РИЦ и �
   assert.match(list, /Ценовой бейдж/);
   assert.match(list, /Риски и расходы из договора/);
   assert.match(list, /Сколько это может стоить/);
+  assert.match(list, /Какую цену ставить/);
   assert.ok((list.match(/готово/g) ?? []).length >= 5, 'пять шагов готовы');
-  assert.ok((renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: [], onOpen: none, onNew: none })).match(/скоро/g) ?? []).length >= 4, 'остальное помечено «скоро»');
+  assert.ok((renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: [], onOpen: none, onNew: none })).match(/скоро/g) ?? []).length >= 3, 'остальное помечено «скоро»');
   assert.match(text(renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: [], onOpen: none, onNew: none }))), /Новая закупка/);
   assert.match(text(renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: null, onOpen: none, onNew: none }))), /Читаю закупки/);
 });
@@ -326,6 +331,63 @@ test('сколько это может стоить: на своих цифра�
   assert.match(roomy, /прибыль останется 169 890,41 ₽/);
 });
 
+const ECON_CALC = { nmck: 1_000_000, costs: 700_000, extra: 10_000, taxPct: 6, securityPct: 5, smeOnly: false, exempt: false, method: 'guarantee', guaranteeRatePct: null, moneyRatePct: null, days: null, antiDumping: false, goodFaith: false, price: null };
+const econUi = (calcOver = {}, register = mods.hiddenLib.EMPTY_REGISTER, fromStep = { costs: 700000, extra: 10000, taxPct: 6 }) => {
+  const risks = mods.risksLib.contractRisks(
+    contractDocs(
+      '7.3. Исполнитель обязан уплатить Заказчику пеню в размере 0,1% от цены Договора за каждый день просрочки.',
+      '3.6. Оплата производится Заказчиком в течение 30 дней с даты акта.',
+      '10.1. Договор заключается после предоставления Исполнителем обеспечения исполнения Договора в размере 5 % от цены.',
+      '2.1. Цена Договора является твёрдой и определяется на весь срок исполнения Договора.',
+    ),
+  );
+  const estimate = mods.estLib.estimateRisks({ price: 1_000_000, risks, type: 'goods', region: null, assumptions: mods.estLib.DEFAULT_ASSUMPTIONS });
+  const result = mods.econLib.economics({ calc: { ...ECON_CALC, ...calcOver }, estimate, settings: mods.econLib.DEFAULT_ECON, price: null });
+  return renderToStaticMarkup(
+    h(mods.econUi.Economics, { result, nmck: calcOver.nmck === undefined ? 1_000_000 : calcOver.nmck, priceNote: 'цене вашей заявки', fromStep, targetMarginPct: 10, data: register, onChange: none }),
+  );
+};
+
+test('какую цену ставить: метка «Оценка», целевая цена с маржой 10 %, три цены, прибыль по трём сценариям, снижение цены и «как посчитано» свёрнуты', () => {
+  const out = text(econUi());
+  assert.match(out, /Какую цену ставить/);
+  assert.match(out, /Оценка/);
+  assert.match(out, /Ставьте не ниже 8\d\d \d{3},\d{2} ₽ \(12,\d % от начальной\): маржа 10,0 % в базовом сценарии/);
+  assert.match(out, /Чтобы выдержать стресс — не ниже 8\d\d \d{3},\d{2} ₽/);
+  assert.match(out, /Не ниже\s+7\d\d \d{3},\d{2} ₽/);
+  assert.match(out, /Безопасная\s+8\d\d \d{3},\d{2} ₽/);
+  assert.match(out, /Целевая\s+8\d\d \d{3},\d{2} ₽/);
+  assert.match(out, /Прибыль по сценариям при цене вашей заявки 1 000 000,00 ₽/);
+  assert.match(out, /Оптимистичный Базовый Стрессовый/);
+  assert.match(out, /251 993,15 ₽ маржа 25,2 %/);
+  assert.match(out, /196 993,15 ₽ маржа 19,7 %/);
+  assert.match(out, /96 993,15 ₽ маржа 9,7 %/);
+  assert.match(out, /Снижение цены: что будет с прибылью/);
+  assert.match(out, /Как посчитано/);
+  assert.match(out, /Налог с выручки: 60 000,00 ₽/);
+  assert.match(out, /Проценты за деньги до оплаты: 11 506,85 ₽/);
+  assert.match(out, /плюс одна неустойка: Просрочка: пеня 0,1 % в день/);
+  assert.ok(econUi().includes('placeholder="из шага «Цена»: 700 000"'), 'затраты из шага «Цена» подсказаны в поле');
+});
+
+test('какую цену ставить: затрат нет — просьба их ввести без выдуманных цифр; начальной цены нет — так и сказано; убыток даже по начальной — «участвовать не стоит»', () => {
+  const none = text(econUi({ costs: null }, mods.hiddenLib.EMPTY_REGISTER, { costs: null, extra: null, taxPct: null }));
+  assert.match(none, /Введите свои затраты на исполнение — без них цену не посчитать/);
+  assert.match(none, /Своих цифр у программы нет/);
+  assert.equal(/Ставьте не ниже/.test(none), false);
+  assert.match(text(econUi({ nmck: null })), /Начальная цена в документах не найдена/);
+  const loss = text(econUi({ costs: 950_000 }));
+  assert.match(loss, /Даже по начальной цене \(1 000 000,00 ₽\) контракт убыточный на ваших затратах/);
+  assert.match(loss, /Участвовать не стоит/);
+  assert.match(loss, /не достижима/);
+});
+
+test('какую цену ставить: цена выше целевой маржи недостижима — прямо сказано, ниже какой цены убыток', () => {
+  const out = text(econUi({ costs: 840_000 }));
+  assert.match(out, /Целевая маржа 10,0 % недостижима даже по начальной цене/);
+  assert.match(out, /Ниже \d{3} \d{3},\d{2} ₽ — убыток/);
+});
+
 test('метки достоверности: подтверждено, по вашим данным, гипотеза, не проверено — у каждой своё слово', () => {
   for (const [kind, label] of [['confirmed', 'Подтверждено'], ['own', 'По вашим данным'], ['hypothesis', 'Гипотеза'], ['unchecked', 'Не проверено']]) {
     assert.match(text(renderToStaticMarkup(h(mods.cert.CertaintyBadge, { kind }))), new RegExp(label));
@@ -337,4 +399,64 @@ test('чужой текст в названии и источнике остаё
   const out = panel(d, null);
   assert.equal(out.includes('<img src=x'), false);
   assert.equal(out.includes('<script>x'), false);
+});
+
+const summaryOf = (level, over = {}) => ({
+  verdict: { level, label: { go: 'Участвовать можно', careful: 'Участвовать осторожно', stop: 'Участвовать не стоит', unknown: 'Мало данных для решения' }[level], reasons: ['Первая причина.', 'Вторая причина.'] },
+  text: 'Поставка угля. Начальная цена 1 000 000 ₽.',
+  facts: [{ label: 'Начальная цена', value: '1 000 000 ₽' }],
+  recommendations: ['Заложите запас по срокам.', 'Запросите цену экспертизы.'],
+  sections: [],
+  ...over,
+});
+const summaryUi = (summary, over = {}) =>
+  renderToStaticMarkup(h(mods.sumUi.AnalyticsSummary, { summary, busy: null, error: null, onWord: none, onPdf: none, ...over }));
+
+test('раскрывашка: закрытая показывает название и строку итога, кнопка знает про состояние, содержимое остаётся в разметке скрытым', () => {
+  const render = (open) => renderToStaticMarkup(h(mods.collapsible.Collapsible, { title: 'Риски и расходы из договора', brief: '3 условия, внимания требуют 1', open, onToggle: none }, h('p', null, 'Подробности')));
+  const closed = render(false);
+  assert.match(text(closed), /Риски и расходы из договора 3 условия, внимания требуют 1/);
+  assert.match(closed, /aria-expanded="false"/);
+  assert.match(closed, /<div id="[^"]+" hidden=""/);
+  assert.match(closed, /Подробности/);
+  const opened = render(true);
+  assert.match(opened, /aria-expanded="true"/);
+  assert.equal(/ hidden=""/.test(opened), false);
+});
+
+test('резюме: итог светофором с причинами, метка «Оценка», цифры, абзац резюме и обе кнопки отчёта', () => {
+  const out = summaryUi(summaryOf('careful'));
+  const t = text(out);
+  assert.match(t, /Участвовать осторожно/);
+  assert.match(t, /Первая причина\. Вторая причина\./);
+  assert.match(t, /Оценка/);
+  assert.match(t, /Начальная цена 1 000 000 ₽/);
+  assert.match(t, /Резюме Поставка угля\./);
+  assert.match(t, /Скачать Word[\s\S]*Скачать PDF/);
+});
+
+test('резюме: рекомендации свёрнуты, в заголовке их число; нет рекомендаций — плашки нет', () => {
+  const out = summaryUi(summaryOf('go'));
+  assert.match(text(out), /Рекомендации \(2\)/);
+  assert.match(out, /aria-expanded="false"/);
+  assert.equal(text(summaryUi(summaryOf('go', { recommendations: [] }))).includes('Рекомендации'), false);
+});
+
+test('резюме: четыре итога — у каждого свои слова; «мало данных» может предложить действие', () => {
+  for (const [level, label] of [['go', 'Участвовать можно'], ['careful', 'Участвовать осторожно'], ['stop', 'Участвовать не стоит'], ['unknown', 'Мало данных для решения']]) {
+    assert.match(text(summaryUi(summaryOf(level))), new RegExp(label));
+  }
+  assert.match(text(summaryUi(summaryOf('unknown'), { action: { label: 'Ввести затраты', onClick: none } })), /Ввести затраты/);
+  assert.equal(text(summaryUi(summaryOf('unknown'))).includes('Ввести затраты'), false);
+});
+
+test('резюме: кнопки отчёта блокируются, пока файл готовится; ошибка показана как предупреждение; светофор не называет себя вероятностью', () => {
+  const busy = summaryUi(summaryOf('go'), { busy: 'word' });
+  assert.match(text(busy), /Готовлю файл…/);
+  assert.equal((busy.match(/disabled=""/g) ?? []).length, 2);
+  const err = summaryUi(summaryOf('go'), { error: 'Не удалось собрать файл Word. Нет памяти.' });
+  assert.match(err, /role="alert"[^>]*>Не удалось собрать файл Word\. Нет памяти\./);
+  // Подсказка прямо говорит, что это не вероятность победы; вне подсказки ни процентов победы, ни «шансов» нет.
+  assert.match(text(summaryUi(summaryOf('go'))), /не балл и не вероятность победы/);
+  assert.equal(/\d\s*%\s*побед|шанс/.test(text(summaryUi(summaryOf('go')))), false);
 });

@@ -154,16 +154,18 @@ export function hypothesesFor(type: PurchaseType, note: RegionNote | null, law: 
 
 export type Driver = { id: string; name: string; amount: string; shock: string };
 export type SensitivityData = { price: string; cost: string; drivers: Driver[] };
-export type RegisterData = { assumptions: Assumptions; sens: SensitivityData };
+/** Свои затраты участника для экономики участия — только если он не ввёл их на шаге «Цена»: пустое поле значит «взять из шага «Цена»». */
+export type EconInputs = { costs: string; extra: string; taxPct: string };
+export type RegisterData = { assumptions: Assumptions; sens: SensitivityData; econ: EconInputs };
 
-export const EMPTY_REGISTER: RegisterData = { assumptions: DEFAULT_ASSUMPTIONS, sens: { price: "", cost: "", drivers: [] } };
+export const EMPTY_REGISTER: RegisterData = { assumptions: DEFAULT_ASSUMPTIONS, sens: { price: "", cost: "", drivers: [] }, econ: { costs: "", extra: "", taxPct: "" } };
 
 const str = (x: unknown) => (typeof x === "string" ? x : "");
 const positive = (x: unknown, max: number, fallback: number) => (typeof x === "number" && Number.isFinite(x) && x >= 0 && x <= max ? x : fallback);
 
 /** Данные из хранилища могут быть старше или повреждены: берём только то, что понимаем; прежние отметки «учтено / не актуально» больше не нужны и отбрасываются. */
 export function normalizeRegister(raw: unknown): RegisterData {
-  const input = (raw && typeof raw === "object" ? raw : {}) as { assumptions?: Record<string, unknown>; sens?: { price?: unknown; cost?: unknown; drivers?: unknown } };
+  const input = (raw && typeof raw === "object" ? raw : {}) as { assumptions?: Record<string, unknown>; sens?: { price?: unknown; cost?: unknown; drivers?: unknown }; econ?: Record<string, unknown> };
   const a = input.assumptions ?? {};
   const assumptions: Assumptions = {
     financeRatePct: positive(a.financeRatePct, 100, DEFAULT_ASSUMPTIONS.financeRatePct),
@@ -173,11 +175,14 @@ export function normalizeRegister(raw: unknown): RegisterData {
     growthPct: positive(a.growthPct, 500, DEFAULT_ASSUMPTIONS.growthPct),
     warrantyPct: positive(a.warrantyPct, 100, DEFAULT_ASSUMPTIONS.warrantyPct),
     keyRatePct: positive(a.keyRatePct, 100, DEFAULT_ASSUMPTIONS.keyRatePct),
+    targetMarginPct: positive(a.targetMarginPct, 99, DEFAULT_ASSUMPTIONS.targetMarginPct),
+    optimisticPct: positive(a.optimisticPct, 99, DEFAULT_ASSUMPTIONS.optimisticPct),
   };
   const drivers = (Array.isArray(input.sens?.drivers) ? (input.sens!.drivers as Record<string, unknown>[]) : []).flatMap((d): Driver[] =>
     d && typeof d === "object" && typeof d.id === "string" ? [{ id: d.id, name: str(d.name), amount: str(d.amount), shock: str(d.shock) }] : [],
   );
-  return { assumptions, sens: { price: str(input.sens?.price), cost: str(input.sens?.cost), drivers } };
+  const econ = input.econ ?? {};
+  return { assumptions, sens: { price: str(input.sens?.price), cost: str(input.sens?.cost), drivers }, econ: { costs: str(econ.costs), extra: str(econ.extra), taxPct: str(econ.taxPct) } };
 }
 
 /** Статьи затрат для таблицы чувствительности — по виду закупки; участник добавляет и меняет свои. */

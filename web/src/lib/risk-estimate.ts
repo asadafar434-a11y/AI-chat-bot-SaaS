@@ -23,6 +23,10 @@ export type Assumptions = {
   warrantyPct: number;
   /** Ключевая ставка, % годовых — для пени «1/300 ключевой ставки». */
   keyRatePct: number;
+  /** Целевая маржа, % цены: от неё считается целевая цена заявки (lib/economics.ts). */
+  targetMarginPct: number;
+  /** Оптимистичный сценарий: затраты ниже на столько процентов. */
+  optimisticPct: number;
 };
 
 export const DEFAULT_ASSUMPTIONS: Assumptions = {
@@ -33,6 +37,8 @@ export const DEFAULT_ASSUMPTIONS: Assumptions = {
   growthPct: 10,
   warrantyPct: 2,
   keyRatePct: 14,
+  targetMarginPct: 10,
+  optimisticPct: 5,
 };
 
 /** Откуда число: calc — условие из договора и арифметика; estimate — зависит от допущений; unknown — суммы нет, нужны данные. */
@@ -70,6 +76,10 @@ export type EstimateResult = {
   totalPct: number | null;
   /** Сколько рисков не удалось оценить без данных. */
   unknown: number;
+  /** Цена, от которой считались суммы; суммы пропорциональны ей — на этом строится экономика участия (lib/economics.ts). */
+  priceUsed: number | null;
+  /** Договор допускает индексацию цены: рост затрат не целиком на вас. */
+  indexed: boolean;
 };
 
 const round2 = (x: number) => Math.round((x + Number.EPSILON) * 100) / 100;
@@ -80,7 +90,8 @@ const MAX_PENALTIES = 4;
 
 export function estimateRisks({ price, risks, type, region, assumptions: a }: EstimateInput): EstimateResult {
   const items: Estimate[] = [];
-  if (price === null || price <= 0) return { items, total: 0, totalPct: null, unknown: 0 };
+  const indexed = risks.some((r) => r.kind === "price" && r.party === "none" && /индексаци/i.test(r.title));
+  if (price === null || price <= 0) return { items, total: 0, totalPct: null, unknown: 0, priceUsed: null, indexed };
   const where = (r: ContractRisk) => `${r.clause ? `п. ${r.clause}` : "договор"}`;
   const push = (e: Omit<Estimate, "pct"> & { amount: number | null }) =>
     items.push({ ...e, amount: e.amount === null ? null : round2(e.amount), pct: e.amount === null ? null : pctOf(e.amount, price) });
@@ -154,7 +165,6 @@ export function estimateRisks({ price, risks, type, region, assumptions: a }: Es
 
   // Твёрдая цена: рост затрат ложится на вас. Договор допускает индексацию — риск меньше, и мы его не считаем.
   const firm = risks.find((r) => r.kind === "price" && r.party === "you");
-  const indexed = risks.some((r) => r.kind === "price" && r.party === "none" && /индексаци/i.test(r.title));
   if (firm && !indexed) {
     push({
       id: "growth",
@@ -222,5 +232,5 @@ export function estimateRisks({ price, risks, type, region, assumptions: a }: Es
 
   const counted = items.filter((i) => i.inTotal && i.amount !== null);
   const total = round2(counted.reduce((s, i) => s + i.amount!, 0));
-  return { items, total, totalPct: counted.length > 0 ? pctOf(total, price) : null, unknown: items.filter((i) => i.kind === "unknown").length };
+  return { items, total, totalPct: counted.length > 0 ? pctOf(total, price) : null, unknown: items.filter((i) => i.kind === "unknown").length, priceUsed: price, indexed };
 }

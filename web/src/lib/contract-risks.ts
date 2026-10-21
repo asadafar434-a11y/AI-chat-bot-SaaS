@@ -22,6 +22,15 @@ export const RISK_RULES = {
 } as const;
 
 export type RiskKind = "penalty" | "cost" | "payment" | "price" | "advance" | "security" | "volume";
+export const RISK_GROUPS: Record<RiskKind, string> = {
+  penalty: "Неустойка",
+  cost: "Расходы за ваш счёт",
+  payment: "Оплата заказчиком",
+  price: "Цена и её изменение",
+  advance: "Аванс",
+  security: "Обеспечение исполнения",
+  volume: "Изменение объёма",
+};
 /** you — платите вы; customer — платит заказчик; none — вопрос не про деньги сторон. */
 export type RiskParty = "you" | "customer" | "none";
 

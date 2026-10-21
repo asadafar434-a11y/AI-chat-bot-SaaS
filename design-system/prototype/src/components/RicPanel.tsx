@@ -2,6 +2,7 @@ import { RIC_METHOD, type Analog, type PositionResult, type RicData, type RicPos
 import type { PriceBadge } from '@/lib/price-badge';
 import { AlertTriangle, BarChart2, CheckCircle2, Download, Info, Plus, Trash2, TrendingDown, TrendingUp } from '../lib/icons';
 import { CertaintyBadge } from './Certainty';
+import { Frame, frameBody, frameHead } from './Frame';
 import { Badge, Button, Card, HelpTip, IconButton } from './ui';
 
 // «РИЦ — расчёт индикативной цены»: ориентир рыночной цены закупки из цен-аналогов; с ним сравнивают начальную цену заказчика. Это не цена заявки.
@@ -17,6 +18,8 @@ export type RicPanelProps = {
   onImport: () => void;
   onChange: (next: RicData) => void;
   saveError?: string | null;
+  /** Внутри раскрывающегося раздела: без карточки и названия. */
+  embedded?: boolean;
 };
 
 const inputClass =
@@ -27,7 +30,7 @@ const rub = (n: number) => `${n.toLocaleString('ru-RU', { minimumFractionDigits:
 const pct = (n: number) => `${n.toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
 const newId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 
-export function RicPanel({ data, result, badge, importSource, importNote, onImport, onChange, saveError }: RicPanelProps) {
+export function RicPanel({ data, result, badge, importSource, importNote, onImport, onChange, saveError, embedded }: RicPanelProps) {
   const base = data.settings.nmckVat === 'with' ? 'с НДС' : 'без НДС';
 
   const setPositions = (positions: RicPosition[]) => onChange({ ...data, positions });
@@ -43,11 +46,11 @@ export function RicPanel({ data, result, badge, importSource, importNote, onImpo
 
   return (
     <div className="space-y-4">
-      <Card className="p-0">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+      <Frame embedded={embedded}>
+        <div className={`${frameHead(embedded)} justify-between`}>
           <div className="flex items-center gap-2">
             <BarChart2 className="size-4" />
-            <span className="text-sm font-medium">РИЦ — расчёт индикативной цены</span>
+            {!embedded && <span className="text-sm font-medium">РИЦ — расчёт индикативной цены</span>}
             <HelpTip
               align="start"
               content="Индикативная цена — ориентир рыночной цены закупки, который считается из цен-аналогов: коммерческих предложений, прайсов, цен контрактов. С ним сравнивают начальную цену заказчика. Это не цена вашей заявки. Цена без источника и даты в расчёт не попадает."
@@ -65,7 +68,7 @@ export function RicPanel({ data, result, badge, importSource, importNote, onImpo
           </div>
         </div>
 
-        <div className="space-y-4 px-4 py-3 text-[13px]">
+        <div className={frameBody(embedded, 'space-y-4')}>
           <Settings data={data} onChange={onChange} />
           {importSource && (
             <p className="flex items-start gap-1.5 text-[12px] text-muted-foreground">
@@ -108,7 +111,7 @@ export function RicPanel({ data, result, badge, importSource, importNote, onImpo
             </ul>
           )}
         </div>
-      </Card>
+      </Frame>
 
       {data.positions.length > 0 && <Summary result={result} base={base} badge={badge} />}
       <Method data={data} />

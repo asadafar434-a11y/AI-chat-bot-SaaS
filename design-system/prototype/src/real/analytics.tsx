@@ -1,18 +1,27 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { assumptionLines, buildReport, reportFileName, reportHtml } from '@/lib/analytics-report';
+import { buildSummary, type SectionId } from '@/lib/analytics-summary';
 import { getRegister, getRic, saveRegister, saveRic } from '@/lib/analytics-store';
 import { contractRisks, looksLikeContract } from '@/lib/contract-risks';
 import { DEFAULT_DRIVERS, EMPTY_REGISTER, hypothesesFor, lawOf, placeOf, regionNote, typeOf, type RegisterData } from '@/lib/hidden-costs';
 import { errorMessage } from '@/lib/http-error';
-import { computeRic, EMPTY_RIC, positionsFromDocuments, type RicData } from '@/lib/indicative-price';
+import { computeRic, EMPTY_RIC, parseAmount, positionsFromDocuments, type RicData } from '@/lib/indicative-price';
+import { calcFor } from '@/lib/price-calc';
+import { economics, econSettings } from '@/lib/economics';
 import { estimateRisks } from '@/lib/risk-estimate';
 import { findNmckCalculations } from '@/lib/nmck-check';
 import { priceBadge } from '@/lib/price-badge';
 import { titleOf } from '@/lib/purchase';
+import { printHtml } from '@/lib/print-html';
 import { parseRubles } from '@/lib/rub-words';
+import { saveFile } from '@/lib/save-file';
 import { computeSensitivity } from '@/lib/sensitivity';
 import { usePurchases } from '@/lib/use-purchases';
 import { AnalyticsHome } from '../components/Analytics';
+import { AnalyticsSummary, type ReportBusy } from '../components/AnalyticsSummary';
+import { Collapsible } from '../components/Collapsible';
 import { ContractRisks } from '../components/ContractRisks';
+import { Economics } from '../components/Economics';
 import { RiskEstimates } from '../components/RiskEstimates';
 import { NmckCheck } from '../components/NmckCheck';
 import { RicPanel } from '../components/RicPanel';
@@ -76,7 +85,8 @@ export function AnalyticsList({ onOpen, onNew }: { onOpen: (id: string) => void;
   return <AnalyticsHome purchases={items} onOpen={onOpen} onNew={onNew} />;
 }
 
-// Разбор одной закупки. Сверху — найденное в документах (договор, расчёт цены заказчика), ниже — гипотезы о скрытых затратах и РИЦ по вашим ценам. Введённое лежит в браузере (lib/analytics-store.ts).
+// Разбор одной закупки. Сверху — итог светофором, резюме и рекомендации (lib/analytics-summary.ts); ниже — закрытые разделы с подробностями: договор, оценка рисков, цена, расчёт заказчика, РИЦ.
+// Полный отчёт — в Word или PDF (lib/analytics-report.ts). Введённое лежит в браузере (lib/analytics-store.ts).
 export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
   const { purchase, documents } = usePurchase();
   const profile = useProfile();
@@ -102,8 +112,135 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
   // Цена, от которой считаются риски: цена вашей заявки, а пока её нет — начальная цена.
   const price = purchase.tpPrice ? purchase.tpPrice : nmck;
   const estimate = useMemo(() => estimateRisks({ price, risks, type, region: regionInfo, assumptions: (register.data ?? EMPTY_REGISTER).assumptions }), [price, risks, type, regionInfo, register.data]);
+  // Расчёт цены: найденное в закупке и введённое на шаге «Цена» (читаем, не меняем); свои затраты из этого раздела — поверх, если шаг «Цена» пуст.
+  const assumptions = (register.data ?? EMPTY_REGISTER).assumptions;
+  const stepCalc = useMemo(() => calcFor(purchase), [purchase]);
+  const calc = useMemo(() => {
+    const e = (register.data ?? EMPTY_REGISTER).econ;
+    return { ...stepCalc, costs: parseAmount(e.costs) ?? stepCalc.costs, extra: parseAmount(e.extra) ?? stepCalc.extra, taxPct: parseAmount(e.taxPct) ?? stepCalc.taxPct };
+  }, [stepCalc, register.data]);
+  const econ = useMemo(() => economics({ calc, estimate, settings: econSettings(assumptions), price }), [calc, estimate, assumptions, price]);
   const sens = useMemo(() => computeSensitivity((register.data ?? EMPTY_REGISTER).sens), [register.data]);
   const priceHint = purchase.tpPrice ? String(purchase.tpPrice) : nmck !== null ? String(nmck) : '0,00';
+
+  const title = titleOf(purchase);
+  const summary = useMemo(
+    () =>
+      buildSummary({
+        title,
+        kind: purchase.kind,
+        nmck,
+        priceNote: purchase.tpPrice ? 'цена вашей заявки' : 'начальная цена',
+        hasContract,
+        risks,
+        estimate,
+        econ,
+        badge,
+        calcs,
+        region: regionInfo,
+      }),
+    [title, purchase.kind, purchase.tpPrice, nmck, hasContract, risks, estimate, econ, badge, calcs, regionInfo],
+  );
+  const needCosts = !econ.ready && econ.reason === 'costs';
+  // Разделы закрыты: сверху резюме. Исключение — когда без ваших затрат цену не назвать: раздел с затратами открыт сразу.
+  const [open, setOpen] = useState<Record<SectionId, boolean>>(() => ({ risks: false, estimate: false, economics: needCosts, nmck: false, ric: false }));
+  const toggle = (id: SectionId) => setOpen((o) => ({ ...o, [id]: !o[id] }));
+  const goTo = (id: SectionId) => {
+    setOpen((o) => ({ ...o, [id]: true }));
+    setTimeout(() => document.getElementById(`analytics-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+  };
+
+  // Полный отчёт собирается в браузере из того же, что на экране; на сервер ничего не уходит.
+  const [busy, setBusy] = useState<ReportBusy>(null);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const fullReport = () =>
+    buildReport({
+      title,
+      subtitle: [purchase.customer, purchase.kind].filter(Boolean).join(' · '),
+      date: new Date(),
+      summary,
+      hasContract,
+      risks,
+      estimate,
+      econ,
+      calcs,
+      ric: result,
+      badge,
+      assumptions: assumptionLines(assumptions),
+    });
+  const downloadWord = async () => {
+    setBusy('word');
+    setReportError(null);
+    try {
+      const report = fullReport();
+      const { reportDocx } = await import('@/lib/analytics-report-docx');
+      saveFile(await reportDocx(report), reportFileName(report, 'docx'));
+    } catch (e) {
+      setReportError(`Не удалось собрать файл Word. ${errorMessage(e)}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+  const downloadPdf = () => {
+    setBusy('pdf');
+    setReportError(null);
+    try {
+      printHtml(reportHtml(fullReport()));
+    } catch (e) {
+      setReportError(`Не удалось подготовить печать. ${errorMessage(e)}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const loading = <p className="text-[13px] text-muted-foreground">Открываю расчёт…</p>;
+  const body = (id: SectionId): ReactNode => {
+    switch (id) {
+      case 'risks':
+        return <ContractRisks embedded risks={risks} hasContract={hasContract} />;
+      case 'estimate':
+        return register.data ? (
+          <RiskEstimates
+            embedded
+            result={estimate}
+            price={price}
+            priceNote={purchase.tpPrice ? 'цена вашей заявки' : 'начальная цена'}
+            hypotheses={hypotheses}
+            data={register.data}
+            sens={sens}
+            defaultDrivers={DEFAULT_DRIVERS[type]}
+            priceHint={priceHint}
+            onChange={register.change}
+          />
+        ) : (
+          loading
+        );
+      case 'economics':
+        return register.data ? (
+          <Economics
+            embedded
+            result={econ}
+            nmck={nmck}
+            priceNote={purchase.tpPrice ? 'цене вашей заявки' : 'начальной цене'}
+            fromStep={{ costs: stepCalc.costs, extra: stepCalc.extra, taxPct: stepCalc.taxPct }}
+            targetMarginPct={assumptions.targetMarginPct}
+            data={register.data}
+            onChange={register.change}
+          />
+        ) : (
+          loading
+        );
+      case 'nmck':
+        return <NmckCheck embedded calcs={calcs} />;
+      case 'ric':
+        return data && result && badge ? (
+          <RicPanel embedded data={data} result={result} badge={badge} importSource={source} importNote={note} onImport={importFromDocuments} onChange={ric.change} saveError={null} />
+        ) : (
+          loading
+        );
+    }
+  };
+  const saveError = ric.error ?? register.error;
 
   // Позиции и начальные цены за единицу — из бланка заказчика; уже введённые позиции и их цены-аналоги остаются.
   const importFromDocuments = () => {
@@ -150,26 +287,29 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
           </div>
         </div>
       </div>
-      <ContractRisks risks={risks} hasContract={hasContract} />
-      {register.data && (
-        <RiskEstimates
-          result={estimate}
-          price={price}
-          priceNote={purchase.tpPrice ? 'цена вашей заявки' : 'начальная цена'}
-          hypotheses={hypotheses}
-          data={register.data}
-          sens={sens}
-          defaultDrivers={DEFAULT_DRIVERS[type]}
-          priceHint={priceHint}
-          onChange={register.change}
-        />
+      <AnalyticsSummary
+        summary={summary}
+        busy={busy}
+        error={reportError}
+        onWord={() => void downloadWord()}
+        onPdf={downloadPdf}
+        action={needCosts ? { label: 'Ввести затраты', onClick: () => goTo('economics') } : undefined}
+      />
+      {saveError && (
+        <p role="alert" className="text-[12px] text-danger">
+          {saveError}
+        </p>
       )}
-      <NmckCheck calcs={calcs} />
-      {data && result && badge ? (
-        <RicPanel data={data} result={result} badge={badge} importSource={source} importNote={note} onImport={importFromDocuments} onChange={ric.change} saveError={ric.error ?? register.error} />
-      ) : (
-        <p className="text-[13px] text-muted-foreground">Открываю расчёт…</p>
-      )}
+      <div className="space-y-2">
+        <p className="px-1 text-[12px] font-medium text-muted-foreground">Подробный разбор</p>
+        {summary.sections.map((s) => (
+          <div key={s.id} id={`analytics-${s.id}`} className="scroll-mt-4">
+            <Collapsible title={s.title} brief={s.brief} open={open[s.id]} onToggle={() => toggle(s.id)}>
+              {body(s.id)}
+            </Collapsible>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

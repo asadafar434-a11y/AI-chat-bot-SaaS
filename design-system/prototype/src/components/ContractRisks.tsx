@@ -1,22 +1,13 @@
-import type { ContractRisk, RiskKind } from '@/lib/contract-risks';
+import { RISK_GROUPS as GROUP, type ContractRisk } from '@/lib/contract-risks';
 import { AlertTriangle, Info } from '../lib/icons';
 import { CertaintyBadge } from './Certainty';
-import { Badge, Card, HelpTip } from './ui';
+import { Frame, frameBody, frameHead } from './Frame';
+import { Badge, HelpTip } from './ui';
 
 // «Риски и расходы из договора»: что участник берёт на себя, подписав проект договора. Код читает договор без ИИ (lib/contract-risks.ts); каждая находка — с цитатой и пунктом.
 // Метка «Подтверждено»: условие и число есть в тексте документа. Чего в тексте нет, код не угадывает.
 
 const SHOWN = 8;
-
-const GROUP: Record<RiskKind, string> = {
-  penalty: 'Неустойка',
-  cost: 'Расходы за ваш счёт',
-  payment: 'Оплата заказчиком',
-  price: 'Цена и её изменение',
-  advance: 'Аванс',
-  security: 'Обеспечение исполнения',
-  volume: 'Изменение объёма',
-};
 
 function Item({ risk }: { risk: ContractRisk }) {
   const mine = risk.party === 'you';
@@ -24,7 +15,7 @@ function Item({ risk }: { risk: ContractRisk }) {
     <li className="rounded-lg border border-border px-3 py-2.5 text-[12px]">
       <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
         {risk.level === 'warn' ? <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warn-foreground" /> : <Info className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />}
-        <p className="min-w-0 flex-1 break-words text-[13px] font-medium">{risk.title}</p>
+        <p className="min-w-[12rem] flex-1 break-words text-[13px] font-medium">{risk.title}</p>
         <Badge tone="neutral">{GROUP[risk.kind]}</Badge>
         {risk.kind === 'penalty' && <Badge tone={mine ? 'warn' : 'info'}>{mine ? 'платите вы' : 'платит заказчик'}</Badge>}
         {risk.heavy && <Badge tone="danger">крупная</Badge>}
@@ -43,13 +34,13 @@ function Item({ risk }: { risk: ContractRisk }) {
   );
 }
 
-export function ContractRisks({ risks, hasContract }: { risks: ContractRisk[]; hasContract: boolean }) {
+export function ContractRisks({ risks, hasContract, embedded }: { risks: ContractRisk[]; hasContract: boolean; embedded?: boolean }) {
   const attention = risks.filter((r) => r.level === 'warn');
   const rest = risks.filter((r) => r.level !== 'warn');
   return (
-    <Card className="p-0">
-      <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
-        <span className="text-sm font-medium">Риски и расходы из договора</span>
+    <Frame embedded={embedded}>
+      <div className={frameHead(embedded)}>
+        {!embedded && <span className="text-sm font-medium">Риски и расходы из договора</span>}
         <HelpTip
           align="start"
           content="Программа прочитала проект договора и выписала условия с цифрами: неустойку (кто платит и сколько), срок оплаты, аванс, обеспечение, расходы, которые договор кладёт на исполнителя, и право заказчика менять объём. У каждого условия — цитата и пункт. Чего в тексте нет, программа не додумывает."
@@ -62,7 +53,7 @@ export function ContractRisks({ risks, hasContract }: { risks: ContractRisk[]; h
           </Badge>
         )}
       </div>
-      <div className="space-y-3 px-4 py-3 text-[13px]">
+      <div className={frameBody(embedded)}>
         {!hasContract ? (
           <p className="text-muted-foreground">Проект договора в документах не нашёл, поэтому риски из договора показать не могу. Загрузите договор или его приложение.</p>
         ) : risks.length === 0 ? (
@@ -92,6 +83,6 @@ export function ContractRisks({ risks, hasContract }: { risks: ContractRisk[]; h
           </>
         )}
       </div>
-    </Card>
+    </Frame>
   );
 }

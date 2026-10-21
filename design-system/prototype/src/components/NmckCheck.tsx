@@ -1,7 +1,8 @@
 import type { NmckCalc } from '@/lib/nmck-check';
 import { AlertTriangle, CheckCircle2, Info } from '../lib/icons';
 import { CertaintyBadge } from './Certainty';
-import { Badge, Card, HelpTip } from './ui';
+import { Frame, frameBody, frameHead } from './Frame';
+import { Badge, HelpTip } from './ui';
 
 // «Расчёт цены у заказчика»: программа находит в документах его обоснование начальной цены (цены трёх поставщиков, средняя, вариация), пересчитывает и показывает,
 // где расчёт не сходится. Сама ничего не ищет: расчёт — lib/nmck-check.ts.
@@ -31,13 +32,13 @@ function Row({ calc }: { calc: NmckCalc }) {
   );
 }
 
-export function NmckCheck({ calcs }: { calcs: NmckCalc[] }) {
+export function NmckCheck({ calcs, embedded }: { calcs: NmckCalc[]; embedded?: boolean }) {
   const flagged = calcs.filter((c) => c.issues.some((i) => i.level === 'warn'));
   const rest = calcs.filter((c) => !flagged.includes(c));
   return (
-    <Card className="p-0">
-      <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
-        <span className="text-sm font-medium">Расчёт цены у заказчика</span>
+    <Frame embedded={embedded}>
+      <div className={frameHead(embedded)}>
+        {!embedded && <span className="text-sm font-medium">Расчёт цены у заказчика</span>}
         <HelpTip
           align="start"
           content="Программа нашла в документах заказчика расчёт начальной цены по предложениям поставщиков и пересчитала его: среднюю, отклонение и коэффициент вариации. Эти цены дал заказчику его поставщик, поэтому для вашего РИЦ они не независимы — свои цены-аналоги добавляйте в блоке ниже."
@@ -50,7 +51,7 @@ export function NmckCheck({ calcs }: { calcs: NmckCalc[] }) {
           </Badge>
         )}
       </div>
-      <div className="space-y-3 px-4 py-3 text-[13px]">
+      <div className={frameBody(embedded)}>
         {calcs.length === 0 ? (
           <p className="text-muted-foreground">
             В документах не нашёл расчёт начальной цены по предложениям поставщиков (таблицу со средней ценой и коэффициентом вариации). Если он есть в файле другого вида, добавьте цены вручную в блоке ниже.
@@ -80,6 +81,6 @@ export function NmckCheck({ calcs }: { calcs: NmckCalc[] }) {
           </>
         )}
       </div>
-    </Card>
+    </Frame>
   );
 }
