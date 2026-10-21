@@ -17,6 +17,16 @@ export const RIC_METHOD = {
   staleDays: 180,
   /** Ставка НДС по умолчанию (с 01.01.2026); участник меняет её в настройках расчёта. */
   vatRate: 22,
+  /** Ценовой бейдж («ниже рынка», «выше рынка», «в рынке»): стартовые настройки, их калибруют на реальных данных; порог участник меняет в настройках расчёта. */
+  badge: {
+    /** Меньше сопоставимых цен по любой позиции — бейджа нет, «недостаточно данных». */
+    minObservations: 5,
+    /** Отклонение начальной цены от РИЦ, с которого оно «существенное», %. */
+    significantPct: 15,
+    /** Уверенность «высокая»: цен по каждой позиции не меньше этого и вариация не выше порога ниже. */
+    highObservations: 8,
+    highVariation: 0.2,
+  },
 } as const;
 
 export type Vat = "with" | "without";
@@ -34,10 +44,10 @@ export type RicPosition = {
   customerUnit?: number;
 };
 
-export type RicSettings = { vatRate: number; nmckVat: Vat; staleDays: number };
+export type RicSettings = { vatRate: number; nmckVat: Vat; staleDays: number; badgePct: number };
 export type RicData = { positions: RicPosition[]; settings: RicSettings };
 
-export const DEFAULT_SETTINGS: RicSettings = { vatRate: RIC_METHOD.vatRate, nmckVat: "with", staleDays: RIC_METHOD.staleDays };
+export const DEFAULT_SETTINGS: RicSettings = { vatRate: RIC_METHOD.vatRate, nmckVat: "with", staleDays: RIC_METHOD.staleDays, badgePct: RIC_METHOD.badge.significantPct };
 export const EMPTY_RIC: RicData = { positions: [], settings: DEFAULT_SETTINGS };
 
 // ——— Разбор введённого ———
@@ -128,7 +138,9 @@ export function checkAnalogs(position: RicPosition, settings: RicSettings, now: 
   });
 }
 
-const inBase = (noVat: number, settings: RicSettings) => (settings.nmckVat === "with" ? noVat * (1 + settings.vatRate / 100) : noVat);
+/** Цена без НДС → в основе начальной цены (с НДС или без). */
+export const toBase = (noVat: number, settings: RicSettings) => (settings.nmckVat === "with" ? noVat * (1 + settings.vatRate / 100) : noVat);
+const inBase = toBase;
 
 export function computePosition(position: RicPosition, settings: RicSettings, now: Date): PositionResult {
   const checks = checkAnalogs(position, settings, now);
@@ -252,6 +264,7 @@ export function normalizeRic(raw: unknown): RicData {
     vatRate: typeof s.vatRate === "number" && s.vatRate >= 0 && s.vatRate < 100 ? s.vatRate : DEFAULT_SETTINGS.vatRate,
     nmckVat: s.nmckVat === "without" ? "without" : "with",
     staleDays: typeof s.staleDays === "number" && s.staleDays > 0 ? s.staleDays : DEFAULT_SETTINGS.staleDays,
+    badgePct: typeof s.badgePct === "number" && s.badgePct > 0 && s.badgePct < 100 ? s.badgePct : DEFAULT_SETTINGS.badgePct,
   };
   const positions = (Array.isArray(input.positions) ? input.positions : []).flatMap((p: Record<string, unknown>): RicPosition[] => {
     if (!p || typeof p !== "object" || typeof p.id !== "string") return [];

@@ -1,6 +1,8 @@
 import { RIC_METHOD, type Analog, type PositionResult, type RicData, type RicPosition, type RicResult, type Vat } from '@/lib/indicative-price';
-import { AlertTriangle, BarChart2, CheckCircle2, Download, Info, Plus, Trash2 } from '../lib/icons';
-import { Badge, Button, Card, HelpTip, IconButton, Soon } from './ui';
+import type { PriceBadge } from '@/lib/price-badge';
+import { AlertTriangle, BarChart2, CheckCircle2, Download, Info, Plus, Trash2, TrendingDown, TrendingUp } from '../lib/icons';
+import { CertaintyBadge } from './Certainty';
+import { Badge, Button, Card, HelpTip, IconButton } from './ui';
 
 // «РИЦ — расчёт индикативной цены»: ориентир рыночной цены закупки из цен-аналогов; с ним сравнивают начальную цену заказчика. Это не цена заявки.
 // Сам ничего не считает и не хранит: расчёт — lib/indicative-price.ts, хранение — в обёртке (real/analytics.tsx).
@@ -8,6 +10,7 @@ import { Badge, Button, Card, HelpTip, IconButton, Soon } from './ui';
 export type RicPanelProps = {
   data: RicData;
   result: RicResult;
+  badge: PriceBadge;
   /** Откуда взяты позиции, если их прочитали из бланка заказчика. */
   importSource: { doc: string; title: string } | null;
   importNote: string | null;
@@ -24,7 +27,7 @@ const rub = (n: number) => `${n.toLocaleString('ru-RU', { minimumFractionDigits:
 const pct = (n: number) => `${n.toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
 const newId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 
-export function RicPanel({ data, result, importSource, importNote, onImport, onChange, saveError }: RicPanelProps) {
+export function RicPanel({ data, result, badge, importSource, importNote, onImport, onChange, saveError }: RicPanelProps) {
   const base = data.settings.nmckVat === 'with' ? 'с НДС' : 'без НДС';
 
   const setPositions = (positions: RicPosition[]) => onChange({ ...data, positions });
@@ -85,8 +88,8 @@ export function RicPanel({ data, result, importSource, importNote, onImport, onC
 
           {data.positions.length === 0 ? (
             <p className="text-muted-foreground">
-              Добавьте позиции закупки (или возьмите их из бланка заказчика) и для каждой — цены-аналоги: коммерческие предложения, прайсы, цены контрактов. У каждой цены укажите источник и дату.
-              Нужно не меньше {RIC_METHOD.minAnalogs} аналогов на позицию.
+              Добавьте позиции закупки и по каждой — цены-аналоги (коммерческие предложения, прайсы) с источником и датой. Для РИЦ нужно не меньше {RIC_METHOD.minAnalogs} цен на позицию, для ценового
+              бейджа — не меньше {RIC_METHOD.badge.minObservations}.
             </p>
           ) : (
             <ul className="space-y-3">
@@ -107,7 +110,7 @@ export function RicPanel({ data, result, importSource, importNote, onImport, onC
         </div>
       </Card>
 
-      {data.positions.length > 0 && <Summary result={result} base={base} />}
+      {data.positions.length > 0 && <Summary result={result} base={base} badge={badge} />}
       <Method data={data} />
     </div>
   );
@@ -120,7 +123,9 @@ function Settings({ data, onChange }: { data: RicData; onChange: (next: RicData)
     return Number.isFinite(n) && n >= 0 ? n : fallback;
   };
   return (
-    <section aria-label="Настройки расчёта" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <details className="text-[12px]">
+      <summary className="cursor-pointer text-muted-foreground">Настройки расчёта: НДС, срок цен, порог бейджа</summary>
+      <section aria-label="Настройки расчёта" className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-4">
       <label className="block text-[12px]">
         <span className="mb-1 block text-muted-foreground">Начальная цена (НМЦ) указана</span>
         <select value={data.settings.nmckVat} onChange={(e) => set({ nmckVat: e.target.value as Vat })} className={inputClass}>
@@ -136,7 +141,12 @@ function Settings({ data, onChange }: { data: RicData; onChange: (next: RicData)
         <span className="mb-1 block text-muted-foreground">Цена считается устаревшей через, дней</span>
         <input type="text" inputMode="numeric" value={String(data.settings.staleDays)} onChange={(e) => set({ staleDays: Math.max(1, Math.round(number(e.target.value, data.settings.staleDays))) })} className={numClass} />
       </label>
-    </section>
+      <label className="block text-[12px]">
+        <span className="mb-1 block text-muted-foreground">«Существенно» — отклонение от, %</span>
+        <input type="text" inputMode="decimal" value={String(data.settings.badgePct)} onChange={(e) => set({ badgePct: Math.min(99, Math.max(1, number(e.target.value, data.settings.badgePct))) })} className={numClass} />
+      </label>
+      </section>
+    </details>
   );
 }
 
@@ -269,58 +279,99 @@ function PositionCard({
   );
 }
 
-function Summary({ result, base }: { result: RicResult; base: string }) {
+const dateRu = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}`;
+const signed = (n: number) => `${n >= 0 ? '+' : '−'}`;
+
+// Итог: ценовой бейдж и главные цифры. Детали бейджа — свёрнуты: видно, на чём он держится, но экран не перегружен.
+function Summary({ result, base, badge }: { result: RicResult; base: string; badge: PriceBadge }) {
   const dev = result.deviation;
+  const detail = badge.detail;
+  const tone = { below: 'warn', above: 'info', within: 'success', insufficient: 'neutral' }[badge.status] as 'warn' | 'info' | 'success' | 'neutral';
+  const Icon = badge.status === 'below' ? TrendingDown : badge.status === 'above' ? TrendingUp : badge.status === 'within' ? CheckCircle2 : Info;
   return (
     <Card className="p-0">
-      <div className="border-b border-border px-4 py-3 text-sm font-medium">Итог по закупке</div>
-      <div className="space-y-3 px-4 py-3 text-[13px]">
+      <div className="space-y-3 px-4 py-4 text-[13px]">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone={tone} wrap>
+            <Icon className="size-3" />
+            {badge.title}
+          </Badge>
+          {detail && <CertaintyBadge kind="own" />}
+        </div>
+
         <dl className="grid grid-cols-1 gap-3 sm:grid-cols-4">
           <div>
             <dt className="text-[12px] text-muted-foreground">РИЦ ({base})</dt>
             <dd className="font-mono text-base font-semibold">{result.ric !== null ? rub(result.ric) : '—'}</dd>
           </div>
           <div>
-            <dt className="text-[12px] text-muted-foreground">Диапазон по крайним аналогам</dt>
-            <dd className="font-mono text-[13px]">{result.range ? `${rub(result.range.from)} — ${rub(result.range.to)}` : '—'}</dd>
-          </div>
-          <div>
             <dt className="text-[12px] text-muted-foreground">Начальная цена заказчика</dt>
             <dd className="font-mono text-[13px]">{result.nmck !== null ? rub(result.nmck) : 'не указана'}</dd>
           </div>
           <div>
-            <dt className="text-[12px] text-muted-foreground">Начальная цена против РИЦ</dt>
-            <dd className="font-mono text-[13px]">{dev ? `${dev.abs >= 0 ? '+' : '−'}${rub(Math.abs(dev.abs))} (${dev.pct >= 0 ? '+' : '−'}${pct(Math.abs(dev.pct))})` : '—'}</dd>
+            <dt className="text-[12px] text-muted-foreground">Отклонение от РИЦ</dt>
+            <dd className="font-mono text-[13px]">{dev ? `${signed(dev.abs)}${rub(Math.abs(dev.abs))} (${signed(dev.pct)}${pct(Math.abs(dev.pct))})` : '—'}</dd>
+          </div>
+          <div>
+            <dt className="text-[12px] text-muted-foreground">Диапазон цен-аналогов</dt>
+            <dd className="font-mono text-[13px]">{result.range ? `${rub(result.range.from)} — ${rub(result.range.to)}` : '—'}</dd>
           </div>
         </dl>
 
-        {dev && (
-          <p>
-            Начальная цена {dev.abs >= 0 ? 'выше' : 'ниже'} индикативной на {pct(Math.abs(dev.pct))}. Это ещё не вывод о завышении или занижении: проверьте, одни ли это характеристики, объёмы и условия исполнения, и сколько у вас сопоставимых цен.
-          </p>
-        )}
-        {!result.complete && (
-          <p className="flex items-start gap-1.5 text-muted-foreground">
-            <Info className="mt-0.5 size-3.5 shrink-0" />
-            Расчёт неполный: цена посчитана у {result.counted} из {result.total} позиций{result.counted > 0 ? ` (${rub(result.partial)})` : ''}. Итог и сравнение с начальной ценой появятся, когда она будет у каждой позиции: нужны не меньше {RIC_METHOD.minAnalogs} аналогов и количество.
-          </p>
-        )}
-        {result.complete && !result.reliable && (
-          <p className="flex items-start gap-1.5 text-warn-foreground">
-            <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-            У некоторых позиций цены неоднородны (разброс выше {Math.round(RIC_METHOD.maxVariation * 100)} %): такой РИЦ ненадёжен. Добавьте цены или решите, какую не учитывать.
-          </p>
+        {badge.status === 'below' && <p>Проверьте, хватит ли такой цены на ваши затраты, учтены ли все объёмы, верно ли сопоставлены характеристики и остаётся ли резерв и маржа.</p>}
+        {badge.status === 'above' && <p>Высокая цена ещё не значит выгодный контракт: проверьте характеристики, объёмы и условия исполнения. Это не вывод о нарушении со стороны заказчика.</p>}
+        {badge.missing.length > 0 && (
+          <div className="text-muted-foreground">
+            <p className="font-medium text-foreground">Чего не хватает для оценки цены:</p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-5">
+              {badge.missing.map((m) => (
+                <li key={m}>{m}</li>
+              ))}
+            </ul>
+          </div>
         )}
         {result.staleCount > 0 && (
           <p className="flex items-start gap-1.5 text-warn-foreground">
             <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-            Устарели цен: {result.staleCount}. Они учтены, но проверьте актуальность.
+            Устарело цен: {result.staleCount}. Они учтены, но проверьте актуальность.
           </p>
         )}
-        <p className="flex items-center gap-2 text-muted-foreground">
-          <Soon />
-          Ценовой бейдж «ниже рынка» или «выше рынка»: покажется, когда у каждой позиции будет достаточно сопоставимых цен.
-        </p>
+
+        {detail && (
+          <details className="text-[12px]">
+            <summary className="cursor-pointer text-muted-foreground">Почему такой бейдж</summary>
+            <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-[14rem_minmax(0,1fr)]">
+              <dt className="text-muted-foreground">Начальная цена</dt>
+              <dd className="font-mono">{rub(detail.nmck)}</dd>
+              <dt className="text-muted-foreground">РИЦ — среднее по аналогам</dt>
+              <dd className="font-mono">{rub(detail.ric)}</dd>
+              <dt className="text-muted-foreground">Рыночная медиана</dt>
+              <dd className="font-mono">{rub(detail.median)}</dd>
+              <dt className="text-muted-foreground">Диапазон цен-аналогов</dt>
+              <dd className="font-mono">
+                {rub(detail.range.from)} — {rub(detail.range.to)}
+              </dd>
+              <dt className="text-muted-foreground">Отклонение</dt>
+              <dd className="font-mono">
+                {signed(detail.abs)}
+                {rub(Math.abs(detail.abs))} ({signed(detail.pct)}
+                {pct(Math.abs(detail.pct))})
+              </dd>
+              <dt className="text-muted-foreground">Сопоставимых цен</dt>
+              <dd>по позиции не меньше {detail.observations.min}, всего {detail.observations.total}</dd>
+              <dt className="text-muted-foreground">Даты цен</dt>
+              <dd>
+                {dateRu(detail.dates.from)} — {dateRu(detail.dates.to)}
+              </dd>
+              <dt className="text-muted-foreground">Источники</dt>
+              <dd className="break-words">{detail.sources.join('; ')}</dd>
+              <dt className="text-muted-foreground">Уверенность</dt>
+              <dd>{detail.confidence === 'high' ? 'высокая' : 'средняя'}</dd>
+              <dt className="text-muted-foreground">Когда бейдж «выше» или «ниже»</dt>
+              <dd>цена вне диапазона аналогов и отклонение от РИЦ не меньше {detail.threshold} %</dd>
+            </dl>
+          </details>
+        )}
       </div>
     </Card>
   );

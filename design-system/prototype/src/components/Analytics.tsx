@@ -13,8 +13,13 @@ type Props = {
   onNew: () => void;
 };
 
+const READY = [
+  { title: 'Расчёт цены у заказчика', text: 'Программа находит в документах его обоснование начальной цены, пересчитывает и показывает, где расчёт не сходится.' },
+  { title: 'РИЦ — расчёт индикативной цены', text: 'Рыночный ориентир цены закупки из ваших цен-аналогов с источниками и датами.' },
+  { title: 'Ценовой бейдж', text: '«Существенно ниже рынка», «существенно выше рынка», «в рыночном диапазоне» или «недостаточно данных» — с деталями расчёта.' },
+];
+
 const COMING = [
-  { title: 'Цена против рынка и ценовой бейдж', text: 'Начальная цена заказчика против РИЦ: «ниже рынка», «выше рынка», «в диапазоне»; пересчёт обоснования цены у заказчика.' },
   { title: 'Риски из документов', text: 'Штрафы, сроки оплаты, обеспечение, неясные объёмы, приёмка — каждый с цитатой и числом.' },
   { title: 'Скрытые затраты и реестр рисков', text: 'Риски, которых нет в документах: логистика, внешняя проверка, субподряд и другое; проверка российским поиском; что будет с прибылью, если подорожает топливо или материалы.' },
   { title: 'Экономика участия и цена заявки', text: 'Себестоимость, обеспечение, налог, резерв, минимальная и целевая цена, три сценария.' },
@@ -74,13 +79,15 @@ export function AnalyticsHome({ purchases, onOpen, onNew }: Props) {
       <Card className="p-0">
         <div className="border-b border-border px-4 py-3 text-sm font-medium">Что готово и что скоро</div>
         <ul className="divide-y divide-border text-[13px]">
-          <li className="flex flex-wrap items-start gap-x-3 gap-y-1 px-4 py-3">
-            <div className="min-w-0 flex-1">
-              <p className="font-medium">РИЦ — расчёт индикативной цены</p>
-              <p className="mt-0.5 text-[12px] text-muted-foreground">Рыночный ориентир цены закупки из цен-аналогов с источниками и датами; отклонение начальной цены заказчика.</p>
-            </div>
-            <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">готово</span>
-          </li>
+          {READY.map((r) => (
+            <li key={r.title} className="flex flex-wrap items-start gap-x-3 gap-y-1 px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">{r.title}</p>
+                <p className="mt-0.5 text-[12px] text-muted-foreground">{r.text}</p>
+              </div>
+              <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">готово</span>
+            </li>
+          ))}
           {COMING.map((c) => (
             <li key={c.title} className="flex flex-wrap items-start gap-x-3 gap-y-1 px-4 py-3">
               <div className="min-w-0 flex-1">
