@@ -1,11 +1,12 @@
-// Скрытые затраты: вид закупки по предмету, регион по адресу, сравнение места поставки с регионом компании, каталог гипотез, реестр решений и таблица чувствительности — npm test (без ИИ).
+// Скрытые затраты: вид закупки по предмету, регион по адресу, сравнение места поставки с регионом компании, каталог гипотез, допущения и таблица чувствительности — npm test (без ИИ).
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { extractText } from "./extract-text.ts";
-import { DEFAULT_DRIVERS, EMPTY_REGISTER, HYPOTHESES, hypothesesFor, normalizeRegister, openCount, placeOf, regionNote, typeOf } from "./hidden-costs.ts";
+import { DEFAULT_DRIVERS, EMPTY_REGISTER, HYPOTHESES, hypothesesFor, lawOf, normalizeRegister, placeOf, regionNote, typeOf } from "./hidden-costs.ts";
+import { DEFAULT_ASSUMPTIONS } from "./risk-estimate.ts";
 import { regionOf } from "./regions.ts";
 import { computeSensitivity } from "./sensitivity.ts";
 
@@ -83,18 +84,35 @@ test("каталог: для вида закупки — свои гипотез
   assert.ok(goods.every((h) => h.basis.length > 0));
 });
 
-test("реестр решений: «не разобрано» считается по состоянию; повреждённые данные заменяются безопасными", () => {
-  const list = hypothesesFor("goods", null);
-  assert.equal(openCount(list, EMPTY_REGISTER), list.length);
-  const data = normalizeRegister({ items: { logistics: { state: "priced", amount: "50 000" }, cashgap: { state: "skip" }, fx: { state: "что-то" }, bad: 5 }, sens: { price: "1000", cost: "800", drivers: [{ id: "d1", name: "Бензин", amount: "100", shock: "10" }, "мусор", { name: "без id" }] } });
-  assert.equal(data.items.logistics.state, "priced");
-  assert.equal(data.items.logistics.amount, "50 000");
-  assert.equal(data.items.cashgap.state, "skip");
-  assert.equal(data.items.fx.state, "open");
-  assert.equal(data.items.bad, undefined);
+test("сохранённое по закупке: допущения и своя таблица; повреждённое заменяется безопасным, прежние отметки «учтено» отбрасываются", () => {
+  const data = normalizeRegister({
+    items: { logistics: { state: "priced", amount: "50 000" } },
+    assumptions: { financeRatePct: 18, guaranteeRatePct: "много", delayDays: -5, costSharePct: 70, growthPct: 7, warrantyPct: 1.5, keyRatePct: 15 },
+    sens: { price: "1000", cost: "800", drivers: [{ id: "d1", name: "Бензин", amount: "100", shock: "10" }, "мусор", { name: "без id" }] },
+  });
+  assert.equal(data.assumptions.financeRatePct, 18);
+  assert.equal(data.assumptions.guaranteeRatePct, DEFAULT_ASSUMPTIONS.guaranteeRatePct, "не число — по умолчанию");
+  assert.equal(data.assumptions.delayDays, DEFAULT_ASSUMPTIONS.delayDays, "отрицательное — по умолчанию");
+  assert.equal(data.assumptions.costSharePct, 70);
+  assert.equal(data.assumptions.warrantyPct, 1.5);
+  assert.equal("items" in data, false);
   assert.equal(data.sens.drivers.length, 1);
-  assert.equal(openCount(list, data), list.length - 2);
   assert.deepEqual(normalizeRegister(null), EMPTY_REGISTER);
+  assert.equal(EMPTY_REGISTER.assumptions.financeRatePct, 14, "стоимость денег по умолчанию — ключевая ставка");
+});
+
+test("закон закупки по способу; рост цен за срок — по 44-ФЗ твёрдая цена и исключения ст. 95, по 223-ФЗ — смотрите договор, без закона — общий текст", () => {
+  assert.equal(lawOf("44-ФЗ · электронный аукцион"), "44");
+  assert.equal(lawOf("223-ФЗ · конкурс"), "223");
+  assert.equal(lawOf("конкурс"), null);
+  const text = (law: "44" | "223" | null) => hypothesesFor("goods", null, law).find((h) => h.id === "price-growth")!.check;
+  assert.match(text("44"), /По 44-ФЗ цена контракта твёрдая/);
+  assert.match(text("44"), /ст. 95/);
+  assert.match(text("44"), /до 30 % после государственной экспертизы и по решению Правительства/);
+  assert.match(text("44"), /регулируемых государством тарифов на связь или перевозки/);
+  assert.match(text("44"), /уточните у юриста/);
+  assert.match(text("223"), /положением о закупке заказчика/);
+  assert.match(text(null), /Цена в контракте фиксированная/);
 });
 
 test("чувствительность: прибыль, запас роста затрат и «бензин +10 %»; цифры только участника", () => {

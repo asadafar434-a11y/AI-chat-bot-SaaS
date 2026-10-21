@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getRegister, getRic, saveRegister, saveRic } from '@/lib/analytics-store';
 import { contractRisks, looksLikeContract } from '@/lib/contract-risks';
-import { DEFAULT_DRIVERS, EMPTY_REGISTER, hypothesesFor, placeOf, regionNote, TYPE_LABELS, typeOf, type RegisterData } from '@/lib/hidden-costs';
+import { DEFAULT_DRIVERS, EMPTY_REGISTER, hypothesesFor, lawOf, placeOf, regionNote, typeOf, type RegisterData } from '@/lib/hidden-costs';
 import { errorMessage } from '@/lib/http-error';
 import { computeRic, EMPTY_RIC, positionsFromDocuments, type RicData } from '@/lib/indicative-price';
+import { estimateRisks } from '@/lib/risk-estimate';
 import { findNmckCalculations } from '@/lib/nmck-check';
 import { priceBadge } from '@/lib/price-badge';
 import { titleOf } from '@/lib/purchase';
@@ -12,7 +13,7 @@ import { computeSensitivity } from '@/lib/sensitivity';
 import { usePurchases } from '@/lib/use-purchases';
 import { AnalyticsHome } from '../components/Analytics';
 import { ContractRisks } from '../components/ContractRisks';
-import { HiddenCosts } from '../components/HiddenCosts';
+import { RiskEstimates } from '../components/RiskEstimates';
 import { NmckCheck } from '../components/NmckCheck';
 import { RicPanel } from '../components/RicPanel';
 import { ArrowLeft, BarChart2 } from '../lib/icons';
@@ -95,7 +96,12 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
   const hasContract = useMemo(() => plain.some(looksLikeContract), [plain]);
   const type = useMemo(() => typeOf(purchase.subject ?? '', purchase.kind), [purchase.subject, purchase.kind]);
   const place = useMemo(() => placeOf(plain), [plain]);
-  const hypotheses = useMemo(() => hypothesesFor(type, regionNote(place, `${profile.legalAddress} ${profile.postalAddress}`)), [type, place, profile.legalAddress, profile.postalAddress]);
+  const law = lawOf(purchase.kind);
+  const regionInfo = useMemo(() => regionNote(place, `${profile.legalAddress} ${profile.postalAddress}`), [place, profile.legalAddress, profile.postalAddress]);
+  const hypotheses = useMemo(() => hypothesesFor(type, regionInfo, law), [type, regionInfo, law]);
+  // Цена, от которой считаются риски: цена вашей заявки, а пока её нет — начальная цена.
+  const price = purchase.tpPrice ? purchase.tpPrice : nmck;
+  const estimate = useMemo(() => estimateRisks({ price, risks, type, region: regionInfo, assumptions: (register.data ?? EMPTY_REGISTER).assumptions }), [price, risks, type, regionInfo, register.data]);
   const sens = useMemo(() => computeSensitivity((register.data ?? EMPTY_REGISTER).sens), [register.data]);
   const priceHint = purchase.tpPrice ? String(purchase.tpPrice) : nmck !== null ? String(nmck) : '0,00';
 
@@ -146,9 +152,11 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
       </div>
       <ContractRisks risks={risks} hasContract={hasContract} />
       {register.data && (
-        <HiddenCosts
+        <RiskEstimates
+          result={estimate}
+          price={price}
+          priceNote={purchase.tpPrice ? 'цена вашей заявки' : 'начальная цена'}
           hypotheses={hypotheses}
-          typeLabel={TYPE_LABELS[type]}
           data={register.data}
           sens={sens}
           defaultDrivers={DEFAULT_DRIVERS[type]}

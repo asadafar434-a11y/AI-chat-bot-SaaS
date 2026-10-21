@@ -12,6 +12,7 @@ const GROUP: Record<RiskKind, string> = {
   penalty: 'Неустойка',
   cost: 'Расходы за ваш счёт',
   payment: 'Оплата заказчиком',
+  price: 'Цена и её изменение',
   advance: 'Аванс',
   security: 'Обеспечение исполнения',
   volume: 'Изменение объёма',

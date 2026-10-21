@@ -21,9 +21,22 @@ export const RISK_RULES = {
   highSecurityPct: 10,
 } as const;
 
-export type RiskKind = "penalty" | "cost" | "payment" | "advance" | "security" | "volume";
+export type RiskKind = "penalty" | "cost" | "payment" | "price" | "advance" | "security" | "volume";
 /** you — платите вы; customer — платит заказчик; none — вопрос не про деньги сторон. */
 export type RiskParty = "you" | "customer" | "none";
+
+/** Числа из условия — для расчёта «сколько это может стоить» (lib/risk-estimate.ts). Только то, что написано в договоре. */
+export type RiskNumbers = {
+  /** Пеня или штраф: процент от цены; доля ключевой ставки (1/300 → frac 300); сумма в рублях. */
+  percent?: number;
+  frac?: number;
+  rub?: number;
+  perDay?: boolean;
+  /** Потолок пени, % цены. */
+  cap?: number;
+  /** Срок оплаты заказчиком, календарных дней. */
+  days?: number;
+};
 
 export type ContractRisk = {
   kind: RiskKind;
@@ -34,6 +47,7 @@ export type ContractRisk = {
   level: "warn" | "info";
   /** Крупная неустойка по порогам RISK_RULES. */
   heavy?: boolean;
+  n?: RiskNumbers;
   /** Предложение договора как написано, до 260 знаков. */
   quote: string;
   clause: string;
@@ -71,7 +85,7 @@ function penaltyParty(s: string): RiskParty {
 }
 
 // Ставка: «1/300 ключевой ставки», «0,1 % … за каждый день», «0,01 %», «5 000 рублей» — и от чего считается («от цены ГПД», «от стоимости работ»).
-function penaltyRate(s: string): { title: string; heavy: boolean } | null {
+function penaltyRate(s: string): { title: string; heavy: boolean; n: RiskNumbers } | null {
   const frac = /1\/(\d+)\s*(?:\([^)]*\)\s*)?(?:ключев|ставк|действующ)/i.exec(s);
   const pct = PERCENT.exec(s);
   const money = /(\d[\d\s ]{0,12}(?:[.,]\d{1,2})?)\s*(?:руб|₽)/i.exec(s);
@@ -91,7 +105,9 @@ function penaltyRate(s: string): { title: string; heavy: boolean } | null {
   const capMatch = /не\s+более\s+(\d+(?:[.,]\d+)?)\s*(?:\([^)]{0,40}\)\s*)?(?:%|процент)/i.exec(s);
   const parts = [`${word} ${rate}`, perDay ? "за каждый день просрочки" : "", from ? clean(from[1]) : "", capMatch ? `не более ${fmt(num(capMatch[1]))} % цены` : ""].filter(Boolean);
   const heavy = (perDay && percent >= RISK_RULES.heavyPenaltyPerDayPct) || (!perDay && percent >= RISK_RULES.heavyFinePct);
-  return { title: parts.join(", "), heavy };
+  const rubles = !frac && !pct && money ? num(clean(money[1]).replace(/s/g, "")) : undefined;
+  const n: RiskNumbers = { perDay, ...(frac && { frac: Number(frac[1]) }), ...(pct && !frac && { percent }), ...(rubles !== undefined && Number.isFinite(rubles) && { rub: rubles }), ...(capMatch && { cap: num(capMatch[1]) }) };
+  return { title: parts.join(", "), heavy, n };
 }
 
 // ——— Срок оплаты ———
@@ -151,7 +167,28 @@ function sentencesOf(doc: Doc): Sentence[] {
   return out;
 }
 
-const MAX_PER_KIND: Record<RiskKind, number> = { penalty: 8, cost: 8, payment: 4, advance: 2, security: 3, volume: 2 };
+const MAX_PER_KIND: Record<RiskKind, number> = { penalty: 8, cost: 8, payment: 4, price: 4, advance: 2, security: 3, volume: 2 };
+
+// ——— Цена: твёрдая или можно менять ———
+
+// «Цена является твёрдой», «Стоимость Работ не подлежит корректировке»: рост цен на материалы, топливо и труд — риск исполнителя; исключения договор пишет рядом («за исключением…»).
+const PRICE_FIXED = /(?:цен[а-яё]*|стоимост[а-яё]*)[^.]{0,80}?(?:тв[её]рд[а-яё]*|фиксированн[а-яё]*|окончательн[а-яё]*|не\s+подлежит\s+(?:изменени|корректировк|пересмотр))/i;
+// «Поставщик вправе осуществлять индексацию цены», «Изменение цены договора возможно…», «Цена Договора может быть увеличена…»: договор сам даёт способ изменить цену.
+const PRICE_REVISION = /(?:индексаци[а-яё]*\s+цен|корректировк[а-яё]*\s+(?:цен|суммы\s+ндс|в\s+части\s+суммы\s+ндс)|изменени[а-яё]*\s+цен[а-яё]*[^.]{0,80}?возможн|изменени[а-яё]*\s+цен[а-яё]*\s+(?:договор|контракт)[а-яё]*\s+при\s+изменении\s+ставки|цен[а-яё]*\s+(?:договор|контракт)[а-яё]*\s+может\s+быть\s+(?:увеличен|изменен|изменён|скорректирован|пересмотрен))/i;
+
+function priceRevisionTitle(t: string): string {
+  const parts: string[] = [];
+  if (/индексаци/i.test(t)) {
+    const every = /не\s+реже\s+одного\s+раза\s+в\s+(\d+)\s*(?:\([^)]*\)\s*)?(месяц|квартал|год)/i.exec(t);
+    parts.push(`индексация${/индекс[а-яё]*\s+потребительских\s+цен/i.test(t) ? " по индексам потребительских цен" : ""}${every ? `, не реже раза в ${every[1]} ${every[2] === "год" ? "лет" : every[2] === "квартал" ? "квартала" : "мес."}` : ""}`);
+  }
+  if (/(?<![а-яё])ндс/i.test(t)) parts.push("при изменении ставки НДС");
+  if (/ограничительн/i.test(t)) parts.push("при введении ограничительных мер");
+  const volume = /не\s+более\s+(?:чем\s+на\s+)?(\d+(?:[.,]\d+)?)\s*(?:\([^)]{0,40}\)\s*)?(?:%|процент)/i.exec(t);
+  if (volume && /объ[её]м|количеств/i.test(t)) parts.push(`при изменении объёма до ${fmt(num(volume[1]))} %`);
+  if (/стать[а-яё]*\s+95|част[а-яё]*\s+65/i.test(t)) parts.push("в случаях, установленных статьёй 95 44-ФЗ");
+  return `Договор допускает изменение цены${parts.length ? `: ${parts.join("; ")}` : ""}`;
+}
 
 export function contractRisks(documents: Doc[]): ContractRisk[] {
   const found: ContractRisk[] = [];
@@ -172,7 +209,7 @@ export function contractRisks(documents: Doc[]): ContractRisk[] {
         const party = penaltyParty(t);
         const rate = penaltyRate(t);
         if (rate && party !== "none") {
-          add(s, { kind: "penalty", party, level: party === "you" ? "warn" : "info", title: rate.title, ...(party === "you" && rate.heavy && { heavy: true }) });
+          add(s, { kind: "penalty", party, level: party === "you" ? "warn" : "info", title: rate.title, n: rate.n, ...(party === "you" && rate.heavy && { heavy: true }) });
         }
         continue;
       }
@@ -196,8 +233,19 @@ export function contractRisks(documents: Doc[]): ContractRisk[] {
             party: "customer",
             level: calendar >= RISK_RULES.longPaymentDays ? "warn" : "info",
             title: `Оплата заказчиком в течение ${days} ${unit}дней${base ? ` ${clean(base)}` : ""}`,
+            n: { days: calendar },
           });
         }
+        continue;
+      }
+
+      // Цена: «твёрдая» — рост цен за срок на вас; «можно менять» — договор сам даёт способ (индексация, изменение объёма, ставка НДС).
+      if (PRICE_REVISION.test(t) && !/снижен|уменьш/i.test(t)) {
+        add(s, { kind: "price", party: "none", level: "info", title: priceRevisionTitle(t) });
+        continue;
+      }
+      if (PRICE_FIXED.test(t) && !/субподрядчик|соисполнител/i.test(t)) {
+        add(s, { kind: "price", party: "you", level: "warn", title: `Цена твёрдая: рост цен на материалы, топливо и труд — ваш риск${/за\s+исключением/i.test(t) ? " (договор называет исключения)" : ""}` });
         continue;
       }
 
@@ -208,7 +256,7 @@ export function contractRisks(documents: Doc[]): ContractRisk[] {
       }
       const adv = ADVANCE.exec(t);
       if (!conditional && adv && !/возврат|корректировк|банковск[а-яё]*\s+гаранти|обеспечени/i.test(t)) {
-        add(s, { kind: "advance", party: "none", level: "info", title: `Аванс ${fmt(num(adv[1]))} %` });
+        add(s, { kind: "advance", party: "none", level: "info", title: `Аванс ${fmt(num(adv[1]))} %`, n: { percent: num(adv[1]) } });
         continue;
       }
 
@@ -219,17 +267,17 @@ export function contractRisks(documents: Doc[]): ContractRisk[] {
       const sec = SECURITY_SIZE.exec(t);
       if (!conditional && sec) {
         const pctValue = num(sec[1]);
-        add(s, { kind: "security", party: "you", level: pctValue >= RISK_RULES.highSecurityPct ? "warn" : "info", title: `Обеспечение исполнения: ${fmt(pctValue)} %` });
+        add(s, { kind: "security", party: "you", level: pctValue >= RISK_RULES.highSecurityPct ? "warn" : "info", title: `Обеспечение исполнения: ${fmt(pctValue)} %`, n: { percent: pctValue } });
         continue;
       }
 
       const vol = VOLUME.exec(t);
-      if (vol) add(s, { kind: "volume", party: "none", level: "info", title: `Объём может измениться до ${fmt(num(vol[1]))} %` });
+      if (vol) add(s, { kind: "volume", party: "none", level: "info", title: `Объём может измениться до ${fmt(num(vol[1]))} %`, n: { percent: num(vol[1]) } });
     }
   }
 
   // Порядок: сначала то, что стоит денег, и сколько-то каждого вида, чтобы длинный договор не завалил список одним видом.
-  const order: RiskKind[] = ["penalty", "cost", "payment", "advance", "security", "volume"];
+  const order: RiskKind[] = ["penalty", "cost", "payment", "price", "advance", "security", "volume"];
   const kept: ContractRisk[] = [];
   for (const kind of order) {
     const items = found.filter((r) => r.kind === kind).sort((a, b) => (a.level === b.level ? 0 : a.level === "warn" ? -1 : 1));

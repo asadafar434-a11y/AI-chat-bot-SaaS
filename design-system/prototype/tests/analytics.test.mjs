@@ -28,7 +28,8 @@ before(async () => {
     nmcklib: await server.ssrLoadModule('@/lib/nmck-check.ts'),
     nmck: await server.ssrLoadModule('/src/components/NmckCheck.tsx'),
     cert: await server.ssrLoadModule('/src/components/Certainty.tsx'),
-    hiddenUi: await server.ssrLoadModule('/src/components/HiddenCosts.tsx'),
+    estUi: await server.ssrLoadModule('/src/components/RiskEstimates.tsx'),
+    estLib: await server.ssrLoadModule('@/lib/risk-estimate.ts'),
     hiddenLib: await server.ssrLoadModule('@/lib/hidden-costs.ts'),
     sensLib: await server.ssrLoadModule('@/lib/sensitivity.ts'),
     risksUi: await server.ssrLoadModule('/src/components/ContractRisks.tsx'),
@@ -85,7 +86,7 @@ test('раздел: список закупок, «готово» у РИЦ и �
   assert.match(list, /Расчёт цены у заказчика/);
   assert.match(list, /Ценовой бейдж/);
   assert.match(list, /Риски и расходы из договора/);
-  assert.match(list, /Скрытые затраты и риски \(гипотезы\)/);
+  assert.match(list, /Сколько это может стоить/);
   assert.ok((list.match(/готово/g) ?? []).length >= 5, 'пять шагов готовы');
   assert.ok((renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: [], onOpen: none, onNew: none })).match(/скоро/g) ?? []).length >= 4, 'остальное помечено «скоро»');
   assert.match(text(renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: [], onOpen: none, onNew: none }))), /Новая закупка/);
@@ -232,53 +233,97 @@ test('риски из договора: договора нет — так и с
   assert.match(empty, /Это не значит, что их нет/);
 });
 
-const hidden = (register, over = {}) => {
-  const note = mods.hiddenLib.regionNote({ text: 'Место поставки: г. Севастополь', region: { name: 'Севастополь', hard: true } }, 'г. Екатеринбург');
-  const hypotheses = mods.hiddenLib.hypothesesFor('goods', note);
+const SEVASTOPOL = { text: 'Место поставки: г. Севастополь', region: { name: 'Севастополь', hard: true } };
+const estimateUi = (register, price = 1_000_000) => {
+  const risks = mods.risksLib.contractRisks(
+    contractDocs(
+      '6.4. Заказчик вправе потребовать уплаты пени в размере 5 % (Пяти процентов) от Цены ГПД за каждый день просрочки.',
+      '3.7. Оплата производится Заказчиком в течение 30 рабочих дней с момента получения заключения эксперта.',
+      '10.1. Договор заключается после предоставления Исполнителем обеспечения исполнения Договора в размере 30 % от начальной цены.',
+      '5.12. Расходы на экспертизу несёт Исполнитель, за исключением случаев, когда экспертизой установлено отсутствие нарушений.',
+      '2.1. Цена Договора является твёрдой и определяется на весь срок исполнения Договора.',
+    ),
+  );
+  const note = mods.hiddenLib.regionNote(SEVASTOPOL, 'г. Екатеринбург');
+  const result = mods.estLib.estimateRisks({ price, risks, type: 'goods', region: note, assumptions: register.assumptions });
   return renderToStaticMarkup(
-    h(mods.hiddenUi.HiddenCosts, {
-      hypotheses,
-      typeLabel: 'поставка товара',
+    h(mods.estUi.RiskEstimates, {
+      result,
+      price,
+      priceNote: 'цена вашей заявки',
+      hypotheses: mods.hiddenLib.hypothesesFor('goods', note, '44'),
       data: register,
       sens: mods.sensLib.computeSensitivity(register.sens),
       defaultDrivers: mods.hiddenLib.DEFAULT_DRIVERS.goods,
       priceHint: '1000000',
       onChange: none,
-      ...over,
     }),
   );
 };
 
-test('скрытые затраты: метка «Гипотеза», «не разобрано», первой гипотеза про другой регион, решение по каждой, остальные свёрнуты', () => {
-  const out = text(hidden(mods.hiddenLib.EMPTY_REGISTER));
-  assert.match(out, /Скрытые затраты и риски/);
-  assert.match(out, /Гипотеза/);
-  assert.match(out, /не разобрано: 13/);
-  assert.match(out, /Для вида «поставка товара»/);
-  assert.ok(out.indexOf('Место поставки — Севастополь, ваш адрес — Свердловская область') < out.indexOf('Доставка до места'), 'регион — первой');
-  assert.match(out, /Регион удалённый или с особыми условиями перевозки/);
-  assert.match(out, /Не разобрано Учтено в цене Не актуально/);
-  assert.match(out, /Ещё гипотез: 7/);
-  assert.match(out, /Что будет с прибылью, если затраты вырастут/);
-  assert.match(out, /Введите цену контракта и свои затраты/);
-  assert.equal(/Учтено в цене по гипотезам/.test(out), false);
+test('сколько это может стоить: метка «Оценка», общая сумма и доля цены, строки с рублями по условиям договора, «не определено» без числа', () => {
+  const out = text(estimateUi(mods.hiddenLib.EMPTY_REGISTER));
+  assert.match(out, /Сколько это может стоить по этому контракту/);
+  assert.match(out, /Оценка/);
+  assert.match(out, /Если сработают все риски с оценкой \(цена вашей заявки 1 000 000,00 ₽\)/);
+  assert.match(out, /630 109,59 ₽ 63,0 % цены/);
+  assert.match(out, /Просрочка: пеня 5 % в день 500 000,00 ₽ · 50,0 %/);
+  assert.match(out, /Срыв срока на 10 дней по вашей вине: 5 % в день от цены/);
+  assert.match(out, /Деньги заморожены 42 дней до оплаты 16 109,59 ₽ · 1,6 %/);
+  assert.match(out, /Банковская гарантия 30 % цены 9 000,00 ₽ · 0,9 %/);
+  assert.match(out, /Рост затрат на 10 % при твёрдой цене 85 000,00 ₽ · 8,5 %/);
+  assert.match(out, /Гарантийный ремонт и замена брака 20 000,00 ₽ · 2,0 %/);
+  assert.match(out, /За ваш счёт: экспертиза сумма не определена/);
+  assert.match(out, /Запросите цену у исполнителя \(эксперта, банка, перевозчика\)/);
+  assert.match(out, /Доставка или выезд: Севастополь вместо Свердловская область сумма не определена/);
+  assert.match(out, /Ещё 2 без суммы/);
+  assert.equal(/Не разобрано|Учтено в цене|Не актуально/.test(out), false, 'никаких отметок «разберите сами»');
+  assert.ok(out.indexOf('Просрочка: пеня') < out.indexOf('Деньги заморожены'), 'крупное — выше');
+  assert.ok(out.indexOf('Гарантийный ремонт') < out.indexOf('За ваш счёт: экспертиза'), 'без суммы — в конце');
 });
 
-test('скрытые затраты: решение «учтено» с суммой, прибыль и запас по цифрам участника, «бензин +10 %», замечание о двойном счёте', () => {
+test('сколько это может стоить: допущения видны и меняются, «на чём держатся числа», остальные риски без оценки списком; цены нет — оценить нечего', () => {
+  const out = text(estimateUi(mods.hiddenLib.EMPTY_REGISTER));
+  assert.match(out, /Допущения расчёта — можно поменять/);
+  assert.match(out, /Стоимость денег, % годовых/);
+  assert.match(out, /Банковская гарантия, % годовых/);
+  assert.match(out, /Просрочка по вашей вине, дней/);
+  assert.match(out, /Это типовые допущения, а не факты о вашей компании/);
+  assert.match(out, /На чём держатся числа/);
+  assert.match(out, /допущение: ставка 14 % годовых/);
+  assert.match(out, /Ещё риски для такой закупки без оценки: 7/);
+  assert.match(out, /Сумму по ним посчитает ИИ с российским поиском/);
+  const noPrice = text(
+    renderToStaticMarkup(
+      h(mods.estUi.RiskEstimates, {
+        result: { items: [], total: 0, totalPct: null, unknown: 0 },
+        price: null,
+        priceNote: '',
+        hypotheses: [],
+        data: mods.hiddenLib.EMPTY_REGISTER,
+        sens: mods.sensLib.computeSensitivity(mods.hiddenLib.EMPTY_REGISTER.sens),
+        defaultDrivers: [],
+        priceHint: '0,00',
+        onChange: none,
+      }),
+    ),
+  );
+  assert.match(noPrice, /Цена контракта не найдена в документах, поэтому оценить в рублях нечего/);
+});
+
+test('сколько это может стоить: на своих цифрах — прибыль и вывод «хватит или нет» против общей суммы рисков, «бензин +10 %»', () => {
   const register = {
-    items: { logistics: { state: 'priced', amount: '50 000' }, cashgap: { state: 'skip', amount: '' } },
+    assumptions: mods.estLib.DEFAULT_ASSUMPTIONS,
     sens: { price: '1 000 000', cost: '800 000', drivers: [{ id: 'a', name: 'Бензин', amount: '200 000', shock: '10' }, { id: 'b', name: 'Материалы', amount: '700 000', shock: '5' }] },
   };
-  const out = text(hidden(register));
-  assert.match(out, /не разобрано: 11/);
-  assert.match(out, /Учтено в цене по гипотезам: 50 000,00 ₽/);
-  assert.match(out, /Прибыль сейчас: 200 000,00 ₽ \(20,0 %\)/);
-  assert.match(out, /Все затраты могут вырасти на 25,0 %\s*, пока прибыль не станет нулевой/);
+  const out = text(estimateUi(register));
+  assert.match(out, /Прибыль на ваших цифрах: 200 000,00 ₽ \(20,0 %\)/);
+  assert.match(out, /Затраты могут вырасти на 25,0 %\s*, пока прибыль не станет нулевой/);
+  assert.match(out, /Если сработают все оценённые риски \(\s*630 109,59 ₽\s*\), прибыли не хватит: контракт уйдёт в убыток/);
   assert.match(out, /Бензин: \+20 000,00 ₽ → прибыль 180 000,00 ₽ \(18,0 %\)/);
-  assert.match(out, /Если сработают все статьи: \+55 000,00 ₽ → прибыль 145 000,00 ₽ \(14,5 %\)/);
   assert.match(out, /Статьи в сумме больше всех затрат/);
-  const loss = text(hidden({ items: {}, sens: { price: '100', cost: '120', drivers: [] } }));
-  assert.match(loss, /Контракт убыточный уже на ваших цифрах/);
+  const roomy = text(estimateUi({ ...register, sens: { price: '1 000 000', cost: '200 000', drivers: [] } }));
+  assert.match(roomy, /прибыль останется 169 890,41 ₽/);
 });
 
 test('метки достоверности: подтверждено, по вашим данным, гипотеза, не проверено — у каждой своё слово', () => {

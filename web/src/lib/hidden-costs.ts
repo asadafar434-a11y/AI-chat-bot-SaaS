@@ -3,6 +3,7 @@
 // Найденное в договоре (неустойки, сроки оплаты, обеспечение, расходы исполнителя) — отдельно, с цитатами: lib/contract-risks.ts.
 // Подтверждать гипотезы поиском и дополнять их под ваш объект будет ИИ и российский поиск — это следующий шаг плана; здесь — каталог без ИИ и без интернета.
 
+import { DEFAULT_ASSUMPTIONS, type Assumptions } from "@/lib/risk-estimate";
 import { regionOf, type Region } from "@/lib/regions";
 
 type Doc = { name: string; text: string };
@@ -112,7 +113,16 @@ export function regionNote(place: PlaceInfo, address: string): RegionNote | null
   return { kind: company.name === place.region.name ? "same" : "other", place: place.region, company };
 }
 
-export function hypothesesFor(type: PurchaseType, note: RegionNote | null): HypothesisView[] {
+/** Закон закупки по способу («44-ФЗ · электронный аукцион»): от него зависит, можно ли менять цену контракта при росте цен. */
+export const lawOf = (kind: string): "44" | "223" | null => /(?<!\d)(44|223)-ФЗ/.exec(kind)?.[1] as "44" | "223" | null ?? null;
+
+// Рост цен за срок исполнения — риск поставщика, но не везде: исключения зависят от закона (формулировка владельца 21.10.2026; юрист подтверждает).
+const PRICE_GROWTH_BY_LAW: Record<"44" | "223", string> = {
+  "44": "По 44-ФЗ цена контракта твёрдая: рост цен на материалы, топливо и зарплаты — риск поставщика. Исключения по ст. 95 узкие: например, отдельные строительные контракты (при росте цен на материалы — до 30 % после государственной экспертизы и по решению Правительства) и изменение регулируемых государством тарифов на связь или перевозки. Подпадаете ли вы под исключение, уточните у юриста.",
+  "223": "По 223-ФЗ изменение цены определяется положением о закупке заказчика и самим договором: проверьте, есть ли в договоре индексация или пересмотр цены. Если нет, рост цен за срок исполнения — ваш риск.",
+};
+
+export function hypothesesFor(type: PurchaseType, note: RegionNote | null, law: "44" | "223" | null = null): HypothesisView[] {
   const list: HypothesisView[] = [];
   if (note?.kind === "other") {
     list.push({
@@ -133,38 +143,42 @@ export function hypothesesFor(type: PurchaseType, note: RegionNote | null): Hypo
   }
   const own = HYPOTHESES.filter((h) => h.types !== "all" && h.types.includes(type));
   const common = HYPOTHESES.filter((h) => h.types === "all");
-  for (const h of [...own, ...common]) list.push({ ...h, basis: h.types === "all" ? "типовая для любой закупки" : `типовая для вида «${TYPE_LABELS[type]}»` });
+  for (const h of [...own, ...common]) {
+    const check = h.id === "price-growth" && law ? PRICE_GROWTH_BY_LAW[law] : h.check;
+    list.push({ ...h, check, basis: h.types === "all" ? "типовая для любой закупки" : `типовая для вида «${TYPE_LABELS[type]}»` });
+  }
   return list;
 }
 
-// ——— Реестр: что участник решил по каждой гипотезе ———
+// ——— Что сохраняется по закупке: допущения расчёта и своя таблица чувствительности ———
 
-export type RegisterState = "open" | "priced" | "skip";
-export type RegisterItem = { state: RegisterState; amount: string };
 export type Driver = { id: string; name: string; amount: string; shock: string };
 export type SensitivityData = { price: string; cost: string; drivers: Driver[] };
-export type RegisterData = { items: Record<string, RegisterItem>; sens: SensitivityData };
+export type RegisterData = { assumptions: Assumptions; sens: SensitivityData };
 
-export const EMPTY_REGISTER: RegisterData = { items: {}, sens: { price: "", cost: "", drivers: [] } };
+export const EMPTY_REGISTER: RegisterData = { assumptions: DEFAULT_ASSUMPTIONS, sens: { price: "", cost: "", drivers: [] } };
 
 const str = (x: unknown) => (typeof x === "string" ? x : "");
+const positive = (x: unknown, max: number, fallback: number) => (typeof x === "number" && Number.isFinite(x) && x >= 0 && x <= max ? x : fallback);
 
-/** Данные из хранилища могут быть старше или повреждены: берём только то, что понимаем. */
+/** Данные из хранилища могут быть старше или повреждены: берём только то, что понимаем; прежние отметки «учтено / не актуально» больше не нужны и отбрасываются. */
 export function normalizeRegister(raw: unknown): RegisterData {
-  const input = (raw && typeof raw === "object" ? raw : {}) as { items?: Record<string, Record<string, unknown>>; sens?: { price?: unknown; cost?: unknown; drivers?: unknown } };
-  const items: Record<string, RegisterItem> = {};
-  for (const [id, v] of Object.entries(input.items && typeof input.items === "object" ? input.items : {})) {
-    if (!v || typeof v !== "object") continue;
-    items[id] = { state: v.state === "priced" || v.state === "skip" ? v.state : "open", amount: str(v.amount) };
-  }
+  const input = (raw && typeof raw === "object" ? raw : {}) as { assumptions?: Record<string, unknown>; sens?: { price?: unknown; cost?: unknown; drivers?: unknown } };
+  const a = input.assumptions ?? {};
+  const assumptions: Assumptions = {
+    financeRatePct: positive(a.financeRatePct, 100, DEFAULT_ASSUMPTIONS.financeRatePct),
+    guaranteeRatePct: positive(a.guaranteeRatePct, 100, DEFAULT_ASSUMPTIONS.guaranteeRatePct),
+    delayDays: positive(a.delayDays, 3650, DEFAULT_ASSUMPTIONS.delayDays),
+    costSharePct: positive(a.costSharePct, 100, DEFAULT_ASSUMPTIONS.costSharePct),
+    growthPct: positive(a.growthPct, 500, DEFAULT_ASSUMPTIONS.growthPct),
+    warrantyPct: positive(a.warrantyPct, 100, DEFAULT_ASSUMPTIONS.warrantyPct),
+    keyRatePct: positive(a.keyRatePct, 100, DEFAULT_ASSUMPTIONS.keyRatePct),
+  };
   const drivers = (Array.isArray(input.sens?.drivers) ? (input.sens!.drivers as Record<string, unknown>[]) : []).flatMap((d): Driver[] =>
     d && typeof d === "object" && typeof d.id === "string" ? [{ id: d.id, name: str(d.name), amount: str(d.amount), shock: str(d.shock) }] : [],
   );
-  return { items, sens: { price: str(input.sens?.price), cost: str(input.sens?.cost), drivers } };
+  return { assumptions, sens: { price: str(input.sens?.price), cost: str(input.sens?.cost), drivers } };
 }
-
-/** Сколько гипотез ещё не разобрано: по ним участник не решил «учтено» или «не актуально». */
-export const openCount = (list: { id: string }[], data: RegisterData) => list.filter((h) => (data.items[h.id]?.state ?? "open") === "open").length;
 
 /** Статьи затрат для таблицы чувствительности — по виду закупки; участник добавляет и меняет свои. */
 export const DEFAULT_DRIVERS: Record<PurchaseType, string[]> = {
