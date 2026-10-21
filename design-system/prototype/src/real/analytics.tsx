@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getRic, saveRic } from '@/lib/analytics-store';
 import { computeRic, EMPTY_RIC, positionsFromDocuments, type RicData } from '@/lib/indicative-price';
+import { contractRisks, looksLikeContract } from '@/lib/contract-risks';
 import { errorMessage } from '@/lib/http-error';
 import { findNmckCalculations } from '@/lib/nmck-check';
 import { priceBadge } from '@/lib/price-badge';
@@ -8,6 +9,7 @@ import { titleOf } from '@/lib/purchase';
 import { parseRubles } from '@/lib/rub-words';
 import { usePurchases } from '@/lib/use-purchases';
 import { AnalyticsHome } from '../components/Analytics';
+import { ContractRisks } from '../components/ContractRisks';
 import { NmckCheck } from '../components/NmckCheck';
 import { RicPanel } from '../components/RicPanel';
 import { ArrowLeft, BarChart2 } from '../lib/icons';
@@ -77,6 +79,9 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
   const badge = useMemo(() => (data && result ? priceBadge(result, data) : null), [data, result]);
   // Расчёт цены у заказчика читается из текстов документов один раз на закупку, а не на каждую набранную цифру.
   const calcs = useMemo(() => findNmckCalculations(documents.map((d) => ({ name: d.name, text: d.text }))), [documents]);
+  const plain = useMemo(() => documents.map((d) => ({ name: d.name, text: d.text })), [documents]);
+  const risks = useMemo(() => contractRisks(plain), [plain]);
+  const hasContract = useMemo(() => plain.some(looksLikeContract), [plain]);
 
   // Позиции и начальные цены за единицу — из бланка заказчика; уже введённые позиции и их цены-аналоги остаются.
   const importFromDocuments = () => {
@@ -123,6 +128,7 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
           </div>
         </div>
       </div>
+      <ContractRisks risks={risks} hasContract={hasContract} />
       <NmckCheck calcs={calcs} />
       {data && result && badge ? (
         <RicPanel data={data} result={result} badge={badge} importSource={source} importNote={note} onImport={importFromDocuments} onChange={change} saveError={error} />

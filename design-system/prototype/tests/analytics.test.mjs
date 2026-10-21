@@ -28,6 +28,8 @@ before(async () => {
     nmcklib: await server.ssrLoadModule('@/lib/nmck-check.ts'),
     nmck: await server.ssrLoadModule('/src/components/NmckCheck.tsx'),
     cert: await server.ssrLoadModule('/src/components/Certainty.tsx'),
+    risksUi: await server.ssrLoadModule('/src/components/ContractRisks.tsx'),
+    risksLib: await server.ssrLoadModule('@/lib/contract-risks.ts'),
     side: await server.ssrLoadModule('/src/components/Sidebar.tsx'),
   };
 });
@@ -79,7 +81,8 @@ test('раздел: список закупок, «готово» у РИЦ и �
   assert.match(list, /РИЦ — расчёт индикативной цены/);
   assert.match(list, /Расчёт цены у заказчика/);
   assert.match(list, /Ценовой бейдж/);
-  assert.ok((list.match(/готово/g) ?? []).length >= 3, 'три шага готовы');
+  assert.match(list, /Риски и расходы из договора/);
+  assert.ok((list.match(/готово/g) ?? []).length >= 4, 'четыре шага готовы');
   assert.ok((renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: [], onOpen: none, onNew: none })).match(/скоро/g) ?? []).length >= 4, 'остальное помечено «скоро»');
   assert.match(text(renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: [], onOpen: none, onNew: none }))), /Новая закупка/);
   assert.match(text(renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: null, onOpen: none, onNew: none }))), /Читаю закупки/);
@@ -191,6 +194,38 @@ test('расчёт цены у заказчика не нашёлся: так и
   const out = text(renderToStaticMarkup(h(mods.nmck.NmckCheck, { calcs: [] })));
   assert.match(out, /В документах не нашёл расчёт начальной цены по предложениям поставщиков/);
   assert.equal(/Подтверждено/.test(out), false);
+});
+
+const contractDocs = (...lines) => [{ name: 'Проект.docx', text: ['Договор поставки № 1', ...lines].join('\n') }];
+
+test('риски из договора: метка «Подтверждено», «требуют внимания», крупная неустойка, кто платит, цитата с пунктом и файлом; остальные условия свёрнуты', () => {
+  const docs = contractDocs(
+    '7.3. Исполнитель обязан уплатить Заказчику пеню в размере 5% от цены Договора за каждый день просрочки.',
+    '6.2. Заказчик выплачивает Исполнителю пеню в размере 0,01% от суммы долга за каждый день просрочки.',
+    '5.12. Расходы на экспертизу несёт Исполнитель, за исключением случаев, когда экспертизой установлено отсутствие нарушений.',
+    '2.2. Авансирование по Договору не предусмотрено.',
+  );
+  const out = text(renderToStaticMarkup(h(mods.risksUi.ContractRisks, { risks: mods.risksLib.contractRisks(docs), hasContract: true })));
+  assert.match(out, /Риски и расходы из договора/);
+  assert.match(out, /Подтверждено/);
+  assert.match(out, /требуют внимания: 2/);
+  assert.match(out, /Пеня 5 %, за каждый день просрочки, от цены Договора/);
+  assert.match(out, /платите вы/);
+  assert.match(out, /крупная/);
+  assert.match(out, /Расходы за ваш счёт: экспертиза/);
+  assert.match(out, /Цитата/);
+  assert.match(out, /п\. 7\.3 · Проект\.docx/);
+  assert.match(out, /Остальные условия: 2/);
+  assert.match(out, /платит заказчик/);
+});
+
+test('риски из договора: договора нет — так и сказано и метка «Не проверено»; договор есть, цифр нет — не значит, что рисков нет', () => {
+  const none = text(renderToStaticMarkup(h(mods.risksUi.ContractRisks, { risks: [], hasContract: false })));
+  assert.match(none, /Проект договора в документах не нашёл/);
+  assert.match(none, /Не проверено/);
+  assert.equal(/Подтверждено/.test(none), false);
+  const empty = text(renderToStaticMarkup(h(mods.risksUi.ContractRisks, { risks: [], hasContract: true })));
+  assert.match(empty, /Это не значит, что их нет/);
 });
 
 test('метки достоверности: подтверждено, по вашим данным, гипотеза, не проверено — у каждой своё слово', () => {
