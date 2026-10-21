@@ -28,6 +28,9 @@ before(async () => {
     nmcklib: await server.ssrLoadModule('@/lib/nmck-check.ts'),
     nmck: await server.ssrLoadModule('/src/components/NmckCheck.tsx'),
     cert: await server.ssrLoadModule('/src/components/Certainty.tsx'),
+    hiddenUi: await server.ssrLoadModule('/src/components/HiddenCosts.tsx'),
+    hiddenLib: await server.ssrLoadModule('@/lib/hidden-costs.ts'),
+    sensLib: await server.ssrLoadModule('@/lib/sensitivity.ts'),
     risksUi: await server.ssrLoadModule('/src/components/ContractRisks.tsx'),
     risksLib: await server.ssrLoadModule('@/lib/contract-risks.ts'),
     side: await server.ssrLoadModule('/src/components/Sidebar.tsx'),
@@ -82,7 +85,8 @@ test('раздел: список закупок, «готово» у РИЦ и �
   assert.match(list, /Расчёт цены у заказчика/);
   assert.match(list, /Ценовой бейдж/);
   assert.match(list, /Риски и расходы из договора/);
-  assert.ok((list.match(/готово/g) ?? []).length >= 4, 'четыре шага готовы');
+  assert.match(list, /Скрытые затраты и риски \(гипотезы\)/);
+  assert.ok((list.match(/готово/g) ?? []).length >= 5, 'пять шагов готовы');
   assert.ok((renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: [], onOpen: none, onNew: none })).match(/скоро/g) ?? []).length >= 4, 'остальное помечено «скоро»');
   assert.match(text(renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: [], onOpen: none, onNew: none }))), /Новая закупка/);
   assert.match(text(renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: null, onOpen: none, onNew: none }))), /Читаю закупки/);
@@ -226,6 +230,55 @@ test('риски из договора: договора нет — так и с
   assert.equal(/Подтверждено/.test(none), false);
   const empty = text(renderToStaticMarkup(h(mods.risksUi.ContractRisks, { risks: [], hasContract: true })));
   assert.match(empty, /Это не значит, что их нет/);
+});
+
+const hidden = (register, over = {}) => {
+  const note = mods.hiddenLib.regionNote({ text: 'Место поставки: г. Севастополь', region: { name: 'Севастополь', hard: true } }, 'г. Екатеринбург');
+  const hypotheses = mods.hiddenLib.hypothesesFor('goods', note);
+  return renderToStaticMarkup(
+    h(mods.hiddenUi.HiddenCosts, {
+      hypotheses,
+      typeLabel: 'поставка товара',
+      data: register,
+      sens: mods.sensLib.computeSensitivity(register.sens),
+      defaultDrivers: mods.hiddenLib.DEFAULT_DRIVERS.goods,
+      priceHint: '1000000',
+      onChange: none,
+      ...over,
+    }),
+  );
+};
+
+test('скрытые затраты: метка «Гипотеза», «не разобрано», первой гипотеза про другой регион, решение по каждой, остальные свёрнуты', () => {
+  const out = text(hidden(mods.hiddenLib.EMPTY_REGISTER));
+  assert.match(out, /Скрытые затраты и риски/);
+  assert.match(out, /Гипотеза/);
+  assert.match(out, /не разобрано: 13/);
+  assert.match(out, /Для вида «поставка товара»/);
+  assert.ok(out.indexOf('Место поставки — Севастополь, ваш адрес — Свердловская область') < out.indexOf('Доставка до места'), 'регион — первой');
+  assert.match(out, /Регион удалённый или с особыми условиями перевозки/);
+  assert.match(out, /Не разобрано Учтено в цене Не актуально/);
+  assert.match(out, /Ещё гипотез: 7/);
+  assert.match(out, /Что будет с прибылью, если затраты вырастут/);
+  assert.match(out, /Введите цену контракта и свои затраты/);
+  assert.equal(/Учтено в цене по гипотезам/.test(out), false);
+});
+
+test('скрытые затраты: решение «учтено» с суммой, прибыль и запас по цифрам участника, «бензин +10 %», замечание о двойном счёте', () => {
+  const register = {
+    items: { logistics: { state: 'priced', amount: '50 000' }, cashgap: { state: 'skip', amount: '' } },
+    sens: { price: '1 000 000', cost: '800 000', drivers: [{ id: 'a', name: 'Бензин', amount: '200 000', shock: '10' }, { id: 'b', name: 'Материалы', amount: '700 000', shock: '5' }] },
+  };
+  const out = text(hidden(register));
+  assert.match(out, /не разобрано: 11/);
+  assert.match(out, /Учтено в цене по гипотезам: 50 000,00 ₽/);
+  assert.match(out, /Прибыль сейчас: 200 000,00 ₽ \(20,0 %\)/);
+  assert.match(out, /Все затраты могут вырасти на 25,0 %\s*, пока прибыль не станет нулевой/);
+  assert.match(out, /Бензин: \+20 000,00 ₽ → прибыль 180 000,00 ₽ \(18,0 %\)/);
+  assert.match(out, /Если сработают все статьи: \+55 000,00 ₽ → прибыль 145 000,00 ₽ \(14,5 %\)/);
+  assert.match(out, /Статьи в сумме больше всех затрат/);
+  const loss = text(hidden({ items: {}, sens: { price: '100', cost: '120', drivers: [] } }));
+  assert.match(loss, /Контракт убыточный уже на ваших цифрах/);
 });
 
 test('метки достоверности: подтверждено, по вашим данным, гипотеза, не проверено — у каждой своё слово', () => {
