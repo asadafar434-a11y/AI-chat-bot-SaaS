@@ -17,6 +17,7 @@ import { askPersistentStorage } from '@/lib/backup';
 import { openSamplePurchase } from '@/lib/sample-purchase';
 import { stepsOf } from '@/lib/steps';
 import { usePurchases } from '@/lib/use-purchases';
+import { AnalyticsList, PurchaseAnalytics } from './real/analytics';
 import { PurchaseAnalysis, useProfile } from './real/analysis';
 import { PurchaseProvider, usePurchase } from './real/purchase-provider';
 import { toTender } from './real/tenders';
@@ -39,22 +40,25 @@ const steps = [
 // браузера не сбрасывают на список закупок, а остаются на том же месте.
 const STEP_KEYS = ['upload', 'analysis', 'price', 'review', 'package'] as const;
 
-function parseHash(): { view: View; activeId: string | null; step: number } {
+// analyticsId — закупка, открытая в разделе «Аналитика» (#/analytics/<id>); без неё — список закупок раздела.
+function parseHash(): { view: View; activeId: string | null; step: number; analyticsId: string | null } {
   const path = window.location.hash.replace(/^#\/?/, '');
   const [first, second, third] = path.split('/').filter(Boolean);
   if (first === 'p' && second) {
     const idx = STEP_KEYS.indexOf(third as (typeof STEP_KEYS)[number]);
-    return { view: 'workflow', activeId: second, step: idx >= 0 ? idx : 0 };
+    return { view: 'workflow', activeId: second, step: idx >= 0 ? idx : 0, analyticsId: null };
   }
-  if (first === 'new') return { view: 'workflow', activeId: null, step: 0 };
+  if (first === 'new') return { view: 'workflow', activeId: null, step: 0, analyticsId: null };
+  if (first === 'analytics') return { view: 'analytics', activeId: null, step: 0, analyticsId: second ?? null };
   if (first === 'search' || first === 'history' || first === 'profile' || first === 'settings' || first === 'tariffs') {
-    return { view: first, activeId: null, step: 0 };
+    return { view: first, activeId: null, step: 0, analyticsId: null };
   }
-  return { view: 'tenders', activeId: null, step: 0 };
+  return { view: 'tenders', activeId: null, step: 0, analyticsId: null };
 }
 
-function hashFor(view: View, activeId: string | null, step: number): string {
+function hashFor(view: View, activeId: string | null, step: number, analyticsId: string | null): string {
   if (view === 'workflow') return activeId ? `#/p/${activeId}/${STEP_KEYS[step] ?? 'upload'}` : '#/new';
+  if (view === 'analytics') return analyticsId ? `#/analytics/${analyticsId}` : '#/analytics';
   return view === 'tenders' ? '#/' : `#/${view}`;
 }
 
@@ -91,6 +95,7 @@ function Product() {
   // null — новая закупка, документы ещё не загружены.
   const [activeId, setActiveId] = useState<string | null>(() => parseHash().activeId);
   const [step, setStep] = useState(() => parseHash().step);
+  const [analyticsId, setAnalyticsId] = useState<string | null>(() => parseHash().analyticsId);
   const [dark, setDark] = useState(() => readStoredTheme() ?? systemPrefersDark());
   const [chatOpen, setChatOpen] = useState(false);
   const { purchases } = usePurchases();
@@ -109,9 +114,9 @@ function Product() {
 
   // Текущий экран — в адресе, чтобы обновление страницы, кнопка «назад» и прямая ссылка возвращали на то же место.
   useEffect(() => {
-    const next = hashFor(view, activeId, step);
+    const next = hashFor(view, activeId, step, analyticsId);
     if (window.location.hash !== next) window.location.hash = next;
-  }, [view, activeId, step]);
+  }, [view, activeId, step, analyticsId]);
 
   useEffect(() => {
     const onHashChange = () => {
@@ -119,6 +124,7 @@ function Product() {
       setView(parsed.view);
       setActiveId(parsed.activeId);
       setStep(parsed.step);
+      setAnalyticsId(parsed.analyticsId);
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
@@ -154,7 +160,11 @@ function Product() {
       <div className="mx-auto flex min-h-screen max-w-[1440px] flex-col gap-3 p-3 lg:h-screen lg:flex-row lg:gap-4 lg:p-4">
         <Sidebar
           view={view}
-          onNavigate={setView}
+          // Пункт «Аналитика» в меню ведёт к списку закупок раздела, а не к той, что открывали в прошлый раз.
+          onNavigate={(v) => {
+            if (v === 'analytics') setAnalyticsId(null);
+            setView(v);
+          }}
           onNewTender={newTender}
           onOpenChat={() => setChatOpen(true)}
           dark={dark}
@@ -180,6 +190,14 @@ function Product() {
                 }}
               />
             )}
+            {view === 'analytics' &&
+              (analyticsId ? (
+                <PurchaseProvider id={analyticsId} onMissing={() => setAnalyticsId(null)}>
+                  <PurchaseAnalytics key={analyticsId} onBack={() => setAnalyticsId(null)} />
+                </PurchaseProvider>
+              ) : (
+                <AnalyticsList onOpen={setAnalyticsId} onNew={newTender} />
+              ))}
             {view === 'search' && <TenderSearch onNew={newTender} />}
             {view === 'history' && <BidHistory purchases={purchases} />}
             {view === 'profile' && <Profile />}
