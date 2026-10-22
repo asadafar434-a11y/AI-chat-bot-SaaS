@@ -45,7 +45,10 @@ export type RicPosition = {
 };
 
 export type RicSettings = { vatRate: number; nmckVat: Vat; staleDays: number; badgePct: number };
-export type RicData = { positions: RicPosition[]; settings: RicSettings };
+/** Поправка на условия закупки или резерв на отраслевой риск (lib/ric-scenarios.ts): число и основание, откуда оно. id — из сценария сферы («delivery», «risk-materials») или «custom-…» для своей (тогда есть название и единица). */
+export type RicAdjustment = { id: string; label?: string; unit?: "percent" | "rub"; value: string; basis: string };
+/** scenario — сфера, выбранная участником; нет — программа определяет её по предмету закупки. */
+export type RicData = { positions: RicPosition[]; settings: RicSettings; scenario?: string; adjustments?: RicAdjustment[] };
 
 export const DEFAULT_SETTINGS: RicSettings = { vatRate: RIC_METHOD.vatRate, nmckVat: "with", staleDays: RIC_METHOD.staleDays, badgePct: RIC_METHOD.badge.significantPct };
 export const EMPTY_RIC: RicData = { positions: [], settings: DEFAULT_SETTINGS };
@@ -258,7 +261,7 @@ const str = (x: unknown) => (typeof x === "string" ? x : "");
 
 /** Данные из хранилища могут быть старше или повреждены: берём только то, что понимаем. */
 export function normalizeRic(raw: unknown): RicData {
-  const input = (raw && typeof raw === "object" ? raw : {}) as { positions?: unknown; settings?: Record<string, unknown> };
+  const input = (raw && typeof raw === "object" ? raw : {}) as { positions?: unknown; settings?: Record<string, unknown>; scenario?: unknown; adjustments?: unknown };
   const s = input.settings ?? {};
   const settings: RicSettings = {
     vatRate: typeof s.vatRate === "number" && s.vatRate >= 0 && s.vatRate < 100 ? s.vatRate : DEFAULT_SETTINGS.vatRate,
@@ -275,5 +278,11 @@ export function normalizeRic(raw: unknown): RicData {
     );
     return [{ id: p.id, name: str(p.name), unit: str(p.unit), qty: str(p.qty), analogs, ...(typeof p.customerUnit === "number" && p.customerUnit > 0 && { customerUnit: p.customerUnit }) }];
   });
-  return { positions, settings };
+  const scenario = typeof input.scenario === "string" && /^[a-z]{2,20}$/.test(input.scenario) ? input.scenario : undefined;
+  const adjustments = (Array.isArray(input.adjustments) ? (input.adjustments as Record<string, unknown>[]) : []).flatMap((a): RicAdjustment[] => {
+    if (!a || typeof a !== "object" || typeof a.id !== "string" || !/^[a-z0-9-]{1,40}$/.test(a.id)) return [];
+    const custom = a.id.startsWith("custom-");
+    return [{ id: a.id, ...(custom && { label: str(a.label).slice(0, 120), unit: a.unit === "percent" ? ("percent" as const) : ("rub" as const) }), value: str(a.value).slice(0, 40), basis: str(a.basis).slice(0, 300) }];
+  });
+  return { positions, settings, ...(scenario && { scenario }), ...(adjustments.length > 0 && { adjustments }) };
 }

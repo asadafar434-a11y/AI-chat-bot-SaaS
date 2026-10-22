@@ -40,6 +40,9 @@ before(async () => {
     sumUi: await server.ssrLoadModule('/src/components/AnalyticsSummary.tsx'),
     collapsible: await server.ssrLoadModule('/src/components/Collapsible.tsx'),
     chartUi: await server.ssrLoadModule('/src/components/AnalyticsChart.tsx'),
+    scenUi: await server.ssrLoadModule('/src/components/RicScenarioPanel.tsx'),
+    scenLib: await server.ssrLoadModule('@/lib/ric-scenarios.ts'),
+    importUi: await server.ssrLoadModule('/src/components/AnalogImport.tsx'),
   };
 });
 
@@ -597,4 +600,179 @@ test('проверка поиском: чужой текст из выдачи �
   const out = estimateUi({ ...mods.hiddenLib.EMPTY_REGISTER, searches: { logistics: evil } }, 1_000_000, withSearch);
   assert.equal(out.includes('<img src=x'), false);
   assert.equal(out.includes('<script>x'), false);
+});
+
+const COAL = {
+  positions: [{ id: '1', name: 'Уголь', unit: 'т', qty: '100', analogs: ['9000', '9500', '10000', '9800', '9700'].map((p, i) => analog(`c${i}`, p)) }],
+  // Настройки берутся из модуля, который грузится в before(): поэтому читаются при обращении, а не при разборе файла.
+  get settings() {
+    return { ...mods.lib.DEFAULT_SETTINGS, nmckVat: 'without' };
+  },
+};
+const scenarioUi = (data = COAL, subject = 'Поставка угля марки ДПК', type = 'goods') => {
+  const result = mods.lib.computeRic(data, 1_000_000, NOW);
+  return renderToStaticMarkup(h(mods.scenUi.RicScenarioPanel, { data, result, subject, type, onChange: none }));
+};
+
+test('сфера РИЦ: по предмету определена сфера, указано метод, роль и почему; метка «на проверку юристу»; цифры без поправок', () => {
+  const out = scenarioUi();
+  const t = text(out);
+  assert.match(t, /Как считается РИЦ для вашей сферы/);
+  assert.match(t, /Методика — на проверку юристу/);
+  assert.match(t, /Определена по предмету закупки: Топливо и энергоресурсы/);
+  assert.match(t, /основной Сопоставимых рыночных цен \(анализ рынка\)\./);
+  assert.match(t, /основной Тарифный\./);
+  assert.match(t, /Цены на топливо быстро устаревают/);
+  assert.match(t, /РИЦ по методу[^]*960 000,00 ₽/);
+  assert.match(t, /РИЦ с поправками[^]*960 000,00 ₽[^]*Поправок учтено: 0/);
+  assert.match(t, /Начальная цена заказчика выше РИЦ с поправками на 40 000,00 ₽ \(4,2 %\)/);
+});
+
+test('сфера РИЦ: выбор сферы — девять вариантов и «определить по предмету»; выбранная вами главнее', () => {
+  const auto = scenarioUi();
+  assert.equal((auto.match(/<option /g) ?? []).length, 10);
+  assert.match(auto, /<option value="" selected="">Определить по предмету/);
+  const picked = scenarioUi({ ...COAL, scenario: 'construction' });
+  assert.match(picked, /<option value="construction" selected="">Строительство, ремонт, капремонт/);
+  const t = text(picked);
+  assert.match(t, /Выбрана вами: Строительство, ремонт, капремонт/);
+  assert.match(t, /основной Проектно-сметный\./);
+  assert.match(t, /Цены-аналоги не заменяют смету/);
+});
+
+test('сфера РИЦ: ИТ, логистика, стройка и питание показывают своё — метод, поправки, риски; у каждой сферы не чужое', () => {
+  const it = text(scenarioUi(COAL, 'Разработка программного обеспечения для портала', 'it'));
+  assert.match(it, /Определена по предмету закупки: ИТ: разработка и сопровождение ПО, лицензии/);
+  assert.match(it, /основной Затратный\./);
+  assert.match(it, /Резерв на неопределённость требований/);
+  assert.match(it, /Недооценка трудозатрат/);
+  assert.equal(it.includes('Топливная надбавка'), false);
+  const logistics = text(scenarioUi(COAL, 'Оказание услуг по перевозке грузов', 'services'));
+  assert.match(logistics, /Определена по предмету закупки: Перевозки и доставка/);
+  assert.match(logistics, /Порожний пробег и обратный рейс/);
+  assert.match(logistics, /Удалённый или труднодоступный регион/);
+  assert.match(logistics, /проверка Затратный\./);
+  const build = text(scenarioUi(COAL, 'Капитальный ремонт балконов', 'works'));
+  assert.match(build, /Зимнее удорожание/);
+  assert.match(build, /Неучтённые объёмы/);
+  const food = text(scenarioUi(COAL, 'Организация питания обучающихся', 'food'));
+  assert.match(food, /Потери при обработке и выход готового блюда/);
+  assert.match(food, /Фактическое число порций/);
+});
+
+test('сфера РИЦ: опора — что в документах, что вводите вы, чего нет в программе; ссылки на закон с пометкой «сверьте»; для каждой строки поправки и риска поля числа и основания', () => {
+  const out = scenarioUi(COAL, 'Капитальный ремонт балконов', 'works');
+  const t = text(out);
+  assert.match(t, /В документах закупки/);
+  assert.match(t, /Вводите вы/);
+  assert.match(t, /Внешний источник — не подключён/);
+  assert.match(t, /Сметные нормативы и индексы пересчёта в текущие цены по региону/);
+  assert.match(t, /ч\. 9–9\.1 ст\. 22 44-ФЗ/);
+  assert.match(t, /сверьте с текстом закона/);
+  const scenario = mods.scenLib.scenarioById('construction');
+  const fields = (out.match(/aria-label="[^"]+: значение"/g) ?? []).length;
+  assert.equal(fields, scenario.adjustments.length + scenario.risks.length);
+  assert.equal((out.match(/aria-label="[^"]+: основание"/g) ?? []).length, fields);
+});
+
+test('сфера РИЦ: поправка с основанием меняет РИЦ и показывает вклад, без основания — предупреждение и в расчёт не идёт; резерв на риск — отдельной цифрой', () => {
+  const data = {
+    ...COAL,
+    adjustments: [
+      { id: 'delivery', value: '20000', basis: 'КП перевозчика' },
+      { id: 'quality', value: '5', basis: '' },
+      { id: 'risk-price', value: '3', basis: 'рост цен за последние месяцы' },
+    ],
+  };
+  const t = text(scenarioUi(data));
+  assert.match(t, /РИЦ с поправками[^]*980 000,00 ₽[^]*Поправок учтено: 1/);
+  assert.match(t, /Вклад в расчёт: \+20 000,00 ₽/);
+  assert.match(t, /Нет основания — укажите, откуда число; без него оно в расчёт не идёт/);
+  assert.match(t, /С учётом отраслевых рисков[^]*1 009 400,00 ₽[^]*Резерв: 29 400,00 ₽\. Для вашего расчёта цены, не рыночный ориентир/);
+  assert.match(t, /Вклад в расчёт: \+29 400,00 ₽/);
+});
+
+test('сфера РИЦ: цен-аналогов нет — цифр нет, сказано, что нужно; ничего не выдумывается', () => {
+  const t = text(scenarioUi({ positions: [], settings: COAL.settings }));
+  assert.match(t, /РИЦ по методу[^—]{0,200}—/);  assert.match(t, /Появится, когда цены есть по всем позициям/);
+  assert.match(t, /Позиции закупки не добавлены/);
+  assert.equal(/Начальная цена заказчика (выше|ниже)/.test(t), false);
+});
+
+test('сфера РИЦ: своя поправка — название, единица, основание; чужой текст остаётся текстом', () => {
+  const data = { ...COAL, adjustments: [{ id: 'custom-1', label: '<img src=x onerror=alert(1)>', unit: 'rub', value: '7500', basis: 'полис' }] };
+  const out = scenarioUi(data);
+  assert.equal(out.includes('<img src=x'), false);
+  assert.match(text(out), /Вклад в расчёт: \+7 500,00 ₽/);
+  assert.match(out, /aria-label="Название поправки"/);
+  assert.match(text(out), /Добавить свою поправку/);
+});
+
+const EIS_TABLE = [
+  'Реестровый номер контракта	Предмет контракта	Дата заключения	Цена за единицу, руб.	Количество	Цена контракта',
+  '1660100000126000012	Уголь каменный ДПК	15.09.2026	9 850,00	120	1 182 000,00',
+  '1660100000126000034	Уголь каменный ДПК	02.10.2026	10 120,50	80	809 640,00',
+].join('\n');
+const importForm = (initialText = '', positionName = 'Уголь каменный ДПК') =>
+  renderToStaticMarkup(h(mods.importUi.AnalogImportForm, { positionName, defaultVat: 'without', makeId: () => 'x', onImport: none, onCancel: none, initialText }));
+
+test('загрузка цен: пустое окно — как вставить, ссылки на поиск в ЕИС (в новой вкладке, по названию позиции), кнопка добавить недоступна', () => {
+  const out = importForm();
+  const t = text(out);
+  assert.match(t, /Откройте реестр контрактов ЕИС/);
+  assert.match(t, /Программа сама в ЕИС не ходит: ссылки открываются в вашем браузере/);
+  assert.match(out, /<a href="https:\/\/zakupki\.gov\.ru\/epz\/contract\/search\/results\.html\?searchString=%D0%A3%D0%B3%D0%BE%D0%BB%D1%8C[^"]*" target="_blank" rel="noopener noreferrer"/);
+  assert.match(out, /contractfz223\/search\/results\.html/);
+  assert.match(t, /Найти в реестре контрактов ЕИС \(44-ФЗ\)/);
+  assert.match(t, /Найти в реестре договоров ЕИС \(223-ФЗ\)/);
+  assert.match(out, /aria-label="Таблица с ценами"/);
+  assert.match(out, /type="file"[^>]*accept="\.csv,\.tsv,\.txt/);
+  assert.match(out, /<button[^>]*disabled=""[^>]*>Нет цен для добавления<\/button>/);
+  assert.equal(t.includes('Найдено цен'), false);
+});
+
+test('загрузка цен: вставили таблицу ЕИС — столбцы найдены, цены с источником «ЕИС, контракт №» и датой, галочки стоят, кнопка добавляет все', () => {
+  const out = importForm(EIS_TABLE);
+  const t = text(out);
+  assert.match(t, /Найдено цен: 2/);
+  assert.match(t, /9850 ₽ · 15\.09\.2026 · ЕИС, контракт № 1660100000126000012/);
+  assert.match(t, /10120,5 ₽ · 02\.10\.2026 · ЕИС, контракт № 1660100000126000034/);
+  assert.match(out, /Добавить цену из строки 2" checked/);
+  assert.match(out, /Добавить цену из строки 3" checked/);
+  assert.match(t, /Добавить цен: 2/);
+  assert.match(out, /aria-label="Столбец 1: что это"[^>]*>(?:<option[^>]*>[^<]*<\/option>)*<\/select>/);
+  // Выбранные значения в списках столбцов (выбор НДС — отдельный список).
+  const selected = [...out.matchAll(/<option value="([a-z]+)" selected="">/g)].map((m) => m[1]).filter((v) => v !== 'with' && v !== 'without');
+  assert.deepEqual(selected, ['source', 'name', 'date', 'price', 'qty', 'total']);
+  assert.match(out, /<input type="checkbox" checked=""\/?>\s*Первая строка — заголовки/);
+  assert.match(out, /<option value="without" selected="">без НДС/);
+});
+
+test('загрузка цен: нет даты — предупреждение и подсказка; строки без цены пропущены с причиной, не молча', () => {
+  const rows = ['Наименование	Цена	Дата', 'Уголь	9850	', 'Уголь	договорная	15.09.2026'].join('\n');
+  const t = text(importForm(rows));
+  assert.match(t, /Найдено цен: 1 · пропущено строк: 1/);
+  assert.match(t, /9850 ₽ · без даты · таблица, строка 2/);
+  assert.match(t, /нет даты — впишите её после добавления/);
+  assert.match(t, /Почему строки пропущены/);
+  assert.match(t, /Строка 3: цена не число/);
+  assert.match(t, /без даты цена в расчёт не идёт/);
+});
+
+test('загрузка цен: чужой текст из таблицы остаётся текстом, а не разметкой', () => {
+  const rows = ['Наименование	Цена	Дата	Источник', '<img src=x onerror=alert(1)>	100	01.10.2026	<script>x</script>'].join('\n');
+  const out = importForm(rows);
+  assert.equal(out.includes('<img src=x'), false);
+  assert.equal(out.includes('<script>x'), false);
+  assert.match(text(out), /&lt;img|<img src=x onerror=alert\(1\)>/);
+});
+
+test('загрузка цен: у каждой позиции РИЦ есть кнопка «Загрузить цены из таблицы»', () => {
+  const d = data([
+    { id: 'p1', name: 'Уголь', unit: 'т', qty: '100', analogs: [analog('a1', '100')] },
+    { id: 'p2', name: 'Дрова', unit: 'м3', qty: '50', analogs: [] },
+  ]);
+  const t = text(panel(d, null));
+  assert.equal((t.match(/Загрузить цены из таблицы/g) ?? []).length, 2);
+  assert.match(t, /Добавить цену-аналог/);
 });

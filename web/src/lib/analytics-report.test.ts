@@ -9,6 +9,7 @@ import { contractRisks } from "./contract-risks.ts";
 import { DEFAULT_ECON, economics } from "./economics.ts";
 import { computeRic, DEFAULT_SETTINGS, EMPTY_RIC, type RicData } from "./indicative-price.ts";
 import { priceBadge } from "./price-badge.ts";
+import { scenarioRic } from "./ric-scenarios.ts";
 import type { PriceCalc } from "./price-floor.ts";
 import { DEFAULT_ASSUMPTIONS, estimateRisks } from "./risk-estimate.ts";
 
@@ -244,4 +245,49 @@ test("поиск в отчёте: раздел появляется, тольк�
   const table = section.blocks.find((b) => b.type === "table");
   assert.ok(table && table.type === "table");
   assert.deepEqual(table.rows[0], ["Тарифы изменились", "kuban-kargo.ru", "С 09 июня 2026 года стоимость рассчитывается индивидуально", "https://kuban-kargo.ru/x/"]);
+});
+
+const COAL: RicData = {
+  positions: [{ id: "1", name: "Уголь", unit: "т", qty: "100", analogs: ["9000", "9500", "10000", "9800", "9700"].map((p, i) => ({ id: `a${i}`, price: p, vat: "without" as const, source: "Прайс поставщика", date: "2026-10-10" })) }],
+  settings: { ...DEFAULT_SETTINGS, nmckVat: "without" },
+  adjustments: [
+    { id: "delivery", value: "20000", basis: "КП перевозчика от 10.10.2026" },
+    { id: "risk-price", value: "3", basis: "рост цен за последние месяцы" },
+    { id: "quality", value: "5", basis: "" },
+  ],
+};
+
+test("сфера в отчёте: метод, три цифры и таблица учтённых поправок и резервов с основаниями; без основания — не в отчёте", () => {
+  const ric = computeRic(COAL, 1_000_000, NOW);
+  const sc = scenarioRic(COAL, ric, "Поставка угля", "goods");
+  const r = buildReport(input({ ric, badge: priceBadge(ric, COAL), ricScenario: sc }));
+  const section = r.sections.find((x) => x.title === "РИЦ: расчёт индикативной цены")!;
+  const text = section.blocks.map((b) => (b.type === "p" ? b.text : "")).join(" ");
+  assert.match(text, /Сфера: Топливо и энергоресурсы \(определена по предмету закупки\)\. Основной метод: сопоставимых рыночных цен \(анализ рынка\)\. Методика составлена программой по типовой практике и ждёт проверки юристом\./);
+  const tables = section.blocks.filter((b) => b.type === "table");
+  const labels = tables[0].type === "table" ? tables[0].rows.map((x) => x[0]) : [];
+  assert.deepEqual(labels, ["РИЦ по методу", "РИЦ с поправками на условия закупки", "С учётом отраслевых рисков (для расчёта вашей цены, не рыночный ориентир)", "Начальная цена против РИЦ с поправками"]);
+  const lines = tables[1];
+  assert.ok(lines.type === "table");
+  assert.deepEqual(lines.head, ["Что", "Вид", "Значение", "Вклад", "Основание"]);
+  assert.deepEqual(lines.rows.map((x) => [x[0], x[1], x[4]]), [
+    ["Доставка до склада заказчика", "Поправка", "КП перевозчика от 10.10.2026"],
+    ["Цена топлива за срок поставки", "Резерв на риск", "рост цен за последние месяцы"],
+  ]);
+  assert.ok(!JSON.stringify(section.blocks).includes("Поправка на качество"), "поправка без основания в отчёт не идёт");
+});
+
+test("сфера в отчёте: цен-аналогов нет — метод всё равно описан, рыночный ориентир не выдумывается", async () => {
+  const empty = computeRic(EMPTY_RIC, 1_000_000, NOW);
+  const sc = scenarioRic({ ...EMPTY_RIC, scenario: "construction" }, empty, "Ремонт", "works");
+  const r = buildReport(input({ ric: empty, ricScenario: sc }));
+  const section = r.sections.find((x) => x.title === "РИЦ: расчёт индикативной цены")!;
+  const text = section.blocks.map((b) => (b.type === "p" ? b.text : "")).join(" ");
+  assert.match(text, /Сфера: Строительство, ремонт, капремонт \(выбрана участником\)\. Основной метод: проектно-сметный/);
+  assert.match(text, /Цены-аналоги не введены/);
+  assert.ok(!section.blocks.some((b) => b.type === "table"));
+  const blob = await reportDocx(buildReport(input({ ric: computeRic(COAL, 1_000_000, NOW), ricScenario: scenarioRic(COAL, computeRic(COAL, 1_000_000, NOW), "Поставка угля", "goods") })));
+  const docText = (await mammoth.extractRawText({ buffer: Buffer.from(await blob.arrayBuffer()) })).value;
+  assert.match(docText, /Резерв на риск/);
+  assert.match(docText, /КП перевозчика от 10\.10\.2026/);
 });

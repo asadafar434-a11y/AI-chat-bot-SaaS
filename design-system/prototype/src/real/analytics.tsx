@@ -13,6 +13,7 @@ import { findNmckCalculations } from '@/lib/nmck-check';
 import { priceBadge } from '@/lib/price-badge';
 import { titleOf } from '@/lib/purchase';
 import { printHtml } from '@/lib/print-html';
+import { scenarioRic } from '@/lib/ric-scenarios';
 import { parseRubles } from '@/lib/rub-words';
 import type { SearchContext } from '@/lib/search-queries';
 import { saveFile } from '@/lib/save-file';
@@ -28,6 +29,7 @@ import { Economics } from '../components/Economics';
 import { RiskEstimates } from '../components/RiskEstimates';
 import { NmckCheck } from '../components/NmckCheck';
 import { RicPanel } from '../components/RicPanel';
+import { RicScenarioPanel } from '../components/RicScenarioPanel';
 import { ArrowLeft, BarChart2 } from '../lib/icons';
 import { useProfile } from './analysis';
 import { usePurchase } from './purchase-provider';
@@ -189,6 +191,7 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
       ric: result,
       badge,
       assumptions: assumptionLines(assumptions),
+      ricScenario: data && result ? scenarioRic(data, result, purchase.subject ?? '', type) : null,
       searches: Object.entries((register.data ?? EMPTY_REGISTER).searches).flatMap(([id, record]) => {
         const h = hypotheses.find((x) => x.id === id);
         return h ? [{ title: h.title, record }] : [];
@@ -264,7 +267,10 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
         return <AnalyticsChart econ={econ} estimate={estimate} ric={result} />;
       case 'ric':
         return data && result && badge ? (
-          <RicPanel embedded data={data} result={result} badge={badge} importSource={source} importNote={note} onImport={importFromDocuments} onChange={ric.change} saveError={null} />
+          <div className="space-y-4">
+            <RicScenarioPanel data={data} result={result} subject={purchase.subject ?? ''} type={type} onChange={ric.change} />
+            <RicPanel embedded data={data} result={result} badge={badge} importSource={source} importNote={note} onImport={importFromDocuments} onChange={ric.change} saveError={null} />
+          </div>
         ) : (
           loading
         );

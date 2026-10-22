@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { RIC_METHOD, type Analog, type PositionResult, type RicData, type RicPosition, type RicResult, type Vat } from '@/lib/indicative-price';
 import type { PriceBadge } from '@/lib/price-badge';
 import { AlertTriangle, BarChart2, CheckCircle2, Download, Info, Plus, Trash2, TrendingDown, TrendingUp } from '../lib/icons';
 import { CertaintyBadge } from './Certainty';
+import { AnalogImportModal } from './AnalogImport';
 import { Frame, frameBody, frameHead } from './Frame';
 import { Badge, Button, Card, HelpTip, IconButton } from './ui';
 
@@ -104,6 +106,8 @@ export function RicPanel({ data, result, badge, importSource, importNote, onImpo
                   onPatch={(patch) => patchPosition(r.position.id, patch)}
                   onRemove={() => setPositions(data.positions.filter((p) => p.id !== r.position.id))}
                   onAddAnalog={() => addAnalog(r.position.id)}
+                  defaultVat={data.settings.nmckVat}
+                  onImportAnalogs={(list) => patchPosition(r.position.id, { analogs: [...r.position.analogs, ...list] })}
                   onPatchAnalog={(analogId, patch) => patchAnalog(r.position.id, analogId, patch)}
                   onRemoveAnalog={(analogId) => patchPosition(r.position.id, { analogs: r.position.analogs.filter((a) => a.id !== analogId) })}
                 />
@@ -165,6 +169,8 @@ function PositionCard({
   onPatch,
   onRemove,
   onAddAnalog,
+  defaultVat,
+  onImportAnalogs,
   onPatchAnalog,
   onRemoveAnalog,
 }: {
@@ -173,9 +179,12 @@ function PositionCard({
   onPatch: (patch: Partial<RicPosition>) => void;
   onRemove: () => void;
   onAddAnalog: () => void;
+  defaultVat: Vat;
+  onImportAnalogs: (analogs: Analog[]) => void;
   onPatchAnalog: (analogId: string, patch: Partial<Analog>) => void;
   onRemoveAnalog: (analogId: string) => void;
 }) {
+  const [importing, setImporting] = useState(false);
   const p = result.position;
   const label = p.name.trim() || 'позиция';
   const status = STATUS[result.status];
@@ -227,10 +236,27 @@ function PositionCard({
             )}
           </div>
         ))}
-        <Button size="sm" variant="ghost" onClick={onAddAnalog}>
-          <Plus className="size-3.5" />
-          Добавить цену-аналог
-        </Button>
+        <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
+          <Button size="sm" variant="ghost" onClick={onAddAnalog}>
+            <Plus className="size-3.5" />
+            Добавить цену-аналог
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setImporting(true)}>
+            <Download className="size-3.5" />
+            Загрузить цены из таблицы
+          </Button>
+        </div>
+        <AnalogImportModal
+          open={importing}
+          onClose={() => setImporting(false)}
+          positionName={p.name.trim()}
+          defaultVat={defaultVat}
+          makeId={() => newId('a')}
+          onImport={(list) => {
+            onImportAnalogs(list);
+            setImporting(false);
+          }}
+        />
       </div>
 
       <div className="space-y-1.5 border-t border-border bg-secondary/30 px-3 py-2.5 text-[12px]">

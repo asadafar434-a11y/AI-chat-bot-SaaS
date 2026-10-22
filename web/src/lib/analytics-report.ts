@@ -9,6 +9,7 @@ import type { RicResult } from "@/lib/indicative-price";
 import type { Assumptions, EstimateResult } from "@/lib/risk-estimate";
 import { chartFacts, priceBar, riskShares, SCENARIO_LABELS, type PartId } from "@/lib/analytics-chart";
 import { rubles, type Summary } from "@/lib/analytics-summary";
+import { METHOD_LABELS, type ScenarioRic } from "@/lib/ric-scenarios";
 import type { SearchRecord } from "@/lib/web-search";
 
 export type ReportBlock =
@@ -40,6 +41,8 @@ export type ReportInput = {
   calcs: NmckCalc[];
   ric: RicResult | null;
   badge: PriceBadge | null;
+  /** РИЦ по сценарию сферы: метод, поправки, резерв на отраслевые риски. */
+  ricScenario?: ScenarioRic | null;
   /** Что нашёл обычный поиск по гипотезам (по какой, запрос, результаты): в отчёте с пометкой «не проверено». */
   searches?: { title: string; record: SearchRecord }[];
   /** Допущения оценки словами: ставка, дни просрочки, процент гарантии и т. п. */
@@ -180,8 +183,32 @@ function nmckSection(i: ReportInput): ReportSection {
   return { title: "Расчёт цены у заказчика", blocks };
 }
 
+function scenarioBlocks(i: ReportInput): ReportBlock[] {
+  const sc = i.ricScenario;
+  if (!sc) return [];
+  const main = sc.scenario.methods.find((m) => m.role === "основной") ?? sc.scenario.methods[0];
+  const blocks: ReportBlock[] = [
+    { type: "p", text: `Сфера: ${sc.scenario.title} (${sc.chosen ? "выбрана участником" : "определена по предмету закупки"}). Основной метод: ${METHOD_LABELS[main.id].toLowerCase()}. Методика составлена программой по типовой практике и ждёт проверки юристом.`, bold: true },
+  ];
+  const rows: string[][] = [];
+  if (sc.base !== null) rows.push(["РИЦ по методу", rubles(sc.base)]);
+  if (sc.adjusted !== null) rows.push(["РИЦ с поправками на условия закупки", rubles(sc.adjusted)]);
+  if (sc.withRisks !== null && sc.reserve !== null && sc.reserve !== 0) rows.push(["С учётом отраслевых рисков (для расчёта вашей цены, не рыночный ориентир)", rubles(sc.withRisks)]);
+  if (sc.deviation) rows.push(["Начальная цена против РИЦ с поправками", `${rubles(sc.deviation.abs)} (${pct(sc.deviation.pct)})`]);
+  if (rows.length > 0) blocks.push({ type: "table", head: ["Показатель", "Значение"], rows });
+  const counted = [...sc.adjustments.map((a) => ({ ...a, kind: "Поправка" })), ...sc.risks.map((a) => ({ ...a, kind: "Резерв на риск" }))].filter((a) => a.counted && a.effect !== null);
+  if (counted.length > 0) {
+    blocks.push({
+      type: "table",
+      head: ["Что", "Вид", "Значение", "Вклад", "Основание"],
+      rows: counted.map((a) => [a.label, a.kind, a.unit === "percent" ? pct(a.value!) : rubles(a.value!), rubles(a.effect!), a.basis]),
+    });
+  }
+  return blocks;
+}
+
 function ricSection(i: ReportInput): ReportSection {
-  const blocks: ReportBlock[] = [];
+  const blocks: ReportBlock[] = scenarioBlocks(i);
   const r = i.ric;
   if (!r || r.positions.length === 0) {
     blocks.push({ type: "p", text: "Цены-аналоги не введены, рыночный ориентир не рассчитан.", muted: true });
