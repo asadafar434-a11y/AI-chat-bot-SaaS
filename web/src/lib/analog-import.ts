@@ -85,7 +85,8 @@ export function parseMoney(text: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-const MONEY_OUT = (n: number) => String(Math.round(n * 100) / 100).replace(".", ",");
+// Цена за единицу в ЕИС бывает с четырьмя знаками после запятой («4 474,3354»): округляем до десятитысячных, а не до копеек.
+export const MONEY_OUT = (n: number) => String(Math.round(n * 10000) / 10000).replace(".", ",");
 
 const isoOf = (y: number, m: number, d: number) => {
   const t = Date.UTC(y, m - 1, d);
@@ -166,6 +167,8 @@ export type ImportRow = {
   vat: Vat | null;
   /** Что не так: цена попадёт в расчёт только после того, как вы это исправите. */
   problems: string[];
+  /** Пояснение к строке: количество, заказчик, номер контракта (карточки ЕИС). */
+  detail?: string;
 };
 
 export type Built = { rows: ImportRow[]; skipped: { line: number; reason: string }[]; truncated: number };
