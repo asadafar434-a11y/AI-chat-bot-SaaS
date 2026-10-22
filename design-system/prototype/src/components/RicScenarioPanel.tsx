@@ -64,8 +64,10 @@ function Row({
             <input aria-label="Название поправки" value={entry?.label ?? ''} onChange={(e) => onPatch({ label: e.target.value })} placeholder="Название поправки" className={inputClass} />
           ) : (
             <>
-              <p className="break-words text-[13px] font-medium">{applied.label}</p>
-              <p className="mt-0.5 break-words text-[12px] text-muted-foreground">{hint}</p>
+              <p className="flex items-center gap-1.5 break-words text-[13px] font-medium">
+                {applied.label}
+                <HelpTip align="start" content={hint} />
+              </p>
             </>
           )}
         </div>
@@ -157,16 +159,21 @@ export function RicScenarioPanel({ data, result, subject, type, onChange }: RicS
             ))}
           </select>
         </label>
-        <span className="text-[12px] text-muted-foreground">{calc.chosen ? 'Выбрана вами' : 'Определена по предмету закупки'}: {scenario.title}</span>
+        <span className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+          {calc.chosen ? 'Выбрана вами' : 'Определена по предмету закупки'}: {scenario.title}
+          <HelpTip align="start" content={scenario.applies} />
+        </span>
       </div>
-      <p className="text-[12px] text-muted-foreground">{scenario.applies}</p>
 
       <ul className="space-y-1.5">
         {scenario.methods.map((m, i) => (
           <li key={`${m.id}-${i}`} className="flex flex-wrap items-start gap-x-2 gap-y-0.5 text-[12px]">
             <Badge tone={m.role === 'основной' ? 'info' : 'neutral'}>{m.role}</Badge>
             <span className="min-w-0 flex-1 break-words">
-              <span className="font-medium">{METHOD_LABELS[m.id]}.</span> <span className="text-muted-foreground">{m.why}</span>
+              <span className="font-medium">{METHOD_LABELS[m.id]}.</span>{' '}
+              <span className="inline-block align-middle">
+                <HelpTip align="start" content={m.why} />
+              </span>
             </span>
           </li>
         ))}
@@ -237,9 +244,7 @@ export function RicScenarioPanel({ data, result, subject, type, onChange }: RicS
       <details className="text-[12px]" open={calc.adjustments.some((a) => a.counted || a.reason !== null)}>
         <summary className="cursor-pointer text-muted-foreground">Поправки на условия вашей закупки</summary>
         <div className="mt-2 space-y-2">
-          <p className="text-muted-foreground">
-            Проценты считаются от РИЦ по методу, суммы добавляются как есть — {vat}. Поправка без числа и основания в расчёт не идёт.
-          </p>
+          <p className="text-muted-foreground">% — от РИЦ по методу, ₽ — как есть ({vat}). Без числа и основания не считается.</p>
           <ul className="space-y-2">
             {scenario.adjustments.map((def) => {
               const applied = calc.adjustments.find((a) => a.id === def.id)!;
@@ -272,9 +277,7 @@ export function RicScenarioPanel({ data, result, subject, type, onChange }: RicS
       <details className="text-[12px]" open={calc.risks.some((a) => a.counted || a.reason !== null)}>
         <summary className="cursor-pointer text-muted-foreground">Отраслевые риски и резерв на них: {scenario.risks.length}</summary>
         <div className="mt-2 space-y-2">
-          <p className="text-muted-foreground">
-            Риск сдвигает вашу цену, а не рыночный ориентир, поэтому резерв считается отдельно: проценты — от РИЦ с поправками, суммы — как есть. Не оценили риск — оставьте пустым, число не будет придумано.
-          </p>
+          <p className="text-muted-foreground">Резерв: % — от РИЦ с поправками, ₽ — как есть. Пусто — риск не считается.</p>
           <ul className="space-y-2">
             {scenario.risks.map((def) => {
               const applied = calc.risks.find((a) => a.id === def.id)!;

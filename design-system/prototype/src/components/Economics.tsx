@@ -68,8 +68,8 @@ export function Economics({ result, nmck, priceNote, fromStep, targetMarginPct, 
         {!result.ready ? (
           <p className="text-muted-foreground">
             {result.reason === 'nmck'
-              ? 'Начальная цена в документах не найдена — цену посчитать не от чего.'
-              : 'Введите свои затраты на исполнение — без них цену не посчитать. Их же можно ввести на шаге «Цена». Своих цифр у программы нет.'}
+              ? 'Начальной цены в документах нет — считать не от чего.'
+              : 'Впишите затраты на исполнение — здесь или на шаге «Цена».'}
           </p>
         ) : (
           <>
@@ -145,8 +145,8 @@ export function Economics({ result, nmck, priceNote, fromStep, targetMarginPct, 
                     {l.label}: {rub(l.amount)}
                   </li>
                 ))}
-                <li>Прибыль = цена − все эти статьи. В стрессе затраты выросли{result.growthApplied ? '' : ' (договор допускает индексацию цены — рост затрат не берётся)'}, гарантийный резерв вдвое{result.penaltyUsed ? `, плюс одна неустойка: ${result.penaltyUsed}` : ''}.</li>
-                <li>Налог и обеспечение исполнения — по тем же правилам, что на шаге «Цена»; проценты за деньги, гарантия и резерв — допущения выше (можно поменять).</li>
+                <li>Прибыль = цена − эти статьи. Стресс: затраты выросли{result.growthApplied ? '' : ' (индексация цены — рост не берётся)'}, резерв вдвое{result.penaltyUsed ? `, плюс неустойка: ${result.penaltyUsed}` : ''}.</li>
+                <li>Налог и обеспечение — как на шаге «Цена»; проценты, гарантия, резерв — допущения выше.</li>
               </ul>
             </details>
           </>
@@ -178,7 +178,7 @@ function Verdict({ result, nmck, targetMarginPct }: { result: Extract<EconResult
     return (
       <p className="flex items-start gap-1.5 text-danger">
         <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-        Даже по начальной цене ({rub(nmck)}) контракт убыточный на ваших затратах: прибыль {rub(atNmck.base)}. Участвовать не стоит, пока затраты не снизятся.
+        Даже по начальной цене ({rub(nmck)}) контракт убыточный: прибыль {rub(atNmck.base)}. Участвовать не стоит.
       </p>
     );
   }

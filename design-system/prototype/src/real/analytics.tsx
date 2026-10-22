@@ -365,7 +365,7 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
     if (!data) return;
     const found = positionsFromDocuments(plain);
     if (!found) {
-      setNote('В документах закупки не нашёл бланк «Спецификация» или «Расчёт цены» с позициями. Добавьте позиции вручную.');
+      setNote('Бланка с позициями в документах нет — добавьте их вручную.');
       return;
     }
     const have = new Map(data.positions.map((p) => [`${p.name.trim().toLowerCase()}|${p.unit.trim().toLowerCase()}`, p]));
@@ -400,7 +400,7 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
           <div className="min-w-0">
             <p className="break-words text-sm font-medium">{titleOf(purchase)}</p>
             <p className="mt-0.5 text-[12px] text-muted-foreground">
-              {nmck !== null ? `Начальная цена: ${purchase.price}` : 'Начальная цена в документах не найдена — сравнивать будет не с чем.'}
+              {nmck !== null ? `Начальная цена: ${purchase.price}` : 'Начальной цены в документах нет'}
             </p>
           </div>
         </div>

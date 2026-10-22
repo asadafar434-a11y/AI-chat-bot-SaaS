@@ -3,7 +3,7 @@ import { buildRows, decodeText, eisSearchUrl, guessRoles, parseTable, ROLE_LABEL
 import { eisCardUrl, eisKind, eisRows, parseEisCards, parseEisList } from '@/lib/eis-contracts';
 import type { Analog, Vat } from '@/lib/indicative-price';
 import { AlertTriangle, ExternalLink } from '../lib/icons';
-import { Button, Modal } from './ui';
+import { Button, HelpTip, Modal } from './ui';
 
 // «Загрузить цены из таблицы» у позиции РИЦ: вставили таблицу из реестра контрактов ЕИС, Excel или сайта поставщика (или выбрали файл CSV/TXT) — программа находит столбцы, вы проверяете предпросмотр,
 // и отмеченные цены становятся аналогами позиции с источником и датой (lib/analog-import.ts). Карточка контракта ЕИС («Платежи и объекты закупки») читается целиком — цена за единицу, количество, НДС, дата заключения (lib/eis-contracts.ts);
@@ -90,8 +90,9 @@ export function AnalogImportForm({ positionName, defaultVat, onImport, onCancel,
   return (
     <div className="space-y-4 px-5 py-4 text-[13px]">
       <div className="space-y-1.5">
-        <p className="text-muted-foreground">
-          Вставьте таблицу с ценами или карточку контракта ЕИС («Платежи и объекты закупки»): цена за единицу, количество, НДС и дату программа найдёт сама. В ЕИС она не ходит — ссылки открываются в вашем браузере.
+        <p className="flex items-center gap-1.5 text-muted-foreground">
+          Вставьте таблицу с ценами или карточку контракта ЕИС
+          <HelpTip align="start" content="Карточка — вкладка «Платежи и объекты закупки»: цену за единицу, количество, НДС и дату программа найдёт сама. В ЕИС она не ходит — ссылки открываются в вашем браузере." />
         </p>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px]">
           {(['44', '223'] as const).map((law) => (
@@ -127,8 +128,8 @@ export function AnalogImportForm({ positionName, defaultVat, onImport, onCancel,
       {kind === 'list' && list.length > 0 && (
         <section className="space-y-2" aria-label="Список контрактов ЕИС">
           <p className="font-medium">
-            Это список: в нём только общая цена контракта ({list.length})
-            <span className="font-normal text-muted-foreground"> · цена за единицу — в карточке. Откройте её, выделите всё и вставьте сюда.</span>
+            В списке только общая цена контракта ({list.length})
+            <span className="font-normal text-muted-foreground"> · цена за единицу — в карточке: откройте её и вставьте сюда</span>
           </p>
           <ul className="space-y-1.5 rounded-lg border border-border p-2">
             {list.slice(0, LIST_SHOWN).map((c) => (
@@ -245,7 +246,7 @@ export function AnalogImportForm({ positionName, defaultVat, onImport, onCancel,
                 </ul>
               </details>
             )}
-            <p className="text-[12px] text-muted-foreground">Это цены, которые вы нашли сами: источник и дата у каждой остаются в расчёте, без даты цена в расчёт не идёт.</p>
+            <p className="text-[12px] text-muted-foreground">Без даты цена в расчёт не идёт.</p>
           </section>
         </>
       )}

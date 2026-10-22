@@ -94,8 +94,8 @@ function PriceSection({ econ }: { econ: EconResult }) {
       {!bar ? (
         <p className="text-[13px] text-muted-foreground">
           {econ.ready === false && econ.reason === 'nmck'
-            ? 'Начальная цена в документах не найдена — разложить цену не на что.'
-            : 'Введите свои затраты на исполнение — тогда будет видно, из чего складывается цена и сколько остаётся прибыли. Своих цифр у программы нет.'}
+            ? 'Начальной цены в документах нет — раскладывать нечего.'
+            : 'Впишите затраты на исполнение — покажу, из чего складывается цена.'}
         </p>
       ) : (
         <>
@@ -157,7 +157,7 @@ function RiskSection({ shares }: { shares: RiskShares }) {
         Риски в процентах от цены
       </h3>
       {shares.shown.length === 0 ? (
-        <p className="text-[13px] text-muted-foreground">Риски в рублях не посчитаны: нет цены контракта или условий договора с цифрами.</p>
+        <p className="text-[13px] text-muted-foreground">Рисков в рублях нет: нужны цена и условия договора.</p>
       ) : (
         <>
           <ul className="space-y-2.5">
@@ -180,7 +180,7 @@ function RiskSection({ shares }: { shares: RiskShares }) {
       )}
       {shares.unknown.length > 0 && (
         <p className="text-[12px] text-muted-foreground">
-          Без суммы, нужны данные: {shares.unknown.map((u) => (u.ask ? `${u.title} (${u.ask})` : u.title)).join('; ')}.
+          Без суммы: {shares.unknown.map((u) => u.title).join('; ')}
         </p>
       )}
     </section>
@@ -332,7 +332,7 @@ function CurveSection({ curve }: { curve: Curve }) {
           </div>
         )}
       </div>
-      <p className="text-[11px] text-muted-foreground">По горизонтали — на сколько процентов цена ниже начальной ({rubles(points[0].price)}); по вертикали — прибыль в рублях, ниже нуля убыток.</p>
+      <p className="text-[11px] text-muted-foreground">Снижение от начальной цены ({rubles(points[0].price)}) → прибыль, ₽</p>
       {curve.marks.length > 0 && (
         <p className="text-[12px] text-muted-foreground">
           {curve.marks.map((m) => `${m.label} ${rubles(m.price)} (на ${percent(m.drop)} ниже начальной)`).join(' · ')}
@@ -385,7 +385,8 @@ export function AnalyticsChart({ econ, estimate, ric, matrix }: { econ: EconResu
       <RiskSection shares={shares} />
       {curve && <CurveSection curve={curve} />}
       <p className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
-        Процент победы не показываем: для него нужна история торгов. Шансы на победу и проверки по заказчику (суды, ФАС, история) — <Soon />
+        Шансы на победу и проверки заказчика — <Soon />
+        <HelpTip align="start" content="Процент победы не показываем: для него нужна история торгов." />
       </p>
     </div>
   );

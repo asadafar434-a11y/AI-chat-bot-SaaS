@@ -75,7 +75,7 @@ export function RicPanel({ data, result, badge, importSource, importNote, onImpo
           {importSource && (
             <p className="flex items-start gap-1.5 text-[12px] text-muted-foreground">
               <Info className="mt-0.5 size-3.5 shrink-0" />
-              Позиции и начальные цены за единицу взяты из бланка «{importSource.title}» (файл «{importSource.doc}»). Цены-аналоги добавляете вы.
+              Позиции — из бланка «{importSource.title}», файл «{importSource.doc}».
             </p>
           )}
           {importNote && (
@@ -93,8 +93,7 @@ export function RicPanel({ data, result, badge, importSource, importNote, onImpo
 
           {data.positions.length === 0 ? (
             <p className="text-muted-foreground">
-              Добавьте позиции закупки и по каждой — цены-аналоги (коммерческие предложения, прайсы) с источником и датой. Для РИЦ нужно не меньше {RIC_METHOD.minAnalogs} цен на позицию, для ценового
-              бейджа — не меньше {RIC_METHOD.badge.minObservations}.
+              Добавьте позиции и цены-аналоги. Нужно не меньше {RIC_METHOD.minAnalogs} цен на позицию, для бейджа — {RIC_METHOD.badge.minObservations}.
             </p>
           ) : (
             <ul className="space-y-3">
@@ -280,12 +279,12 @@ function PositionCard({
                 · сумма по позиции: <span className="font-mono font-medium">{rub(result.total)}</span>
               </>
             )}
-            {result.total === null && <span className="text-muted-foreground"> · укажите количество, чтобы получить сумму</span>}
+            {result.total === null && <span className="text-muted-foreground"> · впишите количество</span>}
           </p>
         )}
         {result.unit === null && result.used > 0 && (
           <p className="text-muted-foreground">
-            Нужно ещё {RIC_METHOD.minAnalogs - result.used} {RIC_METHOD.minAnalogs - result.used === 1 ? 'цена' : 'цены'}: по {result.used} {result.used === 1 ? 'цене' : 'ценам'} индикативную цену не считаем.
+            Нужно ещё {RIC_METHOD.minAnalogs - result.used} {RIC_METHOD.minAnalogs - result.used === 1 ? 'цена' : 'цены'}
           </p>
         )}
         {result.suggest && (
@@ -293,8 +292,7 @@ function PositionCard({
             Если не учитывать цену «{result.checks.find((c) => c.analog.id === result.suggest!.analogId)?.analog.source || 'без названия'}», вариация станет {pct(result.suggest.cv * 100)}.{' '}
             <button className="underline underline-offset-2 hover:text-foreground" onClick={() => onPatchAnalog(result.suggest!.analogId, { excluded: true })}>
               Не учитывать
-            </button>{' '}
-            — решаете вы: подумайте, чем эта цена отличается от остальных.
+            </button>
           </p>
         )}
         {result.customer && (
@@ -347,8 +345,13 @@ function Summary({ result, base, badge }: { result: RicResult; base: string; bad
           </div>
         </dl>
 
-        {badge.status === 'below' && <p>Проверьте, хватит ли такой цены на ваши затраты, учтены ли все объёмы, верно ли сопоставлены характеристики и остаётся ли резерв и маржа.</p>}
-        {badge.status === 'above' && <p>Высокая цена ещё не значит выгодный контракт: проверьте характеристики, объёмы и условия исполнения. Это не вывод о нарушении со стороны заказчика.</p>}
+        {badge.status === 'below' && <p>Проверьте: хватит ли цены на затраты, объёмы и характеристики.</p>}
+        {badge.status === 'above' && (
+          <p className="flex items-center gap-1.5">
+            Высокая цена — не повод для выводов: сверьте объёмы и условия.
+            <HelpTip align="start" content="Высокая цена ещё не значит выгодный контракт. Это не вывод о нарушении со стороны заказчика." />
+          </p>
+        )}
         {badge.missing.length > 0 && (
           <div className="text-muted-foreground">
             <p className="font-medium text-foreground">Чего не хватает для оценки цены:</p>
@@ -362,7 +365,7 @@ function Summary({ result, base, badge }: { result: RicResult; base: string; bad
         {result.staleCount > 0 && (
           <p className="flex items-start gap-1.5 text-warn-foreground">
             <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-            Устарело цен: {result.staleCount}. Они учтены, но проверьте актуальность.
+            Устарело цен: {result.staleCount} (учтены)
           </p>
         )}
 
@@ -417,7 +420,7 @@ function Method({ data }: { data: RicData }) {
         </li>
         <li>Цена без источника и даты, с датой в будущем или исключённая вами в расчёт не идёт. Цена старше {data.settings.staleDays} дней учитывается, но помечена «устарела».</li>
         <li>Сумма по позиции — цена единицы на количество. РИЦ закупки — сумма по позициям, пересчитанная в основу начальной цены (с НДС или без). Пока цены нет у какой-то позиции, итога и сравнения нет.</li>
-        <li>Пороги ({RIC_METHOD.minAnalogs} аналога, {Math.round(RIC_METHOD.maxVariation * 100)} %) — настройки методики, как в обосновании цены у заказчика; сверяйте с методикой вашей закупки. Расчёт делает программа, а не ИИ. Всё хранится только в вашем браузере.</li>
+        <li>Пороги ({RIC_METHOD.minAnalogs} аналога, {Math.round(RIC_METHOD.maxVariation * 100)} %) — как в обосновании цены у заказчика; сверяйте с методикой закупки. Считает программа, не ИИ; всё хранится в вашем браузере.</li>
       </ul>
     </details>
   );

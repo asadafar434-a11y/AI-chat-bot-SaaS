@@ -55,11 +55,9 @@ export function ContractRisks({ risks, hasContract, embedded }: { risks: Contrac
       </div>
       <div className={frameBody(embedded)}>
         {!hasContract ? (
-          <p className="text-muted-foreground">Проект договора в документах не нашёл, поэтому риски из договора показать не могу. Загрузите договор или его приложение.</p>
+          <p className="text-muted-foreground">Проект договора не найден — загрузите его.</p>
         ) : risks.length === 0 ? (
-          <p className="text-muted-foreground">
-            В договоре не нашёл условий с цифрами (неустойка, срок оплаты, аванс, обеспечение, расходы исполнителя). Это не значит, что их нет: прочитайте раздел об ответственности сторон.
-          </p>
+          <p className="text-muted-foreground">Условий с цифрами не найдено — прочитайте раздел об ответственности.</p>
         ) : (
           <>
             {attention.length > 0 && (
@@ -69,7 +67,7 @@ export function ContractRisks({ risks, hasContract, embedded }: { risks: Contrac
                 ))}
               </ul>
             )}
-            {attention.length > SHOWN && <p className="text-[12px] text-muted-foreground">…и ещё {attention.length - SHOWN} таких же условий в документах.</p>}
+            {attention.length > SHOWN && <p className="text-[12px] text-muted-foreground">…и ещё {attention.length - SHOWN}</p>}
             {rest.length > 0 && (
               <details className="text-[12px]">
                 <summary className="cursor-pointer text-muted-foreground">Остальные условия: {rest.length}</summary>

@@ -4,7 +4,7 @@ import type { SensitivityResult } from '@/lib/sensitivity';
 import { queryFor, type SearchContext } from '@/lib/search-queries';
 import type { DeliveryResult } from '@/lib/delivery-cost';
 import type { FxCode, FxResult } from '@/lib/fx-risk';
-import { AlertTriangle, Info, Plus, Trash2 } from '../lib/icons';
+import { AlertTriangle, Plus, Trash2 } from '../lib/icons';
 import { CertaintyBadge } from './Certainty';
 import { FactCosts } from './FactCosts';
 import { Frame, frameBody, frameHead } from './Frame';
@@ -76,7 +76,6 @@ function AssumptionsEditor({ data, onChange }: Pick<RiskEstimatesProps, 'data' |
           </label>
         ))}
       </div>
-      <p className="mt-2 text-muted-foreground">Это типовые допущения, а не факты о вашей компании. Чем точнее вы их поставите, тем точнее суммы.</p>
     </details>
   );
 }
@@ -101,7 +100,7 @@ function Sensitivity({ data, sens, defaultDrivers, priceHint, onChange, total }:
         </div>
 
         <div className="space-y-2">
-          <p className="text-muted-foreground">Статьи затрат: сколько рублей они занимают и на сколько процентов могут вырасти (например, топливо +10 %). Сумма статей не больше всех затрат.</p>
+          <p className="text-muted-foreground">Статьи затрат: сколько ₽ и на сколько % могут вырасти</p>
           {s.drivers.map((d) => (
             <div key={d.id} className="grid grid-cols-[minmax(0,1fr)_6.5rem_4.5rem_1.75rem] items-center gap-2">
               <input type="text" aria-label="Название статьи" placeholder="Название статьи" value={d.name} onChange={(e) => patchDriver(d.id, { name: e.target.value })} className={inputClass} />
@@ -126,7 +125,7 @@ function Sensitivity({ data, sens, defaultDrivers, priceHint, onChange, total }:
         </div>
 
         {!sens.ready ? (
-          <p className="text-muted-foreground">Введите цену контракта и свои затраты — программа сравнит прибыль с рисками. Своих цифр у программы нет.</p>
+          <p className="text-muted-foreground">Впишите цену контракта и свои затраты.</p>
         ) : (
           <div className="space-y-1.5 rounded-md bg-secondary/40 px-3 py-2.5">
             <p>
@@ -185,7 +184,7 @@ export function RiskEstimates({ result, price, priceNote, hypotheses, data, sens
       </div>
       <div className={frameBody(embedded)}>
         {price === null ? (
-          <p className="text-muted-foreground">Цена контракта не найдена в документах, поэтому оценить в рублях нечего. Укажите цену на шаге «Цена» закупки.</p>
+          <p className="text-muted-foreground">Цены контракта нет — укажите её на шаге «Цена».</p>
         ) : (
           <>
             <div>
@@ -194,10 +193,10 @@ export function RiskEstimates({ result, price, priceNote, hypotheses, data, sens
                 {result.total > 0 ? rub(result.total) : '—'}
                 {result.totalPct !== null && <span className="ml-2 text-[13px] font-normal text-muted-foreground">{pct(result.totalPct)} цены</span>}
               </p>
-              {result.unknown > 0 && <p className="text-[12px] text-muted-foreground">Ещё {result.unknown} без суммы: нужны данные (цена эксперта, тариф перевозчика).</p>}
+              {result.unknown > 0 && <p className="text-[12px] text-muted-foreground">Без суммы: {result.unknown} — нужны данные</p>}
             </div>
             {sorted.length === 0 ? (
-              <p className="text-muted-foreground">В договоре не нашёл условий, по которым можно посчитать (пеня, срок оплаты, обеспечение, твёрдая цена). Это не значит, что рисков нет.</p>
+              <p className="text-muted-foreground">Условий для расчёта в договоре не найдено.</p>
             ) : (
               <ul className="space-y-2">
                 {sorted.map((e) => (
@@ -205,8 +204,15 @@ export function RiskEstimates({ result, price, priceNote, hypotheses, data, sens
                     <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
                       <p className="min-w-0 flex-1 break-words text-[13px] font-medium">{e.title}</p>
                       {e.amount !== null ? (
-                        <p className="font-mono text-[13px] font-semibold">
-                          {rub(e.amount)} <span className="font-normal text-muted-foreground">· {pct(e.pct!)}</span>
+                        <p className="flex flex-wrap items-center justify-end gap-x-2 font-mono text-[13px] font-semibold">
+                          <span>
+                            {rub(e.amount)} <span className="font-normal text-muted-foreground">· {pct(e.pct!)}</span>
+                          </span>
+                          {!e.inTotal && (
+                            <span title="Не потеря: в общий итог не входит">
+                              <Badge tone="neutral">не в итоге</Badge>
+                            </span>
+                          )}
                         </p>
                       ) : (
                         <Badge tone="neutral">сумма не определена</Badge>
@@ -214,7 +220,6 @@ export function RiskEstimates({ result, price, priceNote, hypotheses, data, sens
                     </div>
                     <p className="mt-0.5 break-words text-muted-foreground">{e.scenario}</p>
                     {e.ask && <p className="mt-0.5 text-muted-foreground">{e.ask}.</p>}
-                    {e.amount !== null && !e.inTotal && <p className="mt-0.5 text-muted-foreground">В итог не входит: это не потеря, а возможное изменение объёма.</p>}
                   </li>
                 ))}
               </ul>
@@ -243,19 +248,15 @@ export function RiskEstimates({ result, price, priceNote, hypotheses, data, sens
               {rest.map((h) => (
                 <li key={h.id} className="break-words">
                   <span className="flex items-start gap-1.5">
-                    <Info className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-                    <span>
-                      <span className="font-medium">{h.title}.</span> <span className="text-muted-foreground">{h.check}</span>
+                    <span className="mt-0.5 shrink-0">
+                      <HelpTip align="start" content={h.check} />
                     </span>
+                    <span className="font-medium">{h.title}</span>
                   </span>
                   {queries.has(h.id) && onSearch && <HypothesisSearch query={queries.get(h.id)!} record={data.searches[h.id]} onSearch={() => onSearch(h.id, queries.get(h.id)!)} />}
                 </li>
               ))}
             </ul>
-            <p className="mt-2 text-muted-foreground">
-              Сумму по ним посчитает ИИ с российским поиском, когда их подключат; сейчас данных для числа нет.
-              {queries.size > 0 && ' Кнопка «Проверить поиском» ищет факты в интернете обычным бесплатным поиском: найденное не проверено, смотрите ссылки сами.'}
-            </p>
           </details>
         )}
       </div>

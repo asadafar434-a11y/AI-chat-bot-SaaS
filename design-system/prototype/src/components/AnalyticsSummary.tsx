@@ -5,7 +5,7 @@ import { CertaintyBadge } from './Certainty';
 import { Collapsible } from './Collapsible';
 import { Button, Card, HelpTip } from './ui';
 
-// Верх экрана «Аналитика»: итог светофором с причинами, резюме одним абзацем, главные цифры и рекомендации (свёрнуты). Подробности — в раскрывающихся разделах ниже, полный отчёт — в Word или PDF.
+// Верх экрана «Аналитика»: итог светофором с причинами, главные цифры и рекомендации (свёрнуты). Абзац резюме — только в отчёте Word и PDF: на экране его заменяют причины и цифры. Подробности — в раскрывающихся разделах ниже, полный отчёт — в Word или PDF.
 // Светофор — не балл и не вероятность победы: он показывает, хватает ли прибыли на риски договора. Решение об участии — за человеком.
 
 const TONE: Record<VerdictLevel, { Icon: typeof CheckCircle2; chip: string }> = {
@@ -77,11 +77,6 @@ export function AnalyticsSummary({
             ))}
           </dl>
         )}
-
-        <div className="rounded-lg bg-secondary/50 px-3 py-2.5">
-          <p className="text-[12px] font-medium text-muted-foreground">Резюме</p>
-          <p className="mt-1 break-words text-[13px] leading-relaxed">{summary.text}</p>
-        </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" variant="secondary" disabled={busy !== null} onClick={onWord}>

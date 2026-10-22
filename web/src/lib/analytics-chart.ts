@@ -123,7 +123,7 @@ export function chartFacts({ econ, estimate, ric, matrix }: { econ: EconResult; 
       id: "ric",
       label: "Начальная цена против РИЦ",
       value: `${ric.deviation.pct > 0 ? "+" : ""}${percent(ric.deviation.pct)}`,
-      hint: "Плюс — начальная цена заказчика выше рыночного ориентира, минус — ниже",
+      hint: "Плюс — начальная цена выше рыночного ориентира",
     });
   }
   if (matrix) {

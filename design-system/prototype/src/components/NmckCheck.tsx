@@ -53,9 +53,7 @@ export function NmckCheck({ calcs, embedded }: { calcs: NmckCalc[]; embedded?: b
       </div>
       <div className={frameBody(embedded)}>
         {calcs.length === 0 ? (
-          <p className="text-muted-foreground">
-            В документах не нашёл расчёт начальной цены по предложениям поставщиков (таблицу со средней ценой и коэффициентом вариации). Если он есть в файле другого вида, добавьте цены вручную в блоке ниже.
-          </p>
+          <p className="text-muted-foreground">Расчёта начальной цены в документах нет — добавьте свои цены в «РИЦ».</p>
         ) : (
           <>
             {flagged.length > 0 && (
@@ -65,7 +63,7 @@ export function NmckCheck({ calcs, embedded }: { calcs: NmckCalc[]; embedded?: b
                 ))}
               </ul>
             )}
-            {flagged.length > SHOWN && <p className="text-[12px] text-muted-foreground">…и ещё {flagged.length - SHOWN} с такими же замечаниями.</p>}
+            {flagged.length > SHOWN && <p className="text-[12px] text-muted-foreground">…и ещё {flagged.length - SHOWN}</p>}
             {rest.length > 0 && (
               <details className="text-[12px]">
                 <summary className="cursor-pointer text-muted-foreground">

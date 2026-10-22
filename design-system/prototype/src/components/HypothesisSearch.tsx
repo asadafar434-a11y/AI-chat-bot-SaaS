@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { SearchRecord } from '@/lib/web-search';
 import { ExternalLink, Search } from '../lib/icons';
 import { CertaintyBadge } from './Certainty';
-import { Button } from './ui';
+import { Button, HelpTip } from './ui';
 
 // «Проверить поиском» у гипотезы о скрытых затратах: обычный бесплатный поиск по ключевым словам (lib/web-search.ts, /api/search). Показываем, ЧТО именно уходит в поиск, и результаты со ссылками.
 // Метка «Не проверено»: программа страницы не читает и чисел из них не берёт — смотрит человек. Когда автоматический поиск отказал, тот же запрос открывается в Яндексе в браузере участника.
@@ -47,8 +47,9 @@ export function HypothesisSearch({ query, record, onSearch }: { query: string; r
             <CertaintyBadge kind="unchecked" />
             <span className="min-w-0 break-words text-[11px] text-muted-foreground">
               {record.provider}
-              {dateRu(record.at) && `, ${dateRu(record.at)}`}. Страницы программа не читает и чисел из них не берёт — проверьте по ссылкам.
+              {dateRu(record.at) && `, ${dateRu(record.at)}`}
             </span>
+            <HelpTip align="start" content="Страницы программа не читает и чисел из них не берёт — проверьте по ссылкам сами." />
           </div>
           {record.hits.length === 0 ? (
             <p className="text-[12px] text-muted-foreground">Ничего не нашлось.</p>
