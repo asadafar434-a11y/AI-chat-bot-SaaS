@@ -60,16 +60,9 @@ export function AnalyticsSummary({
               <CertaintyBadge kind="estimate" />
               <HelpTip
                 align="start"
-                content="Светофор — не балл и не вероятность победы. Он показывает, хватает ли вашей прибыли на риски договора, при ваших затратах и допущениях ниже. Решение об участии принимаете вы."
+                content={`Светофор — не балл и не вероятность победы. Он показывает, хватает ли вашей прибыли на риски договора, при ваших затратах и допущениях. Решение об участии принимаете вы.${verdict.reasons.length > 0 ? ` Почему такой итог: ${verdict.reasons.join(' ')}` : ''}`}
               />
             </div>
-            <ul className="mt-1.5 space-y-0.5 text-[13px] font-medium">
-              {verdict.reasons.map((reason) => (
-                <li key={reason} className="break-words">
-                  {reason}
-                </li>
-              ))}
-            </ul>
           </div>
         </div>
 

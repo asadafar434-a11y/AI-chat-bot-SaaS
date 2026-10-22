@@ -201,6 +201,11 @@ function Product() {
                       setStep(1);
                       setView('workflow');
                     }}
+                    onCosts={() => {
+                      setActiveId(analyticsId);
+                      setStep(2);
+                      setView('workflow');
+                    }}
                   />
                 </PurchaseProvider>
               ) : (

@@ -74,3 +74,26 @@ test('профиль компании: вкладки «Реквизиты», «
   assert.equal(/role="tab"[^>]*>[^<]*Данные</.test(out), false);
   assert.equal(/Сохранить копию|Удалить все мои данные/.test(out), false, 'копия и удаление ушли из профиля');
 });
+
+test('настройки: карточка «ИИ» — режим «Включён / Выключен» (по умолчанию включён), что работает без ИИ и что с ним', () => {
+  const out = html(h(settings.Settings, { dark: false, setDark: noop }));
+  assert.match(out, />ИИ</);
+  assert.match(out, /role="group" aria-label="Режим ИИ"/);
+  assert.match(out, /aria-pressed="true"[^>]*>Включён</, 'по умолчанию ИИ включён — прежняя работа не меняется');
+  assert.match(out, /aria-pressed="false"[^>]*>Выключен</);
+  assert.match(out, /Выключен — программа не обращается к языковым моделям/);
+  assert.match(out, /Без ИИ работает/);
+  assert.match(out, /аналитика и рейтинг тендера/);
+  assert.match(out, /С ИИ дополнительно/);
+  assert.match(out, /Каждый платный запрос — только по вашей кнопке/);
+});
+
+test('переключатель ИИ в шапке: кнопка-выключатель с состоянием и словами «ИИ вкл» — понятно без подсказки', async () => {
+  const { AiSwitch } = await server.ssrLoadModule('/src/components/AiSwitch.tsx');
+  const out = html(h(AiSwitch));
+  assert.match(out, /role="switch"/);
+  assert.match(out, /aria-checked="true"/);
+  assert.match(out, /aria-label="ИИ включён\. Выключить"/);
+  assert.match(out, />ИИ вкл</);
+  assert.match(out, /bg-success/, 'включён — зелёная точка');
+});

@@ -178,6 +178,68 @@ function topRisksOf(estimate: EstimateResult): TopRisk[] {
 
 const riskTone = (pct: number | null): Tone => (pct === null ? "muted" : pct >= 20 ? "danger" : pct >= 5 ? "warn" : "muted");
 
+/** Строка подписи внизу экрана: что именно нашла аналитика. Тон — по важности (красное, янтарное, зелёное, просто факт). */
+export type FindingLine = { label: string; text: string; tone: Tone };
+
+// Подпись внизу экрана закупки (решение владельца 22.10.2026: «4–5 основных моментов — что нашёл поиск, какая аналитика сработала, какой риск, ценовой»): без полей ввода и цитат,
+// каждая строка — одним предложением из уже посчитанного. Подробности лежат в отчёте Word и PDF.
+export function findingsOf(i: SummaryInput): FindingLine[] {
+  const out: FindingLine[] = [];
+  const attention = i.risks.filter((r) => r.level === "warn").length;
+  const heavy = i.risks.find((r) => r.heavy);
+  if (!i.hasContract) out.push({ label: "Договор", text: "проекта договора в документах нет — риски по нему не видны", tone: "warn" });
+  else if (i.risks.length === 0) out.push({ label: "Договор", text: "условий с цифрами не нашла", tone: "muted" });
+  else {
+    out.push({
+      label: "Договор",
+      text: `условий с цифрами: ${i.risks.length}${attention > 0 ? `, внимания требуют ${attention}` : ""}${heavy ? `; крупная неустойка: ${heavy.title.charAt(0).toLowerCase()}${heavy.title.slice(1)}` : ""}`,
+      tone: heavy ? "danger" : attention > 0 ? "warn" : "muted",
+    });
+  }
+
+  const e = i.estimate;
+  if (e.total > 0) {
+    const top = topRisksOf(e)[0];
+    out.push({
+      label: "Риски в рублях",
+      text: `до ${rubles(e.total)}${e.totalPct !== null ? ` (${percent(e.totalPct)} цены)` : ""}${top ? `; крупнейший — ${top.title.charAt(0).toLowerCase()}${top.title.slice(1)}` : ""}`,
+      tone: riskTone(e.totalPct),
+    });
+  } else out.push({ label: "Риски в рублях", text: e.priceUsed === null ? "цены нет — оценить не от чего" : "оценить нечего", tone: "muted" });
+
+  const flagged = i.calcs.filter((c) => c.issues.some((x) => x.level === "warn")).length;
+  const market =
+    i.badge && i.badge.status !== "insufficient" ? i.badge.title : "с рынком сравнить нечем — цен-аналогов мало";
+  out.push({
+    label: "Цена и рынок",
+    text: `${market}${flagged > 0 ? `; в расчёте цены у заказчика расхождения: ${flagged}` : ""}`,
+    tone: flagged > 0 || i.badge?.status === "below" || i.badge?.status === "above" ? "warn" : i.badge?.status === "within" ? "good" : "muted",
+  });
+
+  if (i.matrix) {
+    const m = i.matrix;
+    out.push({
+      label: "27 проверок",
+      text: `проверено ${m.program + m.manual} из ${m.total}${m.risk > 0 ? `, риск: ${m.risk}` : ""}${m.attention > 0 ? `, внимание: ${m.attention}` : ""}`,
+      tone: m.risk > 0 ? "danger" : m.attention > 0 ? "warn" : "muted",
+    });
+  }
+  return out;
+}
+
+/** Бесплатный поиск по рискам отрасли и региона: сколько тем можно проверить, сколько проверено и сколько ссылок найдено. */
+export type SearchStat = { topics: number; checked: number; links: number };
+
+export function searchFinding(s: SearchStat): FindingLine | null {
+  if (s.topics === 0) return null;
+  if (s.checked === 0) return { label: "Поиск", text: "риски отрасли и региона ещё не проверяли", tone: "muted" };
+  return {
+    label: "Поиск",
+    text: `проверено тем: ${s.checked} из ${s.topics}, найдено ссылок: ${s.links} — они не проверены и в расчёт не входят`,
+    tone: "muted",
+  };
+}
+
 export function buildSummary(i: SummaryInput): Summary {
   const attention = i.risks.filter((r) => r.level === "warn").length;
   const e = i.econ;

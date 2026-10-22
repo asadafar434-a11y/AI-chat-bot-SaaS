@@ -1,20 +1,22 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { assumptionLines, buildReport, reportFileName, reportHtml } from '@/lib/analytics-report';
-import { buildSummary, type SectionId } from '@/lib/analytics-summary';
+import { buildSummary, findingsOf, searchFinding, type SummaryInput } from '@/lib/analytics-summary';
+import { rateTender } from '@/lib/tender-rating';
 import { getRegister, getRic, saveRegister, saveRic } from '@/lib/analytics-store';
 import { buildMatrix, summarize, type ManualResult } from '@/lib/check-matrix';
 import { contractRisks, looksLikeContract } from '@/lib/contract-risks';
 import { todayIso } from '@/lib/evidence-base';
 import { checkPurchase } from '@/lib/evidence-match';
-import { DEFAULT_DRIVERS, EMPTY_REGISTER, hypothesesFor, lawOf, placeOf, regionNote, typeOf, type RegisterData } from '@/lib/hidden-costs';
+import { EMPTY_REGISTER, hypothesesFor, lawOf, placeOf, regionNote, typeOf, type RegisterData } from '@/lib/hidden-costs';
 import { errorMessage, errorText } from '@/lib/http-error';
-import { computeRic, EMPTY_RIC, parseAmount, positionsFromDocuments, type RicData } from '@/lib/indicative-price';
+import { computeRic, EMPTY_RIC, parseAmount, type RicData } from '@/lib/indicative-price';
 import { calcFor } from '@/lib/price-calc';
 import { economics, econSettings } from '@/lib/economics';
 import { estimateRisks } from '@/lib/risk-estimate';
 import { deliveryCost, EMPTY_DELIVERY } from '@/lib/delivery-cost';
 import { deliveryItems, fxItems } from '@/lib/fact-estimates';
-import { EMPTY_FX, fxRisk, normalizeFx, type FxCode } from '@/lib/fx-risk';
+import { riskFactItems } from '@/lib/risk-facts';
+import { EMPTY_FX, fxRisk } from '@/lib/fx-risk';
 import { findNmckCalculations } from '@/lib/nmck-check';
 import { priceBadge } from '@/lib/price-badge';
 import { detectRegistryDemand } from '@/lib/registry-demand';
@@ -22,24 +24,20 @@ import { titleOf } from '@/lib/purchase';
 import { printHtml } from '@/lib/print-html';
 import { scenarioRic } from '@/lib/ric-scenarios';
 import { parseRubles } from '@/lib/rub-words';
-import type { SearchContext } from '@/lib/search-queries';
+import { searchTopics, type SearchContext } from '@/lib/search-queries';
 import { saveFile } from '@/lib/save-file';
-import { computeSensitivity } from '@/lib/sensitivity';
 import { usePurchases } from '@/lib/use-purchases';
 import { normalizeSearches } from '@/lib/web-search';
 import { AnalyticsHome } from '../components/Analytics';
 import { AnalyticsChart } from '../components/AnalyticsChart';
+import { AnalyticsFindings } from '../components/AnalyticsFindings';
 import { AnalyticsSummary, type ReportBusy } from '../components/AnalyticsSummary';
-import { CheckMatrix } from '../components/CheckMatrix';
 import { Collapsible } from '../components/Collapsible';
-import { ContractRisks } from '../components/ContractRisks';
-import { Economics } from '../components/Economics';
-import { RiskEstimates } from '../components/RiskEstimates';
-import { NmckCheck } from '../components/NmckCheck';
-import { RicPanel } from '../components/RicPanel';
-import { RicScenarioPanel } from '../components/RicScenarioPanel';
+import { PriceBadgeChip } from '../components/PriceBadgeChip';
+import { TenderRating } from '../components/TenderRating';
 import { ArrowLeft, BarChart2 } from '../lib/icons';
 import { useProfile } from './analysis';
+import { useMarketBase } from './market';
 import { AnalyticsIntake } from './analytics-intake';
 import { useFacts } from './hooks';
 import { usePurchase } from './purchase-provider';
@@ -113,27 +111,29 @@ export function AnalyticsList({ onOpen }: { onOpen: (id: string) => void }) {
   );
 }
 
-// Разбор одной закупки. Сверху — итог светофором, резюме и рекомендации (lib/analytics-summary.ts); ниже — закрытые разделы с подробностями: договор, оценка рисков, цена, расчёт заказчика, РИЦ.
-// Полный отчёт — в Word или PDF (lib/analytics-report.ts). Введённое лежит в браузере (lib/analytics-store.ts).
-export function PurchaseAnalytics({ onBack, onAnalyze }: { onBack: () => void; onAnalyze?: () => void }) {
+// Разбор одной закупки (решение владельца 22.10.2026: «аналитика — чтобы лишних инпутов не было, всё под капотом»). На экране: итог светофором, главные риски в рублях, отчёт и рекомендации, итоговая диаграмма и внизу
+// подпись из 4–5 строк «что нашла аналитика» (lib/analytics-summary.ts). Полей ввода нет: расчёты по договору, рискам, цене, РИЦ и 27 проверкам идут внутри и лежат в отчёте Word и PDF (lib/analytics-report.ts);
+// затраты участник вводит один раз — на шаге «Цена». Панели для ручного ввода (договор, расходы, расчёт заказчика, РИЦ, матрица) остались в коде, на экране их нет.
+export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () => void; onAnalyze?: () => void; onCosts?: () => void }) {
   const { purchase, documents } = usePurchase();
   const profile = useProfile();
   const ric = usePersisted<RicData>(purchase.id, getRic, saveRic, EMPTY_RIC, 'расчёт РИЦ');
   const register = usePersisted<RegisterData>(purchase.id, getRegister, saveRegister, EMPTY_REGISTER, 'скрытые затраты');
-  const [source, setSource] = useState<{ doc: string; title: string } | null>(null);
-  const [note, setNote] = useState<string | null>(null);
   const data = ric.data;
 
   const nmck = parseRubles(purchase.price);
-  const result = useMemo(() => (data ? computeRic(data, nmck, new Date()) : null), [data, nmck]);
-  const badge = useMemo(() => (data && result ? priceBadge(result, data) : null), [data, result]);
   // Тексты документов читаются один раз на закупку, а не на каждую набранную цифру.
   const plain = useMemo(() => documents.map((d) => ({ name: d.name, text: d.text })), [documents]);
+  const place = useMemo(() => placeOf(plain), [plain]);
+  // Позиции — из бланка заказчика, цены-аналоги — из общей базы цен: под капотом, в закупку не пишется (real/market.ts).
+  const market = useMarketBase(data, plain, place?.region.name ?? null);
+  const base = market.data;
+  const result = useMemo(() => (base ? computeRic(base, nmck, new Date()) : null), [base, nmck]);
+  const badge = useMemo(() => (base && result ? priceBadge(result, base) : null), [base, result]);
   const calcs = useMemo(() => findNmckCalculations(plain), [plain]);
   const risks = useMemo(() => contractRisks(plain), [plain]);
   const hasContract = useMemo(() => plain.some(looksLikeContract), [plain]);
   const type = useMemo(() => typeOf(purchase.subject ?? '', purchase.kind), [purchase.subject, purchase.kind]);
-  const place = useMemo(() => placeOf(plain), [plain]);
   const law = lawOf(purchase.kind);
   const regionInfo = useMemo(() => regionNote(place, `${profile.legalAddress} ${profile.postalAddress}`), [place, profile.legalAddress, profile.postalAddress]);
   const hypotheses = useMemo(() => hypothesesFor(type, regionInfo, law), [type, regionInfo, law]);
@@ -144,7 +144,11 @@ export function PurchaseAnalytics({ onBack, onAnalyze }: { onBack: () => void; o
   const fxIn = (register.data ?? EMPTY_REGISTER).fx ?? EMPTY_FX;
   const delivery = useMemo(() => deliveryCost(regionInfo?.kind === 'other' ? regionInfo.company!.name : null, regionInfo?.kind === 'other' ? regionInfo.place.name : null, deliveryIn), [regionInfo, deliveryIn]);
   const fx = useMemo(() => fxRisk(fxIn), [fxIn]);
-  const facts = useMemo(() => [...deliveryItems(delivery), ...fxItems(fx)], [delivery, fx]);
+  const riskFacts = (register.data ?? EMPTY_REGISTER).riskFacts;
+  const facts = useMemo(
+    () => [...deliveryItems(delivery), ...fxItems(fx), ...riskFactItems(riskFacts ?? {}, Object.fromEntries(hypotheses.map((h) => [h.id, h.title])))],
+    [delivery, fx, riskFacts, hypotheses],
+  );
   const estimate = useMemo(() => estimateRisks({ price, risks, type, region: regionInfo, assumptions: (register.data ?? EMPTY_REGISTER).assumptions, facts }), [price, risks, type, regionInfo, register.data, facts]);
   // Расчёт цены: найденное в закупке и введённое на шаге «Цена» (читаем, не меняем); свои затраты из этого раздела — поверх, если шаг «Цена» пуст.
   const assumptions = (register.data ?? EMPTY_REGISTER).assumptions;
@@ -154,8 +158,6 @@ export function PurchaseAnalytics({ onBack, onAnalyze }: { onBack: () => void; o
     return { ...stepCalc, costs: parseAmount(e.costs) ?? stepCalc.costs, extra: parseAmount(e.extra) ?? stepCalc.extra, taxPct: parseAmount(e.taxPct) ?? stepCalc.taxPct };
   }, [stepCalc, register.data]);
   const econ = useMemo(() => economics({ calc, estimate, settings: econSettings(assumptions), price }), [calc, estimate, assumptions, price]);
-  const sens = useMemo(() => computeSensitivity((register.data ?? EMPTY_REGISTER).sens), [register.data]);
-  const priceHint = purchase.tpPrice ? String(purchase.tpPrice) : nmck !== null ? String(nmck) : '0,00';
 
   // Проверка гипотез обычным поиском: в запрос идут только ключевые слова темы, год и регион места поставки из документов (lib/search-queries.ts). Результат сохраняется у закупки.
   const searchContext = useMemo<SearchContext>(() => ({ year: new Date().getFullYear(), place: place?.region.name ?? null }), [place]);
@@ -176,22 +178,34 @@ export function PurchaseAnalytics({ onBack, onAnalyze }: { onBack: () => void; o
     }
   };
 
-  // Курсы ЦБ за год: сервер берёт общедоступный ряд на cbr.ru, в браузер приходят пары «дата — курс»; ряд сохраняется у закупки, сумма в валюте остаётся как её вписал участник.
-  const loadFx = async (code: FxCode): Promise<string | null> => {
-    try {
-      const res = await fetch('/api/cbr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) });
-      if (!res.ok) return await errorText(res, 'Курсы сейчас недоступны. Повторите позже.');
-      const found = (await res.json()) as { series?: unknown; at?: string };
-      const latest = registerNow.current;
-      if (!latest) return 'Расчёт ещё открывается. Повторите через секунду.';
-      const current = latest.fx ?? EMPTY_FX;
-      const next = normalizeFx({ ...current, code, series: found.series, fetchedAt: found.at ?? new Date().toISOString() });
-      if (next.series.length < 2) return 'Банк России вернул слишком короткий ряд курсов. Повторите позже.';
-      register.change({ ...latest, fx: next });
-      return null;
-    } catch (e) {
-      return errorMessage(e);
+  // «Проверить поиском» сразу по всем темам закупки, которые ещё не искали: по одной, с паузой (поиск не любит частые запросы); на первой ошибке останавливаемся и показываем её.
+  const topics = useMemo(() => searchTopics(hypotheses.map((h) => h.id), searchContext), [hypotheses, searchContext]);
+  const searches = (register.data ?? EMPTY_REGISTER).searches;
+  const pendingTopics = topics.filter(([id]) => !searches[id]);
+  const [searchBusy, setSearchBusy] = useState(false);
+  const [searchDone, setSearchDone] = useState(0);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const searchAll = async () => {
+    const list = [...pendingTopics];
+    setSearchBusy(true);
+    setSearchError(null);
+    setSearchDone(0);
+    let done = 0;
+    for (const [id, query] of list) {
+      const problem = await searchHypothesis(id, query);
+      if (problem) {
+        setSearchError(problem);
+        break;
+      }
+      setSearchDone(++done);
+      if (done < list.length) await new Promise((resolve) => setTimeout(resolve, 1500));
     }
+    setSearchBusy(false);
+  };
+  const searchStat = {
+    topics: topics.length,
+    checked: topics.length - pendingTopics.length,
+    links: topics.reduce((sum, [id]) => sum + (searches[id]?.hits.length ?? 0), 0),
   };
 
   // Матрица из 27 проверок: требования заказчика сверяются с базой доказательств компании, остальное берётся из договора, расчёта цены и РИЦ (lib/check-matrix.ts).
@@ -230,34 +244,36 @@ export function PurchaseAnalytics({ onBack, onAnalyze }: { onBack: () => void; o
   const matrixSummary = useMemo(() => summarize(matrixRows), [matrixRows]);
 
   const title = titleOf(purchase);
-  const summary = useMemo(
-    () =>
-      buildSummary({
-        title,
-        kind: purchase.kind,
-        nmck,
-        priceNote: purchase.tpPrice ? 'цена вашей заявки' : 'начальная цена',
-        hasContract,
-        risks,
-        estimate,
-        econ,
-        badge,
-        calcs,
-        region: regionInfo,
-        matrix: matrixSummary,
-      }),
+  const summaryInput = useMemo<SummaryInput>(
+    () => ({
+      title,
+      kind: purchase.kind,
+      nmck,
+      priceNote: purchase.tpPrice ? 'цена вашей заявки' : 'начальная цена',
+      hasContract,
+      risks,
+      estimate,
+      econ,
+      badge,
+      calcs,
+      region: regionInfo,
+      matrix: matrixSummary,
+    }),
     [title, purchase.kind, purchase.tpPrice, nmck, hasContract, risks, estimate, econ, badge, calcs, regionInfo, matrixSummary],
+  );
+  const summary = useMemo(() => buildSummary(summaryInput), [summaryInput]);
+  const findings = useMemo(() => findingsOf(summaryInput), [summaryInput]);
+  const chartSection = summary.sections.find((s) => s.id === 'chart');
+  // Рейтинг привлекательности: балл по шести факторам из уже посчитанного (lib/tender-rating.ts), без ИИ.
+  const rating = useMemo(
+    () => rateTender({ econ, estimate, hasContract, badge, matrix: matrixRows, targetMarginPct: assumptions.targetMarginPct }),
+    [econ, estimate, hasContract, badge, matrixRows, assumptions.targetMarginPct],
   );
   const needCosts = !econ.ready && econ.reason === 'costs';
   // Загрузка уже пройдена: с плашки итога — дальше, на шаг «Анализ». Если ИИ закупку ещё не разбирал, на шаге будет кнопка разбора.
   const analyzed = Object.values(purchase.requirements).some((list) => list.length > 0);
-  // Разделы закрыты: сверху резюме. Исключения: без ваших затрат цену не назвать — раздел с затратами открыт сразу; итоговая диаграмма открыта, когда есть что рисовать.
-  const [open, setOpen] = useState<Record<SectionId, boolean>>(() => ({ risks: false, estimate: false, economics: needCosts, nmck: false, ric: false, matrix: false, chart: econ.ready }));
-  const toggle = (id: SectionId) => setOpen((o) => ({ ...o, [id]: !o[id] }));
-  const goTo = (id: SectionId) => {
-    setOpen((o) => ({ ...o, [id]: true }));
-    setTimeout(() => document.getElementById(`analytics-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
-  };
+  // Итоговая диаграмма открыта, когда есть что рисовать (затраты введены на шаге «Цена»).
+  const [chartOpen, setChartOpen] = useState(econ.ready);
 
   // Полный отчёт собирается в браузере из того же, что на экране; на сервер ничего не уходит.
   const [busy, setBusy] = useState<ReportBusy>(null);
@@ -276,7 +292,7 @@ export function PurchaseAnalytics({ onBack, onAnalyze }: { onBack: () => void; o
       ric: result,
       badge,
       assumptions: assumptionLines(assumptions),
-      ricScenario: data && result ? scenarioRic(data, result, purchase.subject ?? '', type) : null,
+      ricScenario: base && result ? scenarioRic(base, result, purchase.subject ?? '', type) : null,
       matrix: { rows: matrixRows, summary: matrixSummary },
       searches: Object.entries((register.data ?? EMPTY_REGISTER).searches).flatMap(([id, record]) => {
         const h = hypotheses.find((x) => x.id === id);
@@ -308,99 +324,7 @@ export function PurchaseAnalytics({ onBack, onAnalyze }: { onBack: () => void; o
     }
   };
 
-  const loading = <p className="text-[13px] text-muted-foreground">Открываю расчёт…</p>;
-  const body = (id: SectionId): ReactNode => {
-    switch (id) {
-      case 'risks':
-        return <ContractRisks embedded risks={risks} hasContract={hasContract} />;
-      case 'estimate':
-        return register.data ? (
-          <RiskEstimates
-            embedded
-            result={estimate}
-            price={price}
-            priceNote={purchase.tpPrice ? 'цена вашей заявки' : 'начальная цена'}
-            hypotheses={hypotheses}
-            data={register.data}
-            sens={sens}
-            defaultDrivers={DEFAULT_DRIVERS[type]}
-            priceHint={priceHint}
-            onChange={register.change}
-            searchContext={searchContext}
-            onSearch={searchHypothesis}
-            facts={{ delivery, fx, onLoadFx: loadFx }}
-          />
-        ) : (
-          loading
-        );
-      case 'economics':
-        return register.data ? (
-          <Economics
-            embedded
-            result={econ}
-            nmck={nmck}
-            priceNote={purchase.tpPrice ? 'цене вашей заявки' : 'начальной цене'}
-            fromStep={{ costs: stepCalc.costs, extra: stepCalc.extra, taxPct: stepCalc.taxPct }}
-            targetMarginPct={assumptions.targetMarginPct}
-            data={register.data}
-            onChange={register.change}
-          />
-        ) : (
-          loading
-        );
-      case 'nmck':
-        return <NmckCheck embedded calcs={calcs} />;
-      case 'matrix':
-        return register.data ? (
-          <CheckMatrix
-            rows={matrixRows}
-            summary={matrixSummary}
-            data={register.data.matrix ?? {}}
-            onChange={(next) => register.change({ ...register.data!, matrix: next.weights || next.manual ? next : undefined })}
-          />
-        ) : (
-          loading
-        );
-      case 'chart':
-        return <AnalyticsChart econ={econ} estimate={estimate} ric={result} matrix={matrixSummary} />;
-      case 'ric':
-        return data && result && badge ? (
-          <div className="space-y-4">
-            <RicScenarioPanel data={data} result={result} subject={purchase.subject ?? ''} type={type} onChange={ric.change} />
-            <RicPanel embedded data={data} result={result} badge={badge} importSource={source} importNote={note} onImport={importFromDocuments} onChange={ric.change} saveError={null} />
-          </div>
-        ) : (
-          loading
-        );
-    }
-  };
   const saveError = ric.error ?? register.error;
-
-  // Позиции и начальные цены за единицу — из бланка заказчика; уже введённые позиции и их цены-аналоги остаются.
-  const importFromDocuments = () => {
-    if (!data) return;
-    const found = positionsFromDocuments(plain);
-    if (!found) {
-      setNote('Бланка с позициями в документах нет — добавьте их вручную.');
-      return;
-    }
-    const have = new Map(data.positions.map((p) => [`${p.name.trim().toLowerCase()}|${p.unit.trim().toLowerCase()}`, p]));
-    let added = 0;
-    const positions = [...data.positions];
-    for (const p of found.positions) {
-      const key = `${p.name.trim().toLowerCase()}|${p.unit.trim().toLowerCase()}`;
-      const existing = have.get(key);
-      if (existing) {
-        if (p.customerUnit !== undefined && existing.customerUnit === undefined) positions[positions.indexOf(existing)] = { ...existing, customerUnit: p.customerUnit };
-      } else {
-        positions.push(p);
-        added++;
-      }
-    }
-    setSource({ doc: found.doc, title: found.title });
-    setNote(added > 0 ? `Добавлено позиций: ${added}.` : 'Все позиции из бланка уже в расчёте.');
-    ric.change({ ...data, positions, settings: found.vatRate !== null && data.positions.length === 0 ? { ...data.settings, vatRate: found.vatRate } : data.settings });
-  };
 
   return (
     <div className="space-y-6">
@@ -418,16 +342,22 @@ export function PurchaseAnalytics({ onBack, onAnalyze }: { onBack: () => void; o
             <p className="mt-0.5 text-[12px] text-muted-foreground">
               {nmck !== null ? `Начальная цена: ${purchase.price}` : 'Начальной цены в документах нет'}
             </p>
+            {badge && (
+              <div className="mt-2">
+                <PriceBadgeChip badge={badge} market={market.lines} />
+              </div>
+            )}
           </div>
         </div>
       </div>
+      <TenderRating rating={rating} />
       <AnalyticsSummary
         summary={summary}
         busy={busy}
         error={reportError}
         onWord={() => void downloadWord()}
         onPdf={downloadPdf}
-        action={needCosts ? { label: 'Ввести затраты', onClick: () => goTo('economics') } : undefined}
+        action={needCosts && onCosts ? { label: 'Ввести затраты на шаге «Цена» →', onClick: onCosts } : undefined}
         analyze={onAnalyze ? { label: analyzed ? 'Перейти к анализу →' : 'Анализировать документы →', onClick: onAnalyze } : undefined}
       />
       {saveError && (
@@ -435,16 +365,24 @@ export function PurchaseAnalytics({ onBack, onAnalyze }: { onBack: () => void; o
           {saveError}
         </p>
       )}
-      <div className="space-y-2">
-        <p className="px-1 text-[12px] font-medium text-muted-foreground">Подробный разбор</p>
-        {summary.sections.map((s) => (
-          <div key={s.id} id={`analytics-${s.id}`} className="scroll-mt-4">
-            <Collapsible title={s.title} brief={s.brief} tone={s.tone} open={open[s.id]} onToggle={() => toggle(s.id)}>
-              {body(s.id)}
-            </Collapsible>
-          </div>
-        ))}
-      </div>
+
+      {chartSection && (
+        <Collapsible title={chartSection.title} brief={chartSection.brief} tone={chartSection.tone} open={chartOpen} onToggle={() => setChartOpen((v) => !v)}>
+          <AnalyticsChart econ={econ} estimate={estimate} ric={result} matrix={matrixSummary} />
+        </Collapsible>
+      )}
+
+      <AnalyticsFindings
+        lines={findings}
+        search={{
+          line: searchFinding(searchStat),
+          pending: pendingTopics.length,
+          busy: searchBusy,
+          done: searchDone,
+          error: searchError,
+          onRun: () => void searchAll(),
+        }}
+      />
     </div>
   );
 }

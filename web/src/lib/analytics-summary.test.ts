@@ -1,7 +1,7 @@
 // Резюме разбора: светофор с причинами, абзац, цифры, рекомендации и строки разделов — из уже посчитанного — npm test (без ИИ).
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildSummary as rawSummary, rubles, VERDICT_LABELS, type Summary, type SummaryInput } from "./analytics-summary.ts";
+import { buildSummary as rawSummary, findingsOf, rubles, searchFinding, VERDICT_LABELS, type Summary, type SummaryInput } from "./analytics-summary.ts";
 import { buildMatrix, summarize } from "./check-matrix.ts";
 import { contractRisks } from "./contract-risks.ts";
 import { DEFAULT_ECON, economics } from "./economics.ts";
@@ -216,4 +216,49 @@ test("строки разделов окрашены по важности: уб
   const tone = (id: string) => ok.sections.find((x) => x.id === id)!.tone;
   assert.ok(["good", "warn"].includes(tone("economics")!));
   assert.ok(ok.sections.every((x) => ["danger", "warn", "good", "muted"].includes(x.tone!)));
+});
+
+test("подпись внизу экрана: договор, риски в рублях, цена и рынок — по одной строке, без цитат и ввода", () => {
+  const lines = findingsOf(input());
+  assert.deepEqual(lines.map((l) => l.label), ["Договор", "Риски в рублях", "Цена и рынок"]);
+  const by = (label: string) => plain(lines.find((l) => l.label === label)!.text);
+  assert.match(by("Договор"), /^условий с цифрами: \d+, внимания требуют \d+/);
+  assert.match(by("Риски в рублях"), /^до [\d ]+ ₽ \(\d+,\d % цены\); крупнейший — /);
+  assert.match(by("Цена и рынок"), /^с рынком сравнить нечем/);
+  assert.ok(lines.every((l) => ["danger", "warn", "good", "muted"].includes(l.tone)));
+});
+
+test("подпись: договора нет, рисков нет, расхождения в расчёте заказчика — так и сказано; тон по важности", () => {
+  const none = findingsOf(input({ hasContract: false, risks: [] }));
+  assert.match(none[0].text, /проекта договора в документах нет/);
+  assert.equal(none[0].tone, "warn");
+  const noCifr = findingsOf(input({ risks: [] }));
+  assert.equal(noCifr[0].text, "условий с цифрами не нашла");
+  const heavy = findingsOf(input({}, {}, [...LINES, "7.4. Исполнитель уплачивает Заказчику штраф в размере 30% от цены Договора."]));
+  assert.equal(heavy[0].tone, "danger");
+  assert.match(heavy[0].text, /крупная неустойка/);
+  const flagged = findingsOf(input({ calcs: [{ issues: [{ level: "warn" }] }] as never }));
+  assert.match(flagged.find((l) => l.label === "Цена и рынок")!.text, /в расчёте цены у заказчика расхождения: 1/);
+  assert.equal(flagged.find((l) => l.label === "Цена и рынок")!.tone, "warn");
+});
+
+test("подпись: 27 проверок — отдельной строкой, только когда матрица посчитана; рынок — по бейджу", () => {
+  const base = input();
+  assert.ok(!findingsOf(base).some((l) => l.label === "27 проверок"));
+  const matrix = { total: 27, program: 15, manual: 0, risk: 1, attention: 3, first: [] } as never;
+  const line = findingsOf({ ...base, matrix }).find((l) => l.label === "27 проверок")!;
+  assert.equal(line.text, "проверено 15 из 27, риск: 1, внимание: 3");
+  assert.equal(line.tone, "danger");
+  const within = findingsOf({ ...base, badge: { status: "within", title: "Цена в рыночном диапазоне", missing: [], detail: null } });
+  assert.equal(within.find((l) => l.label === "Цена и рынок")!.text, "Цена в рыночном диапазоне");
+  assert.equal(within.find((l) => l.label === "Цена и рынок")!.tone, "good");
+});
+
+test("подпись: поиск — не запускали, проверено и найдено; ссылки честно названы непроверенными; тем нет — строки нет", () => {
+  assert.equal(searchFinding({ topics: 0, checked: 0, links: 0 }), null);
+  assert.equal(searchFinding({ topics: 5, checked: 0, links: 0 })!.text, "риски отрасли и региона ещё не проверяли");
+  const done = searchFinding({ topics: 5, checked: 4, links: 17 })!;
+  assert.match(done.text, /проверено тем: 4 из 5, найдено ссылок: 17/);
+  assert.match(done.text, /не проверены и в расчёт не входят/);
+  assert.equal(done.label, "Поиск");
 });

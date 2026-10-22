@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import type { SearchRecord } from '@/lib/web-search';
+import { candidateNumbers, type Candidate } from '@/lib/risk-facts';
+import type { SearchHit, SearchRecord } from '@/lib/web-search';
 import { ExternalLink, Search } from '../lib/icons';
 import { CertaintyBadge } from './Certainty';
 import { Button, HelpTip } from './ui';
@@ -14,7 +15,7 @@ const dateRu = (iso: string) => {
 };
 const isWeb = (url: string) => /^https?:\/\//i.test(url);
 
-export function HypothesisSearch({ query, record, onSearch }: { query: string; record: SearchRecord | undefined; onSearch: () => Promise<string | null> }) {
+export function HypothesisSearch({ query, record, onSearch, onPick }: { query: string; record: SearchRecord | undefined; onSearch: () => Promise<string | null>; onPick?: (candidate: Candidate, hit: SearchHit) => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const run = async () => {
@@ -67,6 +68,23 @@ export function HypothesisSearch({ query, record, onSearch }: { query: string; r
                   )}
                   <span className="block text-[11px] text-muted-foreground">{hit.domain}</span>
                   {hit.snippet && <span className="block text-muted-foreground">{hit.snippet}</span>}
+                  {onPick && hit.snippet && (
+                    <span className="mt-1 flex flex-wrap gap-1.5">
+                      {candidateNumbers(hit.snippet)
+                        .filter((c) => c.kind === 'percent')
+                        .map((c, i) => (
+                          <button
+                            key={`${c.text}:${i}`}
+                            type="button"
+                            onClick={() => onPick(c, hit)}
+                            title={c.context}
+                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors hover:bg-secondary ${c.growth ? 'border-foreground' : 'border-border text-muted-foreground'}`}
+                          >
+                            взять {c.text} %{c.from ? ` (вилка от ${c.from})` : ''}{c.growth ? ' · рост' : ''}
+                          </button>
+                        ))}
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>

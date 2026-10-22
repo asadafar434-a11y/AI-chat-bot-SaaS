@@ -667,3 +667,31 @@ model AiSpend {
 
   @@map("AiSpend")
 }
+
+/// Рыночные ценовые наблюдения (S15): цена за единицу с источником и датой — основа ценового бейджа и рыночного ориентира. Открытая общая база, как реестр (S13):
+/// цены из открытых источников (реестр контрактов ЕИС, прайс-листы), поэтому ни organizationId, ни связи с Organization нет. Наблюдение только добавляется
+/// (повтор отсекается по hash), без источника и даты не принимается. Ничего не выдумывается: что загрузили, то и лежит.
+model PriceObservation {
+  id         String   @id @default(cuid())
+  /// Ключ позиции: основы слов названия и единица (lib/market-observations.ts).
+  key        String   @db.VarChar(300)
+  name       String   @db.VarChar(500)
+  unit       String   @db.VarChar(40)
+  okpd2      String?  @db.VarChar(20)
+  /// Основы слов названия — для быстрого отбора кандидатов (GIN-индекс в миграции); сопоставимость решает код.
+  tokens     String[]
+  /// Цена за единицу без НДС, ₽.
+  priceNoVat Float
+  observedAt DateTime @db.Date
+  region     String?  @db.VarChar(120)
+  quantity   Float?
+  source     String   @db.VarChar(500)
+  /// eis_contract, price_list, tender_docs или other.
+  sourceKind String   @db.VarChar(30)
+  hash       String   @unique @db.VarChar(64)
+  importedBy String?  @db.VarChar(120)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([unit, observedAt])
+  @@map("PriceObservation")
+}

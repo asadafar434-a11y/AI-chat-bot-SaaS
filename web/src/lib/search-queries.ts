@@ -22,3 +22,15 @@ export function queryFor(hypothesisId: string, context: SearchContext): string |
 }
 
 export const SEARCHABLE: string[] = Object.keys(TEMPLATES);
+
+/** Гипотезы каталога, по которым сумма уже посчитана из договора и допущений: их ни показывать вторым списком, ни искать в интернете не нужно. */
+export const COVERED_HYPOTHESES = new Set(["cashgap", "guarantee", "penalties", "price-growth", "warranty", "region"]);
+
+/** Темы для «проверить поиском» по всем гипотезам закупки: id и запрос, без уже посчитанных и без тех, что интернетом не проверить. */
+export function searchTopics(hypothesisIds: string[], context: SearchContext): [string, string][] {
+  return hypothesisIds.flatMap((id) => {
+    if (COVERED_HYPOTHESES.has(id)) return [];
+    const query = queryFor(id, context);
+    return query ? [[id, query] as [string, string]] : [];
+  });
+}

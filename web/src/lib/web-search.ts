@@ -12,9 +12,10 @@ export const MAX_HITS = 6;
 export const MAX_QUERY = 160;
 export const MIN_QUERY = 3;
 
-export type ProviderId = "duckduckgo";
-export const PROVIDER_NAMES: Record<ProviderId, string> = { duckduckgo: "DuckDuckGo (пробный бесплатный поиск)" };
+export type ProviderId = "duckduckgo" | "brave";
+export const PROVIDER_NAMES: Record<ProviderId, string> = { duckduckgo: "DuckDuckGo (пробный бесплатный поиск)", brave: "Brave Search (пробный бесплатный поиск)" };
 
+export const braveUrl = (query: string) => `https://search.brave.com/search?q=${encodeURIComponent(query)}&source=web`;
 export const duckDuckGoUrl = (query: string) => `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kl=ru-ru`;
 
 export type QueryCheck = { ok: true; query: string } | { ok: false; reason: string };
@@ -76,6 +77,26 @@ export function parseDuckDuckGoHtml(html: string, limit = MAX_HITS): SearchHit[]
     if (!title) continue;
     seen.add(url);
     hits.push({ title: title.slice(0, 200), url, domain: domainOf(url), snippet: snippet ? plain(snippet[1]).slice(0, 400) : "" });
+    if (hits.length >= limit) break;
+  }
+  return hits;
+}
+
+/** Результаты из страницы Brave Search (search.brave.com): блоки обычных результатов, первая внешняя ссылка, заголовок и описание; повторы по адресу убираются. */
+export function parseBraveHtml(html: string, limit = MAX_HITS): SearchHit[] {
+  const hits: SearchHit[] = [];
+  const seen = new Set<string>();
+  for (const block of html.split(/<div class="snippet[^"]*"[^>]*data-type="web"[^>]*>/).slice(1)) {
+    const href = /<a\b[^>]*href="(https?:\/\/[^"]+)"/.exec(block);
+    if (!href) continue;
+    const url = realUrl(href[1]);
+    if (!url || /(?:^|\.)brave\.com$/.test(domainOf(url)) || seen.has(url)) continue;
+    const title = /<div class="title[ "][^>]*>([\s\S]*?)<\/div>/.exec(block);
+    const description = /<div class="content[ "][^>]*>([\s\S]*?)<\/div>/.exec(block);
+    const text = title ? plain(title[1]) : "";
+    if (!text) continue;
+    seen.add(url);
+    hits.push({ title: text.slice(0, 200), url, domain: domainOf(url), snippet: description ? plain(description[1]).slice(0, 400) : "" });
     if (hits.length >= limit) break;
   }
   return hits;

@@ -3,6 +3,7 @@ import { classifyDoc, DOC_KIND_LABELS, isCustomerForm } from "@/lib/doc-classify
 import { summaryOf } from "@/lib/doc-source";
 import { fitDocuments } from "@/lib/doc-trim";
 import { errorText } from "@/lib/http-error";
+import { readAiEnabled } from "./ai-mode.ts";
 import { readScanOcr } from "./scan-setting.ts";
 
 export type SentDocument = Pick<ChatDocument, "name" | "text" | "scan" | "map" | "hidden">;
@@ -93,7 +94,7 @@ async function readOne(file: File, send: Send, ocr: boolean): Promise<OneResult>
 
 // Текст из файлов достаёт сервер. Файлы уходят по одному: так запрос не упирается в предел размера,
 // а сбой одного файла не роняет остальные. Если не прочитался ни один файл — объясняем почему.
-export async function readDocuments(files: File[], send: Send = fetch, ocr = readScanOcr()): Promise<OneResult> {
+export async function readDocuments(files: File[], send: Send = fetch, ocr = readScanOcr() && readAiEnabled()): Promise<OneResult> {
   if (files.length > MAX_FILES) {
     throw new Error(`За один раз можно загрузить не больше ${MAX_FILES} файлов — остальные добавьте следующим заходом.`);
   }

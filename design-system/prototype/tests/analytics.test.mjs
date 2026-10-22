@@ -1,6 +1,7 @@
 // Раздел «Аналитика» и РИЦ (расчёт индикативной цены), отрисованные на сервере в строку, — npm test в design-system/prototype.
 // Смотрим на разметку: пункт меню, список закупок, что видит участник при неполном и полном расчёте, и что нет слов про бейдж как готовый.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { after, before, test } from 'node:test';
 import { createElement as h } from 'react';
@@ -38,6 +39,10 @@ before(async () => {
     risksLib: await server.ssrLoadModule('@/lib/contract-risks.ts'),
     side: await server.ssrLoadModule('/src/components/Sidebar.tsx'),
     sumUi: await server.ssrLoadModule('/src/components/AnalyticsSummary.tsx'),
+    findUi: await server.ssrLoadModule('/src/components/AnalyticsFindings.tsx'),
+    ratingUi: await server.ssrLoadModule('/src/components/TenderRating.tsx'),
+    ratingLib: await server.ssrLoadModule('@/lib/tender-rating.ts'),
+    badgeChipUi: await server.ssrLoadModule('/src/components/PriceBadgeChip.tsx'),
     collapsible: await server.ssrLoadModule('/src/components/Collapsible.tsx'),
     chartUi: await server.ssrLoadModule('/src/components/AnalyticsChart.tsx'),
     scenUi: await server.ssrLoadModule('/src/components/RicScenarioPanel.tsx'),
@@ -45,6 +50,9 @@ before(async () => {
     importUi: await server.ssrLoadModule('/src/components/AnalogImport.tsx'),
     factUi: await server.ssrLoadModule('/src/components/FactCosts.tsx'),
     intakeUi: await server.ssrLoadModule('/src/components/AnalyticsIntake.tsx'),
+    riskFormUi: await server.ssrLoadModule('/src/components/RiskFactForm.tsx'),
+    hypSearchUi: await server.ssrLoadModule('/src/components/HypothesisSearch.tsx'),
+    riskFacts: await server.ssrLoadModule('@/lib/risk-facts.ts'),
     deliveryLib: await server.ssrLoadModule('@/lib/delivery-cost.ts'),
     fxLib: await server.ssrLoadModule('@/lib/fx-risk.ts'),
     factEst: await server.ssrLoadModule('@/lib/fact-estimates.ts'),
@@ -1175,4 +1183,240 @@ test('экран: на плашке итога кнопка «дальше» —
 test('экран: главная цена зелёная при «осторожно» и «можно»', () => {
   assert.match(summaryUi(summaryOf('careful', { headline: HEAD })), /text-3xl font-bold[^"]*text-success/);
   assert.match(summaryUi(summaryOf('go', { headline: HEAD })), /text-3xl font-bold[^"]*text-success/);
+});
+
+// ——— Отраслевые риски по фактам: числа из поиска и рубли ———
+const FACT_SNIPPET = 'Цены на строительные материалы с начала 2026 года выросли на 12,5 %, а налог составляет 6 %.';
+const FACT_RECORD = { query: 'рост цен на строительные материалы 2026', at: '2026-10-22T09:00:00.000Z', provider: 'DuckDuckGo', hits: [{ title: 'Цены на материалы', url: 'https://example.ru/stroy', domain: 'example.ru', snippet: FACT_SNIPPET }] };
+
+test('поиск по гипотезе: в выдержке подсвечены проценты кнопками «взять», со словом «рост» там, где речь о росте цен; без обработчика кнопок нет', () => {
+  const withPick = renderToStaticMarkup(h(mods.hypSearchUi.HypothesisSearch, { query: FACT_RECORD.query, record: FACT_RECORD, onSearch: async () => null, onPick: none }));
+  const t = text(withPick);
+  assert.match(t, /взять 12,5 % · рост/);
+  assert.match(t, /взять 6 %/);
+  assert.equal(/взять 6 % · рост/.test(t), false, 'налог — не рост');
+  assert.match(withPick, /<button[^>]*title="[^"]*выросли на 12,5 %[^"]*"/);
+  const without = text(renderToStaticMarkup(h(mods.hypSearchUi.HypothesisSearch, { query: FACT_RECORD.query, record: FACT_RECORD, onSearch: async () => null })));
+  assert.equal(without.includes('взять'), false);
+});
+
+const riskForm = (fact, price = 5_000_000, id = 'materials') => renderToStaticMarkup(h(mods.riskFormUi.RiskFactForm, { hypothesisId: id, fact, price, onChange: none }));
+
+test('сумма по факту: затраты и процент вписаны — «+375 000 ₽» крупно, доля цены, формула; источник со ссылкой, «Не проверено» и дословная выдержка', () => {
+  const out = riskForm({ base: '3 000 000', pct: '12,5', source: 'example.ru', url: 'https://example.ru/stroy', quote: 'выросли на 12,5 %' });
+  const t = text(out);
+  assert.match(t, /Затраты на материалы, ₽/);
+  assert.match(t, /Рост цен на материалы, %/);
+  assert.match(out, /text-lg font-bold[^"]*text-warn-foreground[^>]*>\+375\s000 ₽/);
+  assert.match(t, /7,5 % цены/);
+  assert.match(t, /= 3 000 000 ₽ × 12,5 %/);
+  assert.match(t, /Источник: example\.ru/);
+  assert.match(out, /<a href="https:\/\/example\.ru\/stroy" target="_blank" rel="noopener noreferrer"/);
+  assert.match(t, /Не проверено/);
+  assert.match(t, /«выросли на 12,5 %»/);
+  assert.match(out, /aria-label="Убрать сумму"/);
+});
+
+test('сумма по факту: пусто — просьба вписать, без выдуманных чисел и без кнопки «убрать»; гипотеза без суммы по факту — формы нет; чужая разметка остаётся текстом', () => {
+  const empty = riskForm(undefined);
+  assert.match(text(empty), /Впишите затраты и процент — посчитаю в рублях\./);
+  assert.equal(empty.includes('Убрать сумму'), false);
+  assert.equal(text(empty).includes('Источник:'), false);
+  assert.equal(riskForm(undefined, 5_000_000, 'cashgap'), '');
+  const evil = riskForm({ base: '1 000', pct: '10', source: '<img src=x onerror=alert(1)>', url: 'javascript:alert(1)', quote: '<script>x</script>' });
+  assert.equal(evil.includes('<img src=x'), false);
+  assert.equal(evil.includes('<script>x'), false);
+  assert.equal(/href="javascript:/.test(evil), true, 'небезопасную ссылку отсекает сохранение (normalizeRiskFacts), а не разметка');
+});
+
+test('сколько это может стоить: у гипотезы «материалы» — выдержка с кнопкой «взять» и форма суммы; затраты × рост уходят в общий итог со ссылкой на источник', () => {
+  const register = { ...mods.hiddenLib.EMPTY_REGISTER, searches: { materials: FACT_RECORD }, riskFacts: { materials: { base: '3 000 000', pct: '12,5', source: 'example.ru', url: 'https://example.ru/stroy', quote: 'выросли на 12,5 %' } } };
+  const note = null;
+  const facts = mods.riskFacts.riskFactItems(register.riskFacts, { materials: 'Материалы и их цена' });
+  const result = mods.estLib.estimateRisks({ price: 5_000_000, risks: [], type: 'works', region: note, assumptions: register.assumptions, facts });
+  const out = text(
+    renderToStaticMarkup(
+      h(mods.estUi.RiskEstimates, {
+        result, price: 5_000_000, priceNote: 'начальная цена', hypotheses: mods.hiddenLib.hypothesesFor('works', note, '44'), data: register, sens: mods.sensLib.computeSensitivity(register.sens),
+        defaultDrivers: [], priceHint: '5000000', onChange: none, searchContext: { year: 2026, place: null }, onSearch: async () => null,
+      }),
+    ),
+  );
+  assert.match(out, /Материалы и их цена: рост цен на 12,5 % 375 000,00 ₽/);
+  assert.match(out, /Источник: example\.ru \(https:\/\/example\.ru\/stroy\)/);
+  assert.match(out, /взять 12,5 % · рост/);
+  assert.match(out, /Затраты на материалы, ₽/);
+  assert.match(out, /Впишите затраты и процент|\+375 000 ₽/);
+});
+
+// ——— Экран закупки: меньше на виду ———
+test('плашка итога: причины — не под заголовком, а в подсказке; цены (безопасная, целевая) — один раз, крупно', () => {
+  const out = summaryUi(summaryOf('careful', { headline: HEAD, topRisks: TOP }));
+  assert.equal(/<ul class="mt-1\.5 space-y-0\.5/.test(out), false, 'списка причин под заголовком нет');
+  assert.equal(/<li class="break-words">Первая причина/.test(out), false);
+  assert.match(out, /role="tooltip"[^>]*>[^<]*Почему такой итог: Первая причина\. Вторая причина\./);
+  assert.equal((text(out).match(/Безопасная \(выдержит стресс\)/g) ?? []).length, 1, 'безопасная цена названа один раз');
+});
+
+test('затраты: поля CostsInputs остались в коде, но на экране закупки их нет — затраты вводятся на шаге «Цена»', () => {
+  const inputs = renderToStaticMarkup(h(mods.econUi.CostsInputs, { data: mods.hiddenLib.EMPTY_REGISTER, fromStep: { costs: 700000, extra: 10000, taxPct: 6 }, onChange: none }));
+  assert.match(text(inputs), /Затраты на исполнение, ₽/);
+  assert.match(text(inputs), /Расходы на участие, ₽/);
+  assert.match(text(inputs), /Налог с выручки, %/);
+  assert.match(inputs, /placeholder="из шага «Цена»: 700 000"/);
+});
+
+const LINES = [
+  { label: 'Договор', text: 'условий с цифрами: 5, внимания требуют 3', tone: 'warn' },
+  { label: 'Риски в рублях', text: 'до 3 127 534 ₽ (62,6 % цены); крупнейший — просрочка: пеня 5 % в день', tone: 'danger' },
+  { label: 'Цена и рынок', text: 'с рынком сравнить нечем — цен-аналогов мало', tone: 'muted' },
+];
+const findingsUi = (over = {}) =>
+  renderToStaticMarkup(
+    h(mods.findUi.AnalyticsFindings, { lines: LINES, search: { line: { label: 'Поиск', text: 'риски отрасли и региона ещё не проверяли', tone: 'muted' }, pending: 5, busy: false, done: 0, error: null, onRun: none, ...over } }),
+  );
+
+test('подпись внизу экрана: строки «что нашла аналитика», пометка «оценка, не гарантия», полей ввода нет', () => {
+  const out = findingsUi();
+  assert.match(text(out), /Что нашла аналитика/);
+  for (const l of LINES) assert.ok(text(out).includes(l.text), l.text);
+  assert.match(text(out), /Договор.*условий с цифрами: 5/);
+  assert.match(text(out), /не прогноз и не гарантия результата/);
+  assert.match(text(out), /Решение об участии принимает человек/);
+  assert.equal(/<input|<textarea|<select/.test(out), false, 'на подписи нет полей ввода');
+});
+
+test('подпись: единственная кнопка — «Проверить поиском (N)» у строки о поиске; идёт поиск — «Ищу: k из N»; всё проверено — кнопки нет; ошибка видна', () => {
+  assert.equal((findingsUi().match(/<button/g) ?? []).length, 1);
+  assert.match(text(findingsUi()), /Проверить поиском \(5\)/);
+  assert.match(text(findingsUi({ busy: true, done: 2 })), /Ищу: 2 из 7/);
+  assert.equal((findingsUi({ pending: 0 }).match(/<button/g) ?? []).length, 0);
+  assert.match(findingsUi({ error: 'Бесплатный поиск временно не отвечает.' }), /role="alert"[^>]*>Бесплатный поиск временно не отвечает\./);
+  const noSearch = findingsUi({ line: null, pending: 0 });
+  assert.equal(/Поиск/.test(text(noSearch)), false, 'тем для поиска нет — строки о поиске нет');
+});
+
+test('экран закупки: ни одного поля ввода и «Подробного разбора» — только плашка, риски, диаграмма и подпись; затраты — на шаге «Цена»', () => {
+  const src = readFileSync(path.join(root, 'src/real/analytics.tsx'), 'utf8');
+  for (const gone of ['CostsInputs', 'RiskEstimates', 'ContractRisks', 'RicPanel', 'RicScenarioPanel', 'CheckMatrix', 'NmckCheck', 'Подробный разбор', 'Ваши затраты']) {
+    assert.equal(src.includes(gone), false, `на экране закупки не должно быть: ${gone}`);
+  }
+  assert.match(src, /AnalyticsFindings/);
+  assert.match(src, /Ввести затраты на шаге «Цена»/);
+});
+
+// ——— Рейтинг привлекательности тендера ———
+const factor = (id, title, weight, score, note, over = {}) => ({ id, title, weight, score, tone: score === null ? 'muted' : score >= 65 ? 'good' : score >= 50 ? 'warn' : 'danger', note, basis: `как считается ${id}, формула словами`, missing: score === null ? ['чего не хватает'] : [], ...over });
+const READY = {
+  status: 'ready', score: 72, rawScore: 72, capped: false, verdict: { label: 'Перспективный', tone: 'good' }, coverage: 75, blockers: [], missing: [{ factor: 'Конкуренция', items: ['Источник данных о конкуренции (ЕИС) в программе не подключён'] }],
+  factors: [
+    factor('profile', 'Соответствие профилю компании', 25, 100, 'проверено 7 из 7; замечаний нет'),
+    factor('profit', 'Рентабельность', 25, 64, 'маржа до рисков 6,4 % при цели 10 %'),
+    factor('price', 'Цена относительно рынка', 15, null, 'сравнить с рынком нечем'),
+    factor('risks', 'Риски исполнения', 15, 80, 'риски до 10 % цены'),
+    factor('competition', 'Конкуренция', 10, null, 'проверено 0 из 5'),
+    factor('reliability', 'Надёжность заказчика', 10, null, 'проверено 1 из 8'),
+  ],
+};
+const ratingCard = (rating) => renderToStaticMarkup(h(mods.ratingUi.TenderRating, { rating }));
+
+test('рейтинг: кольцо с баллом и вердиктом рядом, подпись «не вероятность победы», кнопка расшифровки', () => {
+  const out = ratingCard(READY);
+  assert.match(out, /aria-label="Рейтинг привлекательности 72 из 100: Перспективный\. Открыть расшифровку"/);
+  assert.match(text(out), /Перспективный/);
+  assert.match(text(out), /не вероятность победы/);
+  assert.match(text(out), /по 3 из 6 факторов/);
+  assert.match(out, /<circle[^>]*stroke-dasharray="[\d.]+ [\d.]+"/, 'дуга кольца нарисована');
+  assert.match(out, />72</, 'балл в центре');
+  assert.match(out, /text-success/, 'хороший балл — зелёное кольцо');
+  assert.equal((out.match(/<button/g) ?? []).length, 1);
+});
+
+test('рейтинг: цвет кольца по баллу — зелёный, янтарный, красный; данных мало — серое пунктирное кольцо и «—» вместо балла', () => {
+  const tone = (score, label, t) => ratingCard({ ...READY, score, rawScore: score, verdict: { label, tone: t } });
+  assert.match(tone(85, 'Отличный тендер', 'good'), /text-success/);
+  assert.match(tone(55, 'Есть риски', 'warn'), /text-warn-foreground/);
+  assert.match(tone(30, 'Лучше не участвовать', 'danger'), /text-danger/);
+  const none = ratingCard({ status: 'insufficient', score: null, rawScore: null, capped: false, verdict: null, coverage: 25, blockers: [], factors: READY.factors, missing: READY.missing });
+  assert.match(none, /aria-label="Рейтинг не посчитан: недостаточно данных для оценки/);
+  assert.match(none, /stroke-dasharray="3 5"/);
+  assert.match(text(none), /Недостаточно данных для оценки/);
+  assert.match(text(none), /данных 25 % из нужных 50 %/);
+  assert.match(none, />—</);
+});
+
+test('рейтинг: критические препятствия — отдельным красным списком под кольцом, не больше двух; балл с пометкой, что он ограничен', () => {
+  const blockers = [
+    { id: 'loss', text: 'Убыток даже по начальной цене на ваших затратах', cap: 34 },
+    { id: 'check-15', text: 'Соответствие требованиям к лицензиям: нет доказательства', cap: 49 },
+    { id: 'check-16', text: 'Членство в СРО: нет доказательства', cap: 49 },
+  ];
+  const out = ratingCard({ ...READY, score: 34, rawScore: 72, capped: true, verdict: { label: 'Лучше не участвовать', tone: 'danger' }, blockers });
+  assert.match(text(out), /Убыток даже по начальной цене на ваших затратах/);
+  assert.match(text(out), /Соответствие требованиям к лицензиям/);
+  assert.equal(text(out).includes('Членство в СРО'), false, 'третье — в расшифровке');
+  assert.match(text(out), /и ещё 1 — в расшифровке/);
+  assert.match(text(out), /ограничено препятствием \(без него 72\)/);
+  assert.match(out, /text-danger/);
+});
+
+test('расшифровка рейтинга: шесть факторов с весом, баллом и формулой в подсказке; факторы без данных — «нет данных» и список, чего не хватает', () => {
+  const out = renderToStaticMarkup(h(mods.ratingUi.RatingDetails, { rating: READY }));
+  for (const title of ['Соответствие профилю компании', 'Рентабельность', 'Цена относительно рынка', 'Риски исполнения', 'Конкуренция', 'Надёжность заказчика']) {
+    assert.ok(text(out).includes(title), title);
+  }
+  assert.match(text(out), /вес 25 %/);
+  assert.match(text(out), /100 из 100/);
+  assert.match(text(out), /64 из 100/);
+  assert.equal((text(out).match(/нет данных/g) ?? []).length, 3, 'три фактора без данных');
+  assert.match(out, /role="tooltip"[^>]*>[^<]*как считается profile/);
+  assert.match(text(out), /Не хватает данных/);
+  assert.match(text(out), /Конкуренция: Источник данных о конкуренции \(ЕИС\) в программе не подключён/);
+  assert.match(text(out), /Это не вероятность победы и не прогноз/);
+  assert.match(text(out), /Факторы без данных в балле не участвуют/);
+  assert.equal(/Критические препятствия/.test(text(out)), false, 'препятствий нет — блока нет');
+});
+
+test('расшифровка рейтинга: препятствия отдельным блоком с пометкой, до какого балла он ограничен', () => {
+  const out = renderToStaticMarkup(
+    h(mods.ratingUi.RatingDetails, { rating: { ...READY, score: 49, rawScore: 72, capped: true, verdict: { label: 'Сложный тендер', tone: 'danger' }, blockers: [{ id: 'check-15', text: 'Лицензия: нет доказательства', cap: 49 }] } }),
+  );
+  assert.match(text(out), /Критические препятствия/);
+  assert.match(text(out), /Лицензия: нет доказательства/);
+  assert.match(text(out), /Из-за них балл не выше 49; по факторам он был бы 72/);
+});
+
+test('рейтинг и экран закупки: карточка рейтинга и ценовой бейдж стоят на экране, поля ввода не вернулись', () => {
+  const src = readFileSync(path.join(root, 'src/real/analytics.tsx'), 'utf8');
+  assert.match(src, /<TenderRating rating=\{rating\} \/>/);
+  assert.match(src, /<PriceBadgeChip badge=\{badge\} market=\{market\.lines\} \/>/);
+  assert.match(src, /useMarketBase\(data, plain,/, 'позиции из бланка заказчика и цены базы подключены под капотом');
+  assert.match(src, /rateTender\(/);
+  for (const gone of ['CostsInputs', 'RiskEstimates', 'Подробный разбор']) assert.equal(src.includes(gone), false, gone);
+});
+
+test('ценовой бейдж в карточке: заголовок по статусу, число аналогов, процент к РИЦ, число источников; мало данных — серый без цифр', () => {
+  const detail = { nmck: 1000000, ric: 970000, median: 970000, range: { from: 900000, to: 1050000 }, abs: 30000, pct: 3.1, observations: { min: 5, total: 12 }, dates: { from: '2026-01-01', to: '2026-09-01' }, sources: ['ЕИС, контракт № 1', 'прайс'], confidence: 'medium', threshold: 15 };
+  const within = renderToStaticMarkup(h(mods.badgeChipUi.PriceBadgeChip, { badge: { status: 'within', title: 'Цена в рыночном диапазоне', missing: [], detail } }));
+  assert.match(text(within), /Цена в рыночном диапазоне/);
+  assert.match(text(within), /цен-аналогов 12 · \+3,1 % к РИЦ · источников: 2/);
+  assert.match(within, /bg-success\/10/);
+  const below = renderToStaticMarkup(h(mods.badgeChipUi.PriceBadgeChip, { badge: { status: 'below', title: 'Цена существенно ниже рынка', missing: [], detail: { ...detail, pct: -22.4 } } }));
+  assert.match(text(below), /−22,4 % к РИЦ/);
+  assert.match(below, /bg-warn-surface/);
+  const none = renderToStaticMarkup(h(mods.badgeChipUi.PriceBadgeChip, { badge: { status: 'insufficient', title: 'Недостаточно данных для оценки цены', missing: ['нет цен-аналогов'], detail: null } }));
+  assert.match(text(none), /Недостаточно данных для оценки цены/);
+  assert.equal(/цен-аналогов \d/.test(text(none)), false);
+  assert.match(none, /role="tooltip"[^>]*>[^<]*Чего не хватает: нет цен-аналогов/);
+});
+
+test('ценовой бейдж: рыночный ориентир по базе цен — в подсказке, при выводе и когда вывода по бейджу нет; без базы подсказка прежняя', () => {
+  const detail = { nmck: 1000000, ric: 970000, median: 970000, range: { from: 900000, to: 1050000 }, abs: 30000, pct: 3.1, observations: { min: 5, total: 12 }, dates: { from: '2026-01-01', to: '2026-09-01' }, sources: ['База цен: ЕИС, контракт № 1'], confidence: 'medium', threshold: 15 };
+  const line = '«Уголь ДПК»: медиана 5 000 ₽, диапазон 4 800 ₽ – 5 300 ₽, цен 6';
+  const withMarket = renderToStaticMarkup(h(mods.badgeChipUi.PriceBadgeChip, { badge: { status: 'within', title: 'Цена в рыночном диапазоне', missing: [], detail }, market: [line] }));
+  assert.match(withMarket, /role="tooltip"[^>]*>[^<]*Рынок по базе цен: «Уголь ДПК»: медиана 5 000 ₽/);
+  const noBadge = renderToStaticMarkup(h(mods.badgeChipUi.PriceBadgeChip, { badge: { status: 'insufficient', title: 'Недостаточно данных для оценки цены', missing: ['нет цен-аналогов'], detail: null }, market: [line] }));
+  assert.match(noBadge, /Чего не хватает: нет цен-аналогов\. Рынок по базе цен/);
+  const plainChip = renderToStaticMarkup(h(mods.badgeChipUi.PriceBadgeChip, { badge: { status: 'within', title: 'Цена в рыночном диапазоне', missing: [], detail } }));
+  assert.equal(plainChip.includes('Рынок по базе цен'), false);
 });

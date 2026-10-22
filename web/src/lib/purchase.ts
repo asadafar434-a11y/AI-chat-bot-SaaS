@@ -1,3 +1,4 @@
+import { assertAiEnabled } from "@/lib/ai-mode";
 import type { ChatMessage } from "@/lib/chat-types";
 import type { DocStamp } from "@/lib/doc-changes";
 import { errorText } from "@/lib/http-error";
@@ -60,10 +61,14 @@ export type Purchase = PurchaseSummary & {
 };
 
 // Заголовки запроса к ИИ по закупке: номер закупки — это номер заявки, по нему сервер ведёт бюджет ИИ.
-export const aiHeaders = (purchaseId?: string) => ({
-  "Content-Type": "application/json",
-  ...(purchaseId && { "x-application-id": purchaseId }),
-});
+// Через эту функцию идут все обращения к модели: переключатель «ИИ выключен» (lib/ai-mode.ts) останавливает запрос до отправки.
+export const aiHeaders = (purchaseId?: string) => {
+  assertAiEnabled();
+  return {
+    "Content-Type": "application/json",
+    ...(purchaseId && { "x-application-id": purchaseId }),
+  };
+};
 
 // Требования выписываются при создании закупки и заново — когда к ней добавляют документы.
 export async function extractRequirements(documents: SentDocument[], purchaseId?: string): Promise<RequirementsResponse> {

@@ -128,3 +128,17 @@ test("поиск по реестру — не запрос к ИИ: не рас�
     assert.match(await over.text(), /Слишком много поисков по реестру подряд/);
   });
 });
+
+test("рыночный ориентир по базе цен — не запрос к ИИ: не расходует лимит ИИ, у него свой счёт", async () => {
+  await withEnv({ NODE_ENV: "development", ACCESS_PASSWORD: undefined }, async () => {
+    const ip = nextIp();
+    for (let i = 0; i < AI_PER_IP[0].max + 5; i++) assert.equal((await proxy(post("/api/market", ip))).status, 200, `запрос ${i + 1}`);
+    assert.equal((await proxy(post("/api/chat", ip))).status, 200, "лимит ИИ у этого адреса не тронут");
+    const other = nextIp();
+    for (let i = 0; i < REGISTRY_PER_IP[0].max; i++) await proxy(post("/api/market", other));
+    const over = await proxy(post("/api/market", other));
+    assert.equal(over.status, 429);
+    assert.match(await over.text(), /Слишком много запросов к базе цен подряд/);
+    assert.equal((await proxy(post("/api/registry/search", other))).status, 200, "поиск по реестру считается отдельно");
+  });
+});

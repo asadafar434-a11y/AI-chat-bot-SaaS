@@ -5,6 +5,7 @@ import { parseBackup } from '@/lib/backup-format';
 import { plural } from '@/lib/plural';
 import { saveFile } from '@/lib/save-file';
 import { serverReadsEnabled } from '@/lib/server-reads';
+import { useAiEnabled } from '../lib/use-ai-mode';
 import { wipeAll } from '@/lib/wipe';
 import { useAccount } from '../lib/account';
 import { Download, Loader2, LogOut, Moon, Sun, Trash2, Upload } from '../lib/icons';
@@ -40,6 +41,7 @@ export function Settings({ dark, setDark }: { dark: boolean; setDark: (v: boolea
       </div>
       <AccountCard />
       <AppearanceCard dark={dark} setDark={setDark} />
+      <AiCard />
       <DataCards />
     </div>
   );
@@ -129,6 +131,51 @@ function AccountCard() {
       <div aria-live="polite" className="empty:hidden">
         {note && <Notice tone={note.tone}>{note.text}</Notice>}
       </div>
+    </Card>
+  );
+}
+
+// ── ИИ ─────────────────────────────────────────────────────────────────────────────────────────
+
+// Режим «ИИ включён / выключен» (lib/ai-mode.ts): выключено — программа не обращается к языковым моделям, расчёты и аналитика работают как обычно.
+function AiCard() {
+  const [on, set] = useAiEnabled();
+  const options: { label: string; value: boolean }[] = [
+    { label: 'Включён', value: true },
+    { label: 'Выключен', value: false },
+  ];
+  return (
+    <Card className="space-y-3 p-5">
+      <div>
+        <span className="text-sm font-medium">ИИ</span>
+        <p className="mt-0.5 text-[12px] text-muted-foreground">Выключен — программа не обращается к языковым моделям. Быстро переключить можно в шапке меню.</p>
+      </div>
+      <div role="group" aria-label="Режим ИИ" className="inline-flex gap-1 rounded-md border border-border p-1">
+        {options.map(({ label, value }) => (
+          <button
+            key={label}
+            type="button"
+            aria-pressed={on === value}
+            onClick={() => set(value)}
+            className={cx(
+              'flex items-center gap-2 rounded px-3 py-1.5 text-[13px] transition-colors',
+              on === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <dl className="grid gap-2 text-[12px] sm:grid-cols-2">
+        <div>
+          <dt className="font-medium">Без ИИ работает</dt>
+          <dd className="mt-0.5 text-muted-foreground">аналитика и рейтинг тендера, расчёт цены и рисков, проверки по правилам, реестровые номера, бесплатный поиск в интернете, файлы заявки по готовым полям</dd>
+        </div>
+        <div>
+          <dt className="font-medium">С ИИ дополнительно</dt>
+          <dd className="mt-0.5 text-muted-foreground">разбор документов и требований, черновики технического предложения, проверка своей заявки, чат, поиск противоречий, чтение сканов. Каждый платный запрос — только по вашей кнопке</dd>
+        </div>
+      </dl>
     </Card>
   );
 }

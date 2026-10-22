@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Driver, HypothesisView, RegisterData } from '@/lib/hidden-costs';
 import type { Assumptions, EstimateResult } from '@/lib/risk-estimate';
 import type { SensitivityResult } from '@/lib/sensitivity';
-import { queryFor, type SearchContext } from '@/lib/search-queries';
+import { COVERED_HYPOTHESES as COVERED, queryFor, type SearchContext } from '@/lib/search-queries';
 import type { DeliveryResult } from '@/lib/delivery-cost';
 import type { FxCode, FxResult } from '@/lib/fx-risk';
 import { AlertTriangle, Plus, Search, Trash2 } from '../lib/icons';
@@ -10,6 +10,8 @@ import { CertaintyBadge } from './Certainty';
 import { FactCosts } from './FactCosts';
 import { Frame, frameBody, frameHead } from './Frame';
 import { HypothesisSearch } from './HypothesisSearch';
+import { RiskFactForm } from './RiskFactForm';
+import { factFromHit, FACT_HYPOTHESES } from '@/lib/risk-facts';
 import { Badge, Button, HelpTip, IconButton } from './ui';
 
 // «Сколько это может стоить по этому контракту»: программа сама считает риски в рублях по условиям договора и типовым допущениям (lib/risk-estimate.ts) — участнику не нужно ничего отмечать.
@@ -44,9 +46,6 @@ const rub = (n: number) => `${n.toLocaleString('ru-RU', { minimumFractionDigits:
 const pct = (n: number) => `${n.toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`.replace(/[  ]/g, ' ');
 const signed = (n: number) => (n >= 0 ? '+' : '−');
 const newId = () => `d-${Math.random().toString(36).slice(2, 9)}`;
-
-// Гипотезы каталога, по которым сумма уже посчитана выше: второй раз их не показываем.
-const COVERED = new Set(['cashgap', 'guarantee', 'penalties', 'price-growth', 'warranty', 'region']);
 
 const ASSUMPTIONS: { key: keyof Assumptions; label: string; hint?: string }[] = [
   { key: 'financeRatePct', label: 'Стоимость денег, % годовых', hint: 'По умолчанию — ключевая ставка Банка России 14 % (на 21.10.2026). Кредит бывает дороже.' },
@@ -293,7 +292,31 @@ export function RiskEstimates({ result, price, priceNote, hypotheses, data, sens
                     </span>
                     <span className="font-medium">{h.title}</span>
                   </span>
-                  {queries.has(h.id) && onSearch && <HypothesisSearch query={queries.get(h.id)!} record={data.searches[h.id]} onSearch={() => onSearch(h.id, queries.get(h.id)!)} />}
+                  {queries.has(h.id) && onSearch && (
+                    <HypothesisSearch
+                      query={queries.get(h.id)!}
+                      record={data.searches[h.id]}
+                      onSearch={() => onSearch(h.id, queries.get(h.id)!)}
+                      onPick={
+                        FACT_HYPOTHESES[h.id]
+                          ? (candidate, hit) => onChange({ ...data, riskFacts: { ...(data.riskFacts ?? {}), [h.id]: factFromHit(candidate, hit, data.riskFacts?.[h.id]?.base ?? '') } })
+                          : undefined
+                      }
+                    />
+                  )}
+                  {FACT_HYPOTHESES[h.id] && (
+                    <RiskFactForm
+                      hypothesisId={h.id}
+                      fact={data.riskFacts?.[h.id]}
+                      price={price}
+                      onChange={(next) => {
+                        const rest = { ...(data.riskFacts ?? {}) };
+                        if (next) rest[h.id] = next;
+                        else delete rest[h.id];
+                        onChange({ ...data, riskFacts: Object.keys(rest).length > 0 ? rest : undefined });
+                      }}
+                    />
+                  )}
                 </li>
               ))}
             </ul>

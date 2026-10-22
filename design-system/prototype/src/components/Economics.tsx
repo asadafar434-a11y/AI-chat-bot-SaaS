@@ -19,6 +19,8 @@ export type EconomicsProps = {
   onChange: (next: RegisterData) => void;
   /** Внутри раскрывающегося раздела: без карточки и названия. */
   embedded?: boolean;
+  /** Поля затрат уже стоят на экране отдельно (CostsInputs): здесь их не повторяем. */
+  hideInputs?: boolean;
 };
 
 const inputClass =
@@ -36,9 +38,29 @@ const SCENARIOS = [
   { key: 'stress', label: 'Стрессовый', hint: 'Затраты выросли, гарантийный резерв вдвое, одна неустойка по договору.' },
 ] as const;
 
-export function Economics({ result, nmck, priceNote, fromStep, targetMarginPct, data, onChange, embedded }: EconomicsProps) {
+/** Поля затрат участника: затраты на исполнение, расходы на участие, налог. Пусто — берётся из шага «Цена». Своих цифр у программы нет. */
+export function CostsInputs({ data, fromStep, onChange }: Pick<EconomicsProps, 'data' | 'fromStep' | 'onChange'>) {
   const e = data.econ;
   const set = (patch: Partial<RegisterData['econ']>) => onChange({ ...data, econ: { ...e, ...patch } });
+  return (
+  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <label className="block text-[12px]">
+      <span className="mb-1 block text-muted-foreground">Затраты на исполнение, ₽</span>
+      <input type="text" inputMode="decimal" placeholder={stepText(fromStep.costs)} value={e.costs} onChange={(ev) => set({ costs: ev.target.value })} className={numClass} />
+    </label>
+    <label className="block text-[12px]">
+      <span className="mb-1 block text-muted-foreground">Расходы на участие, ₽</span>
+      <input type="text" inputMode="decimal" placeholder={stepText(fromStep.extra)} value={e.extra} onChange={(ev) => set({ extra: ev.target.value })} className={numClass} />
+    </label>
+    <label className="block text-[12px]">
+      <span className="mb-1 block text-muted-foreground">Налог с выручки, %</span>
+      <input type="text" inputMode="decimal" placeholder={stepText(fromStep.taxPct)} value={e.taxPct} onChange={(ev) => set({ taxPct: ev.target.value })} className={numClass} />
+    </label>
+  </div>
+  );
+}
+
+export function Economics({ result, nmck, priceNote, fromStep, targetMarginPct, data, onChange, embedded, hideInputs }: EconomicsProps) {
   return (
     <Frame embedded={embedded}>
       <div className={frameHead(embedded)}>
@@ -50,20 +72,7 @@ export function Economics({ result, nmck, priceNote, fromStep, targetMarginPct, 
         <CertaintyBadge kind="estimate" />
       </div>
       <div className={frameBody(embedded)}>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <label className="block text-[12px]">
-            <span className="mb-1 block text-muted-foreground">Затраты на исполнение, ₽</span>
-            <input type="text" inputMode="decimal" placeholder={stepText(fromStep.costs)} value={e.costs} onChange={(ev) => set({ costs: ev.target.value })} className={numClass} />
-          </label>
-          <label className="block text-[12px]">
-            <span className="mb-1 block text-muted-foreground">Расходы на участие, ₽</span>
-            <input type="text" inputMode="decimal" placeholder={stepText(fromStep.extra)} value={e.extra} onChange={(ev) => set({ extra: ev.target.value })} className={numClass} />
-          </label>
-          <label className="block text-[12px]">
-            <span className="mb-1 block text-muted-foreground">Налог с выручки, %</span>
-            <input type="text" inputMode="decimal" placeholder={stepText(fromStep.taxPct)} value={e.taxPct} onChange={(ev) => set({ taxPct: ev.target.value })} className={numClass} />
-          </label>
-        </div>
+        {!hideInputs && <CostsInputs data={data} fromStep={fromStep} onChange={onChange} />}
 
         {!result.ready ? (
           <p className="text-muted-foreground">

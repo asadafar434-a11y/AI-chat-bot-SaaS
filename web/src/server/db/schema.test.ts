@@ -57,6 +57,12 @@ const REGISTRY_MODELS = ["RegistryDataset", "RegistryRecord", "RegistryChange"] 
  */
 const LIMIT_MODELS = ["RateHit", "AiSpend"] as const;
 
+/**
+ * Рыночные ценовые наблюдения (S15): цены из открытых источников (реестр контрактов ЕИС, прайс-листы), общие для всех организаций, как реестр (S13) —
+ * поэтому ни organizationId, ни связи с Organization у таблицы нет. Наблюдение только добавляется: повтор отсекает уникальный hash.
+ */
+const MARKET_MODELS = ["PriceObservation"] as const;
+
 /** Таблицы, которые заведены в более поздних этапах и не должны появляться сейчас. */
 const LATER_STAGE_MODELS = ["Payment", "pgboss"] as const;
 
@@ -72,8 +78,8 @@ function modelNames(): string[] {
   return [...schema.matchAll(/^model\s+(\w+)\s*\{/gm)].map((match) => match[1]);
 }
 
-test("в схеме ровно 22 модели: 11 приложения (S1), 4 аутентификации (S2), 2 базы знаний (S12), 3 реестра (S13) и 2 счётчика лимитов (S14)", () => {
-  assert.deepEqual(modelNames().sort(), [...S1_MODELS, ...S2_MODELS, ...KB_MODELS, ...REGISTRY_MODELS, ...LIMIT_MODELS].sort());
+test("в схеме ровно 23 модели: 11 приложения (S1), 4 аутентификации (S2), 2 базы знаний (S12), 3 реестра (S13), 2 счётчика лимитов (S14) и 1 ценовых наблюдений (S15)", () => {
+  assert.deepEqual(modelNames().sort(), [...S1_MODELS, ...S2_MODELS, ...KB_MODELS, ...REGISTRY_MODELS, ...LIMIT_MODELS, ...MARKET_MODELS].sort());
 });
 
 test("моделей более поздних этапов в схеме нет", () => {
@@ -89,7 +95,7 @@ test("моделей более поздних этапов в схеме нет
  * организациях, `UserProfile` принадлежит пользователю, а не арендатору. Таблицы Auth.js
  * привязаны к `userId` текущей сессии, а не к арендатору (data-model.md §7).
  */
-const TABLES_WITHOUT_ORG_ID = ["Organization", "User", "UserProfile", ...AUTH_MODELS, ...KB_MODELS, ...REGISTRY_MODELS, ...LIMIT_MODELS];
+const TABLES_WITHOUT_ORG_ID = ["Organization", "User", "UserProfile", ...AUTH_MODELS, ...KB_MODELS, ...REGISTRY_MODELS, ...LIMIT_MODELS, ...MARKET_MODELS];
 
 /**
  * Таблицы, у которых вместо `createdAt`/`updatedAt` собственные отметки времени:
@@ -104,6 +110,8 @@ const TABLES_WITH_OWN_TIMESTAMPS: Record<string, { created: string; updated: str
   // Счётчики лимитов: строка — один запрос (время и есть отметка); у бюджета — время последней траты.
   RateHit: { created: "at", updated: "at" },
   AiSpend: { created: "updatedAt", updated: "updatedAt" },
+  // Ценовое наблюдение не правится: новая цена — новая строка.
+  PriceObservation: { created: "createdAt", updated: "createdAt" },
 };
 
 test("модели без organizationId — только корень и таблицы пользователя", () => {

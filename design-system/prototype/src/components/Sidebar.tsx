@@ -5,6 +5,7 @@ import { useAccount } from '../lib/account';
 import { Button, Soon, Tooltip, IconButton, cx, useDialogFocus } from './ui';
 import { BrandMark } from './BrandMark';
 import { BotMark } from './BotMark';
+import { AiSwitch } from './AiSwitch';
 
 export type View = 'tenders' | 'analytics' | 'search' | 'history' | 'profile' | 'settings' | 'tariffs' | 'workflow';
 
@@ -98,6 +99,7 @@ export function Sidebar(props: Props) {
               <div className="flex items-center justify-between gap-2">
                 <Logo />
                 <div className="flex shrink-0 items-center gap-1">
+                  <AiSwitch />
                   <ThemeButton dark={props.dark} setDark={props.setDark} />
                   <IconButton label="Закрыть меню" onClick={() => setMenuOpen(false)} side="bottom" align="end">
                     <X className="size-5" />
@@ -114,7 +116,10 @@ export function Sidebar(props: Props) {
       <aside className="hidden shrink-0 flex-col gap-5 rounded-2xl border border-border bg-card p-4 shadow-sm lg:flex lg:h-full lg:w-[248px] lg:overflow-y-auto">
         <div className="flex items-start justify-between gap-2">
           <Logo />
-          <ThemeButton dark={props.dark} setDark={props.setDark} />
+          <div className="flex shrink-0 items-center gap-1">
+            <AiSwitch />
+            <ThemeButton dark={props.dark} setDark={props.setDark} />
+          </div>
         </div>
         <Body {...props} />
       </aside>

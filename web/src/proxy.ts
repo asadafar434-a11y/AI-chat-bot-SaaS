@@ -22,6 +22,8 @@ const aiPerIp = sharedLimiter("ai-ip", AI_PER_IP, hitStoreSource);
 const aiTotal = sharedLimiter("ai-all", AI_TOTAL, hitStoreSource);
 const filesPerIp = sharedLimiter("files-ip", FILES_PER_IP, hitStoreSource);
 const registryPerIp = sharedLimiter("registry-ip", REGISTRY_PER_IP, hitStoreSource);
+// Рыночный ориентир по базе цен — такой же бесплатный запрос к базе, как поиск по реестру, со своим счётом.
+const marketPerIp = sharedLimiter("market-ip", REGISTRY_PER_IP, hitStoreSource);
 
 // Liveness/readiness probes должны отвечать без входа: их опрашивает балансировщик,
 // а не человек. Данные они не отдают — только состояние процесса/БД.
@@ -42,6 +44,10 @@ async function tooMany(request: NextRequest): Promise<NextResponse | null> {
   if (pathname === "/api/registry/search") {
     const wait = await registryPerIp(ip);
     return wait ? text(`Слишком много поисков по реестру подряд — продолжите ${waitText(wait)}.`, 429, wait) : null;
+  }
+  if (pathname === "/api/market") {
+    const wait = await marketPerIp(ip);
+    return wait ? text(`Слишком много запросов к базе цен подряд — продолжите ${waitText(wait)}.`, 429, wait) : null;
   }
   const own = await aiPerIp(ip);
   if (own) return text(`Слишком много запросов к ИИ подряд — продолжите ${waitText(own)}.`, 429, own);
