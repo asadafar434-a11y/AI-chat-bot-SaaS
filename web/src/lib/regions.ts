@@ -99,6 +99,9 @@ const ENTRIES: Entry[] = [
   ["Херсонская область", "херсонск[а-яё]*\\s+област", true],
 ];
 
+/** Названия всех регионов списка — по ним lib/geo.ts держит координаты центров. */
+export const REGION_NAMES: string[] = ENTRIES.map(([name]) => name);
+
 const COMPILED = ENTRIES.map(([name, stems, hard]) => ({ name, hard: hard === true, re: new RegExp(`(?<![а-яё])(?:${stems})`, "i") }));
 
 /** Регион, названный в тексте раньше других; нет названий — null. */

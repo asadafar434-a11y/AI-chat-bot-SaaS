@@ -12,6 +12,9 @@ import { computeRic, EMPTY_RIC, parseAmount, positionsFromDocuments, type RicDat
 import { calcFor } from '@/lib/price-calc';
 import { economics, econSettings } from '@/lib/economics';
 import { estimateRisks } from '@/lib/risk-estimate';
+import { deliveryCost, EMPTY_DELIVERY } from '@/lib/delivery-cost';
+import { deliveryItems, fxItems } from '@/lib/fact-estimates';
+import { EMPTY_FX, fxRisk, normalizeFx, type FxCode } from '@/lib/fx-risk';
 import { findNmckCalculations } from '@/lib/nmck-check';
 import { priceBadge } from '@/lib/price-badge';
 import { detectRegistryDemand } from '@/lib/registry-demand';
@@ -122,7 +125,13 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
   const hypotheses = useMemo(() => hypothesesFor(type, regionInfo, law), [type, regionInfo, law]);
   // Цена, от которой считаются риски: цена вашей заявки, а пока её нет — начальная цена.
   const price = purchase.tpPrice ? purchase.tpPrice : nmck;
-  const estimate = useMemo(() => estimateRisks({ price, risks, type, region: regionInfo, assumptions: (register.data ?? EMPTY_REGISTER).assumptions }), [price, risks, type, regionInfo, register.data]);
+  // Суммы по фактам: расстояние между регионами (место поставки из документов, адрес из профиля) и курсы ЦБ; тариф и сумму в валюте вводит участник (lib/delivery-cost.ts, lib/fx-risk.ts).
+  const deliveryIn = (register.data ?? EMPTY_REGISTER).delivery ?? EMPTY_DELIVERY;
+  const fxIn = (register.data ?? EMPTY_REGISTER).fx ?? EMPTY_FX;
+  const delivery = useMemo(() => deliveryCost(regionInfo?.kind === 'other' ? regionInfo.company!.name : null, regionInfo?.kind === 'other' ? regionInfo.place.name : null, deliveryIn), [regionInfo, deliveryIn]);
+  const fx = useMemo(() => fxRisk(fxIn), [fxIn]);
+  const facts = useMemo(() => [...deliveryItems(delivery), ...fxItems(fx)], [delivery, fx]);
+  const estimate = useMemo(() => estimateRisks({ price, risks, type, region: regionInfo, assumptions: (register.data ?? EMPTY_REGISTER).assumptions, facts }), [price, risks, type, regionInfo, register.data, facts]);
   // Расчёт цены: найденное в закупке и введённое на шаге «Цена» (читаем, не меняем); свои затраты из этого раздела — поверх, если шаг «Цена» пуст.
   const assumptions = (register.data ?? EMPTY_REGISTER).assumptions;
   const stepCalc = useMemo(() => calcFor(purchase), [purchase]);
@@ -147,6 +156,24 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
       const latest = registerNow.current;
       if (!record || !latest) return 'Поиск вернул непонятный ответ. Повторите позже.';
       register.change({ ...latest, searches: { ...latest.searches, [id]: record } });
+      return null;
+    } catch (e) {
+      return errorMessage(e);
+    }
+  };
+
+  // Курсы ЦБ за год: сервер берёт общедоступный ряд на cbr.ru, в браузер приходят пары «дата — курс»; ряд сохраняется у закупки, сумма в валюте остаётся как её вписал участник.
+  const loadFx = async (code: FxCode): Promise<string | null> => {
+    try {
+      const res = await fetch('/api/cbr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) });
+      if (!res.ok) return await errorText(res, 'Курсы сейчас недоступны. Повторите позже.');
+      const found = (await res.json()) as { series?: unknown; at?: string };
+      const latest = registerNow.current;
+      if (!latest) return 'Расчёт ещё открывается. Повторите через секунду.';
+      const current = latest.fx ?? EMPTY_FX;
+      const next = normalizeFx({ ...current, code, series: found.series, fetchedAt: found.at ?? new Date().toISOString() });
+      if (next.series.length < 2) return 'Банк России вернул слишком короткий ряд курсов. Повторите позже.';
+      register.change({ ...latest, fx: next });
       return null;
     } catch (e) {
       return errorMessage(e);
@@ -285,6 +312,7 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
             onChange={register.change}
             searchContext={searchContext}
             onSearch={searchHypothesis}
+            facts={{ delivery, fx, onLoadFx: loadFx }}
           />
         ) : (
           loading

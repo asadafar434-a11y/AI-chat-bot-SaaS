@@ -2,8 +2,11 @@ import type { Driver, HypothesisView, RegisterData } from '@/lib/hidden-costs';
 import type { Assumptions, EstimateResult } from '@/lib/risk-estimate';
 import type { SensitivityResult } from '@/lib/sensitivity';
 import { queryFor, type SearchContext } from '@/lib/search-queries';
+import type { DeliveryResult } from '@/lib/delivery-cost';
+import type { FxCode, FxResult } from '@/lib/fx-risk';
 import { AlertTriangle, Info, Plus, Trash2 } from '../lib/icons';
 import { CertaintyBadge } from './Certainty';
+import { FactCosts } from './FactCosts';
 import { Frame, frameBody, frameHead } from './Frame';
 import { HypothesisSearch } from './HypothesisSearch';
 import { Badge, Button, HelpTip, IconButton } from './ui';
@@ -27,6 +30,8 @@ export type RiskEstimatesProps = {
   searchContext?: SearchContext;
   /** Искать по запросу гипотезы: возвращает текст ошибки или null, если результат сохранён. */
   onSearch?: (hypothesisId: string, query: string) => Promise<string | null>;
+  /** Суммы по фактам: доставка и курс валюты. Без него блока «Свои цифры» нет. */
+  facts?: { delivery: DeliveryResult; fx: FxResult; onLoadFx: (code: FxCode) => Promise<string | null> };
   /** Внутри раскрывающегося раздела: без карточки и названия. */
   embedded?: boolean;
 };
@@ -164,7 +169,7 @@ function Sensitivity({ data, sens, defaultDrivers, priceHint, onChange, total }:
   );
 }
 
-export function RiskEstimates({ result, price, priceNote, hypotheses, data, sens, defaultDrivers, priceHint, onChange, searchContext, onSearch, embedded }: RiskEstimatesProps) {
+export function RiskEstimates({ result, price, priceNote, hypotheses, data, sens, defaultDrivers, priceHint, onChange, searchContext, onSearch, facts, embedded }: RiskEstimatesProps) {
   const rest = hypotheses.filter((h) => !COVERED.has(h.id));
   const queries = new Map(rest.flatMap((h) => { const q = searchContext && onSearch ? queryFor(h.id, searchContext) : null; return q ? [[h.id, q] as const] : []; }));
   const sorted = [...result.items].sort((a, b) => (a.amount === null ? 1 : 0) - (b.amount === null ? 1 : 0) || (b.amount ?? 0) - (a.amount ?? 0));
@@ -228,6 +233,7 @@ export function RiskEstimates({ result, price, priceNote, hypotheses, data, sens
             )}
           </>
         )}
+        {facts && price !== null && <FactCosts data={data} delivery={facts.delivery} fx={facts.fx} onChange={onChange} onLoadFx={facts.onLoadFx} />}
         <AssumptionsEditor data={data} onChange={onChange} />
         <Sensitivity data={data} sens={sens} defaultDrivers={defaultDrivers} priceHint={priceHint} onChange={onChange} total={result.total} />
         {rest.length > 0 && (

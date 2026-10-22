@@ -61,12 +61,17 @@ export type Estimate = {
   ask?: string;
 };
 
+/** Строка оценки без доли от цены (её считает estimateRisks): так приходят суммы по фактам — доставка по расстоянию и тарифу, курс валюты по данным ЦБ (lib/fact-estimates.ts). */
+export type FactItem = Omit<Estimate, "pct">;
+
 export type EstimateInput = {
   price: number | null;
   risks: ContractRisk[];
   type: PurchaseType;
   region: RegionNote | null;
   assumptions: Assumptions;
+  /** Суммы по фактам; доставка (id «logistics») заменяет общую строку «сумма не определена». */
+  facts?: FactItem[];
 };
 
 export type EstimateResult = {
@@ -88,7 +93,7 @@ const ru = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 2 }
 
 const MAX_PENALTIES = 4;
 
-export function estimateRisks({ price, risks, type, region, assumptions: a }: EstimateInput): EstimateResult {
+export function estimateRisks({ price, risks, type, region, assumptions: a, facts = [] }: EstimateInput): EstimateResult {
   const items: Estimate[] = [];
   const indexed = risks.some((r) => r.kind === "price" && r.party === "none" && /индексаци/i.test(r.title));
   if (price === null || price <= 0) return { items, total: 0, totalPct: null, unknown: 0, priceUsed: null, indexed };
@@ -217,7 +222,8 @@ export function estimateRisks({ price, risks, type, region, assumptions: a }: Es
       ask: "Запросите цену у исполнителя (эксперта, банка, перевозчика) и добавьте в расчёт",
     });
   }
-  if (region?.kind === "other") {
+  for (const f of facts) push(f);
+  if (region?.kind === "other" && !facts.some((f) => f.id === "logistics")) {
     push({
       id: "logistics",
       title: `Доставка или выезд: ${region.place.name} вместо ${region.company!.name}`,

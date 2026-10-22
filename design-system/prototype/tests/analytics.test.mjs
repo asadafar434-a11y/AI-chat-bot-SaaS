@@ -43,6 +43,10 @@ before(async () => {
     scenUi: await server.ssrLoadModule('/src/components/RicScenarioPanel.tsx'),
     scenLib: await server.ssrLoadModule('@/lib/ric-scenarios.ts'),
     importUi: await server.ssrLoadModule('/src/components/AnalogImport.tsx'),
+    factUi: await server.ssrLoadModule('/src/components/FactCosts.tsx'),
+    deliveryLib: await server.ssrLoadModule('@/lib/delivery-cost.ts'),
+    fxLib: await server.ssrLoadModule('@/lib/fx-risk.ts'),
+    factEst: await server.ssrLoadModule('@/lib/fact-estimates.ts'),
     matrixUi: await server.ssrLoadModule('/src/components/CheckMatrix.tsx'),
     matrixLib: await server.ssrLoadModule('@/lib/check-matrix.ts'),
   };
@@ -932,4 +936,108 @@ test('матрица: данных нет совсем — «проверено 
   assert.match(t, /Внимание 0/);
   assert.match(t, /В порядке 0/);
   assert.equal(t.includes('Смотреть первым'), false);
+});
+
+// ——— Суммы по фактам: доставка и курс валюты ———
+const USD_RATES = [
+  ['2026-10-01', 83.5588], ['2026-10-02', 83.2454], ['2026-10-03', 83.4839], ['2026-10-06', 84.9309], ['2026-10-07', 85.7116],
+  ['2026-10-08', 85.4811], ['2026-10-09', 85.4173], ['2026-10-10', 84.9048], ['2026-10-13', 83.9153], ['2026-10-14', 83.8675],
+  ['2026-10-15', 83.9497], ['2026-10-16', 83.76], ['2026-10-17', 83.6177], ['2026-10-20', 82.8504], ['2026-10-21', 82.8879], ['2026-10-22', 81.9739],
+];
+const factUi = (to = 'Севастополь', from = 'Москва', delivery = {}, fx = {}) => {
+  const register = { ...mods.hiddenLib.EMPTY_REGISTER, delivery: { ...mods.deliveryLib.EMPTY_DELIVERY, ...delivery }, fx: { ...mods.fxLib.EMPTY_FX, ...fx } };
+  const d = mods.deliveryLib.deliveryCost(from, to, register.delivery);
+  const f = mods.fxLib.fxRisk(register.fx);
+  return renderToStaticMarkup(h(mods.factUi.FactCosts, { data: register, delivery: d, fx: f, onChange: none, onLoadFx: async () => null }));
+};
+
+test('свои цифры: доставка — расстояние между центрами регионов, выбор «перевозчик / своя машина», пока нет тарифа — что вписать; блок раскрыт', () => {
+  const out = factUi();
+  const t = text(out);
+  assert.match(out, /<details class="text-\[12px\]" open="">/);
+  assert.match(t, /Свои цифры: доставка и курс валюты/);
+  assert.match(t, /Доставка: Москва → Севастополь ≈ 1 652 км/);
+  assert.match(t, /Дорога длиннее прямой в/);
+  assert.match(out, /aria-pressed="true"[^>]*>Перевозчик</);
+  assert.match(out, /aria-pressed="false"[^>]*>Своя машина</);
+  assert.match(out, /aria-pressed="true"[^>]*>Туда и обратно</);
+  assert.match(t, /Тариф, ₽ за км/);
+  assert.match(t, /Впишите: тариф перевозчика, ₽ за км\./);
+  assert.equal(t.includes('Расход, л на 100 км'), false);
+});
+
+test('свои цифры: доставка с тарифом — сумма и формула под полями; своя машина — расход и цена литра вместо тарифа', () => {
+  const t = text(factUi('Севастополь', 'Москва', { rate: '60', trips: '2' }));
+  assert.match(t, /= 396 480,00 ₽ · 1 652 км × 2 \(туда и обратно\) × 60 ₽\/км × 2 рейс\./);
+  const own = factUi('Севастополь', 'Москва', { mode: 'own', consumption: '30', fuel: '65', trips: '1' });
+  assert.match(text(own), /Расход, л на 100 км/);
+  assert.match(text(own), /Литр топлива, ₽/);
+  assert.match(text(own), /только топливо/);
+  assert.equal(text(own).includes('Тариф, ₽ за км'), false);
+});
+
+test('свои цифры: доставка в регион без полноценной дороги — предупреждение и просьба запросить маршрут, полей тарифа нет', () => {
+  const t = text(factUi('Камчатский край'));
+  assert.match(t, /Доставка: Москва → Петропавловск-Камчатский/);
+  assert.match(t, /Сухопутная дорога неполная или сезонная/);
+  assert.match(t, /Запросите маршрут и тариф у перевозчика/);
+  assert.equal(t.includes('Тариф, ₽ за км'), false);
+});
+
+test('свои цифры: курс — валюты кнопками, поле суммы, загрузка курса ЦБ; без курса сказано, что и откуда уходит', () => {
+  const out = factUi(null, null);
+  const t = text(out);
+  assert.match(t, /Свои цифры: курс валюты/, 'доставки нет: регионы не определены');
+  assert.equal(t.includes('Доставка:'), false);
+  assert.match(out, /aria-pressed="true"[^>]*>Доллар США</);
+  assert.match(out, /aria-pressed="false"[^>]*>Евро</);
+  assert.match(out, /aria-pressed="false"[^>]*>Юань</);
+  assert.match(t, /Закупаете, \$/);
+  assert.match(t, /Загрузить курс ЦБ/);
+  assert.match(t, /Курс загружается с сайта Банка России; уходит только выбранная валюта\./);
+  assert.equal(/<details[^>]*open=""/.test(out), false, 'нечего вписывать — блок закрыт');
+});
+
+test('свои цифры: курс загружен — курс на последнюю дату и наибольший рост за срок с датами из ряда ЦБ; сумму ещё надо вписать', () => {
+  const out = factUi(null, null, {}, { series: USD_RATES, windowDays: '5' });
+  const t = text(out);
+  assert.match(t, /ЦБ на 22\.10\.2026: 81,9739 ₽/);
+  assert.match(t, /за год за 5 дн\. курс вырастал до \+3,0 % \(с 02\.10\.2026 по 07\.10\.2026\)/);
+  assert.match(t, /Обновить курс ЦБ/);
+  assert.match(t, /Впишите: сумму в валюте\./);
+  assert.match(out, /<details class="text-\[12px\]" open="">/, 'нужно вписать сумму — блок раскрыт');
+  const full = text(factUi(null, null, {}, { series: USD_RATES, windowDays: '5', amount: '10000' }));
+  assert.equal(full.includes('Впишите:'), false);
+});
+
+test('сколько это может стоить: с цифрами доставка и курс — суммы со словами «центры регионов» и «курсы ЦБ», общая строка «сумма не определена» исчезает, итог растёт', () => {
+  const register = {
+    ...mods.hiddenLib.EMPTY_REGISTER,
+    delivery: { ...mods.deliveryLib.EMPTY_DELIVERY, rate: '60', trips: '2', usualKm: '200' },
+    fx: { ...mods.fxLib.EMPTY_FX, series: USD_RATES, windowDays: '5', amount: '10000' },
+  };
+  const delivery = mods.deliveryLib.deliveryCost('Москва', 'Севастополь', register.delivery);
+  const fx = mods.fxLib.fxRisk(register.fx);
+  const note = { kind: 'other', place: { name: 'Севастополь', hard: true }, company: { name: 'Москва', hard: false } };
+  const price = 5_000_000;
+  const facts = [...mods.factEst.deliveryItems(delivery), ...mods.factEst.fxItems(fx)];
+  const result = mods.estLib.estimateRisks({ price, risks: [], type: 'goods', region: note, assumptions: register.assumptions, facts });
+  const without = mods.estLib.estimateRisks({ price, risks: [], type: 'goods', region: note, assumptions: register.assumptions });
+  const out = text(
+    renderToStaticMarkup(
+      h(mods.estUi.RiskEstimates, {
+        result, price, priceNote: 'цена вашей заявки', hypotheses: [], data: register, sens: mods.sensLib.computeSensitivity(register.sens),
+        defaultDrivers: [], priceHint: '5000000', onChange: none, facts: { delivery, fx, onLoadFx: async () => null },
+      }),
+    ),
+  );
+  assert.match(out, /Доставка дороже обычной: Москва → Севастополь/);
+  assert.match(out, /Курс: Доллар США, закупка 10 000 \$/);
+  assert.match(out, /центры регионов \(Москва → Севастополь\), 1 271 км по прямой × 1,3/);
+  assert.match(out, /Курсы Банка России за год; прошлый рост не гарантирует будущий/);
+  assert.equal(out.includes('Доставка или выезд: Севастополь вместо Москва'), false, 'общая строка заменена фактами');
+  assert.ok(result.total > without.total);
+  assert.match(out, /Свои цифры: доставка и курс валюты/);
+  const noPrice = text(renderToStaticMarkup(h(mods.estUi.RiskEstimates, { result: mods.estLib.estimateRisks({ price: null, risks: [], type: 'goods', region: note, assumptions: register.assumptions }), price: null, priceNote: '', hypotheses: [], data: register, sens: mods.sensLib.computeSensitivity(register.sens), defaultDrivers: [], priceHint: '0', onChange: none, facts: { delivery, fx, onLoadFx: async () => null } })));
+  assert.equal(noPrice.includes('Свои цифры'), false, 'без цены оценивать нечего');
 });
