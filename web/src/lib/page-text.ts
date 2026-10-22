@@ -64,5 +64,16 @@ export function priceExcerpt(html: string, limit = 14_000): { title: string; tex
   return { title: titleOf(html), text: out.join("\n"), truncated };
 }
 
+/** Текст страницы, уже прочитанный в браузере (например, через Chrome владельца для сайтов, закрытых от роботов), → HTML того же вида, что и скачанная страница: дальше он идёт тем же путём и с теми же проверками. */
+export function textToHtml(title: string, text: string): string {
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return `<html><head><title>${esc(title)}</title></head><body>${text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((l) => `<p>${esc(l)}</p>`)
+    .join("")}</body></html>`;
+}
+
 /** Тот же текст в виде, в котором сверяются цитаты: «ё» как «е», пробелы и неразрывные пробелы — одним пробелом, регистр не важен. */
 export const normalizeForQuote = (s: string) => String(s ?? "").toLowerCase().replace(/ё/g, "е").replace(/[\s  ]+/g, " ").trim();

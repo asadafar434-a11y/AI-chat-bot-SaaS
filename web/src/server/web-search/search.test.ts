@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { handleWebSearch, type WebSearchDeps } from "./handler.ts";
 import { createSearcher, SearchError } from "./search.ts";
-import { parseBraveHtml } from "@/lib/web-search.ts";
+import { parseBraveApi, parseBraveHtml } from "@/lib/web-search.ts";
 
 const page = (urls: string[]) =>
   `<div id="links" class="results">${urls
@@ -209,4 +209,95 @@ test("поиск: provider=brave или duckduckgo — ходит только �
   const onlyDdg = fakeFetch(() => html(page(["https://a.ru/x"])));
   assert.equal((await createSearcher({ fetcher: onlyDdg.fetcher, provider: "duckduckgo" })("рост цен 2026")).provider, "duckduckgo");
   assert.equal(onlyDdg.calls.length, 1);
+});
+
+// ——— Официальный поиск Brave по ключу ———
+const apiJson = (results: unknown[]) => new Response(JSON.stringify({ type: "search", web: { results } }), { status: 200, headers: { "Content-Type": "application/json" } });
+const KEY = "BSA-test-key-123";
+async function withKey<T>(key: string | undefined, run: () => Promise<T>): Promise<T> {
+  const before = process.env.BRAVE_SEARCH_API_KEY;
+  if (key === undefined) delete process.env.BRAVE_SEARCH_API_KEY;
+  else process.env.BRAVE_SEARCH_API_KEY = key;
+  try {
+    return await run();
+  } finally {
+    if (before === undefined) delete process.env.BRAVE_SEARCH_API_KEY;
+    else process.env.BRAVE_SEARCH_API_KEY = before;
+  }
+}
+
+test("Brave API: заголовок, адрес, сайт и описание из web.results; разметка снимается; не http, без заголовка и повторы отбрасываются; не больше шести; непонятный ответ — пусто", () => {
+  const hits = parseBraveApi(
+    JSON.stringify({
+      web: {
+        results: [
+          { title: "Уголь ДПК — оптом", url: "https://www.pst-78.ru/catalog/ugol/", description: "Оптовая <strong>цена</strong> 11 130 руб. за тонну" },
+          { title: "Дубль", url: "https://www.pst-78.ru/catalog/ugol/", description: "повтор адреса" },
+          { title: "Не http", url: "javascript:alert(1)", description: "x" },
+          { title: "", url: "https://no-title.ru/", description: "x" },
+          { title: "Без описания", url: "https://opt6.ru/p" },
+          ...Array.from({ length: 8 }, (_, i) => ({ title: `Страница ${i}`, url: `https://s${i}.ru/`, description: "текст" })),
+        ],
+      },
+    }),
+  );
+  assert.equal(hits.length, 6);
+  assert.deepEqual(hits[0], { title: "Уголь ДПК — оптом", url: "https://www.pst-78.ru/catalog/ugol/", domain: "pst-78.ru", snippet: "Оптовая цена 11 130 руб. за тонну" });
+  assert.equal(hits[1].snippet, "", "описания нет — пустая строка");
+  assert.deepEqual(parseBraveApi("не JSON"), []);
+  assert.deepEqual(parseBraveApi('{"web":{}}'), []);
+  assert.deepEqual(parseBraveApi('{"web":{"results":"нет"}}'), []);
+});
+
+test("поиск по ключу: ключ задан — первым идёт официальный Brave; ключ только в заголовке, русскоязычная выдача, без заголовков браузера; ответ помечен", async () => {
+  await withKey(KEY, async () => {
+    const { fetcher, calls } = fakeFetch(() => apiJson([{ title: "Уголь ДПК", url: "https://pst-78.ru/x", description: "11 130 руб." }]));
+    const out = await createSearcher({ fetcher, now: () => Date.parse("2026-10-23T10:00:00Z") })("купить уголь ДПК оптом");
+    assert.equal(calls.length, 1);
+    assert.match(calls[0].url, /^https:\/\/api\.search\.brave\.com\/res\/v1\/web\/search\?q=.*&count=10&country=ru&search_lang=ru/);
+    assert.equal(calls[0].url.includes(KEY), false, "ключ в адрес не попадает");
+    assert.equal(calls[0].headers["X-Subscription-Token"], KEY);
+    assert.equal(calls[0].headers["User-Agent"], undefined);
+    assert.equal(out.provider, "brave-api");
+    assert.match(out.providerName, /Brave Search API/);
+    assert.equal(out.hits[0].domain, "pst-78.ru");
+  });
+});
+
+test("поиск по ключу: без ключа официального Brave в очереди нет — первым идёт бесплатный; явный выбор brave-api без ключа — отказ с понятным текстом, без обращений в сеть", async () => {
+  await withKey(undefined, async () => {
+    const { fetcher, calls } = fakeFetch(() => html(bravePage(braveBlock("https://tass.ru/x", "Рост цен", "выросли"))));
+    const out = await createSearcher({ fetcher })("рост цен 2026");
+    assert.match(calls[0].url, /^https:\/\/search\.brave\.com\/search\?/);
+    assert.equal(out.provider, "brave");
+    const none = fakeFetch(() => html(""));
+    await assert.rejects(createSearcher({ fetcher: none.fetcher, provider: "brave-api" })("рост цен 2026"), (e: unknown) => e instanceof SearchError && e.status === 503 && /ключа BRAVE_SEARCH_API_KEY на сервере нет/.test(e.message));
+    assert.equal(none.calls.length, 0);
+  });
+});
+
+test("поиск по ключу: лимит или неверный ключ (429, 401) — поиск идёт дальше бесплатным Brave; запасной curl ключа не получает; в журнале код ответа без ключа", async () => {
+  await withKey(KEY, async () => {
+    const logs: string[] = [];
+    const log = console.error;
+    console.error = (...a: unknown[]) => void logs.push(a.map(String).join(" "));
+    try {
+      for (const status of [429, 401]) {
+        const spy: string[] = [];
+        const { fetcher, calls } = fakeFetch((n) => (n === 1 ? html("", status) : html(bravePage(braveBlock("https://a.ru/x", "Страница", "текст")))));
+        const fallbackFetcher = async (url: string, init: { headers?: Record<string, string> }) => {
+          spy.push(`${url} ${JSON.stringify(init.headers)}`);
+          return html("", 429);
+        };
+        const out = await createSearcher({ fetcher, fallbackFetcher })(`запрос ${status}`);
+        assert.equal(out.provider, "brave", `после ответа ${status} — бесплатный`);
+        assert.match(calls[0].url, /api\.search\.brave\.com/);
+        assert.equal(spy.some((s) => s.includes("api.search.brave.com") || s.includes(KEY)), false, "ключ и адрес API в запасной путь не уходят");
+      }
+    } finally {
+      console.error = log;
+    }
+    assert.ok(logs.some((l) => /Brave Search API: ответ 429/.test(l)) && logs.some((l) => /Brave Search API: ответ 401/.test(l)));
+    assert.equal(logs.some((l) => l.includes(KEY)), false, "ключа в журнале нет");
+  });
 });

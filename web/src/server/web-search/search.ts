@@ -1,6 +1,6 @@
 import "server-only";
 import { curlFetch } from "@/server/web-search/curl-fetch";
-import { braveUrl, duckDuckGoUrl, parseBraveHtml, parseDuckDuckGoHtml, PROVIDER_NAMES, type ProviderId, type SearchHit } from "@/lib/web-search";
+import { braveApiUrl, braveUrl, duckDuckGoUrl, parseBraveApi, parseBraveHtml, parseDuckDuckGoHtml, PROVIDER_NAMES, type ProviderId, type SearchHit } from "@/lib/web-search";
 
 // Запрос в поисковый сервис от имени сервера: участник видит только результаты, а сервис — только ключевые слова (lib/web-search.ts: cleanQuery). Пробный бесплатный поиск (DuckDuckGo) — временный:
 // у него нет ключа и договора, он может отказать или попросить подтвердить, что запрос делает человек. Боевой — российский сервис по ключу (SEARCH_PROVIDER, решение владельца: серверы и сервисы в РФ).
@@ -31,11 +31,14 @@ const MAX_CACHE = 200;
 
 // Бесплатные поисковики без ключа: у каждого свой адрес и разбор страницы. По умолчанию («auto») сначала Brave, потом DuckDuckGo: если один просит подтвердить, что запрос делает человек
 // (202, 403, 429), или не дал результатов, берётся другой. «brave» или «duckduckgo» в SEARCH_PROVIDER — только он; другое значение — честный отказ.
-const ENGINES: Record<ProviderId, { url: (query: string) => string; parse: (html: string) => SearchHit[] }> = {
+// Официальный поиск Brave по ключу (BRAVE_SEARCH_API_KEY в окружении сервера): в «auto» идёт первым, если ключ задан; без ключа его нет. Ключ уходит только в заголовок запроса к api.search.brave.com.
+const ENGINES: Record<ProviderId, { url: (query: string) => string; parse: (body: string) => SearchHit[]; keyed?: boolean }> = {
+  "brave-api": { url: braveApiUrl, parse: parseBraveApi, keyed: true },
   brave: { url: braveUrl, parse: parseBraveHtml },
   duckduckgo: { url: duckDuckGoUrl, parse: parseDuckDuckGoHtml },
 };
-const ORDER: Record<string, ProviderId[]> = { auto: ["brave", "duckduckgo"], brave: ["brave"], duckduckgo: ["duckduckgo"] };
+const ORDER: Record<string, ProviderId[]> = { auto: ["brave-api", "brave", "duckduckgo"], "brave-api": ["brave-api"], brave: ["brave"], duckduckgo: ["duckduckgo"] };
+const apiKey = () => process.env.BRAVE_SEARCH_API_KEY?.trim() || "";
 
 export function createSearcher(options: SearcherOptions = {}) {
   const fetcher = options.fetcher ?? fetch;
@@ -49,9 +52,12 @@ export function createSearcher(options: SearcherOptions = {}) {
 
   return async function search(query: string): Promise<SearchOutcome> {
     const provider = options.provider ?? process.env.SEARCH_PROVIDER ?? "auto";
-    const order = ORDER[provider];
+    const order = ORDER[provider]?.filter((id) => !ENGINES[id].keyed || apiKey());
     if (!order) {
       throw new SearchError(`Поисковый сервис «${provider}» на этом сервере ещё не подключён. Пока работает только пробный бесплатный поиск.`, 503);
+    }
+    if (order.length === 0) {
+      throw new SearchError("Официальный поиск Brave выбран, но ключа BRAVE_SEARCH_API_KEY на сервере нет.", 503);
     }
     const key = query.toLowerCase();
     const saved = cache.get(key);
@@ -68,7 +74,10 @@ export function createSearcher(options: SearcherOptions = {}) {
     let empty: SearchOutcome | null = null;
     for (const engine of order) {
       const url = ENGINES[engine].url(query);
-      const headers = { "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Accept-Language": "ru-RU,ru;q=0.9", Accept: "text/html" };
+      const keyed = ENGINES[engine].keyed === true;
+      const headers: Record<string, string> = keyed
+        ? { Accept: "application/json", "Accept-Encoding": "identity", "X-Subscription-Token": apiKey() }
+        : { "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Accept-Language": "ru-RU,ru;q=0.9", Accept: "text/html" };
       let response: Response;
       try {
         response = await fetcher(url, { headers, signal: AbortSignal.timeout(timeout), redirect: "follow" });
@@ -78,19 +87,23 @@ export function createSearcher(options: SearcherOptions = {}) {
       }
       // 202, 403, 429 — так бесплатный поиск отвечает, когда просит подтвердить, что запрос делает человек. Пробуем запасной путь (curl): некоторые поисковики пускают его, а Node — нет.
       const isBlocked = (r: Response) => r.status === 202 || r.status === 403 || r.status === 429;
-      if (isBlocked(response) && fallback) {
+      // Запасной curl — только для бесплатных поисковиков: официальный по ключу ничего «подтверждать» не просит, а ключ в curl отдавать незачем.
+      if (isBlocked(response) && fallback && !keyed) {
         try {
           response = await fallback(url, { headers, signal: AbortSignal.timeout(timeout) });
         } catch {
           // curl нет или он не ответил — остаётся отказ первого запроса
         }
       }
+      // Отказ официального поиска (неверный ключ, исчерпан лимит) пишем в журнал сервера — без ключа и без запроса; поиск идёт дальше бесплатными.
       if (isBlocked(response)) {
         blocked = true;
+        if (keyed) console.error(`Brave Search API: ответ ${response.status} (лимит или ключ не принят)`);
         continue;
       }
       if (!response.ok) {
         failed = true;
+        if (keyed) console.error(`Brave Search API: ответ ${response.status}`);
         continue;
       }
       const hits = ENGINES[engine].parse(await response.text());

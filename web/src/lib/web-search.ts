@@ -12,10 +12,16 @@ export const MAX_HITS = 6;
 export const MAX_QUERY = 160;
 export const MIN_QUERY = 3;
 
-export type ProviderId = "duckduckgo" | "brave";
-export const PROVIDER_NAMES: Record<ProviderId, string> = { duckduckgo: "DuckDuckGo (пробный бесплатный поиск)", brave: "Brave Search (пробный бесплатный поиск)" };
+export type ProviderId = "duckduckgo" | "brave" | "brave-api";
+export const PROVIDER_NAMES: Record<ProviderId, string> = {
+  duckduckgo: "DuckDuckGo (пробный бесплатный поиск)",
+  brave: "Brave Search (пробный бесплатный поиск)",
+  "brave-api": "Brave Search API (официальный поиск по ключу)",
+};
 
 export const braveUrl = (query: string) => `https://search.brave.com/search?q=${encodeURIComponent(query)}&source=web`;
+// Официальный поиск Brave по ключу (заголовок X-Subscription-Token): русскоязычная выдача, без подсветки слов в описании.
+export const braveApiUrl = (query: string) => `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=10&country=ru&search_lang=ru&safesearch=off&text_decorations=false`;
 export const duckDuckGoUrl = (query: string) => `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kl=ru-ru`;
 
 export type QueryCheck = { ok: true; query: string } | { ok: false; reason: string };
@@ -97,6 +103,30 @@ export function parseBraveHtml(html: string, limit = MAX_HITS): SearchHit[] {
     if (!text) continue;
     seen.add(url);
     hits.push({ title: text.slice(0, 200), url, domain: domainOf(url), snippet: description ? plain(description[1]).slice(0, 400) : "" });
+    if (hits.length >= limit) break;
+  }
+  return hits;
+}
+
+/** Результаты официального поиска Brave (JSON: web.results[] с title, url, description); ссылки только http и https, повторы по адресу убираются, разметка в описании снимается. Непонятный ответ — пустой список. */
+export function parseBraveApi(json: string, limit = MAX_HITS): SearchHit[] {
+  let data: unknown;
+  try {
+    data = JSON.parse(json);
+  } catch {
+    return [];
+  }
+  const list = (data as { web?: { results?: unknown } } | null)?.web?.results;
+  if (!Array.isArray(list)) return [];
+  const hits: SearchHit[] = [];
+  const seen = new Set<string>();
+  for (const raw of list) {
+    const r = (raw ?? {}) as { title?: unknown; url?: unknown; description?: unknown };
+    const url = typeof r.url === "string" && /^https?:\/\//i.test(r.url) ? r.url : "";
+    const title = typeof r.title === "string" ? plain(r.title) : "";
+    if (!url || !title || seen.has(url) || !domainOf(url)) continue;
+    seen.add(url);
+    hits.push({ title: title.slice(0, 200), url, domain: domainOf(url), snippet: typeof r.description === "string" ? plain(r.description).slice(0, 400) : "" });
     if (hits.length >= limit) break;
   }
   return hits;

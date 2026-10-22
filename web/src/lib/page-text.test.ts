@@ -1,7 +1,7 @@
 // Страница поставщика → текст для модели: разметка и скрипты убираются, цены и их соседние строки остаются, объём ограничен — npm test.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { htmlToLines, normalizeForQuote, priceExcerpt, titleOf } from "./page-text.ts";
+import { htmlToLines, normalizeForQuote, priceExcerpt, textToHtml, titleOf } from "./page-text.ts";
 
 const HTML = `<!doctype html><html><head><title>Уголь ДПК &mdash; купить оптом</title><script>var price = "99999 руб";</script><style>.a{color:red}</style></head>
 <body><nav>Главная | Каталог</nav><h1>Уголь марки Д (ДПК)</h1><p>Фракция 50-200 мм.</p>
@@ -36,6 +36,13 @@ test("слишком длинный отрывок помечается обре
   const ex = priceExcerpt(many, 3_000);
   assert.equal(ex.truncated, true);
   assert.ok(ex.text.length <= 3_000);
+});
+
+test("текст, прочитанный в браузере, → страница того же вида: строки в абзацах, разметка в тексте экранирована, пустые строки отброшены; цена из такого текста попадает в отрывок", () => {
+  const html = textToHtml("Каталог <угля>", "Уголь ДПК\n\n  Оптовая цена 11 130 руб. & самовывоз\n<script>alert(1)</script>");
+  assert.equal(titleOf(html), "Каталог <угля>");
+  assert.deepEqual(htmlToLines(html), ["Уголь ДПК", "Оптовая цена 11 130 руб. & самовывоз", "<script>alert(1)</script>"], "теги из текста остаются текстом, не разметкой");
+  assert.match(priceExcerpt(html).text, /Оптовая цена 11 130 руб\./);
 });
 
 test("сверка цитат: регистр, «ё», пробелы и неразрывные пробелы не мешают", () => {
