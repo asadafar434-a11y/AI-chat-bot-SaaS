@@ -4,6 +4,7 @@
 //   npm run market:collect -- --name="Уголь каменный ДПК" --unit=т --queries="…|…" --model-on --cap-rub=40 --usd-rub=81,13 --out="файл.json"                 вызвать модель (ПЛАТНО), результат — в файл, в базу ничего не пишется
 //   npm run market:collect -- --load-from="файл.json" --by="Имя"                                                                                        записать в базу принятые цены из файла (модель не вызывается)
 //   --name, --unit   какой товар и в какой единице нужна цена (цены в другой единице не принимаются);  --region  регион поставки, если нужен;
+//   --urls-file      вместо поиска — готовый список адресов страниц (по одному в строке): так страницы можно найти бесплатно, например в Яндексе через Chrome, а скачать и прочитать их сборщиком;
 //   --pages-file     вместо поиска и скачивания — страницы, уже прочитанные в браузере (например, через Chrome для сайтов, закрытых от роботов): JSON [{"url":"…","title":"…","text":"…"}]; дальше те же проверки;
 //   --queries        поисковые запросы через «|» (поиск бесплатный: Brave, запасной DuckDuckGo);  --max-pages  сколько страниц читать, по умолчанию 6 (по одной с сайта);
 //   --model-on       явное разрешение платного вызова: без него модель не вызывается. Нужны ANTHROPIC_API_KEY в окружении процесса, --cap-rub (потолок расходов, ₽) и --usd-rub (курс);
@@ -56,9 +57,17 @@ async function main() {
   const pagesFile = args.get("pages-file") && args.get("pages-file") !== "true" ? (args.get("pages-file") as string) : null;
   const filePages = pagesFile ? (JSON.parse(readFileSync(pagesFile, "utf8")) as { url: string; title?: string; text: string }[]) : [];
   if (pagesFile && filePages.length === 0) fail("в файле страниц ничего нет");
-  const queries = pagesFile ? ["страницы из файла"] : (args.get("queries") ?? "").split("|").map((q) => q.trim()).filter(Boolean);
-  if (!name || name === "true" || !unit || unit === "true" || queries.length === 0) fail('укажите --name="товар", --unit=единица и --queries="запрос|запрос" (или --pages-file)');
-  const maxPages = args.has("max-pages") ? num(args.get("max-pages"), "max-pages") : pagesFile ? filePages.length : 6;
+  const urlsFile = args.get("urls-file") && args.get("urls-file") !== "true" ? (args.get("urls-file") as string) : null;
+  const fileUrls = urlsFile
+    ? readFileSync(urlsFile, "utf8")
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter((l) => /^https?:\/\//i.test(l))
+    : [];
+  if (urlsFile && fileUrls.length === 0) fail("в файле адресов нет ни одного адреса");
+  const queries = pagesFile || urlsFile ? ["страницы из файла"] : (args.get("queries") ?? "").split("|").map((q) => q.trim()).filter(Boolean);
+  if (!name || name === "true" || !unit || unit === "true" || queries.length === 0) fail('укажите --name="товар", --unit=единица и --queries="запрос|запрос" (или --urls-file, или --pages-file)');
+  const maxPages = args.has("max-pages") ? num(args.get("max-pages"), "max-pages") : pagesFile ? filePages.length : urlsFile ? fileUrls.length : 6;
   const noModel = args.has("no-model");
   const modelOn = args.has("model-on");
   if (noModel === modelOn) fail("укажите ровно одно: --no-model (бесплатно, без модели) или --model-on (платный вызов)");
@@ -77,7 +86,9 @@ async function main() {
     {
       search: pagesFile
         ? async () => filePages.map((p) => ({ title: p.title ?? p.url, url: p.url, domain: new URL(p.url).hostname, snippet: "" }))
-        : async (q) => (await search(q)).hits,
+        : urlsFile
+          ? async () => fileUrls.map((u) => ({ title: u, url: u, domain: new URL(u).hostname, snippet: "" }))
+          : async (q) => (await search(q)).hits,
       fetchPage: pagesFile
         ? async (url) => {
             const p = filePages.find((x) => x.url === url);
