@@ -55,7 +55,7 @@ export function Tariffs() {
                 {p.count === 1 ? 'для одной закупки' : `${rubShort(p.perApp)} за заявку · экономия ${rubShort(p.saving)}`}
               </p>
               <Button variant={top ? 'accent' : p.count === 1 ? 'secondary' : 'primary'} className="mt-4 w-full" disabled>
-                {p.count === 1 ? 'Купить заявку' : `Купить ${p.count} заявок`} <Soon className="border-current/40 text-current" />
+                {p.count === 1 ? 'Купить заявку' : `Купить ${p.count} заявок`}
               </Button>
             </Card>
           );

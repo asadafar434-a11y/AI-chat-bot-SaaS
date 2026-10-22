@@ -94,3 +94,32 @@ test('«Поиск закупок» — заглушка: честно «в ра
   }
   assert.equal(/\d{11,}/.test(plain), false, 'номеров закупок нет');
 });
+
+// ——— Шаг «Проверка»: уровни важности ———
+test('риск: уровень — самым крупным и цветом (красный, янтарный, зелёный), плашка подкрашена; причина — жирным рядом', () => {
+  const high = html(h(review.RiskBlock, { audit: report([finding('a', 'CRITICAL', 'x')], 'high') }));
+  assert.match(high, /text-2xl font-bold[^"]*text-danger[^>]*>Высокий/);
+  assert.match(high, /bg-danger\/5/);
+  const medium = html(h(review.RiskBlock, { audit: report([finding('a', 'WARNING', 'x')], 'medium') }));
+  assert.match(medium, /text-2xl font-bold[^"]*text-warn-foreground[^>]*>Средний/);
+  const low = html(h(review.RiskBlock, { audit: report([], 'low') }));
+  assert.match(low, /text-2xl font-bold[^"]*text-success[^>]*>Низкий/);
+  assert.match(low, /bg-success\/5/);
+});
+
+test('причины риска: оговорка про «не вероятность» — в подсказке, на виду только «ИИ не вызывается»', () => {
+  const out = html(h(review.RiskReasons, { audit: report([finding('a', 'WARNING', 'x')], 'medium') }));
+  assert.match(text(out), /ИИ не вызывается\./);
+  assert.match(out, /role="tooltip"[^>]*>Это не вероятность, а вывод по правилам/);
+});
+
+test('итоговая проверка: сверху вывод словами и цветом, под ним тихие цифры по видам; готово — зелёная плашка, нет — янтарная', () => {
+  const final = (ready, text) => ({ ready, text, fields: { required: 10, filled: 10, empty: 0, invalid: 0 }, documents: { required: 3, ready: 3 }, confirmations: { required: 2, done: 2 }, signatures: { required: 1, done: 0 } });
+  const ok = html(h(review.FinalCheck, { final: final(true, 'Всё готово к подаче.') }));
+  assert.match(ok, /bg-success\/10 text-success[^"]*"[^>]*>.*Всё готово к подаче\./s);
+  assert.ok(ok.indexOf('Всё готово к подаче.') < ok.indexOf('Итоговая проверка'), 'вывод — раньше подписи «Итоговая проверка»');
+  assert.match(text(ok), /Обязательные поля.*10 из 10 · пустых 0/);
+  const bad = html(h(review.FinalCheck, { final: final(false, 'Не хватает двух пунктов.') }));
+  assert.match(bad, /bg-warn-surface\/50 text-warn-foreground/);
+  assert.match(bad, /border-warn\/40/);
+});

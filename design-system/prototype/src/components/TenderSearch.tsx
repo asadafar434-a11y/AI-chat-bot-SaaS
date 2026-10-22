@@ -11,9 +11,6 @@ export function TenderSearch({ onNew }: { onNew: () => void }) {
           <h1 className="text-2xl font-semibold tracking-tight">Поиск закупок</h1>
           <Soon />
         </div>
-        <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
-          Поиск по площадкам — в разработке. Здесь будут закупки из ЕИС и электронных площадок, отсортированные по вашим кодам ОКПД и профилю компании.
-        </p>
       </div>
 
       <Card className="flex flex-col items-center gap-3 px-6 py-12 text-center">
@@ -21,7 +18,7 @@ export function TenderSearch({ onNew }: { onNew: () => void }) {
           <Search className="size-5" />
         </span>
         <p className="max-w-md text-sm text-muted-foreground">
-          Пока закупку добавляют загрузкой документов: скачайте их с площадки и загрузите — ИИ выпишет требования и проведёт до готового пакета.
+          Поиск по площадкам — в разработке. Пока закупку добавляют загрузкой документов: скачайте их с площадки и загрузите.
         </p>
         <Button onClick={onNew}>
           <Plus className="size-4" /> Новая закупка

@@ -122,3 +122,62 @@ test('«Пакет» без заявки (у единственного пост
   // Обычная закупка без документов — по-прежнему просим составить.
   assert.match(html(h(pkg.StepPackage, props({ hasTp: false }))), /Документы заявки ещё не составлены/);
 });
+
+// ——— «Пакет»: уровни важности ———
+const plain = (markup) => markup.replace(/<[^>]+>/g, ' ').replace(/[  ]/g, ' ').replace(/\s+/g, ' ');
+
+test('«Пакет»: сверху плашка итога — «готов» зелёным, главная кнопка «Всё архивом · ZIP» там же и больше нигде', () => {
+  const out = html(h(pkg.StepPackage, props()));
+  assert.match(out, /border-success\/40 bg-success\/5/);
+  assert.match(out, /text-2xl font-bold[^"]*text-success[^>]*>.*Пакет документов готов/s);
+  assert.equal((out.match(/Всё архивом · ZIP/g) ?? []).length, 1, 'кнопка архива одна — в плашке итога');
+  assert.ok(out.indexOf('Всё архивом · ZIP') < out.indexOf('Состав пакета'), 'кнопка выше состава пакета');
+  assert.equal(/Осталось незакрытых пунктов/.test(out), false);
+});
+
+test('«Пакет»: не всё закрыто — плашка янтарная, «осталось незакрытых пунктов: N» жирным и «Вернуться к проверке» рядом с архивом', () => {
+  const final = { ...props().final, ready: false, fields: { required: 4, filled: 2, empty: 2, invalid: 0 } };
+  const out = html(h(pkg.StepPackage, props({ final })));
+  assert.match(out, /border-warn\/50 bg-warn-surface\/30/);
+  assert.match(out, /text-2xl font-bold[^"]*text-warn-foreground[^>]*>.*Пакет почти готов/s);
+  assert.match(plain(out), /Осталось незакрытых пунктов: 2/);
+  assert.match(out, /text-\[15px\] font-bold text-warn-foreground/);
+  assert.match(plain(out), /Вернуться к проверке .*Всё архивом · ZIP/);
+});
+
+test('«Пакет»: документов заявки ещё нет — «К проверке» в плашке, архива нет; текст «составьте их на шаге «Проверка»» — в подсказке', () => {
+  const out = html(h(pkg.StepPackage, props({ hasTp: false })));
+  assert.match(plain(out), /Документы заявки ещё не составлены/);
+  assert.match(plain(out), /К проверке/);
+  assert.equal(out.includes('Всё архивом'), false);
+  assert.match(out, /role="tooltip"[^>]*>Составьте их на шаге «Проверка»/);
+});
+
+test('«Пакет»: формат файлов — кнопками в шапке состава пакета, выбранный отмечен; отдельной строки «Формат:» нет', () => {
+  const out = html(h(pkg.StepPackage, props({ format: 'pdf' })));
+  const group = out.slice(out.indexOf('aria-label="Формат файлов"'));
+  assert.match(group, /aria-pressed="false"[^>]*>DOCX/);
+  assert.match(group, /aria-pressed="true"[^>]*>PDF/);
+  assert.match(group, /aria-pressed="false"[^>]*>ODT/);
+  assert.ok(out.indexOf('Состав пакета') < out.indexOf('aria-label="Формат файлов"'));
+  assert.equal(out.includes('Формат:'), false);
+});
+
+test('«Пакет»: оплата и проверка специалистом — тонкие строки «скоро»; длинные описания и список из трёх пунктов — только в подсказках', () => {
+  const out = html(h(pkg.StepPackage, props()));
+  assert.match(plain(out), /Заявка под ключ · 1 000 ₽ скоро/i);
+  assert.match(plain(out), /Проверка специалистом скоро/i);
+  assert.equal(/<ul class="mt-2 flex flex-wrap/.test(out), false, 'списка из трёх галочек нет');
+  assert.match(out, /role="tooltip"[^>]*>Пакет проверил ИИ\. Живой тендерный юрист/);
+  assert.match(out, /<button[^>]*disabled=""[^>]*>.*Оплатить/s);
+});
+
+test('«Пакет»: заголовки блоков — крупно и жирно; «готово N из M» зелёным, когда всё отмечено', () => {
+  const items = [{ text: 'Документ', source: 'Извещение', quote: 'Документ', verified: true, ready: true, required: true }];
+  const out = html(h(pkg.StepPackage, props({ items })));
+  assert.match(out, /text-\[15px\] font-bold[^>]*>Состав пакета/);
+  assert.match(out, /text-\[15px\] font-bold[^>]*>.*Что требует заказчик/s);
+  assert.match(out, /text-success[^>]*>готово 1 из 1/);
+  const half = html(h(pkg.StepPackage, props({ items: [{ ...items[0], ready: false }] })));
+  assert.doesNotMatch(half, /text-success[^>]*>готово 0 из 1/);
+});

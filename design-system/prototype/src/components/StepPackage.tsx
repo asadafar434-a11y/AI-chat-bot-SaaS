@@ -83,10 +83,11 @@ const RISK_LABEL: Record<AuditReport['risk'], string> = {
   medium: 'Средний риск',
   low: 'Готово к подаче',
 };
-const RISK_TONE: Record<AuditReport['risk'], Tone> = {
-  high: 'danger',
-  medium: 'warn',
-  low: 'success',
+// Цвет итога финальной проверки: красный — высокий риск, янтарный — средний, зелёный — готово.
+const RISK_TEXT: Record<AuditReport['risk'], string> = {
+  high: 'text-danger',
+  medium: 'text-warn-foreground',
+  low: 'text-success',
 };
 
 function AuditPanel({ report }: { report: AuditReport }) {
@@ -112,13 +113,14 @@ function AuditPanel({ report }: { report: AuditReport }) {
           ) : (
             <CheckCircle2 className="size-4 text-success" />
           )}
-          <span className="text-sm font-medium">Финальная проверка</span>
+          <span className="text-[15px] font-bold">Финальная проверка</span>
+          <HelpTip align="start" content="Критичные нарушения — вероятное отклонение заявки. Предупреждения — нужна проверка человека." />
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           {report.critical > 0 && <Badge tone="danger">{report.critical} {plural(report.critical, 'критичное', 'критичных', 'критичных')}</Badge>}
           {report.warnings > 0 && <Badge tone="warn">{report.warnings} {plural(report.warnings, 'предупреждение', 'предупреждения', 'предупреждений')}</Badge>}
           {report.info > 0 && <Badge tone="neutral">{report.info} инфо</Badge>}
-          <Badge tone={RISK_TONE[report.risk]}>{RISK_LABEL[report.risk]}</Badge>
+          <span className={cx('text-[14px] font-bold', RISK_TEXT[report.risk])}>{RISK_LABEL[report.risk]}</span>
         </div>
       </div>
       <ul className="divide-y divide-border">
@@ -162,12 +164,6 @@ function AuditPanel({ report }: { report: AuditReport }) {
           );
         })}
       </ul>
-      <div className="flex items-start gap-2 border-t border-border px-4 py-3">
-        <Info className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-        <p className="text-[11px] text-muted-foreground">
-          Критичные нарушения — вероятное отклонение заявки. Предупреждения — нужна проверка человека.
-        </p>
-      </div>
     </Card>
   );
 }
@@ -182,7 +178,8 @@ function ScoringPanel({ report }: { report: ScoringReport }) {
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <Info className="size-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Оценка по критериям</span>
+          <span className="text-[15px] font-bold">Оценка по критериям</span>
+          <HelpTip align="start" content="Баллы рассчитаны по базе доказательств. ИИ не участвует — только код. Цена считается площадкой." />
         </div>
         <div className="flex items-center gap-1.5">
           {report.totalPoints !== null && report.totalMax !== null ? (
@@ -244,12 +241,6 @@ function ScoringPanel({ report }: { report: ScoringReport }) {
             </table>
           </div>
         ))}
-      </div>
-      <div className="flex items-start gap-2 border-t border-border px-4 py-3">
-        <Info className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-        <p className="text-[11px] text-muted-foreground">
-          Баллы рассчитаны по базе доказательств. ИИ не участвует — только код. Цена считается площадкой.
-        </p>
       </div>
     </Card>
   );
@@ -483,110 +474,67 @@ export function StepPackage({
     setRedo(false);
   };
 
+  // Уровни важности (решение владельца 22.10.2026): 1) итог пакета и главное действие — крупно и цветом; 2) файлы и список заказчика; 3) оплата и проверка специалистом («скоро») — тонкими строками, пояснения — в подсказках.
+  const heroTone = noApplication ? '' : hasTp && final.ready ? 'border-success/40 bg-success/5' : 'border-warn/50 bg-warn-surface/30';
+  const heroText = hasTp && final.ready ? 'text-success' : 'text-warn-foreground';
+  const zipLabel = downloading === 'all' ? (writing ? 'Пишу документ…' : 'Собираю архив…') : 'Всё архивом · ZIP';
+
   return (
-    <div className="animate-fade-up space-y-5">
-      <div>
-        <div className="flex items-center gap-2">
-          {!noApplication &&
-            (hasTp && final.ready ? <ShieldCheck className="size-5 text-success" /> : <AlertTriangle className="size-5 text-warn" />)}
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {noApplication ? 'Что подготовить' : !hasTp ? 'Пакет документов' : final.ready ? 'Пакет документов готов' : 'Пакет почти готов'}
-          </h1>
+    <div className="animate-fade-up space-y-4">
+      <Card className={cx('p-5', heroTone)}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className={cx('flex items-center gap-2 text-2xl font-bold tracking-tight', !noApplication && heroText)}>
+              {!noApplication && (hasTp && final.ready ? <ShieldCheck className="size-6 shrink-0" /> : <AlertTriangle className="size-6 shrink-0" />)}
+              {noApplication ? 'Что подготовить' : !hasTp ? 'Пакет документов' : final.ready ? 'Пакет документов готов' : 'Пакет почти готов'}
+            </h1>
+            <p className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
+              {noApplication ? 'Заявки нет — подготовьте то, что просит заказчик.' : 'Скачайте файлы, отметьте собранное, подпишите и подайте.'}
+              <HelpTip
+                align="start"
+                content={
+                  noApplication
+                    ? 'В этой закупке заявки нет: заказчик заключает договор с названным поставщиком. Подготовьте то, что он просит, и отметьте готовое.'
+                    : `Скачайте файлы ${NAME[format]} по одному или архивом и отметьте, что из списка заказчика уже собрано. Потом подпишите заявку электронной подписью и подайте на площадке.`
+                }
+              />
+            </p>
+            {hasTp && !noApplication && openCount > 0 && (
+              <p className="mt-2 flex items-center gap-1.5 text-[15px] font-bold text-warn-foreground">
+                Осталось незакрытых пунктов: {openCount}
+                <HelpTip align="start" content="Скачать можно и так, но риск отклонения выше. В файлах незаполненное — жёлтым." />
+              </p>
+            )}
+          </div>
+          {!noApplication && (
+            <div className="flex flex-wrap items-center gap-2">
+              {(!hasTp || openCount > 0) && (
+                <Button variant="secondary" onClick={onFix}>
+                  {hasTp ? 'Вернуться к проверке' : 'К проверке'}
+                </Button>
+              )}
+              {hasTp && (
+                <Tooltip content={`Все документы в ${EXT[format]} одним архивом.`} align="end">
+                  <Button disabled={busy} onClick={onDownloadAll}>
+                    {downloading === 'all' ? <Loader2 className="size-4 animate-spin" /> : <Archive className="size-4" />}
+                    {zipLabel}
+                  </Button>
+                </Tooltip>
+              )}
+            </div>
+          )}
         </div>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          {noApplication
-            ? 'В этой закупке заявки нет: заказчик заключает договор с названным поставщиком. Подготовьте то, что он просит, и отметьте готовое.'
-            : `Скачайте файлы ${NAME[format]} по одному или архивом и отметьте, что из списка заказчика уже собрано. Потом подпишите заявку электронной подписью и подайте на площадке.`}
-        </p>
-      </div>
+        {!noApplication && !hasTp && (
+          <p className="mt-3 flex items-center gap-1.5 text-[13px] font-medium">
+            Документы заявки ещё не составлены
+            <HelpTip align="start" content="Составьте их на шаге «Проверка» — форму заявки беру из документов закупки. Тогда здесь появятся файлы." />
+          </p>
+        )}
+      </Card>
 
       {notice}
 
-      {noApplication ? null : !hasTp ? (
-        <Card className="flex flex-wrap items-center justify-between gap-3 border-warn/40 bg-warn-surface/30 p-4">
-          <div className="flex items-start gap-2.5">
-            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warn" />
-            <div>
-              <p className="text-sm font-medium">Документы заявки ещё не составлены</p>
-              <p className="text-[13px] text-muted-foreground">
-                Составьте их на шаге «Проверка» — форму заявки беру из документов закупки. Тогда здесь появятся файлы.
-              </p>
-            </div>
-          </div>
-          <Button size="sm" variant="secondary" onClick={onFix}>
-            К проверке
-          </Button>
-        </Card>
-      ) : (
-        openCount > 0 && (
-          <Card className="flex flex-wrap items-center justify-between gap-3 border-warn/40 bg-warn-surface/30 p-4">
-            <div className="flex items-start gap-2.5">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warn" />
-              <div>
-                <p className="text-sm font-medium">Осталось незакрытых пунктов: {openCount}</p>
-                <p className="text-[13px] text-muted-foreground">
-                  Скачать можно и так, но риск отклонения выше. В файлах незаполненное — жёлтым.
-                </p>
-              </div>
-            </div>
-            <Button size="sm" variant="secondary" onClick={onFix}>
-              Вернуться к проверке
-            </Button>
-          </Card>
-        )
-      )}
-
       {hasTp && !noApplication && <FinalCheck final={final} />}
-
-      {/* Оплата заявки — пока без денег: файлы скачиваются бесплатно */}
-      {!noApplication && (
-      <>
-      <Card className="flex flex-wrap items-center justify-between gap-4 p-4">
-        <div className="flex items-start gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary">
-            <CreditCard className="size-4" />
-          </span>
-          <div>
-            <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
-              Заявка под ключ · {rubShort(PRICE_APP)} <Soon />
-            </p>
-            <p className="text-[13px] text-muted-foreground">
-              Оплаты пока нет — документы скачиваются бесплатно. Пакет 5 или 10 заявок будет дешевле.
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button disabled>
-            <CreditCard className="size-4" /> Оплатить {rubShort(PRICE_APP)}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={onTariffs}>
-            Тарифы
-          </Button>
-        </div>
-      </Card>
-
-      {/* Формат */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">Формат:</span>
-        {FORMATS.map((f) => (
-          <Tooltip key={f.ext} content={f.label} side="bottom">
-            <button
-              type="button"
-              disabled={busy}
-              aria-pressed={f.id === format}
-              onClick={() => onFormat(f.id)}
-              className={cx(
-                'inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors',
-                f.id === format
-                  ? 'border-foreground bg-primary text-primary-foreground'
-                  : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-60',
-              )}
-            >
-              {f.ext}
-            </button>
-          </Tooltip>
-        ))}
-      </div>
 
       {error && (
         <p role="alert" className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
@@ -595,32 +543,39 @@ export function StepPackage({
       )}
       {note && <p role="status" className="rounded-md bg-info/10 px-3 py-2 text-[13px] text-info">{note}</p>}
 
-      {/* Проверка специалистом — пока не работает; узкая строка над документами (решение владельца 17.10.2026) */}
-      <Card className="flex flex-wrap items-center gap-x-6 gap-y-3 p-4">
-        <div className="min-w-0 flex-1 basis-80">
-          <div className="flex flex-wrap items-center gap-2">
-            <UserCheck className="size-4" />
-            <span className="text-sm font-medium">Проверка специалистом</span>
-            <Soon />
-            <HelpTip content="Живой тендерный юрист вручную сверит пакет с извещением и даст письменное заключение." />
+      {/* Оплата и проверка специалистом пока не работают («скоро»): тонкие строки над документами (решение владельца 17.10.2026), пояснения — в подсказках. */}
+      {!noApplication && (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-2.5">
+            <p className="flex flex-wrap items-center gap-2 text-[13px] font-medium">
+              <CreditCard className="size-4" />
+              Заявка под ключ · {rubShort(PRICE_APP)} <Soon />
+              <HelpTip align="start" content="Оплаты пока нет — документы скачиваются бесплатно. Пакет 5 или 10 заявок будет дешевле." />
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" disabled>
+                <CreditCard className="size-3.5" /> Оплатить {rubShort(PRICE_APP)}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onTariffs}>
+                Тарифы
+              </Button>
+            </div>
           </div>
-          <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
-            Пакет проверил ИИ. Тендерный юрист вручную сверит документы с извещением и даст заключение перед подачей — разовая услуга. Пока
-            недоступно: подключим вместе с оплатой.
-          </p>
-          <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px]">
-            {['Ручная сверка с извещением', 'То, чего не видит ИИ: сроки, подписи, формы', 'Заключение за 2 часа'].map((t) => (
-              <li key={t} className="flex items-center gap-1.5 text-muted-foreground">
-                <Check className="size-3.5 shrink-0 text-success" /> {t}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <Button variant="accent" className="h-10 max-sm:w-full" disabled>
-          <UserCheck className="size-4" /> Отправить специалисту · {rubShort(PRICE_EXPERT)}
-        </Button>
-      </Card>
-      </>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-2.5">
+            <p className="flex flex-wrap items-center gap-2 text-[13px] font-medium">
+              <UserCheck className="size-4" />
+              Проверка специалистом <Soon />
+              <HelpTip
+                align="start"
+                content="Пакет проверил ИИ. Живой тендерный юрист вручную сверит документы с извещением и даст письменное заключение перед подачей — разовая услуга. Ручная сверка с извещением. То, чего не видит ИИ: сроки, подписи, формы. Заключение за 2 часа. Пока недоступно: подключим вместе с оплатой."
+              />
+            </p>
+            <Button variant="accent" size="sm" disabled>
+              <UserCheck className="size-3.5" /> Отправить специалисту · {rubShort(PRICE_EXPERT)}
+            </Button>
+          </div>
+        </>
       )}
 
       <div className="grid grid-cols-1 gap-4">
@@ -629,16 +584,27 @@ export function StepPackage({
           {(!noApplication || (detectedForms?.length ?? 0) > 0) && (
           <Card className="p-0">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-              <div>
-                <span className="text-sm font-medium">Состав пакета · {count} док.</span>
-                <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">файлы {NAME[format]}, которые составляет приложение</p>
+              <span className="text-[15px] font-bold">Состав пакета · {count} док.</span>
+              <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Формат файлов">
+                {FORMATS.map((f) => (
+                  <Tooltip key={f.ext} content={f.label} side="bottom" align="end">
+                    <button
+                      type="button"
+                      disabled={busy}
+                      aria-pressed={f.id === format}
+                      onClick={() => onFormat(f.id)}
+                      className={cx(
+                        'inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
+                        f.id === format
+                          ? 'border-foreground bg-primary text-primary-foreground'
+                          : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-60',
+                      )}
+                    >
+                      {f.ext}
+                    </button>
+                  </Tooltip>
+                ))}
               </div>
-              <Tooltip content={hasTp ? `Все документы в ${EXT[format]} одним архивом.` : 'Сначала составьте документы на шаге «Проверка».'} align="end">
-                <Button size="sm" disabled={busy || !hasTp} onClick={onDownloadAll}>
-                  {downloading === 'all' ? <Loader2 className="size-3.5 animate-spin" /> : <Archive className="size-3.5" />}
-                  {downloading === 'all' ? (writing ? 'Пишу документ…' : 'Собираю архив…') : 'Всё архивом · ZIP'}
-                </Button>
-              </Tooltip>
             </div>
             <div>
               {rows.map((row) => (
@@ -669,16 +635,19 @@ export function StepPackage({
           {/* Что требует заказчик */}
           <Card className="p-0">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-              <div>
-                <span className="text-sm font-medium">Что требует заказчик</span>
-                <p className="mt-0.5 text-[12px] text-muted-foreground">
-                  {noApplication
-                    ? 'Всё, что заказчик просит от участника. Отметьте, что уже готово.'
-                    : 'Всё, что заказчик просит приложить. Часть закрывают файлы выше — отметьте, что уже готово.'}
-                </p>
-              </div>
+              <span className="flex items-center gap-1.5 text-[15px] font-bold">
+                Что требует заказчик
+                <HelpTip
+                  align="start"
+                  content={
+                    noApplication
+                      ? 'Всё, что заказчик просит от участника. Отметьте, что уже готово.'
+                      : 'Всё, что заказчик просит приложить. Часть закрывают файлы выше — отметьте, что уже готово.'
+                  }
+                />
+              </span>
               {items.length > 0 && (
-                <span className="font-mono text-[11px] text-muted-foreground">
+                <span className={cx('font-mono text-[13px] font-bold tabular-nums', needed.length > 0 && ready === needed.length ? 'text-success' : 'text-foreground')}>
                   {needed.length ? `готово ${ready} из ${needed.length}` : 'отмечать нечего'}
                 </span>
               )}

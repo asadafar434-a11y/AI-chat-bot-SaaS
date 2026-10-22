@@ -98,7 +98,9 @@ const isOpenField = (f: ApplicationField) => f.status === 'invalid' || f.kind ==
 // Риск отклонения — не вероятность, а вывод по правилам: что в заявке не заполнено, не подтверждено или не подходит под требования закупки
 // (замечания финальной проверки, lib/submission-audit.ts — те же, что на шаге «Пакет»). Процента нет: без статистики прошлых торгов он был бы выдумкой.
 const RISK_NAME: Record<AuditReport['risk'], string> = { high: 'Высокий', medium: 'Средний', low: 'Низкий' };
-const RISK_TONE: Record<AuditReport['risk'], Tone> = { high: 'danger', medium: 'warn', low: 'success' };
+// Цвет уровня риска: красный — высокий, янтарный — средний, зелёный — низкий; плашка слегка подкрашена тем же цветом.
+const RISK_TEXT: Record<AuditReport['risk'], string> = { high: 'text-danger', medium: 'text-warn-foreground', low: 'text-success' };
+const RISK_WRAP: Record<AuditReport['risk'], string> = { high: 'bg-danger/5', medium: 'bg-warn-surface/30', low: 'bg-success/5' };
 const FINDING: Record<AuditSeverity, { tone: Tone; label: string }> = {
   CRITICAL: { tone: 'danger', label: 'Критично' },
   WARNING: { tone: 'warn', label: 'Предупреждение' },
@@ -144,9 +146,12 @@ export function RiskReasons({ audit }: { audit: AuditReport }) {
         ))
       )}
       {audit.findings.length > 12 && <p className="text-muted-foreground">…и ещё {audit.findings.length - 12}: полный список — на шаге «Пакет».</p>}
-      <p className="text-muted-foreground">
-        Это не вероятность, а вывод по правилам: что в заявке не заполнено, не подтверждено или не подходит под требования закупки. Процент не показываем —
-        без статистики прошлых торгов он был бы выдумкой. ИИ не вызывается.
+      <p className="flex items-center gap-1.5 text-muted-foreground">
+        ИИ не вызывается.
+        <HelpTip
+          align="start"
+          content="Это не вероятность, а вывод по правилам: что в заявке не заполнено, не подтверждено или не подходит под требования закупки. Процент не показываем — без статистики прошлых торгов он был бы выдумкой."
+        />
       </p>
     </div>
   );
@@ -158,12 +163,14 @@ export function RiskBlock({ audit }: { audit: AuditReport }) {
   const allClear = audit.findings.every((x) => x.severity === 'INFO');
   return (
     <>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
-        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-          {allClear ? <ShieldCheck className="size-5 text-success" /> : <ShieldAlert className={cx('size-5', audit.risk === 'high' ? 'text-danger' : 'text-warn')} />}
-          <span className="text-[13px] font-medium">Риск отклонения</span>
-          <Badge tone={RISK_TONE[audit.risk]}>{RISK_NAME[audit.risk]}</Badge>
-          <span className="text-[12px] text-muted-foreground">{riskReason(audit)}</span>
+      <div className={cx('flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-4', RISK_WRAP[audit.risk])}>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          {allClear ? <ShieldCheck className="size-7 text-success" /> : <ShieldAlert className={cx('size-7', audit.risk === 'high' ? 'text-danger' : 'text-warn-foreground')} />}
+          <div>
+            <p className="text-[12px] font-semibold text-muted-foreground">Риск отклонения</p>
+            <p className={cx('text-2xl font-bold tracking-tight', RISK_TEXT[audit.risk])}>{RISK_NAME[audit.risk]}</p>
+          </div>
+          <span className="max-w-[46ch] text-[13px] font-medium">{riskReason(audit)}</span>
         </div>
         <button
           onClick={() => setWhy(!why)}
@@ -273,9 +280,11 @@ export function StepReview({
     <div className="animate-fade-up space-y-4">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Проверка перед подачей</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          ИИ сверил заявку с извещением и ТЗ. <mark className="highlight">Жёлтым</mark> — что дописать или подтвердить; у
-          каждого пункта видно, откуда взято значение или почему его нет.
+        <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+          <span>
+            <mark className="highlight">Жёлтым</mark> — что дописать или подтвердить.
+          </span>
+          <HelpTip align="start" content="ИИ сверил заявку с извещением и ТЗ. У каждого пункта видно, откуда взято значение или почему его нет." />
         </p>
       </div>
 
@@ -283,16 +292,21 @@ export function StepReview({
 
       {/* Сводка: заполнение, риск — одним островом */}
       <Card className="divide-y divide-border p-0">
+        {/* Уровень 1: риск отклонения — самое важное на шаге, поэтому первым и крупно. */}
+        {audit && <RiskBlock audit={audit} />}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3">
           <div className="min-w-[200px] flex-1">
-            <div className="flex items-center justify-between text-[13px]">
+            <div className="flex items-baseline justify-between text-[13px]">
               <span className="font-medium">Подготовка заявки</span>
               <span className="font-mono tabular-nums text-muted-foreground">
-                {summary.done} из {summary.total} · {Math.round(summary.share * 100)}%
+                <span className="text-lg font-bold text-foreground">
+                  {summary.done} из {summary.total}
+                </span>{' '}
+                · {Math.round(summary.share * 100)}%
               </span>
             </div>
-            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-secondary">
-              <div className="h-full rounded-full bg-foreground transition-all duration-500" style={{ width: `${summary.share * 100}%` }} />
+            <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-secondary">
+              <div className={cx('h-full rounded-full transition-all duration-500', summary.share >= 1 ? 'bg-success' : 'bg-foreground')} style={{ width: `${summary.share * 100}%` }} />
             </div>
           </div>
           {first ? (
@@ -313,8 +327,6 @@ export function StepReview({
             <KindChip key={kind} kind={kind} n={counts[kind]} active={filter === kind} onClick={() => setFilter(filter === kind ? 'all' : kind)} />
           ))}
         </div>
-
-        {audit && <RiskBlock audit={audit} />}
       </Card>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -532,21 +544,19 @@ function Control({
       <div className="space-y-2">
         {snippet && <Snippet {...snippet} />}
         {hint && (
-          <p className="text-[12px] leading-snug text-muted-foreground">
-            Заказчик назвал только границу: <span className="font-mono">{f.label.replace(/^(?:число|размер), /, '')}</span>. Сколько предложить —
-            решаете вы: ИИ за вас это не выбирает.
+          <p className="flex flex-wrap items-center gap-x-1.5 text-[12px] leading-snug text-muted-foreground">
+            <span>
+              Заказчик назвал границу: <span className="font-mono font-semibold text-foreground">{f.label.replace(/^(?:число|размер), /, '')}</span>. Сколько предложить — решаете вы.
+            </span>
+            <HelpTip align="start" content="Заказчик назвал только границу, а не значение: ИИ за вас это не выбирает." />
             {accept && (
-              <>
-                {' '}
-                <button
-                  type="button"
-                  onClick={() => onSave(f.key, accept)}
-                  className="font-medium text-foreground underline underline-offset-4 hover:no-underline"
-                >
-                  Предложить ровно {accept}
-                </button>{' '}
-                — если готовы дать именно столько.
-              </>
+              <button
+                type="button"
+                onClick={() => onSave(f.key, accept)}
+                className="font-medium text-foreground underline underline-offset-4 hover:no-underline"
+              >
+                Предложить ровно {accept}
+              </button>
             )}
           </p>
         )}
@@ -692,29 +702,30 @@ export function FinalCheck({ final }: { final: Completeness }) {
   ];
   return (
     <Card className={cx('p-4', final.ready ? 'border-success/40' : 'border-warn/40')}>
-      <div className="flex items-center gap-2">
+      {/* Уровень 1: итог словами и цветом; цифры по видам — ниже и тише. */}
+      <p
+        className={cx(
+          'flex items-start gap-2 rounded-md px-3 py-2.5 text-[15px] font-bold',
+          final.ready ? 'bg-success/10 text-success' : 'bg-warn-surface/50 text-warn-foreground',
+        )}
+      >
+        {final.ready ? <ShieldCheck className="mt-0.5 size-5 shrink-0" /> : <AlertTriangle className="mt-0.5 size-5 shrink-0" />}
+        {final.text}
+      </p>
+      <div className="mt-3 flex items-center gap-2">
         <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">Итоговая проверка</span>
         <HelpTip content="Перед скачиванием система проходит по всей заявке: ни одного пустого обязательного поля." />
       </div>
-      <div className="mt-2.5 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+      <div className="mt-2 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
         {rows.map(([label, value, hint]) => (
           <div key={label} className="flex items-center justify-between gap-3 text-[12px]">
             <Tooltip content={hint} align="start">
               <span className="cursor-help text-muted-foreground">{label}</span>
             </Tooltip>
-            <span className="font-mono tabular-nums">{value}</span>
+            <span className="font-mono font-semibold tabular-nums">{value}</span>
           </div>
         ))}
       </div>
-      <p
-        className={cx(
-          'mt-3 flex items-start gap-2 rounded-md px-3 py-2 text-[13px] font-medium',
-          final.ready ? 'bg-success/10 text-success' : 'bg-warn-surface/50 text-warn-foreground',
-        )}
-      >
-        {final.ready ? <ShieldCheck className="mt-0.5 size-4 shrink-0" /> : <AlertTriangle className="mt-0.5 size-4 shrink-0" />}
-        {final.text}
-      </p>
     </Card>
   );
 }

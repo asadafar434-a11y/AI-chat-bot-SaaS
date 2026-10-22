@@ -55,12 +55,9 @@ export function TendersDashboard({
     setDeleteTarget(null);
   };
 
-  const summary: [string, number, string, string][] = [
-    ['Всего', tenders.length, 'text-foreground', 'Все закупки, которые вы добавили.'],
-    ['В работе', stat('progress') + stat('draft'), 'text-warn-foreground', 'Черновики и заявки, где осталось что-то заполнить.'],
-    ['Готовы', stat('ready'), 'text-success', 'Пустых обязательных полей нет — осталось подписать и подать.'],
-    ['Поданы', stat('submitted'), 'text-muted-foreground', 'Заявки, поданные на площадке.'],
-  ];
+  // Числа — прямо на кнопках-фильтрах (отдельной полосы счётчиков с теми же видами больше нет); виды без закупок не показываем.
+  const countOf = (id: TenderStatus | 'all') => (id === 'all' ? tenders.length : stat(id));
+  const visibleFilters = filters.filter((f) => f.id === 'all' || f.id === filter || countOf(f.id) > 0);
 
   return (
     <div className="animate-fade-up space-y-5">
@@ -85,24 +82,6 @@ export function TendersDashboard({
         </div>
       </div>
 
-      {/* Summary strip */}
-      <Card className="flex divide-x divide-border p-0">
-        {summary.map(([label, n, color, hint], i) => (
-          <Tooltip
-            key={label}
-            content={hint}
-            side="bottom"
-            align={i === 0 ? 'start' : i === summary.length - 1 ? 'end' : 'center'}
-            className="flex-1"
-          >
-            <div className="flex w-full cursor-default flex-col items-center gap-0.5 px-2 py-3">
-              <span className={`text-lg font-semibold tabular-nums leading-none ${color}`}>{n}</span>
-              <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{label}</span>
-            </div>
-          </Tooltip>
-        ))}
-      </Card>
-
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex h-9 min-w-[220px] flex-1 items-center gap-2 rounded-md border border-border bg-card px-3 focus-within:border-foreground focus-within:ring-2 focus-within:ring-ring/20">
@@ -116,17 +95,19 @@ export function TendersDashboard({
           />
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {filters.map((f) => (
+          {visibleFilters.map((f) => (
             <button
               key={f.id}
               onClick={() => setFilter(f.id)}
-              className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
+              aria-pressed={filter === f.id}
+              className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
                 filter === f.id
                   ? 'border-foreground bg-primary text-primary-foreground'
                   : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground'
               }`}
             >
               {f.label}
+              <span className="font-mono tabular-nums opacity-80">{countOf(f.id)}</span>
             </button>
           ))}
         </div>
@@ -161,7 +142,7 @@ export function TendersDashboard({
 
                     <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-muted-foreground">
                       <Tooltip content="НМЦК — начальная (максимальная) цена контракта. Выше неё цену предложить нельзя." align="start">
-                        <span className="font-mono tabular-nums text-foreground">{t.nmck ? rub(t.nmck) : 'цена не указана'}</span>
+                        <span className={cx('font-mono tabular-nums', t.nmck ? 'text-[15px] font-bold text-foreground' : 'text-muted-foreground')}>{t.nmck ? rub(t.nmck) : 'цена не указана'}</span>
                       </Tooltip>
                       <span
                         className={cx(
@@ -177,11 +158,13 @@ export function TendersDashboard({
                             ? `приём заявок закончился ${t.deadline}`
                             : `до ${t.deadline}${t.dueLeft ? ` · ${t.dueLeft}` : ''}`}
                       </span>
-                      <Tooltip content="Сколько документов закупки загружено из тех, что опубликованы на площадке.">
-                        <span className="inline-flex items-center gap-1">
-                          <FileText className="size-3.5" /> документы {t.docsLoaded}/{t.docsTotal}
-                        </span>
-                      </Tooltip>
+                      {t.docsLoaded < t.docsTotal && (
+                        <Tooltip content="Часть файлов не прочиталась: откройте закупку на шаге «Загрузка» и добавьте их заново.">
+                          <span className="inline-flex items-center gap-1 font-medium text-warn-foreground">
+                            <FileText className="size-3.5" /> прочитано {t.docsLoaded} из {t.docsTotal}
+                          </span>
+                        </Tooltip>
+                      )}
                     </div>
 
                     <Tooltip

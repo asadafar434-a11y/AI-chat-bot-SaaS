@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Info, Search } from '../lib/icons';
-import { Badge, Card, HelpTip, Tooltip } from './ui';
+import { Search } from '../lib/icons';
+import { Badge, Card, HelpTip, Soon } from './ui';
 import { rub } from '../lib/data';
 import { titleOf, type Purchase } from '@/lib/purchase';
 import { parseRubles } from '@/lib/rub-words';
@@ -37,52 +37,31 @@ export function BidHistory({ purchases }: { purchases: Purchase[] | null }) {
   const priced = submitted.filter((p) => typeof p.tpPrice === 'number');
   const sum = priced.reduce((s, p) => s + (p.tpPrice ?? 0), 0);
 
-  const stats = [
-    {
-      label: 'Подано',
-      value: String(submitted.length),
-      hint: 'Закупки, которые вы отметили поданными в «Мои закупки».',
-    },
-    {
-      label: 'Сумма наших цен',
-      value: rub(sum),
-      hint: priced.length
-        ? `Сумма цен из заявок: ${priced.length} из ${submitted.length} закупок.`
-        : 'Цену пока не вписали в заявку.',
-    },
-  ];
-
   return (
     <div className="animate-fade-up space-y-5">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">История заявок</h1>
-        <p className="mt-0.5 text-[13px] text-muted-foreground">Закупки, которые вы подали через сервис.</p>
-      </div>
-
-      <div className="flex items-start gap-2.5 rounded-lg border border-dashed border-border bg-secondary/40 px-4 py-3 text-[13px] text-muted-foreground">
-        <Info className="mt-0.5 size-4 shrink-0" />
-        <p>
-          <span className="font-medium text-foreground">Итоги торгов с площадок — в разработке.</span> Статус «Подана»
-          значит, что результат пока не известен: победителя и места здесь нет.
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-xl font-semibold tracking-tight">История заявок</h1>
+          <HelpTip
+            align="start"
+            content="Закупки, которые вы отметили поданными. Итоги торгов с площадок — в разработке: статус «Подана» значит, что результат пока не известен, победителя и места здесь нет."
+          />
+        </div>
+        {/* Главное — сколько подано и на какую сумму наших цен: жирно, без отдельных плиток. */}
+        <p className="mt-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[13px] text-muted-foreground">
+          <span>
+            Подано <span className="font-mono text-lg font-bold tabular-nums text-foreground">{submitted.length}</span>
+          </span>
+          {priced.length > 0 && (
+            <span>
+              Сумма наших цен <span className="font-mono text-lg font-bold tabular-nums text-foreground">{rub(sum)}</span>
+            </span>
+          )}
+          <span className="inline-flex items-center gap-1.5">
+            Итоги торгов <Soon />
+          </span>
         </p>
       </div>
-
-      <Card className="flex divide-x divide-border p-0">
-        {stats.map(({ label, value, hint }, i) => (
-          <Tooltip
-            key={label}
-            content={hint}
-            side="bottom"
-            align={i === 0 ? 'start' : 'end'}
-            className="flex-1"
-          >
-            <div className="flex w-full cursor-default flex-col items-center gap-0.5 px-2 py-3">
-              <span className="whitespace-nowrap text-lg font-semibold tabular-nums leading-none">{value}</span>
-              <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{label}</span>
-            </div>
-          </Tooltip>
-        ))}
-      </Card>
 
       {submitted.length === 0 ? (
         <Card className="p-6 text-center text-[13px] text-muted-foreground">
@@ -90,6 +69,7 @@ export function BidHistory({ purchases }: { purchases: Purchase[] | null }) {
         </Card>
       ) : (
         <>
+          {submitted.length > 5 && (
           <div className="flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 focus-within:border-foreground focus-within:ring-2 focus-within:ring-ring/20">
             <Search className="size-4 text-muted-foreground" />
             <input
@@ -100,6 +80,7 @@ export function BidHistory({ purchases }: { purchases: Purchase[] | null }) {
               className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
           </div>
+          )}
 
           <Card>
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
