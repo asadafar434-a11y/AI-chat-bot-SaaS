@@ -17,7 +17,9 @@ const buildSummary = (i: SummaryInput): Summary => {
     ...s,
     text: plain(s.text),
     verdict: { ...s.verdict, reasons: s.verdict.reasons.map(plain) },
-    facts: s.facts.map((f) => ({ label: f.label, value: plain(f.value) })),
+    facts: s.facts.map((f) => ({ ...f, value: plain(f.value) })),
+    headline: s.headline && { ...s.headline, value: plain(s.headline.value), note: s.headline.note && plain(s.headline.note), extras: s.headline.extras.map((x) => ({ ...x, value: plain(x.value) })) },
+    topRisks: s.topRisks.map((r) => ({ ...r, amount: plain(r.amount), pct: plain(r.pct) })),
     recommendations: s.recommendations.map(plain),
     sections: s.sections.map((x) => ({ ...x, brief: plain(x.brief) })),
   };
@@ -174,4 +176,44 @@ test("матрица в резюме: строка раздела — сколь
   // Риск по обычной (не критичной) проверке итог не меняет.
   const light = { ...matrix, first: matrix.first.map((r) => ({ ...r, weight: 1 as const })) };
   assert.equal(buildSummary({ ...base, matrix: light }).verdict.level, "go");
+});
+
+test("главное число: цена, с которой можно участвовать, и соседние цены; тон — по итогу светофора", () => {
+  const s = buildSummary(input({}));
+  assert.ok(s.headline, "есть затраты — есть главное число");
+  assert.equal(s.headline!.label, "Участвовать можно по цене не ниже");
+  assert.match(s.headline!.value, /^\d{3} \d{3} ₽$/);
+  assert.match(s.headline!.note!, /^\d+,\d % от начальной$/);
+  const labels = s.headline!.extras.map((x) => x.label);
+  assert.ok(labels.includes("Целевая (с вашей маржой)"), labels.join("|"));
+  assert.equal(s.headline!.extras.find((x) => x.label.startsWith("Целевая"))!.tone, "good");
+  assert.equal(s.headline!.tone, { go: "good", careful: "warn", stop: "danger", unknown: "muted" }[s.verdict.level]);
+});
+
+test("главное число: убыток даже по начальной цене — красное, без соседних цен; нет затрат — главного числа нет", () => {
+  const loss = buildSummary(input({}, { costs: 1_200_000 }));
+  assert.equal(loss.headline!.tone, "danger");
+  assert.equal(loss.headline!.label, "Убыток даже по начальной цене");
+  assert.match(loss.headline!.value, /^−[\d ]+ ₽$/);
+  assert.deepEqual(loss.headline!.extras, []);
+  const none = buildSummary(input({}, { costs: null }));
+  assert.equal(none.headline, null);
+});
+
+test("крупнейшие риски: до трёх, по убыванию рублей, тон по доле цены; в итог не входящие не берутся", () => {
+  const s = buildSummary(input({}));
+  assert.ok(s.topRisks.length >= 1 && s.topRisks.length <= 3);
+  const amounts = s.topRisks.map((r) => Number(r.amount.replace(/[^\d]/g, "")));
+  assert.deepEqual([...amounts].sort((a, b) => b - a), amounts);
+  for (const r of s.topRisks) assert.match(r.pct, /^\d+,\d % цены$/);
+  assert.ok(s.topRisks.every((r) => (r.tone === "danger") === (Number(r.pct.replace(",", ".").replace(/[^\d.]/g, "")) >= 20)));
+});
+
+test("строки разделов окрашены по важности: убыток красный, внимание янтарное, хорошее зелёное, остальное — просто факт", () => {
+  const loss = buildSummary(input({}, { costs: 1_200_000 }));
+  assert.equal(loss.sections.find((x) => x.id === "economics")!.tone, "danger");
+  const ok = buildSummary(input({}));
+  const tone = (id: string) => ok.sections.find((x) => x.id === id)!.tone;
+  assert.ok(["good", "warn"].includes(tone("economics")!));
+  assert.ok(ok.sections.every((x) => ["danger", "warn", "good", "muted"].includes(x.tone!)));
 });

@@ -76,9 +76,9 @@ export function Economics({ result, nmck, priceNote, fromStep, targetMarginPct, 
             <Verdict result={result} nmck={nmck ?? result.nmck} targetMarginPct={targetMarginPct} />
 
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <PriceTile title="Не ниже" hint="Ниже этой цены базовый сценарий уходит в убыток" price={result.min} nmck={result.nmck} />
-              <PriceTile title="Безопасная" hint="Ниже неё в убыток уходит стрессовый сценарий" price={result.safe} nmck={result.nmck} />
-              <PriceTile title="Целевая" hint={`Маржа ${pct(targetMarginPct)} в базовом сценарии`} price={result.target} nmck={result.nmck} strong />
+              <PriceTile title="Не ниже" hint="Ниже этой цены базовый сценарий уходит в убыток" price={result.min} nmck={result.nmck} tone="text-foreground" />
+              <PriceTile title="Безопасная" hint="Ниже неё в убыток уходит стрессовый сценарий" price={result.safe} nmck={result.nmck} tone="text-warn-foreground" />
+              <PriceTile title="Целевая" hint={`Маржа ${pct(targetMarginPct)} в базовом сценарии`} price={result.target} nmck={result.nmck} tone="text-success" strong />
             </div>
 
             <p className="pb-1 text-[12px] text-muted-foreground">
@@ -156,7 +156,7 @@ export function Economics({ result, nmck, priceNote, fromStep, targetMarginPct, 
   );
 }
 
-function PriceTile({ title, hint, price, nmck, strong }: { title: string; hint: string; price: number | null; nmck: number; strong?: boolean }) {
+function PriceTile({ title, hint, price, nmck, strong, tone }: { title: string; hint: string; price: number | null; nmck: number; strong?: boolean; tone: string }) {
   return (
     <div className={`rounded-lg border px-3 py-2.5 ${strong ? 'border-foreground/40 bg-secondary/50' : 'border-border'}`} title={hint}>
       <p className="text-[12px] text-muted-foreground">{title}</p>
@@ -164,7 +164,7 @@ function PriceTile({ title, hint, price, nmck, strong }: { title: string; hint: 
         <p className="text-[13px] text-muted-foreground">не достижима</p>
       ) : (
         <>
-          <p className="font-mono text-[14px] font-semibold">{rub(price)}</p>
+          <p className={`break-words font-mono text-xl font-bold tracking-tight ${tone}`}>{rub(price)}</p>
           <p className="text-[11px] text-muted-foreground">{pct(dropOf(price, nmck))} от начальной</p>
         </>
       )}
@@ -191,10 +191,10 @@ function Verdict({ result, nmck, targetMarginPct }: { result: Extract<EconResult
     );
   }
   return (
-    <p className="flex items-start gap-1.5">
-      <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-success" />
+    <p className="flex items-start gap-1.5 text-[14px] font-semibold">
+      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
       <span>
-        Ставьте не ниже <span className="font-mono font-semibold">{rub(result.target)}</span> ({pct(dropOf(result.target, nmck))} от начальной): маржа {pct(targetMarginPct)} в базовом сценарии.
+        Ставьте не ниже <span className="font-mono font-bold text-success">{rub(result.target)}</span> ({pct(dropOf(result.target, nmck))} от начальной): маржа {pct(targetMarginPct)} в базовом сценарии.
         {result.safe !== null && result.safe > result.target && <> Чтобы выдержать стресс — не ниже {rub(result.safe)}.</>}
       </span>
     </p>

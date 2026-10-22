@@ -1,19 +1,24 @@
 import { useState } from 'react';
-import type { Summary, VerdictLevel } from '@/lib/analytics-summary';
+import type { Summary, Tone, VerdictLevel } from '@/lib/analytics-summary';
 import { AlertTriangle, CheckCircle2, FileText, HelpCircle, XCircle } from '../lib/icons';
 import { CertaintyBadge } from './Certainty';
 import { Collapsible } from './Collapsible';
 import { Button, Card, HelpTip } from './ui';
 
-// Верх экрана «Аналитика»: итог светофором с причинами, главные цифры и рекомендации (свёрнуты). Абзац резюме — только в отчёте Word и PDF: на экране его заменяют причины и цифры. Подробности — в раскрывающихся разделах ниже, полный отчёт — в Word или PDF.
-// Светофор — не балл и не вероятность победы: он показывает, хватает ли прибыли на риски договора. Решение об участии — за человеком.
+// Верх экрана «Аналитика» по уровням важности (решение владельца 22.10.2026: «важное — жирным, крупно, цветом; а то всё в кучу»):
+//  1) итог светофором и ГЛАВНОЕ ЧИСЛО — цена, с которой можно участвовать, и две соседние цены — крупно и цветом;
+//  2) крупнейшие риски в рублях — жирные суммы, цвет по доле цены;
+//  3) причины, начальная цена и рынок — обычным шрифтом; кнопки отчёта — тихо.
+// Светофор — не балл и не вероятность победы: он показывает, хватает ли прибыли на риски договора. Решение об участии — за человеком. Абзац резюме остался в отчёте Word и PDF.
 
-const TONE: Record<VerdictLevel, { Icon: typeof CheckCircle2; chip: string }> = {
-  go: { Icon: CheckCircle2, chip: 'bg-success/10 text-success' },
-  careful: { Icon: AlertTriangle, chip: 'bg-warn-surface text-warn-foreground' },
-  stop: { Icon: XCircle, chip: 'bg-danger/10 text-danger' },
-  unknown: { Icon: HelpCircle, chip: 'bg-secondary text-muted-foreground' },
+const HERO: Record<VerdictLevel, { Icon: typeof CheckCircle2; wrap: string; title: string }> = {
+  go: { Icon: CheckCircle2, wrap: 'border-success/40 bg-success/5', title: 'text-success' },
+  careful: { Icon: AlertTriangle, wrap: 'border-warn/60 bg-warn-surface/40', title: 'text-warn-foreground' },
+  stop: { Icon: XCircle, wrap: 'border-danger/40 bg-danger/5', title: 'text-danger' },
+  unknown: { Icon: HelpCircle, wrap: 'border-border bg-card', title: 'text-foreground' },
 };
+
+const TONE_TEXT: Record<Tone, string> = { danger: 'text-danger', warn: 'text-warn-foreground', good: 'text-success', muted: 'text-foreground' };
 
 export type ReportBusy = 'word' | 'pdf' | null;
 
@@ -35,49 +40,94 @@ export function AnalyticsSummary({
 }) {
   const [adviceOpen, setAdviceOpen] = useState(false);
   const { verdict } = summary;
-  const { Icon, chip } = TONE[verdict.level];
+  const headline = summary.headline ?? null;
+  const topRisks = summary.topRisks ?? [];
+  const { Icon, wrap, title } = HERO[verdict.level];
+  // Числа, которые уже стоят крупно выше, в мелких плитках не повторяем.
+  const risksTotal = summary.facts.find((f) => f.id === 'risks');
+  const tiles = summary.facts.filter((f) => !(f.id === 'target' && headline) && !(f.id === 'risks' && topRisks.length > 0));
   return (
-    <div className="space-y-2">
-      <Card className="space-y-4 p-5">
+    <div className="space-y-3">
+      <div className={`rounded-2xl border p-5 shadow-sm ${wrap}`}>
         <div className="flex items-start gap-3">
-          <span className={`flex size-10 shrink-0 items-center justify-center rounded-full ${chip}`}>
-            <Icon className="size-5" />
-          </span>
+          <Icon className={`mt-0.5 size-7 shrink-0 ${title}`} />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-base font-semibold tracking-tight">{verdict.label}</p>
+              <p className={`text-2xl font-bold tracking-tight ${title}`}>{verdict.label}</p>
               <CertaintyBadge kind="estimate" />
               <HelpTip
                 align="start"
                 content="Светофор — не балл и не вероятность победы. Он показывает, хватает ли вашей прибыли на риски договора, при ваших затратах и допущениях ниже. Решение об участии принимаете вы."
               />
             </div>
-            <ul className="mt-1.5 space-y-1 text-[13px] text-muted-foreground">
+            <ul className="mt-2 space-y-1 text-[14px] font-medium">
               {verdict.reasons.map((reason) => (
                 <li key={reason} className="break-words">
                   {reason}
                 </li>
               ))}
             </ul>
-            {action && (
-              <Button className="mt-2" size="sm" variant="secondary" onClick={action.onClick}>
-                {action.label}
-              </Button>
-            )}
           </div>
         </div>
 
-        {summary.facts.length > 0 && (
-          <dl className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-2">
-            {summary.facts.map((fact) => (
-              <div key={fact.label} className="min-w-0 rounded-lg border border-border px-3 py-2">
+        {headline ? (
+          <div className="mt-5 border-t border-foreground/10 pt-4">
+            <p className="text-[13px] font-semibold text-muted-foreground">{headline.label}</p>
+            <p className={`mt-1 break-words font-mono text-4xl font-bold tracking-tight sm:text-5xl ${TONE_TEXT[headline.tone]}`}>{headline.value}</p>
+            {headline.note && <p className="mt-1 text-[13px] text-muted-foreground">{headline.note}</p>}
+            {headline.extras.length > 0 && (
+              <dl className="mt-4 flex flex-wrap gap-x-10 gap-y-3">
+                {headline.extras.map((x) => (
+                  <div key={x.label} className="min-w-0">
+                    <dt className="text-[12px] font-medium text-muted-foreground">{x.label}</dt>
+                    <dd className={`mt-0.5 break-words font-mono text-2xl font-bold tracking-tight ${TONE_TEXT[x.tone]}`}>{x.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </div>
+        ) : (
+          action && (
+            <div className="mt-4">
+              <Button onClick={action.onClick}>{action.label}</Button>
+            </div>
+          )
+        )}
+      </div>
+
+      {topRisks.length > 0 && (
+        <Card className="space-y-3 p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <p className="text-[15px] font-bold">Главные риски</p>
+            {risksTotal && (
+              <p className="text-[13px] text-muted-foreground">
+                Если сработают все: <span className="font-mono text-base font-bold text-danger">{risksTotal.value}</span>
+              </p>
+            )}
+          </div>
+          <ul className="space-y-2.5">
+            {topRisks.map((r) => (
+              <li key={r.title} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                <span className={`font-mono text-xl font-bold tracking-tight ${TONE_TEXT[r.tone]}`}>{r.amount}</span>
+                <span className={`text-[13px] font-semibold ${TONE_TEXT[r.tone]}`}>{r.pct}</span>
+                <span className="min-w-0 basis-full break-words text-[13px] text-muted-foreground sm:flex-1 sm:basis-auto">{r.title}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      <Card className="space-y-3 p-4">
+        {tiles.length > 0 && (
+          <dl className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-x-6 gap-y-2">
+            {tiles.map((fact) => (
+              <div key={fact.label} className="min-w-0">
                 <dt className="text-[11px] text-muted-foreground">{fact.label}</dt>
                 <dd className="mt-0.5 break-words font-mono text-[13px] font-medium">{fact.value}</dd>
               </div>
             ))}
           </dl>
         )}
-
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" variant="secondary" disabled={busy !== null} onClick={onWord}>
             <FileText className="size-3.5" />

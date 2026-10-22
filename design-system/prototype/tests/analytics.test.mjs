@@ -1101,3 +1101,63 @@ test('проверка поиском: одна кнопка на все гип�
   const rest = (one.match(/Проверить поиском \((\d+)\)/) ?? [])[1];
   assert.ok(Number(rest) === Number(all) - 1 || (all === '1' && rest === undefined), `${all} → ${rest}`);
 });
+
+// ——— Уровни важности на экране: главное число, крупнейшие риски, окрашенные строки итога ———
+const HEAD = { tone: 'good', label: 'Участвовать можно по цене не ниже', value: '3 902 197 ₽', note: '22,0 % от начальной', extras: [{ label: 'Безопасная (выдержит стресс)', value: '4 100 000 ₽', tone: 'warn' }, { label: 'Целевая (с вашей маржой)', value: '4 390 282 ₽', tone: 'good' }] };
+const TOP = [
+  { title: 'Просрочка: пеня 5 % в день', amount: '2 500 000 ₽', pct: '50,0 % цены', tone: 'danger' },
+  { title: 'Рост затрат на 10 % при твёрдой цене', amount: '425 000 ₽', pct: '8,5 % цены', tone: 'warn' },
+];
+
+test('экран: главное число крупно и цветом — цена, с которой можно участвовать, и две соседние цены; подпись над числом и «от начальной» под ним', () => {
+  const out = summaryUi(summaryOf('careful', { headline: HEAD, topRisks: TOP }));
+  const t = text(out);
+  assert.match(t, /Участвовать можно по цене не ниже 3 902 197 ₽ 22,0 % от начальной/);
+  assert.match(out, /text-4xl font-bold[^"]*text-success[^>]*>3 902 197 ₽/, 'главное число — самое крупное и зелёное (тон по итогу)');
+  assert.match(out, /text-2xl font-bold[^"]*text-warn-foreground[^>]*>4 100 000 ₽/, 'безопасная — янтарная');
+  assert.match(out, /text-2xl font-bold[^"]*text-success[^>]*>4 390 282 ₽/, 'целевая — зелёная');
+  assert.match(t, /Безопасная \(выдержит стресс\)/);
+});
+
+test('экран: итог окрашен по уровню — «не стоит» красный, «осторожно» янтарный, «можно» зелёный; убыток по начальной цене — красное главное число', () => {
+  const stop = summaryUi(summaryOf('stop', { headline: { tone: 'danger', label: 'Убыток даже по начальной цене', value: '−1 962 534 ₽', note: 'начальная цена 5 000 000 ₽', extras: [] } }));
+  assert.match(stop, /border-danger\/40 bg-danger\/5/);
+  assert.match(stop, /text-2xl font-bold[^"]*text-danger[^>]*>Участвовать не стоит/);
+  assert.match(stop, /text-4xl font-bold[^"]*text-danger[^>]*>−1 962 534 ₽/);
+  assert.match(summaryUi(summaryOf('careful', { headline: HEAD })), /border-warn\/60/);
+  assert.match(summaryUi(summaryOf('go', { headline: HEAD })), /border-success\/40/);
+});
+
+test('экран: крупнейшие риски — жирные суммы и доля цены цветом, подпись обычным шрифтом, «если сработают все» красным; эти числа в мелких плитках не повторяются', () => {
+  const facts = [
+    { id: 'nmck', label: 'Начальная цена', value: '5 000 000 ₽' },
+    { id: 'risks', label: 'Риски в рублях, если сработают все', value: 'до 3 476 014 ₽' },
+    { id: 'target', label: 'Целевая цена', value: '4 390 282 ₽' },
+  ];
+  const out = summaryUi(summaryOf('careful', { headline: HEAD, topRisks: TOP, facts }));
+  const t = text(out);
+  assert.match(t, /Главные риски Если сработают все: до 3 476 014 ₽/);
+  assert.match(out, /text-xl font-bold[^"]*text-danger[^>]*>2 500 000 ₽/);
+  assert.match(out, /font-semibold text-danger[^>]*>50,0 % цены/);
+  assert.match(out, /text-xl font-bold[^"]*text-warn-foreground[^>]*>425 000 ₽/);
+  // Начальная цена — в тихой плитке; целевая и общий итог рисков — только крупно выше.
+  assert.equal((t.match(/Целевая цена/g) ?? []).length, 0);
+  assert.equal((t.match(/Риски в рублях, если сработают все/g) ?? []).length, 0);
+  assert.match(t, /Начальная цена 5 000 000 ₽/);
+});
+
+test('экран: затрат нет — главного числа нет, вместо него кнопка действия в верхнем блоке; рисков нет — блока «Главные риски» нет', () => {
+  const out = summaryUi(summaryOf('unknown', { headline: null, topRisks: [] }), { action: { label: 'Ввести затраты', onClick: none } });
+  assert.match(text(out), /Ввести затраты/);
+  assert.equal(text(out).includes('Главные риски'), false);
+  assert.equal(out.includes('text-4xl'), false);
+});
+
+test('раскрывашка: строка итога окрашена по важности — красная и янтарная жирным, обычная тихо', () => {
+  const render = (tone) => renderToStaticMarkup(h(mods.collapsible.Collapsible, { title: 'Раздел', brief: 'до 3 476 014 ₽', tone, open: false, onToggle: none }, h('p', null, 'x')));
+  assert.match(render('danger'), /font-semibold text-danger[^>]*>до 3 476 014 ₽/);
+  assert.match(render('warn'), /font-semibold text-warn-foreground[^>]*>до 3 476 014 ₽/);
+  assert.match(render('good'), /font-semibold text-success/);
+  assert.match(render('muted'), /font-normal text-muted-foreground[^>]*>до 3 476 014 ₽/);
+  assert.match(render(undefined), /font-normal text-muted-foreground/);
+});

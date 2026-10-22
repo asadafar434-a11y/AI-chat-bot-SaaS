@@ -36,13 +36,31 @@ export type SummaryInput = {
 };
 
 export type SectionId = "risks" | "estimate" | "economics" | "nmck" | "ric" | "matrix" | "chart";
-export type SectionBrief = { id: SectionId; title: string; brief: string };
+/** Насколько это важно глазу: danger — красное (убыток, крупный риск), warn — янтарное (внимание), good — зелёное, muted — просто факт. */
+export type Tone = "danger" | "warn" | "good" | "muted";
+export type SectionBrief = { id: SectionId; title: string; brief: string; tone?: Tone };
+
+/** Главное на экране: цена, с которой можно участвовать, и две соседние цены. Нет затрат — главного числа нет (null). */
+export type Headline = {
+  tone: Tone;
+  /** Подпись над числом. */
+  label: string;
+  value: string;
+  /** Мелко под числом: на сколько ниже начальной цены. */
+  note: string | null;
+  extras: { label: string; value: string; tone: Tone }[];
+};
+/** Крупнейшие оценённые риски в рублях — для второго уровня важности на экране. */
+export type TopRisk = { title: string; amount: string; pct: string; tone: Tone };
 
 export type Summary = {
   verdict: { level: VerdictLevel; label: string; reasons: string[] };
   /** Резюме одним абзацем. */
   text: string;
-  facts: { label: string; value: string }[];
+  facts: { id: "nmck" | "risks" | "target" | "badge"; label: string; value: string }[];
+  /** Для экрана: главное число и крупнейшие риски. */
+  headline: Headline | null;
+  topRisks: TopRisk[];
   recommendations: string[];
   sections: SectionBrief[];
 };
@@ -134,14 +152,41 @@ function recommendationsOf(i: SummaryInput): string[] {
   return out.slice(0, MAX_RECOMMENDATIONS);
 }
 
+const TONE_OF_LEVEL: Record<VerdictLevel, Tone> = { go: "good", careful: "warn", stop: "danger", unknown: "muted" };
+
+function headlineOf(i: SummaryInput, level: VerdictLevel): Headline | null {
+  const e = i.econ;
+  if (!e.ready) return null;
+  if (e.min === null) {
+    return { tone: "danger", label: "Убыток даже по начальной цене", value: rubles(e.table[0].base), note: `начальная цена ${rubles(e.nmck)}`, extras: [] };
+  }
+  const drop = (price: number) => percent((1 - price / e.nmck) * 100);
+  const extras: Headline["extras"] = [];
+  if (e.safe !== null && e.safe > e.min) extras.push({ label: "Безопасная (выдержит стресс)", value: rubles(e.safe), tone: "warn" });
+  if (e.target !== null) extras.push({ label: "Целевая (с вашей маржой)", value: rubles(e.target), tone: "good" });
+  return { tone: TONE_OF_LEVEL[level], label: "Участвовать можно по цене не ниже", value: rubles(e.min), note: `${drop(e.min)} от начальной`, extras };
+}
+
+const MAX_TOP_RISKS = 3;
+
+function topRisksOf(estimate: EstimateResult): TopRisk[] {
+  return estimate.items
+    .filter((x) => x.inTotal && x.amount !== null && x.pct !== null)
+    .sort((a, b) => b.amount! - a.amount!)
+    .slice(0, MAX_TOP_RISKS)
+    .map((x) => ({ title: x.title, amount: rubles(x.amount!), pct: `${percent(x.pct!)} цены`, tone: x.pct! >= 20 ? "danger" : x.pct! >= 5 ? "warn" : "muted" }));
+}
+
+const riskTone = (pct: number | null): Tone => (pct === null ? "muted" : pct >= 20 ? "danger" : pct >= 5 ? "warn" : "muted");
+
 export function buildSummary(i: SummaryInput): Summary {
   const attention = i.risks.filter((r) => r.level === "warn").length;
   const e = i.econ;
   const facts = [
-    ...(i.nmck !== null ? [{ label: "Начальная цена", value: rubles(i.nmck) }] : []),
-    ...(i.estimate.total > 0 ? [{ label: "Риски в рублях, если сработают все", value: `до ${rubles(i.estimate.total)}` }] : []),
-    ...(e.ready && e.target !== null ? [{ label: "Целевая цена", value: rubles(e.target) }] : []),
-    ...(i.badge && i.badge.status !== "insufficient" ? [{ label: "Цена против рынка", value: i.badge.title }] : []),
+    ...(i.nmck !== null ? [{ id: "nmck" as const, label: "Начальная цена", value: rubles(i.nmck) }] : []),
+    ...(i.estimate.total > 0 ? [{ id: "risks" as const, label: "Риски в рублях, если сработают все", value: `до ${rubles(i.estimate.total)}` }] : []),
+    ...(e.ready && e.target !== null ? [{ id: "target" as const, label: "Целевая цена", value: rubles(e.target) }] : []),
+    ...(i.badge && i.badge.status !== "insufficient" ? [{ id: "badge" as const, label: "Цена против рынка", value: i.badge.title }] : []),
   ];
   const sections: SectionBrief[] = [
     { id: "risks", title: "Риски и расходы из договора", brief: !i.hasContract ? "договор не найден" : i.risks.length === 0 ? "условий с цифрами нет" : `${i.risks.length} условий, внимания требуют ${attention}` },
@@ -166,5 +211,23 @@ export function buildSummary(i: SummaryInput): Summary {
           : "нужны ваши затраты",
     },
   ];
-  return { verdict: verdictOf(i), text: textOf(i), facts, recommendations: recommendationsOf(i), sections };
+  const tones: Record<SectionId, Tone> = {
+    risks: attention > 0 ? "warn" : "muted",
+    estimate: riskTone(i.estimate.totalPct),
+    economics: !e.ready ? "muted" : e.min === null ? "danger" : e.target === null ? "warn" : "good",
+    nmck: i.calcs.some((c) => c.issues.some((x) => x.level === "warn")) ? "warn" : "muted",
+    ric: i.badge?.status === "below" ? "warn" : i.badge?.status === "within" ? "good" : "muted",
+    matrix: (i.matrix?.risk ?? 0) > 0 ? "danger" : (i.matrix?.attention ?? 0) > 0 ? "warn" : "muted",
+    chart: e.ready && e.scenarios.base.profit < 0 ? "danger" : "muted",
+  };
+  const verdict = verdictOf(i);
+  return {
+    verdict,
+    text: textOf(i),
+    facts,
+    headline: headlineOf(i, verdict.level),
+    topRisks: topRisksOf(i.estimate),
+    recommendations: recommendationsOf(i),
+    sections: sections.map((x) => ({ ...x, tone: tones[x.id] })),
+  };
 }

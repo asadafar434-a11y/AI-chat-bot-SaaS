@@ -1,16 +1,27 @@
 import { useId, type ReactNode } from 'react';
+import type { Tone } from '@/lib/analytics-summary';
 import { ChevronDown } from '../lib/icons';
 
 // Раскрывающийся раздел «Аналитики»: в закрытом виде — название и одна строка итога, внутри — подробности. Содержимое остаётся в разметке (скрыто), поэтому введённое не теряется при сворачивании.
+const BRIEF_TONE: Record<Tone, string> = {
+  danger: 'font-semibold text-danger',
+  warn: 'font-semibold text-warn-foreground',
+  good: 'font-semibold text-success',
+  muted: 'font-normal text-muted-foreground',
+};
+
 export function Collapsible({
   title,
   brief,
+  tone = 'muted',
   open,
   onToggle,
   children,
 }: {
   title: string;
   brief?: string;
+  /** Важность строки итога: красная, янтарная и зелёная — жирным; обычная — тихо. */
+  tone?: Tone;
   open: boolean;
   onToggle: () => void;
   children: ReactNode;
@@ -28,7 +39,7 @@ export function Collapsible({
         >
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-medium">{title}</span>
-            {brief && <span className="mt-0.5 block break-words text-[12px] font-normal text-muted-foreground">{brief}</span>}
+            {brief && <span className={`mt-0.5 block break-words text-[13px] ${BRIEF_TONE[tone]}`}>{brief}</span>}
           </span>
           <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>

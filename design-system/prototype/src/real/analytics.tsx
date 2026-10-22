@@ -436,7 +436,7 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
         <p className="px-1 text-[12px] font-medium text-muted-foreground">Подробный разбор</p>
         {summary.sections.map((s) => (
           <div key={s.id} id={`analytics-${s.id}`} className="scroll-mt-4">
-            <Collapsible title={s.title} brief={s.brief} open={open[s.id]} onToggle={() => toggle(s.id)}>
+            <Collapsible title={s.title} brief={s.brief} tone={s.tone} open={open[s.id]} onToggle={() => toggle(s.id)}>
               {body(s.id)}
             </Collapsible>
           </div>

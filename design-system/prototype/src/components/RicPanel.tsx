@@ -329,7 +329,7 @@ function Summary({ result, base, badge }: { result: RicResult; base: string; bad
         <dl className="grid grid-cols-1 gap-3 sm:grid-cols-4">
           <div>
             <dt className="text-[12px] text-muted-foreground">РИЦ ({base})</dt>
-            <dd className="font-mono text-base font-semibold">{result.ric !== null ? rub(result.ric) : '—'}</dd>
+            <dd className="break-words font-mono text-2xl font-bold tracking-tight">{result.ric !== null ? rub(result.ric) : '—'}</dd>
           </div>
           <div>
             <dt className="text-[12px] text-muted-foreground">Начальная цена заказчика</dt>
@@ -337,7 +337,7 @@ function Summary({ result, base, badge }: { result: RicResult; base: string; bad
           </div>
           <div>
             <dt className="text-[12px] text-muted-foreground">Отклонение от РИЦ</dt>
-            <dd className="font-mono text-[13px]">{dev ? `${signed(dev.abs)}${rub(Math.abs(dev.abs))} (${signed(dev.pct)}${pct(Math.abs(dev.pct))})` : '—'}</dd>
+            <dd className="font-mono text-[15px] font-bold">{dev ? `${signed(dev.abs)}${rub(Math.abs(dev.abs))} (${signed(dev.pct)}${pct(Math.abs(dev.pct))})` : '—'}</dd>
           </div>
           <div>
             <dt className="text-[12px] text-muted-foreground">Диапазон цен-аналогов</dt>
