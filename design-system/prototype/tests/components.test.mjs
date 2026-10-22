@@ -697,3 +697,57 @@ test('шаг «Анализ» без разбора ИИ: карточка «И�
   const failed = html(h(mods.analysis.StepNotAnalyzed, { running: false, error: 'ИИ не подключён.', onRun: () => {}, onBack: () => {} }));
   assert.match(failed, /<p role="alert"[^>]*>.*ИИ не подключён\./);
 });
+
+// ——— Шаг «Цена»: уровни важности ———
+const pricingProps = (calcOver = {}, over = {}) => ({
+  kind: '44-ФЗ · электронный аукцион',
+  calc: { nmck: 1_000_000, price: 800_000, costs: 500_000, extra: 10_000, taxPct: 6, guaranteeRatePct: 3, days: 90, securityPct: 5, ...calcOver },
+  set() {},
+  onPutPrice() {},
+  notes: [],
+  onNext() {},
+  onBack() {},
+  ...over,
+});
+
+test('шаг «Цена»: сверху нижняя цена — крупно и зелёным, с прибылью при вашей цене; ваша цена и снижение — ниже, расходы — тише', () => {
+  const out = html(h(mods.pricing.StepPricing, pricingProps()));
+  const t = plainText(out);
+  assert.match(out, /text-3xl font-bold[^"]*text-success[^>]*>[\d\s,]+ ₽/, 'нижняя цена — самая крупная и зелёная');
+  assert.match(t, /До какой цены снижаться/);
+  assert.match(t, /нижняя цена · −\d+(,\d)?% от НМЦК/);
+  assert.match(out, /text-success[^>]*>\s*<svg[^>]*>.*Прибыль при вашей цене:/s);
+  assert.match(out, /text-xl font-bold[^>]*>[\d\s,]+ ₽<\/span>/, 'прибыль — крупной цифрой');
+  assert.match(t, /Мои расходы/);
+  // Нижняя цена стоит раньше ползунка и расходов.
+  assert.ok(out.indexOf('До какой цены снижаться') < out.indexOf('type="range"') && out.indexOf('type="range"') < out.indexOf('Мои расходы'));
+});
+
+test('шаг «Цена»: убыток при вашей цене — красная плашка и красная цифра; цена выше начальной — отклонят; антидемпинг — коротко, подробности в подсказке', () => {
+  const loss = html(h(mods.pricing.StepPricing, pricingProps({ price: 520_000 })));
+  assert.match(loss, /border-danger\/40 bg-danger\/5/);
+  assert.match(plainText(loss), /Убыток при вашей цене:/);
+  assert.match(plainText(loss), /Антидемпинг \(снижение от 25%\): обеспечение исполнения ×1,5, не меньше 10%, или сведения о добросовестности\./);
+  assert.match(plainText(loss), /ч\. 1–3 ст\. 37 44-ФЗ/, 'ссылка на закон — в подсказке');
+  const above = plainText(html(h(mods.pricing.StepPricing, pricingProps({ price: 1_100_000 }))));
+  assert.match(above, /Цена выше начальной — заявку отклонят\./);
+  assert.match(above, /Выше начальной цены ставить нельзя/);
+});
+
+test('шаг «Цена»: под заголовком одна короткая строка и «расчёт без ИИ»; полный вводный текст и «вероятность победы» — в подсказках', () => {
+  const out = html(h(mods.pricing.StepPricing, pricingProps()));
+  const t = plainText(out);
+  assert.match(t, /Цена расчёт без ИИ/);
+  assert.match(t, /Цену подают на торгах — до какой снижаться\./);
+  assert.match(t, /На аукционе цену подают во время торгов \(ч\. 2 ст\. 49 44-ФЗ\)\./, 'полный текст — в подсказке');
+  assert.match(t, /Вероятность победы не показываем/);
+  assert.equal(/<p[^>]*>Вероятность победы не показываем/.test(out), false, 'отдельного абзаца про вероятность победы нет');
+  assert.match(plainText(html(h(mods.pricing.StepPricing, pricingProps({}, { kind: '44-ФЗ · запрос котировок' })))), /Цену вы называете в заявке — ниже какой не опускаться\./);
+});
+
+test('шаг «Цена»: расходов нет — вместо нижней цены просьба их вписать, плашка нейтральная; расходы открыты', () => {
+  const out = html(h(mods.pricing.StepPricing, pricingProps({ costs: null, extra: null, taxPct: null, guaranteeRatePct: null, days: null })));
+  assert.match(plainText(out), /Впишите расходы — посчитаем нижнюю цену\./);
+  assert.equal(/border-success\/40|border-danger\/40/.test(out), false);
+  assert.match(plainText(out), /Себестоимость, ₽/);
+});
