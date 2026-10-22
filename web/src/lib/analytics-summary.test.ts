@@ -178,7 +178,7 @@ test("матрица в резюме: строка раздела — сколь
   assert.equal(buildSummary({ ...base, matrix: light }).verdict.level, "go");
 });
 
-test("главное число: цена, с которой можно участвовать, и соседние цены; тон — по итогу светофора", () => {
+test("главное число: цена, с которой можно участвовать, и соседние цены; цена зелёная", () => {
   const s = buildSummary(input({}));
   assert.ok(s.headline, "есть затраты — есть главное число");
   assert.equal(s.headline!.label, "Участвовать можно по цене не ниже");
@@ -187,7 +187,7 @@ test("главное число: цена, с которой можно учас
   const labels = s.headline!.extras.map((x) => x.label);
   assert.ok(labels.includes("Целевая (с вашей маржой)"), labels.join("|"));
   assert.equal(s.headline!.extras.find((x) => x.label.startsWith("Целевая"))!.tone, "good");
-  assert.equal(s.headline!.tone, { go: "good", careful: "warn", stop: "danger", unknown: "muted" }[s.verdict.level]);
+  assert.equal(s.headline!.tone, "good", "главная цена зелёная при любом итоге светофора, кроме убытка");
 });
 
 test("главное число: убыток даже по начальной цене — красное, без соседних цен; нет затрат — главного числа нет", () => {

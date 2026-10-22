@@ -152,9 +152,7 @@ function recommendationsOf(i: SummaryInput): string[] {
   return out.slice(0, MAX_RECOMMENDATIONS);
 }
 
-const TONE_OF_LEVEL: Record<VerdictLevel, Tone> = { go: "good", careful: "warn", stop: "danger", unknown: "muted" };
-
-function headlineOf(i: SummaryInput, level: VerdictLevel): Headline | null {
+function headlineOf(i: SummaryInput): Headline | null {
   const e = i.econ;
   if (!e.ready) return null;
   if (e.min === null) {
@@ -164,7 +162,8 @@ function headlineOf(i: SummaryInput, level: VerdictLevel): Headline | null {
   const extras: Headline["extras"] = [];
   if (e.safe !== null && e.safe > e.min) extras.push({ label: "Безопасная (выдержит стресс)", value: rubles(e.safe), tone: "warn" });
   if (e.target !== null) extras.push({ label: "Целевая (с вашей маржой)", value: rubles(e.target), tone: "good" });
-  return { tone: TONE_OF_LEVEL[level], label: "Участвовать можно по цене не ниже", value: rubles(e.min), note: `${drop(e.min)} от начальной`, extras };
+  // Главная цена — зелёная (решение владельца 22.10.2026); красным она бывает только при убытке даже по начальной цене.
+  return { tone: "good", label: "Участвовать можно по цене не ниже", value: rubles(e.min), note: `${drop(e.min)} от начальной`, extras };
 }
 
 const MAX_TOP_RISKS = 3;
@@ -225,7 +224,7 @@ export function buildSummary(i: SummaryInput): Summary {
     verdict,
     text: textOf(i),
     facts,
-    headline: headlineOf(i, verdict.level),
+    headline: headlineOf(i),
     topRisks: topRisksOf(i.estimate),
     recommendations: recommendationsOf(i),
     sections: sections.map((x) => ({ ...x, tone: tones[x.id] })),

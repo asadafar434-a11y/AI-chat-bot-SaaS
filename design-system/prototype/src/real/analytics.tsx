@@ -115,7 +115,7 @@ export function AnalyticsList({ onOpen }: { onOpen: (id: string) => void }) {
 
 // Разбор одной закупки. Сверху — итог светофором, резюме и рекомендации (lib/analytics-summary.ts); ниже — закрытые разделы с подробностями: договор, оценка рисков, цена, расчёт заказчика, РИЦ.
 // Полный отчёт — в Word или PDF (lib/analytics-report.ts). Введённое лежит в браузере (lib/analytics-store.ts).
-export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
+export function PurchaseAnalytics({ onBack, onAnalyze }: { onBack: () => void; onAnalyze?: () => void }) {
   const { purchase, documents } = usePurchase();
   const profile = useProfile();
   const ric = usePersisted<RicData>(purchase.id, getRic, saveRic, EMPTY_RIC, 'расчёт РИЦ');
@@ -249,6 +249,8 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
     [title, purchase.kind, purchase.tpPrice, nmck, hasContract, risks, estimate, econ, badge, calcs, regionInfo, matrixSummary],
   );
   const needCosts = !econ.ready && econ.reason === 'costs';
+  // Загрузка уже пройдена: с плашки итога — дальше, на шаг «Анализ». Если ИИ закупку ещё не разбирал, на шаге будет кнопка разбора.
+  const analyzed = Object.values(purchase.requirements).some((list) => list.length > 0);
   // Разделы закрыты: сверху резюме. Исключения: без ваших затрат цену не назвать — раздел с затратами открыт сразу; итоговая диаграмма открыта, когда есть что рисовать.
   const [open, setOpen] = useState<Record<SectionId, boolean>>(() => ({ risks: false, estimate: false, economics: needCosts, nmck: false, ric: false, matrix: false, chart: econ.ready }));
   const toggle = (id: SectionId) => setOpen((o) => ({ ...o, [id]: !o[id] }));
@@ -426,6 +428,7 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
         onWord={() => void downloadWord()}
         onPdf={downloadPdf}
         action={needCosts ? { label: 'Ввести затраты', onClick: () => goTo('economics') } : undefined}
+        analyze={onAnalyze ? { label: analyzed ? 'Перейти к анализу →' : 'Анализировать документы →', onClick: onAnalyze } : undefined}
       />
       {saveError && (
         <p role="alert" className="text-[12px] text-danger">

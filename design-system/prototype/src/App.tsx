@@ -193,7 +193,15 @@ function Product() {
             {view === 'analytics' &&
               (analyticsId ? (
                 <PurchaseProvider id={analyticsId} onMissing={() => setAnalyticsId(null)}>
-                  <PurchaseAnalytics key={analyticsId} onBack={() => setAnalyticsId(null)} />
+                  <PurchaseAnalytics
+                    key={analyticsId}
+                    onBack={() => setAnalyticsId(null)}
+                    onAnalyze={() => {
+                      setActiveId(analyticsId);
+                      setStep(1);
+                      setView('workflow');
+                    }}
+                  />
                 </PurchaseProvider>
               ) : (
                 <AnalyticsList onOpen={setAnalyticsId} />
@@ -220,6 +228,10 @@ function Product() {
                     onCreated={(id) => {
                       setActiveId(id);
                       setStep(1);
+                    }}
+                    onAnalytics={(id) => {
+                      setAnalyticsId(id);
+                      setView('analytics');
                     }}
                   />
                 </Shell>

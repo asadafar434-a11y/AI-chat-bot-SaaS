@@ -17,6 +17,40 @@ const statusMeta: Record<
   missing: { icon: XCircle, tone: 'danger', label: 'Отсутствует' },
 };
 
+// Закупка загружена без разбора ИИ (например, из «Аналитики»): требований ещё нет. Разбор — платный запрос к ИИ, только по кнопке; после него появляется «Что подать».
+export function StepNotAnalyzed({ running, error, onRun, onBack }: { running: boolean; error: string; onRun: () => void; onBack: () => void }) {
+  return (
+    <div className="animate-fade-up space-y-6">
+      <h1 className="text-2xl font-semibold tracking-tight">Анализ документов</h1>
+      <Card className="space-y-4 p-6">
+        <div className="flex items-start gap-3">
+          <Sparkles className="mt-0.5 size-5 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-lg font-bold">ИИ ещё не разбирал эту закупку</p>
+            <p className="mt-1 text-[13px] text-muted-foreground">Выпишет требования заказчика — появится «Что подать».</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button onClick={onRun} disabled={running}>
+            {running && <Loader2 className="size-4 animate-spin" />}
+            {running ? 'ИИ читает документы…' : 'Анализировать документы'}
+          </Button>
+          <Badge tone="info">платный запрос ИИ</Badge>
+          <Button variant="ghost" onClick={onBack} disabled={running}>
+            Назад
+          </Button>
+        </div>
+        {running && <p className="text-[12px] text-muted-foreground">Это может занять минуту.</p>}
+        {error && (
+          <p role="alert" className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" /> <span className="min-w-0 break-words">{error}</span>
+          </p>
+        )}
+      </Card>
+    </div>
+  );
+}
+
 // Строка «Что подать»: пункт из документов закупки и как его выполнить. Вид — как в прототипе, данные — настоящие:
 // план выполнения требований считает приложение (web/src/lib/fulfillment.ts).
 function ContradictionsBlock({ card }: { card: ContradictionsCard }) {

@@ -1113,17 +1113,17 @@ test('экран: главное число крупно и цветом — ц�
   const out = summaryUi(summaryOf('careful', { headline: HEAD, topRisks: TOP }));
   const t = text(out);
   assert.match(t, /Участвовать можно по цене не ниже 3 902 197 ₽ 22,0 % от начальной/);
-  assert.match(out, /text-4xl font-bold[^"]*text-success[^>]*>3 902 197 ₽/, 'главное число — самое крупное и зелёное (тон по итогу)');
-  assert.match(out, /text-2xl font-bold[^"]*text-warn-foreground[^>]*>4 100 000 ₽/, 'безопасная — янтарная');
-  assert.match(out, /text-2xl font-bold[^"]*text-success[^>]*>4 390 282 ₽/, 'целевая — зелёная');
+  assert.match(out, /text-3xl font-bold[^"]*text-success[^>]*>3 902 197 ₽/, 'главное число — самое крупное и зелёное');
+  assert.match(out, /text-lg font-bold[^"]*text-warn-foreground[^>]*>4 100 000 ₽/, 'безопасная — янтарная');
+  assert.match(out, /text-lg font-bold[^"]*text-success[^>]*>4 390 282 ₽/, 'целевая — зелёная');
   assert.match(t, /Безопасная \(выдержит стресс\)/);
 });
 
 test('экран: итог окрашен по уровню — «не стоит» красный, «осторожно» янтарный, «можно» зелёный; убыток по начальной цене — красное главное число', () => {
   const stop = summaryUi(summaryOf('stop', { headline: { tone: 'danger', label: 'Убыток даже по начальной цене', value: '−1 962 534 ₽', note: 'начальная цена 5 000 000 ₽', extras: [] } }));
   assert.match(stop, /border-danger\/40 bg-danger\/5/);
-  assert.match(stop, /text-2xl font-bold[^"]*text-danger[^>]*>Участвовать не стоит/);
-  assert.match(stop, /text-4xl font-bold[^"]*text-danger[^>]*>−1 962 534 ₽/);
+  assert.match(stop, /text-xl font-bold[^"]*text-danger[^>]*>Участвовать не стоит/);
+  assert.match(stop, /text-3xl font-bold[^"]*text-danger[^>]*>−1 962 534 ₽/);
   assert.match(summaryUi(summaryOf('careful', { headline: HEAD })), /border-warn\/60/);
   assert.match(summaryUi(summaryOf('go', { headline: HEAD })), /border-success\/40/);
 });
@@ -1137,9 +1137,9 @@ test('экран: крупнейшие риски — жирные суммы и
   const out = summaryUi(summaryOf('careful', { headline: HEAD, topRisks: TOP, facts }));
   const t = text(out);
   assert.match(t, /Главные риски Если сработают все: до 3 476 014 ₽/);
-  assert.match(out, /text-xl font-bold[^"]*text-danger[^>]*>2 500 000 ₽/);
+  assert.match(out, /text-lg font-bold[^"]*text-danger[^>]*>2 500 000 ₽/);
   assert.match(out, /font-semibold text-danger[^>]*>50,0 % цены/);
-  assert.match(out, /text-xl font-bold[^"]*text-warn-foreground[^>]*>425 000 ₽/);
+  assert.match(out, /text-lg font-bold[^"]*text-warn-foreground[^>]*>425 000 ₽/);
   // Начальная цена — в тихой плитке; целевая и общий итог рисков — только крупно выше.
   assert.equal((t.match(/Целевая цена/g) ?? []).length, 0);
   assert.equal((t.match(/Риски в рублях, если сработают все/g) ?? []).length, 0);
@@ -1150,7 +1150,7 @@ test('экран: затрат нет — главного числа нет, в
   const out = summaryUi(summaryOf('unknown', { headline: null, topRisks: [] }), { action: { label: 'Ввести затраты', onClick: none } });
   assert.match(text(out), /Ввести затраты/);
   assert.equal(text(out).includes('Главные риски'), false);
-  assert.equal(out.includes('text-4xl'), false);
+  assert.equal(out.includes('text-3xl'), false);
 });
 
 test('раскрывашка: строка итога окрашена по важности — красная и янтарная жирным, обычная тихо', () => {
@@ -1160,4 +1160,19 @@ test('раскрывашка: строка итога окрашена по ва
   assert.match(render('good'), /font-semibold text-success/);
   assert.match(render('muted'), /font-normal text-muted-foreground[^>]*>до 3 476 014 ₽/);
   assert.match(render(undefined), /font-normal text-muted-foreground/);
+});
+
+test('экран: на плашке итога кнопка «дальше» — перейти в анализ; без неё (нет перехода) кнопки нет; она стоит и при «мало данных»', () => {
+  const analyze = { label: 'Анализировать документы →', onClick: none };
+  const withIt = summaryUi(summaryOf('careful', { headline: HEAD, topRisks: TOP }), { analyze });
+  assert.match(text(withIt), /Анализировать документы →/);
+  assert.ok(withIt.indexOf('Анализировать документы →') < withIt.indexOf('Главные риски'), 'кнопка — на цветной плашке итога, выше блока рисков');
+  assert.equal(text(summaryUi(summaryOf('careful', { headline: HEAD }))).includes('Анализировать документы'), false);
+  const unknown = text(summaryUi(summaryOf('unknown', { headline: null }), { action: { label: 'Ввести затраты', onClick: none }, analyze: { label: 'Перейти к анализу →', onClick: none } }));
+  assert.match(unknown, /Ввести затраты[\s\S]*Перейти к анализу →/);
+});
+
+test('экран: главная цена зелёная при «осторожно» и «можно»', () => {
+  assert.match(summaryUi(summaryOf('careful', { headline: HEAD })), /text-3xl font-bold[^"]*text-success/);
+  assert.match(summaryUi(summaryOf('go', { headline: HEAD })), /text-3xl font-bold[^"]*text-success/);
 });

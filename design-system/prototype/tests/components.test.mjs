@@ -658,3 +658,42 @@ test('шаг «Анализ»: карточка «Противоречия в д
   const none = html(h(mods.analysis.StepAnalysis, { ...base, contradictions: card({ result: { findings: [], docsKey: 'k', checkedAt: '2026-10-19' } }) }));
   assert.match(none, /Противоречий не найдено/);
 });
+
+// ——— Загрузка: главное крупно, бесплатный путь рядом с платным; «Анализ» для закупки без разбора ИИ ———
+const plainText = (out) => out.replace(/<[^>]+>/g, ' ').replace(/[  ]/g, ' ').replace(/\s+/g, ' ');
+
+test('шаг «Загрузка»: в распознанной закупке цена и срок — крупно и жирно, закон и заказчик — мелко', () => {
+  const out = upload({
+    files: [{ name: 'Извещение.docx', meta: 'DOCX' }],
+    recognized: { title: 'Поставка угля', facts: [['Закон', '223-ФЗ · аукцион'], ['Начальная цена', '25 930 002 ₽'], ['Подать до', '30 октября 2026'], ['Заказчик', 'МУП «Тепло»']] },
+  });
+  assert.match(out, /text-lg font-bold[^>]*>Поставка угля/);
+  assert.match(out, /text-2xl font-bold[^>]*>25 930 002 ₽/);
+  assert.match(out, /text-2xl font-bold[^>]*>30 октября 2026/);
+  assert.match(out, /text-\[12px\] text-foreground[^>]*>МУП «Тепло»/);
+  assert.match(out, /text-\[12px\] text-foreground[^>]*>223-ФЗ · аукцион/);
+});
+
+test('шаг «Загрузка»: рядом с платным ИИ-разбором — бесплатная кнопка «Только аналитика»; недоступна, пока нет файлов и пока идёт работа', () => {
+  const none = upload({ alt: { label: 'Только аналитика · бесплатно', onClick: () => {} } });
+  assert.match(none, /disabled=""[^>]*>Только аналитика · бесплатно/);
+  const ready = upload({ files: [{ name: 'a.docx', meta: 'DOCX' }], alt: { label: 'Только аналитика · бесплатно', onClick: () => {} }, nextLabel: 'Анализировать документы →' });
+  assert.doesNotMatch(ready, /disabled=""[^>]*>Только аналитика · бесплатно/);
+  assert.match(plainText(ready), /Только аналитика · бесплатно Анализировать документы →/);
+  const busy = upload({ files: [{ name: 'a.docx', meta: 'DOCX' }], alt: { label: 'Только аналитика · бесплатно', onClick: () => {} }, busy: 'saving' });
+  assert.match(busy, /disabled=""[^>]*>[^<]*<svg[^>]*animate-spin[^>]*>.*Только аналитика · бесплатно/s);
+  assert.equal(plainText(upload()).includes('Только аналитика'), false, 'без пути в аналитику кнопки нет');
+});
+
+test('шаг «Анализ» без разбора ИИ: карточка «ИИ ещё не разбирал», платная кнопка, пометка «платный запрос ИИ», ошибка объявляется', () => {
+  const idle = html(h(mods.analysis.StepNotAnalyzed, { running: false, error: '', onRun: () => {}, onBack: () => {} }));
+  const t = plainText(idle);
+  assert.match(t, /Анализ документов/);
+  assert.match(t, /ИИ ещё не разбирал эту закупку/);
+  assert.match(t, /Анализировать документы платный запрос ИИ Назад/);
+  assert.doesNotMatch(idle, /role="alert"/);
+  const running = html(h(mods.analysis.StepNotAnalyzed, { running: true, error: '', onRun: () => {}, onBack: () => {} }));
+  assert.match(running, /disabled=""[^>]*>[^<]*<svg[^>]*animate-spin[^>]*>.*ИИ читает документы…/s);
+  const failed = html(h(mods.analysis.StepNotAnalyzed, { running: false, error: 'ИИ не подключён.', onRun: () => {}, onBack: () => {} }));
+  assert.match(failed, /<p role="alert"[^>]*>.*ИИ не подключён\./);
+});

@@ -5,6 +5,8 @@ import { Button, Card, Soon, Tooltip } from './ui';
 // Шаг «Загрузка». Вид — прототипа; данные — настоящие: файлы, которые прочитал сервер, и то, что из них распознано.
 export type UploadFile = { name: string; meta: string; warn?: boolean };
 export type Recognized = { title: string; facts: [string, string][] };
+// Что в распознанной закупке главное: показывается крупно и жирно, остальное — мелко (решение владельца 22.10.2026: важное — крупно и цветом).
+const LEAD_FACTS = ['Начальная цена', 'Подать до'];
 
 export function StepUpload({
   files,
@@ -18,10 +20,11 @@ export function StepUpload({
   nextDisabled,
   notice,
   extra,
+  alt,
 }: {
   files: UploadFile[];
-  // reading — сервер читает файлы; analyzing — ИИ выписывает требования.
-  busy: 'reading' | 'analyzing' | null;
+  // reading — сервер читает файлы; analyzing — ИИ выписывает требования; saving — закупка сохраняется для аналитики без ИИ.
+  busy: 'reading' | 'analyzing' | 'saving' | null;
   error?: string;
   recognized?: Recognized | null;
   onFiles: (files: File[]) => void;
@@ -33,6 +36,8 @@ export function StepUpload({
   notice?: string | null;
   // Блок под списком файлов — например, поиск по документам закупки.
   extra?: ReactNode;
+  // Бесплатный путь рядом с платным ИИ-разбором: открыть закупку только в «Аналитике» (расчёты по документам, без ИИ).
+  alt?: { label: string; onClick: () => void };
 }) {
   const [dragging, setDragging] = useState(false);
   const input = useRef<HTMLInputElement>(null);
@@ -43,10 +48,7 @@ export function StepUpload({
     <div className="animate-fade-up space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Загрузка документации</h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          Загрузите документы закупки с тендерной площадки — ИИ распознает состав и извлечёт
-          требования.
-        </p>
+        <p className="mt-1.5 text-sm text-muted-foreground">Загрузите документы закупки — ИИ извлечёт требования.</p>
       </div>
 
       <Card>
@@ -169,27 +171,46 @@ export function StepUpload({
       )}
 
       {recognized && (
-        <Card className="animate-fade-up bg-secondary/40 p-4">
-          <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-            Распознанная закупка
-          </p>
-          <p className="mt-2 text-sm font-medium leading-snug">{recognized.title}</p>
-          <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-xs sm:grid-cols-4">
-            {recognized.facts.map(([k, v]) => (
-              <div key={k}>
-                <p className="text-muted-foreground">{k}</p>
-                <p className="mt-0.5 font-mono text-[12px] text-foreground">{v}</p>
-              </div>
-            ))}
+        <Card className="animate-fade-up space-y-4 bg-secondary/40 p-5">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">Распознанная закупка</p>
+            <p className="mt-2 break-words text-lg font-bold leading-snug">{recognized.title}</p>
           </div>
+          {/* Главное — крупно: цена и срок; закон и заказчик — тише. */}
+          <dl className="flex flex-wrap gap-x-10 gap-y-3">
+            {recognized.facts
+              .filter(([k]) => LEAD_FACTS.includes(k))
+              .map(([k, v]) => (
+                <div key={k} className="min-w-0">
+                  <dt className="text-[12px] font-medium text-muted-foreground">{k}</dt>
+                  <dd className="mt-0.5 break-words font-mono text-2xl font-bold tracking-tight">{v}</dd>
+                </div>
+              ))}
+          </dl>
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-xs sm:grid-cols-2">
+            {recognized.facts
+              .filter(([k]) => !LEAD_FACTS.includes(k))
+              .map(([k, v]) => (
+                <div key={k} className="min-w-0">
+                  <dt className="text-muted-foreground">{k}</dt>
+                  <dd className="mt-0.5 break-words font-mono text-[12px] text-foreground">{v}</dd>
+                </div>
+              ))}
+          </dl>
         </Card>
       )}
 
       {extra}
 
-      <div className="flex items-center justify-end gap-3">
+      <div className="flex flex-wrap items-center justify-end gap-3">
         {busy === 'analyzing' && (
           <span className="text-xs text-muted-foreground">ИИ читает документы — это может занять минуту…</span>
+        )}
+        {alt && (
+          <Button variant="secondary" onClick={alt.onClick} disabled={busy !== null || files.length === 0}>
+            {busy === 'saving' && <Loader2 className="size-4 animate-spin" />}
+            {alt.label}
+          </Button>
         )}
         <Button onClick={onNext} disabled={nextDisabled || busy !== null || files.length === 0}>
           {busy === 'analyzing' && <Loader2 className="size-4 animate-spin" />}

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { introOf, purchaseForAnalytics } from '@/lib/analytics-intake';
 import { carryReady } from '@/lib/application-files';
 import { saveExcelFiles } from '@/lib/forms-store';
 import { lawText } from '@/lib/dashboard';
@@ -19,12 +20,12 @@ const failedNote = (failed: FailedFile[]) =>
 
 // Новая закупка: файлы читает сервер, потом ИИ выписывает требования (платный запрос — по кнопке), закупка сохраняется
 // в браузере и открывается на шаге «Анализ».
-export function NewPurchaseUpload({ onCreated }: { onCreated: (id: string) => void }) {
+export function NewPurchaseUpload({ onCreated, onAnalytics }: { onCreated: (id: string) => void; onAnalytics?: (id: string) => void }) {
   // Загруженное: что прочиталось и что нет. Добавки складываются, а не затирают друг друга; файл с тем же именем — новая
   // версия, она заменяет прежнюю (lib/upload-merge.ts).
   const [upload, setUpload] = useState<Upload>({ documents: [], failed: [] });
   const { documents: docs, failed } = upload;
-  const [busy, setBusy] = useState<'reading' | 'analyzing' | null>(null);
+  const [busy, setBusy] = useState<'reading' | 'analyzing' | 'saving' | null>(null);
   const [error, setError] = useState('');
   // Файлы как они пришли: Excel-бланки заказчика сохраняются целиком, в них потом вписываются реквизиты (lib/forms-store.ts).
   const sources = useRef(new Map<string, File>());
@@ -66,12 +67,31 @@ export function NewPurchaseUpload({ onCreated }: { onCreated: (id: string) => vo
     }
   }
 
+  // Бесплатный путь: закупка без ИИ-разбора, только для «Аналитики» (расчёты по тексту документов). Название, цену и закон находит код (lib/analytics-intake.ts).
+  async function openInAnalytics() {
+    if (!onAnalytics) return;
+    setBusy('saving');
+    setError('');
+    try {
+      const id = crypto.randomUUID();
+      const intro = introOf(docs);
+      const purchase = purchaseForAnalytics({ id, createdAt: new Date().toISOString(), docs, failed, fields: { title: intro.title, price: intro.price, law: intro.law }, intro });
+      await savePurchaseWithDocuments(purchase, docs);
+      await saveExcelFiles(id, docs.flatMap((d) => sources.current.get(d.name) ?? []));
+      onAnalytics(id);
+    } catch (e) {
+      setError(errorMessage(e));
+      setBusy(null);
+    }
+  }
+
   const files: UploadFile[] = docs.map((d) => ({ name: d.name, meta: docMeta(d), warn: Boolean(d.scan) }));
   return (
     <StepUpload
       files={files}
       busy={busy}
       error={error}
+      alt={onAnalytics ? { label: 'Только аналитика · бесплатно', onClick: () => void openInAnalytics() } : undefined}
       notice={failedNote(failed)}
       onFiles={(f) => void add(f)}
       onRemove={(name) => setUpload((prev) => ({ ...prev, documents: prev.documents.filter((d) => d.name !== name) }))}

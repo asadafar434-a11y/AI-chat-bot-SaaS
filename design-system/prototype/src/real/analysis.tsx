@@ -6,7 +6,7 @@ import { afterWinDuties } from '@/lib/after-win';
 import { contradictionsStale } from '@/lib/contradictions';
 import { createLocator, describeSource, type Located } from '@/lib/doc-locate';
 import { errorMessage } from '@/lib/http-error';
-import { findContradictions } from '@/lib/purchase';
+import { extractRequirements, findContradictions, fromRequirements } from '@/lib/purchase';
 import { priceDiscrepancies } from '@/lib/doc-discrepancies';
 import { fieldsOf } from '@/lib/fields';
 import { fulfillmentOf, type PlanStatus } from '@/lib/fulfillment';
@@ -16,10 +16,10 @@ import { getProfile } from '@/lib/me-store';
 import { EMPTY_PROFILE, type Profile } from '@/lib/profile';
 import { parseRubles } from '@/lib/rub-words';
 import { requirementViews, STATUS_TEXT, type Offer, type RequirementView } from '@/lib/requirement-offers';
-import { MANDATORY_TEXT, TYPE_TEXT } from '@/lib/requirements';
+import { MANDATORY_TEXT, REQ_GROUP_KEYS, TYPE_TEXT } from '@/lib/requirements';
 import type { CheckStatus } from '../lib/data';
 import type { RequirementRowView } from '../components/RequirementsList';
-import { StepAnalysis, type AnalysisRow } from '../components/StepAnalysis';
+import { StepAnalysis, StepNotAnalyzed, type AnalysisRow } from '../components/StepAnalysis';
 import { usePurchase } from './purchase-provider';
 
 const STATUS: Record<Exclude<PlanStatus, 'none'>, CheckStatus> = { done: 'ok', confirm: 'warn', todo: 'missing' };
@@ -96,6 +96,23 @@ export function PurchaseAnalysis({ onNext, onBack, onFix }: { onNext: () => void
       setContradicting(false);
     }
   };
+  // Закупка, загруженная без ИИ (из «Аналитики»): требований нет. Разбор — платный запрос к ИИ, только по кнопке; название, цену и способ, которые уже есть, он не затирает пустым.
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState('');
+  const notAnalyzed = !purchase.sample && REQ_GROUP_KEYS.every((key) => purchase.requirements[key].length === 0);
+  const runAnalysis = async () => {
+    setAnalyzing(true);
+    setAnalyzeError('');
+    try {
+      const result = await extractRequirements(documents, purchase.id);
+      const found = fromRequirements(result);
+      update({ ...found, short: found.short || purchase.short, subject: found.subject || purchase.subject, kind: found.kind || purchase.kind, customer: found.customer || purchase.customer, price: found.price || purchase.price });
+    } catch (e) {
+      setAnalyzeError(errorMessage(e));
+    } finally {
+      setAnalyzing(false);
+    }
+  };
   // Где в файлах закупки стоит цитата каждого пункта — страница, таблица, строка, пункт (lib/doc-locate.ts).
   const locator = useMemo(() => createLocator(documents), [documents]);
   const snippetOf = useMemo(
@@ -159,6 +176,7 @@ export function PurchaseAnalysis({ onNext, onBack, onFix }: { onNext: () => void
   );
 
   const way = purchase.kind.split('·').slice(1).join('·').trim();
+  if (notAnalyzed) return <StepNotAnalyzed running={analyzing} error={analyzeError} onRun={() => void runAnalysis()} onBack={onBack} />;
   return (
     <StepAnalysis
       contradictions={

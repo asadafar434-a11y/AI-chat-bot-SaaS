@@ -29,6 +29,7 @@ export function AnalyticsSummary({
   onWord,
   onPdf,
   action,
+  analyze,
 }: {
   summary: Summary;
   busy: ReportBusy;
@@ -37,6 +38,8 @@ export function AnalyticsSummary({
   onPdf: () => void;
   /** Быстрый переход к нужному разделу, например «Ввести затраты». */
   action?: { label: string; onClick: () => void };
+  /** Дальше по закупке: шаг «Анализ» (загрузка уже пройдена). Стоит на самой плашке итога. */
+  analyze?: { label: string; onClick: () => void };
 }) {
   const [adviceOpen, setAdviceOpen] = useState(false);
   const { verdict } = summary;
@@ -50,17 +53,17 @@ export function AnalyticsSummary({
     <div className="space-y-3">
       <div className={`rounded-2xl border p-5 shadow-sm ${wrap}`}>
         <div className="flex items-start gap-3">
-          <Icon className={`mt-0.5 size-7 shrink-0 ${title}`} />
+          <Icon className={`mt-0.5 size-6 shrink-0 ${title}`} />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <p className={`text-2xl font-bold tracking-tight ${title}`}>{verdict.label}</p>
+              <p className={`text-xl font-bold tracking-tight ${title}`}>{verdict.label}</p>
               <CertaintyBadge kind="estimate" />
               <HelpTip
                 align="start"
                 content="Светофор — не балл и не вероятность победы. Он показывает, хватает ли вашей прибыли на риски договора, при ваших затратах и допущениях ниже. Решение об участии принимаете вы."
               />
             </div>
-            <ul className="mt-2 space-y-1 text-[14px] font-medium">
+            <ul className="mt-1.5 space-y-0.5 text-[13px] font-medium">
               {verdict.reasons.map((reason) => (
                 <li key={reason} className="break-words">
                   {reason}
@@ -71,16 +74,16 @@ export function AnalyticsSummary({
         </div>
 
         {headline ? (
-          <div className="mt-5 border-t border-foreground/10 pt-4">
-            <p className="text-[13px] font-semibold text-muted-foreground">{headline.label}</p>
-            <p className={`mt-1 break-words font-mono text-4xl font-bold tracking-tight sm:text-5xl ${TONE_TEXT[headline.tone]}`}>{headline.value}</p>
-            {headline.note && <p className="mt-1 text-[13px] text-muted-foreground">{headline.note}</p>}
+          <div className="mt-4 border-t border-foreground/10 pt-3">
+            <p className="text-[12px] font-semibold text-muted-foreground">{headline.label}</p>
+            <p className={`mt-0.5 break-words font-mono text-3xl font-bold tracking-tight ${TONE_TEXT[headline.tone]}`}>{headline.value}</p>
+            {headline.note && <p className="mt-0.5 text-[12px] text-muted-foreground">{headline.note}</p>}
             {headline.extras.length > 0 && (
-              <dl className="mt-4 flex flex-wrap gap-x-10 gap-y-3">
+              <dl className="mt-3 flex flex-wrap gap-x-8 gap-y-2">
                 {headline.extras.map((x) => (
                   <div key={x.label} className="min-w-0">
-                    <dt className="text-[12px] font-medium text-muted-foreground">{x.label}</dt>
-                    <dd className={`mt-0.5 break-words font-mono text-2xl font-bold tracking-tight ${TONE_TEXT[x.tone]}`}>{x.value}</dd>
+                    <dt className="text-[11px] font-medium text-muted-foreground">{x.label}</dt>
+                    <dd className={`mt-0.5 break-words font-mono text-lg font-bold tracking-tight ${TONE_TEXT[x.tone]}`}>{x.value}</dd>
                   </div>
                 ))}
               </dl>
@@ -88,17 +91,23 @@ export function AnalyticsSummary({
           </div>
         ) : (
           action && (
-            <div className="mt-4">
+            <div className="mt-3">
               <Button onClick={action.onClick}>{action.label}</Button>
             </div>
           )
         )}
+
+        {analyze && (
+          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-foreground/10 pt-3">
+            <Button onClick={analyze.onClick}>{analyze.label}</Button>
+          </div>
+        )}
       </div>
 
       {topRisks.length > 0 && (
-        <Card className="space-y-3 p-5">
+        <Card className="space-y-3 p-4">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <p className="text-[15px] font-bold">Главные риски</p>
+            <p className="text-[14px] font-bold">Главные риски</p>
             {risksTotal && (
               <p className="text-[13px] text-muted-foreground">
                 Если сработают все: <span className="font-mono text-base font-bold text-danger">{risksTotal.value}</span>
@@ -108,7 +117,7 @@ export function AnalyticsSummary({
           <ul className="space-y-2.5">
             {topRisks.map((r) => (
               <li key={r.title} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                <span className={`font-mono text-xl font-bold tracking-tight ${TONE_TEXT[r.tone]}`}>{r.amount}</span>
+                <span className={`font-mono text-lg font-bold tracking-tight ${TONE_TEXT[r.tone]}`}>{r.amount}</span>
                 <span className={`text-[13px] font-semibold ${TONE_TEXT[r.tone]}`}>{r.pct}</span>
                 <span className="min-w-0 basis-full break-words text-[13px] text-muted-foreground sm:flex-1 sm:basis-auto">{r.title}</span>
               </li>
