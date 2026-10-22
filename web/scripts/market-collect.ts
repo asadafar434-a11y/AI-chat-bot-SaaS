@@ -3,6 +3,7 @@
 //   npm run market:collect -- --name="Уголь каменный ДПК" --unit=т --queries="купить уголь ДПК оптом цена тонна|уголь каменный Д оптовая цена за тонну" --no-model     только найти и скачать страницы, модель не вызывается (бесплатно)
 //   npm run market:collect -- --name="Уголь каменный ДПК" --unit=т --queries="…|…" --model-on --cap-rub=40 --usd-rub=81,13 --out="файл.json"                 вызвать модель (ПЛАТНО), результат — в файл, в базу ничего не пишется
 //   npm run market:collect -- --load-from="файл.json" --by="Имя"                                                                                        записать в базу принятые цены из файла (модель не вызывается)
+//   npm run market:collect -- --recheck="файл.json" --name="…" --unit=т --out="новый.json"                                                                             перепроверить сохранённый ответ модели по текущим правилам (бесплатно, модель не вызывается)
 //   --name, --unit   какой товар и в какой единице нужна цена (цены в другой единице не принимаются);  --region  регион поставки, если нужен;
 //   --urls-file      вместо поиска — готовый список адресов страниц (по одному в строке): так страницы можно найти бесплатно, например в Яндексе через Chrome, а скачать и прочитать их сборщиком;
 //   --pages-file     вместо поиска и скачивания — страницы, уже прочитанные в браузере (например, через Chrome для сайтов, закрытых от роботов): JSON [{"url":"…","title":"…","text":"…"}]; дальше те же проверки;
@@ -10,17 +11,18 @@
 //   --model-on       явное разрешение платного вызова: без него модель не вызывается. Нужны ANTHROPIC_API_KEY в окружении процесса, --cap-rub (потолок расходов, ₽) и --usd-rub (курс);
 //   --model          модель, по умолчанию claude-sonnet-5-5.
 // Потолок расходов жёсткий: перед каждым вызовом считается худший случай, и если он выходит за потолок, сбор останавливается. Ключ берётся только из окружения процесса, в файлы не пишется.
-// Что модель написала, проверяет код: цитата должна быть на странице, число — в цитате, единица совпасть, цена быть оптовой, НДС назван (lib/price-extract.ts). Цены контрактов не принимаются.
+// Что модель написала, проверяет код: цитата должна быть на странице, число — в цитате, единица совпасть, цена быть оптовой, НДС подтверждён цитатой (страница про НДС молчит — цена принимается как цена без НДС с пометкой в источнике) (lib/price-extract.ts). Цены контрактов не принимаются.
 
 import { readFileSync, writeFileSync } from "node:fs";
 import Anthropic from "@anthropic-ai/sdk";
 import { costUsd, PRICES } from "../src/lib/ai-cost.ts";
 import type { Observation } from "../src/lib/market-observations.ts";
 import { createDbMarketStore, type MarketDb } from "../src/lib/market-store-db.ts";
-import { textToHtml } from "../src/lib/page-text.ts";
+import { priceExcerpt, textToHtml } from "../src/lib/page-text.ts";
+import { checkOffer, type Checked, type Wanted } from "../src/lib/price-extract.ts";
 import { moscowDay } from "../src/lib/registry-types.ts";
 import { disconnectPrisma, getPrismaClient } from "../src/server/db/client.ts";
-import { collectPrices } from "../src/server/market/collect.ts";
+import { collectPrices, type CollectResult } from "../src/server/market/collect.ts";
 import { fetchHtml } from "../src/server/market/fetch-page.ts";
 import { createSearcher } from "../src/server/web-search/search.ts";
 
@@ -48,9 +50,56 @@ async function load(file: string) {
   console.log(`Записано в базу: ${result.added}; уже было: ${result.skipped}; всего в базе: ${await store.count()}`);
 }
 
+// Перепроверка уже оплаченного ответа модели по текущим правилам (модель не вызывается, расходов нет): страницы из сохранённого результата скачиваются заново, и каждое выписанное предложение
+// проходит проверку кода ещё раз. Так новое правило (например, про НДС) применяется к прежним ответам без нового платного прогона.
+async function recheck(file: string, wanted: Wanted) {
+  const saved = JSON.parse(readFileSync(file, "utf8")) as CollectResult;
+  const day = args.get("day") && args.get("day") !== "true" ? (args.get("day") as string) : moscowDay(new Date().toISOString());
+  const accepted: Observation[] = [];
+  const rejected: CollectResult["rejected"] = [];
+  const seen = new Set<string>();
+  const pages: CollectResult["pages"] = [];
+  for (const page of saved.pages) {
+    if (page.offers.length === 0) continue;
+    const fetched = await fetchHtml(page.url);
+    const outcome = { ...page, offers: [] as Checked[] };
+    pages.push(outcome);
+    if (!fetched.ok) {
+      outcome.skipReason = fetched.error;
+      continue;
+    }
+    const excerpt = priceExcerpt(fetched.html);
+    for (const o of page.offers) {
+      const checked = checkOffer(o.offer, excerpt.text, wanted, { url: fetched.finalUrl, title: excerpt.title || page.title, day });
+      outcome.offers.push(checked);
+      if (checked.ok) {
+        if (!seen.has(checked.observation.hash)) {
+          seen.add(checked.observation.hash);
+          accepted.push(checked.observation);
+        }
+      } else rejected.push({ url: fetched.finalUrl, reason: checked.reason, detail: checked.detail, quote: o.offer.quote, price: o.offer.price, product: o.offer.product });
+    }
+  }
+  console.log(`Перепроверка ${file} (модель не вызывалась, расходов нет): принято ${accepted.length}, отклонено ${rejected.length}`);
+  for (const o of accepted) console.log(`  ✔ ${o.priceNoVat.toFixed(2)} ₽/${o.unit} без НДС — ${o.name} — ${o.source}`);
+  for (const r of rejected) console.log(`  ✖ ${r.price} — ${r.product}: ${r.reason}${r.detail ? ` (${r.detail})` : ""}`);
+  const out = args.get("out");
+  if (out && out !== "true") {
+    writeFileSync(out, JSON.stringify({ pages, accepted, rejected, spentRub: 0, calls: 0, stoppedByCap: false, searchErrors: [] }, null, 2), "utf8");
+    console.log(`\nРезультат записан в ${out}. В базу ничего не записано.`);
+  }
+}
+
 async function main() {
   const from = args.get("load-from");
   if (from && from !== "true") return load(from);
+  const again = args.get("recheck");
+  if (again && again !== "true") {
+    const n = args.get("name");
+    const u = args.get("unit");
+    if (!n || n === "true" || !u || u === "true") fail('укажите --name="товар" и --unit=единица');
+    return recheck(again, { name: n as string, unit: u as string, region: args.get("region") ?? null });
+  }
 
   const name = args.get("name");
   const unit = args.get("unit");

@@ -126,7 +126,7 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
   const plain = useMemo(() => documents.map((d) => ({ name: d.name, text: d.text })), [documents]);
   const place = useMemo(() => placeOf(plain), [plain]);
   // Позиции — из бланка заказчика, цены-аналоги — из общей базы цен: под капотом, в закупку не пишется (real/market.ts).
-  const market = useMarketBase(data, plain, place?.region.name ?? null);
+  const market = useMarketBase(data, plain, place?.region.name ?? null, purchase.id);
   const base = market.data;
   const result = useMemo(() => (base ? computeRic(base, nmck, new Date()) : null), [base, nmck]);
   const badge = useMemo(() => (base && result ? priceBadge(result, base) : null), [base, result]);
@@ -373,7 +373,7 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
       )}
 
       <AnalyticsFindings
-        lines={findings}
+        lines={[...findings, market.finding]}
         search={{
           line: searchFinding(searchStat),
           pending: pendingTopics.length,

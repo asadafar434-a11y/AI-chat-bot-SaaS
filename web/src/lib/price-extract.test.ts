@@ -66,7 +66,7 @@ test("проверка отклоняет: выдуманная цитата, ц
   assert.equal(why(offer({ unit: "кг" })), "не та единица измерения");
   assert.equal(why(offer({ priceType: "retail" })), "розничная цена");
   assert.equal(why(offer({ priceType: "unknown" })), "оптовая цена не подтверждена");
-  assert.equal(why(offer({ vat: "unknown" })), "НДС не указан");
+  assert.equal(why(offer({ vat: "unknown" })), "принято", "НДС не назван, но в цитате «Цена с НДС» — верим тексту страницы, а не слову «не указан»");
   assert.equal(why(offer({ quote: "оптовая" })), "цитаты нет на странице", "слишком короткая цитата ничего не доказывает");
   const unit = checkOffer(offer({ unit: "кг" }), PAGE, WANTED, CTX);
   assert.ok(!unit.ok && unit.detail === "кг вместо т");
@@ -88,6 +88,20 @@ test("НДС подтверждается цитатой со страницы: 
   assert.equal(why({ ...base, vat: "with" }), "НДС не подтверждён цитатой", "модель сказала «с НДС», а на странице «без ндс»");
   assert.equal(why(offer(), PAGE), "принято", "в основной цитате: «Цена с НДС»");
   assert.equal(why(offer({ vat: "without" }), PAGE), "НДС не подтверждён цитатой", "в цитате «с НДС», модель сказала «без НДС»");
+});
+
+test("страница про НДС молчит: цена принимается как цена без НДС с пометкой в источнике (решение владельца 22.10.2026); оптовость по-прежнему обязательна; назван НДС в цитате — берётся он", () => {
+  const page = "Уголь марки ДПК (Сибирь, Кузбасс)\n* - оптовая цена\nУголь марки ДПК (Сибирь, Кузбасс) 350 руб. 6900 руб. 6500 руб.";
+  const silent = offer({ price: 6900, vat: "unknown", quote: "Уголь марки ДПК (Сибирь, Кузбасс) 350 руб. 6900 руб. 6500 руб.", conditions: "за 1 тонну в мешках" });
+  const r = checkOffer(silent, page, WANTED, { ...CTX, url: "https://gosugol.ru/price.html", title: "Прайс" });
+  assert.ok(r.ok);
+  assert.equal(r.observation.priceNoVat, 6900, "как цена без НДС: себестоимость не занижается");
+  assert.match(r.observation.source, /условия: за 1 тонну в мешках; НДС на странице не указан — принято как цена без НДС; https:\/\/gosugol\.ru\/price\.html$/);
+  assert.equal(checkOffer({ ...silent, priceType: "unknown" }, page, WANTED, CTX).ok, false, "опт не подтверждён — не принимается и без НДС");
+  const withText = checkOffer(offer({ vat: "unknown" }), PAGE, WANTED, CTX);
+  assert.ok(withText.ok);
+  assert.equal(withText.observation.priceNoVat, Math.round((11130 / 1.22) * 10000) / 10000, "в цитате «с НДС» — цена приведена к цене без НДС");
+  assert.equal(withText.observation.source.includes("НДС на странице не указан"), false, "пометки нет: НДС на странице назван");
 });
 
 test("цитата и число сверяются с форматами страницы: неразрывные пробелы, регистр, запятая в копейках", () => {

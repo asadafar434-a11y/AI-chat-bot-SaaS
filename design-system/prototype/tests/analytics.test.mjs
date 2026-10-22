@@ -1430,3 +1430,15 @@ test('расшифровка рейтинга: «цена против рынк�
   const card = renderToStaticMarkup(h(mods.ratingUi.TenderRating, { rating: merged }));
   assert.match(text(card), /по 3 из 5 факторов/, 'учтённый в другом фактор в счёт «из N» не входит');
 });
+
+test('живой поиск закупочных цен: без кнопок — при открытии экрана; только при включённом ИИ; запрос идёт через общий помощник с заголовками ИИ; найденное хранится у закупки и показано в подписи', () => {
+  const hook = readFileSync(path.join(root, 'src/real/market.ts'), 'utf8');
+  assert.match(hook, /fetch\('\/api\/prices'/);
+  assert.match(hook, /aiHeaders\(purchaseId\)/, 'запрос по правилам ИИ: выключенный ИИ запрос не пускает');
+  assert.match(hook, /!aiOn/, 'ИИ выключен — не ищем');
+  assert.match(hook, /shouldSearch\(saved, signature/, 'неделя годности и пауза после неудачи');
+  assert.match(hook, /savePrices\(purchaseId, next\)/);
+  const screen = readFileSync(path.join(root, 'src/real/analytics.tsx'), 'utf8');
+  assert.match(screen, /lines=\{\[\.\.\.findings, market\.finding\]\}/, 'строка «Закупочные цены» — в подписи внизу экрана');
+  assert.equal(/Найти закупочные цены/.test(screen), false, 'кнопки нет: аналитика ищет сама');
+});

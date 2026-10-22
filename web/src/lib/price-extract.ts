@@ -31,7 +31,7 @@ export function buildUserPrompt(wanted: Wanted, page: { url: string; title: stri
   return `Нужный товар: «${wanted.name}», единица измерения: «${wanted.unit}»${wanted.region ? `, регион поставки: «${wanted.region}»` : ""}.
 
 Найди на странице предложения именно этого товара (близкие марки и сорта этого же товара тоже выписывай, указав их в product). Для каждого предложения верни объект:
-- "product": название товара со страницы вместе с маркой, фракцией и другими характеристиками, как написано;
+- "product": название самого товара со страницы: вид, марка, класс, фракция и другие свойства товара — БЕЗ региона, города, фасовки (мешок, россыпь, навалом) и условий поставки (они идут в "conditions"); например «Уголь каменный марки ДПК, фракция 50-200», а не «Уголь ДПК (Кузбасс), в мешках»;
 - "price": число — цена за ОДНУ единицу измерения, как написано на странице (без пересчётов);
 - "unit": единица, к которой относится цена («т», «кг», «шт», «м3»…);
 - "vat": "with" — если на странице сказано, что цена с НДС; "without" — без НДС; "unknown" — не сказано;
@@ -86,7 +86,6 @@ export type RejectReason =
   | "не та единица измерения"
   | "розничная цена"
   | "оптовая цена не подтверждена"
-  | "НДС не указан"
   | "НДС не подтверждён цитатой"
   | "цена не принята";
 
@@ -106,12 +105,21 @@ export function checkOffer(offer: RawOffer, pageText: string, wanted: Wanted, ct
   if (normalizeUnit(offer.unit) !== normalizeUnit(wanted.unit)) return reject("не та единица измерения", `${offer.unit || "не названа"} вместо ${wanted.unit}`);
   if (offer.priceType === "retail") return reject("розничная цена");
   if (offer.priceType !== "wholesale") return reject("оптовая цена не подтверждена");
-  if (offer.vat === "unknown") return reject("НДС не указан");
-  // Слова модели про НДС тоже проверяются: цитата о НДС должна быть на странице и говорить то же самое.
+  // НДС. Назвала модель — цитата о НДС должна быть на странице и говорить то же самое (слова модели тоже проверяются). Страница про НДС молчит — цена принимается как цена без НДС с пометкой в источнике
+  // (решение владельца 22.10.2026): себестоимость при этом не занижается. Если НДС назван в самой цитате, а модель написала «не указан», верим тексту страницы.
   const vatEvidence = [offer.quote, offer.vatQuote && normalizeForQuote(pageText).includes(normalizeForQuote(offer.vatQuote)) ? offer.vatQuote : ""].join(" ").toLowerCase().replace(/ё/g, "е");
   const saysWithout = /без\s*(?:учета\s*)?ндс|ндс\s*не\s*облагается|не\s*включа[а-я]*\s*ндс|ндс\s*не\s*включ/.test(vatEvidence);
   const saysWith = /(?:^|[^а-я])с\s*ндс|включая\s*ндс|ндс\s*(?:включен|вкл)|в\s*том\s*числе\s*ндс/.test(vatEvidence);
-  if (offer.vat === "without" ? !saysWithout || saysWith : !saysWith || saysWithout) return reject("НДС не подтверждён цитатой");
+  let vat: "with" | "without";
+  let vatNote = "";
+  if (offer.vat === "unknown") {
+    const clear = saysWith !== saysWithout;
+    vat = clear && saysWith ? "with" : "without";
+    if (!clear) vatNote = "; НДС на странице не указан — принято как цена без НДС";
+  } else {
+    if (offer.vat === "without" ? !saysWithout || saysWith : !saysWith || saysWithout) return reject("НДС не подтверждён цитатой");
+    vat = offer.vat;
+  }
   const host = (() => {
     try {
       return new URL(ctx.url).hostname.replace(/^www\./, "");
@@ -121,12 +129,12 @@ export function checkOffer(offer: RawOffer, pageText: string, wanted: Wanted, ct
   })();
   const [y, m, d] = ctx.day.split("-");
   const terms = offer.conditions ? `; условия: ${offer.conditions}` : "";
-  const source = `${host}: ${ctx.title || "страница поставщика"} — страница, проверено ${d}.${m}.${y}${terms}; ${ctx.url}`;
+  const source = `${host}: ${ctx.title || "страница поставщика"} — страница, проверено ${d}.${m}.${y}${terms}${vatNote}; ${ctx.url}`;
   const built = makeObservation({
     name: offer.product,
     unit: offer.unit,
     price: offer.price,
-    vat: offer.vat,
+    vat,
     vatRate: ctx.vatRate ?? 22,
     date: ctx.day,
     region: offer.region,

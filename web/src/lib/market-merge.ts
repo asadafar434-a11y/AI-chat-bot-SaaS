@@ -4,7 +4,7 @@
 
 import { parseAmount, type Analog, type RicData } from "@/lib/indicative-price";
 import { MAX_POSITIONS, type MarketPosition } from "@/lib/market-request";
-import type { MarketStats } from "@/lib/market-observations";
+import { analogsFrom, marketStats, type MarketStats, type Observation } from "@/lib/market-observations";
 
 export type MarketResultLite = { key: string; stats: MarketStats; analogs: Analog[] };
 
@@ -56,4 +56,16 @@ export function marketLines(data: RicData, results: MarketResultLite[], max = 3)
       if (s.status === "heterogeneous") parts.push("цены неоднородны");
       return `«${names.get(r.key) ?? r.key}»: ${parts.join(", ")}`;
     });
+}
+
+/** Найденные в интернете закупочные цены (lib/price-cache.ts) → то же, что даёт база: аналоги позиции и статистика. Позиции берутся по ключу; без цен у позиции записи нет. */
+export function liveToLite(positions: RicData["positions"], results: { key: string; observations: Observation[] }[], today: string, newId: () => string): MarketResultLite[] {
+  const byId = new Map(positions.map((p) => [p.id, p]));
+  return results.flatMap((r) => {
+    const p = byId.get(r.key);
+    if (!p || r.observations.length === 0) return [];
+    const quantity = parseAmount(p.qty);
+    const target = { name: p.name, unit: p.unit, quantity: quantity !== null && quantity > 0 ? quantity : null };
+    return [{ key: r.key, stats: marketStats(target, r.observations, today), analogs: analogsFrom(target, r.observations, today, newId) }];
+  });
 }
