@@ -28,12 +28,12 @@ test("запрос к базе: позиции расчёта с названи�
 test("цены базы добавляются к аналогам позиции в памяти: свои — первыми, повторы не дублируются, исходные данные не меняются", () => {
   const original = data();
   const merged = withMarketAnalogs(original, [
-    { key: "p1", stats: stats(), analogs: [analog("5000", "2026-09-01", "мой прайс", "market-1"), analog("5100", "2026-08-01", "База цен: ЕИС, контракт № 1", "market-2")] },
+    { key: "p1", stats: stats(), analogs: [analog("5000", "2026-09-01", "мой прайс", "market-1"), analog("5100", "2026-08-01", "База цен: прайс поставщика № 1", "market-2")] },
   ]);
   assert.equal(merged.positions[0].analogs.length, 2, "цена, которая уже введена, второй раз не добавляется");
   assert.equal(merged.positions[0].analogs[0].id, "own-1");
   assert.equal(merged.positions[0].analogs[1].id, "p1-market-2", "у цены базы уникальный номер внутри позиции");
-  assert.equal(merged.positions[0].analogs[1].source, "База цен: ЕИС, контракт № 1");
+  assert.equal(merged.positions[0].analogs[1].source, "База цен: прайс поставщика № 1");
   assert.equal(original.positions[0].analogs.length, 1, "исходный расчёт не изменён");
   assert.equal(merged.positions[1], original.positions[1], "позиция без цен базы — тот же объект");
 });

@@ -1,10 +1,12 @@
 // Загрузка рыночных ценовых наблюдений в PostgreSQL: npm run market:import
+// Рыночная цена в продукте — закупочная (за сколько можно купить): прайс производителя или оптового поставщика, коммерческое предложение, биржевая котировка.
+// Цены контрактов (реестр контрактов ЕИС, итоги торгов) не принимаются: в них маржа победителя.
 //
-//   npm run market:import -- --file="путь\к\выгрузке.csv" --source="ЕИС, реестр контрактов, выгрузка 22.10.2026" --kind=eis_contract --unit=т --vat=with --by="Имя" --dry-run   пробный прогон
-//   npm run market:import -- --file="путь\к\выгрузке.csv" --source="..." --kind=eis_contract --unit=т --vat=with --by="Имя"                                              запись в базу
-//   --file     таблица CSV, TSV или TXT (UTF-8 или windows-1251): наименование, цена за единицу, дата — обязательны; ещё НДС, количество, номер контракта — если есть;
-//   --source   откуда цены: название источника и дата выгрузки; для строк без номера контракта источником становится «<это название>, строка N»;
-//   --kind     eis_contract (реестр контрактов ЕИС), price_list (прайс-лист), tender_docs (документы закупки) или other;
+//   npm run market:import -- --file="путь\к\выгрузке.csv" --source="Прайс ООО «Уголь-Опт», 22.10.2026" --kind=price_list --unit=т --vat=with --by="Имя" --dry-run   пробный прогон
+//   npm run market:import -- --file="путь\к\выгрузке.csv" --source="..." --kind=price_list --unit=т --vat=with --by="Имя"                                              запись в базу
+//   --file     таблица CSV, TSV или TXT (UTF-8 или windows-1251): наименование, цена за единицу, дата — обязательны; ещё НДС, количество, источник — если есть;
+//   --source   откуда цены: название источника и дата выгрузки; для строк без своего источника им становится «<это название>, строка N»;
+//   --kind     price_list (прайс-лист производителя или поставщика), supplier_offer (коммерческое предложение), exchange (биржевая котировка) или other (иной источник закупочных цен);
 //   --unit     единица измерения всех строк файла (т, кг, шт, м2…): в таблицах её обычно нет, а цены разных единиц сравнивать нельзя;
 //   --vat      with — цены в файле с НДС, without — без НДС (приводятся к цене без НДС по ставке --vat-rate, по умолчанию 22);
 //   --region   регион, если все цены из одного региона.
@@ -16,7 +18,7 @@ import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { decodeText } from "../src/lib/analog-import.ts";
 import type { Vat } from "../src/lib/indicative-price.ts";
-import { SOURCE_KIND_LABELS, observationsFromTable, type SourceKind } from "../src/lib/market-observations.ts";
+import { SOURCE_KIND_LABELS, isSourceKind, observationsFromTable, type SourceKind } from "../src/lib/market-observations.ts";
 import { createDbMarketStore, type MarketDb } from "../src/lib/market-store-db.ts";
 import { disconnectPrisma, getPrismaClient } from "../src/server/db/client.ts";
 
@@ -36,8 +38,8 @@ const need = (name: string, hint: string): string => {
 async function main() {
   const file = need("file", 'путь к таблице, например --file="C:\\prices\\eis.csv"');
   const source = need("source", 'откуда цены, например --source="ЕИС, реестр контрактов, выгрузка 22.10.2026"');
-  const kind = need("kind", Object.keys(SOURCE_KIND_LABELS).join(" | ")) as SourceKind;
-  if (!(kind in SOURCE_KIND_LABELS)) fail(`--kind: одно из ${Object.keys(SOURCE_KIND_LABELS).join(", ")}`);
+  const kindArg = need("kind", Object.keys(SOURCE_KIND_LABELS).join(" | "));
+  const kind: SourceKind = isSourceKind(kindArg) ? kindArg : fail(`--kind: одно из ${Object.keys(SOURCE_KIND_LABELS).join(", ")}`);
   const unit = need("unit", "единица измерения всех строк файла, например --unit=т");
   const vatArg = need("vat", "with — цены с НДС, without — без НДС");
   const vat: Vat = vatArg === "with" ? "with" : vatArg === "without" ? "without" : fail("--vat: with или without");

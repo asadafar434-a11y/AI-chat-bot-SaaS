@@ -24,7 +24,7 @@ test("наблюдения в PostgreSQL: добавление, повтор, о
   const store = createDbMarketStore(db as never);
   const stamp = `itest-${Date.now()}`;
   const mk = (name: string, unit: string, price: number, date: string, region: string | null = null) => {
-    const built = makeObservation({ name, unit, price, vat: "without", vatRate: 22, date, region, source: `${stamp}: контракт ${price}-${date}`, sourceKind: "eis_contract" });
+    const built = makeObservation({ name, unit, price, vat: "without", vatRate: 22, date, region, source: `${stamp}: прайс ${price}-${date}`, sourceKind: "price_list" });
     assert.ok(built.ok);
     return built.value;
   };

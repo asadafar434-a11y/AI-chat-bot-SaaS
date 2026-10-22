@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { computeRic, DEFAULT_SETTINGS, type RicData } from "./indicative-price.ts";
 import { toAnalogs } from "./analog-import.ts";
 import { eisCardUrl, eisKind, eisRows, parseEisCards, parseEisList } from "./eis-contracts.ts";
+import { CONTRACT_PRICE_REASON } from "./price-basis.ts";
 
 const NOW = new Date("2026-10-22T12:00:00Z");
 
@@ -262,17 +263,16 @@ test("цены-аналоги из карточек: цена за единиц�
   assert.match(again.skipped[0].reason, /повтор/);
 });
 
-test("сквозной: пять настоящих цен угля из ЕИС → аналоги позиции → РИЦ считается с учётом НДС каждой цены (цены с НДС приводятся к без НДС)", () => {
+test("сквозной: пять настоящих цен угля из ЕИС → в РИЦ не идут: это цены контрактов с маржой победителя, нужна закупочная цена", () => {
   const built = eisRows(parseEisCards([TUVA, ALTAI, IK1, BARABINSK].join("\n\n")));
   let n = 0;
   const analogs = toAnalogs(built.rows, "without", () => `e${++n}`);
   const data: RicData = { positions: [{ id: "1", name: "Уголь", unit: "т", qty: "100", analogs }], settings: { ...DEFAULT_SETTINGS, nmckVat: "without" } };
   const result = computeRic(data, 450_000, NOW);
   const p = result.positions[0];
-  assert.equal(p.checks.filter((c) => c.state === "used").length, 5);
-  // 22 %-ные цены приводятся к цене без НДС: 4474,3354 / 1,22 и 4973,6633 / 1,22.
-  const expected = (4659.09 + 3609.6 + 4314.6 + 4474.3354 / 1.22 + 4973.6633 / 1.22) / 5;
-  assert.ok(result.ric !== null && Math.abs(result.ric - expected * 100) < 1, `${result.ric} ≈ ${expected * 100}`);
+  assert.equal(p.checks.filter((c) => c.state === "used").length, 0);
+  assert.ok(p.checks.every((c) => c.state === "invalid" && c.reason === CONTRACT_PRICE_REASON));
+  assert.equal(result.ric, null);
 });
 
 test("список результатов: общая цена контракта, а не цена за единицу; реестровый номер — не номер контракта из 19 цифр; ссылка на карточку", () => {

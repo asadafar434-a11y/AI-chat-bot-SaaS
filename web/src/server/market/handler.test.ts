@@ -9,7 +9,7 @@ const NOW = new Date("2026-10-22T09:00:00Z");
 const post = (body: unknown) => new Request("http://localhost/api/market", { method: "POST", headers: { "Content-Type": "application/json" }, body: typeof body === "string" ? body : JSON.stringify(body) });
 
 const obs = (name: string, price: number, date: string, over: Record<string, unknown> = {}): Observation => {
-  const built = makeObservation({ name, unit: "т", price, vat: "without", vatRate: 22, date, source: `ЕИС, контракт № ${Math.round(price)}${date}`, sourceKind: "eis_contract", ...over });
+  const built = makeObservation({ name, unit: "т", price, vat: "without", vatRate: 22, date, source: `прайс поставщика № ${Math.round(price)}${date}`, sourceKind: "price_list", ...over });
   assert.ok(built.ok);
   return built.value;
 };
@@ -35,7 +35,7 @@ test("считает рыночный ориентир по сопоставим
   assert.equal(r.stats.median, 5050);
   assert.deepEqual(r.stats.range, { from: 4900, to: 5200 });
   assert.equal(r.analogs.length, 5);
-  assert.ok(r.analogs.every((a: { vat: string; source: string }) => a.vat === "without" && a.source.startsWith("База цен: ЕИС, контракт №")));
+  assert.ok(r.analogs.every((a: { vat: string; source: string }) => a.vat === "without" && a.source.startsWith("База цен: прайс поставщика №")));
   assert.equal(new Set(r.analogs.map((a: { id: string }) => a.id)).size, 5, "у аналогов разные номера");
 });
 

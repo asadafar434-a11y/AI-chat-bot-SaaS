@@ -6,6 +6,7 @@
 // Правила, чтобы не выдумывать: цена без источника и даты в расчёт не попадает; устаревшая (старше staleDays) считается, но помечена; аналог исключает только человек;
 // сумма по закупке и отклонение от начальной цены показываются, только когда цена есть по каждой позиции.
 
+import { CONTRACT_PRICE_REASON, isContractPriceSource } from "@/lib/price-basis";
 import { baseUnitPrices, findSpecification } from "@/lib/spec-table";
 
 export const RIC_METHOD = {
@@ -133,6 +134,8 @@ export function checkAnalogs(position: RicPosition, settings: RicSettings, now: 
     const price = parseAmount(analog.price);
     if (price === null || price <= 0) return { analog, state: "invalid", reason: "цена не указана" };
     if (!analog.source.trim()) return { analog, state: "invalid", reason: "не указан источник" };
+    // Рыночная цена — закупочная: цена контракта содержит маржу победителя и в расчёт не идёт (lib/price-basis.ts).
+    if (isContractPriceSource(analog.source)) return { analog, state: "invalid", reason: CONTRACT_PRICE_REASON };
     const day = dayOf(analog.date);
     if (day === null) return { analog, state: "invalid", reason: "не указана дата" };
     if (day > today) return { analog, state: "invalid", reason: "дата в будущем" };

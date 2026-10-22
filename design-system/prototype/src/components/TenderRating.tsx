@@ -38,7 +38,7 @@ function FactorRow({ f }: { f: Factor }) {
           <span className="text-[11px] font-normal text-muted-foreground">вес {f.weight} %</span>
           <HelpTip align="start" content={f.basis} />
         </p>
-        <p className={`font-mono text-[13px] font-bold ${f.score === null ? 'text-muted-foreground' : RING_TEXT[f.tone]}`}>{f.score === null ? 'нет данных' : `${f.score} из 100`}</p>
+        <p className={`font-mono text-[13px] font-bold ${f.score === null ? 'text-muted-foreground' : RING_TEXT[f.tone]}`}>{f.score === null ? (f.mergedInto ? 'учтено в рентабельности' : 'нет данных') : `${f.score} из 100`}</p>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-secondary" aria-hidden>
         {f.score !== null && <div className={`h-full rounded-full ${BAR[f.tone]}`} style={{ width: `${f.score}%` }} />}
@@ -126,7 +126,7 @@ export function TenderRating({ rating }: { rating: Rating }) {
             <span className={`mt-0.5 block text-xl font-bold tracking-tight ${ready ? RING_TEXT[tone] : 'text-foreground'}`}>{label}</span>
             <span className="mt-0.5 block text-[12px] text-muted-foreground">
               {ready
-                ? `по ${withData.length} из ${rating.factors.length} факторов${rating.capped ? ` · ограничено препятствием (без него ${rating.rawScore})` : ''}`
+                ? `по ${withData.length} из ${rating.factors.filter((f) => !f.mergedInto).length} факторов${rating.capped ? ` · ограничено препятствием (без него ${rating.rawScore})` : ''}`
                 : `данных ${rating.coverage} % из нужных ${MIN_COVERAGE} %`}
             </span>
           </span>

@@ -1,10 +1,10 @@
 // Рыночные ценовые наблюдения: нормализация, сопоставимость, статистика только при достаточных данных, загрузка из таблицы — npm test (без базы и сети).
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { analogsFrom, comparable, hashOf, keyOf, makeObservation, MARKET_METHOD, marketStats, normalizeUnit, observationsFromTable, tokensOf, type Observation } from "./market-observations.ts";
+import { analogsFrom, comparable, hashOf, isSourceKind, keyOf, makeObservation, MARKET_METHOD, marketStats, normalizeUnit, observationsFromTable, tokensOf, type Observation } from "./market-observations.ts";
 
 const obs = (name: string, price: number, date: string, over: Partial<Parameters<typeof makeObservation>[0]> = {}): Observation => {
-  const built = makeObservation({ name, unit: "т", price, vat: "without", vatRate: 22, date, source: `ЕИС, контракт № ${Math.round(price)}-${date}`, sourceKind: "eis_contract", ...over });
+  const built = makeObservation({ name, unit: "т", price, vat: "without", vatRate: 22, date, source: `прайс поставщика № ${Math.round(price)}-${date}`, sourceKind: "price_list", ...over });
   assert.ok(built.ok, built.ok ? "" : built.reason);
   return built.value;
 };
@@ -22,7 +22,7 @@ test("единицы приводятся к короткой форме; сло
 });
 
 test("наблюдение: цена с НДС приводится к цене без НДС; нет даты, источника или цены — наблюдения нет с понятной причиной", () => {
-  const withVat = makeObservation({ name: "Уголь ДПК", unit: "т", price: 6100, vat: "with", vatRate: 22, date: "2026-09-01", source: "ЕИС, контракт № 1", sourceKind: "eis_contract" });
+  const withVat = makeObservation({ name: "Уголь ДПК", unit: "т", price: 6100, vat: "with", vatRate: 22, date: "2026-09-01", source: "прайс поставщика № 1", sourceKind: "price_list" });
   assert.ok(withVat.ok && withVat.value.priceNoVat === 5000);
   const reason = (over: object) => {
     const r = makeObservation({ name: "Уголь ДПК", unit: "т", price: 5000, vat: "without", vatRate: 22, date: "2026-09-01", source: "прайс", sourceKind: "price_list", ...over });
@@ -38,11 +38,11 @@ test("наблюдение: цена с НДС приводится к цене 
 });
 
 test("повтор распознаётся по ключу, цене, дате и источнику; другая цена или дата — другое наблюдение", () => {
-  const a = obs("Уголь ДПК", 5000, "2026-09-01", { source: "ЕИС, контракт № 1" });
-  const same = obs("уголь  дпк", 5000, "2026-09-01", { source: "ЕИС,  контракт № 1" });
+  const a = obs("Уголь ДПК", 5000, "2026-09-01", { source: "прайс поставщика № 1" });
+  const same = obs("уголь  дпк", 5000, "2026-09-01", { source: "прайс  поставщика № 1" });
   assert.equal(a.hash, same.hash);
-  assert.notEqual(a.hash, obs("Уголь ДПК", 5001, "2026-09-01", { source: "ЕИС, контракт № 1" }).hash);
-  assert.notEqual(a.hash, obs("Уголь ДПК", 5000, "2026-09-02", { source: "ЕИС, контракт № 1" }).hash);
+  assert.notEqual(a.hash, obs("Уголь ДПК", 5001, "2026-09-01", { source: "прайс поставщика № 1" }).hash);
+  assert.notEqual(a.hash, obs("Уголь ДПК", 5000, "2026-09-02", { source: "прайс поставщика № 1" }).hash);
   assert.equal(hashOf(a), a.hash);
 });
 
@@ -132,23 +132,41 @@ test("аналоги для РИЦ: без НДС, с источником «Б�
   const analogs = analogsFrom(COAL, list, ON, () => `a${++n}`);
   assert.equal(analogs.length, 2);
   assert.equal(analogs[0].date, "2026-09-10");
-  assert.ok(analogs.every((a) => a.vat === "without" && a.source.startsWith("База цен: ЕИС, контракт №")));
+  assert.ok(analogs.every((a) => a.vat === "without" && a.source.startsWith("База цен: прайс поставщика №")));
 });
 
-test("загрузка из таблицы: название, цена и дата обязательны; НДС из ячейки или по умолчанию; номер контракта — источник; повтор контракта и строки без даты или цены — с причиной", () => {
+test("загрузка из таблицы: название, цена и дата обязательны; НДС из ячейки или по умолчанию; источник — из ячейки или «файл, строка»; повтор и строки без даты или цены — с причиной", () => {
   const text = [
-    "Наименование;Цена за единицу;Дата;НДС;Номер контракта",
-    "Уголь каменный ДПК;6 100,00;01.09.2026;с НДС;1234567890123456789",
-    "Уголь каменный ДПК;6 100,00;01.09.2026;с НДС;1234567890123456789",
+    "Наименование;Цена за единицу;Дата;НДС;Источник",
+    "Уголь каменный ДПК;6 100,00;01.09.2026;с НДС;Прайс ООО Уголь-Опт от 01.09.2026",
+    "Уголь каменный ДПК;6 100,00;01.09.2026;с НДС;Прайс ООО Уголь-Опт от 01.09.2026",
     "Уголь каменный ДПК;5 000,00;02.09.2026;без НДС;",
     "Уголь каменный ДПК;4 900,00;;без НДС;",
     "Уголь каменный ДПК;;03.09.2026;без НДС;",
   ].join("\n");
-  const { observations, skipped } = observationsFromTable(text, { source: "выгрузка.csv", sourceKind: "eis_contract", unit: "тонна", defaultVat: "without", vatRate: 22 });
+  const { observations, skipped } = observationsFromTable(text, { source: "прайс.csv", sourceKind: "price_list", unit: "тонна", defaultVat: "without", vatRate: 22 });
   assert.equal(observations.length, 2);
   assert.equal(observations[0].priceNoVat, 5000, "6 100 с НДС 22 % = 5 000 без НДС");
-  assert.equal(observations[0].source, "ЕИС, контракт № 1234567890123456789");
+  assert.equal(observations[0].source, "Прайс ООО Уголь-Опт от 01.09.2026");
   assert.equal(observations[0].unit, "т");
-  assert.equal(observations[1].source, "выгрузка.csv, строка 4", "без номера контракта — файл и строка");
+  assert.equal(observations[1].source, "прайс.csv, строка 4", "без своего источника — файл и строка");
   assert.deepEqual(skipped.map((x) => x.reason), ["повтор в файле: такая же цена, дата и источник", "нет даты цены", "цена за единицу не найдена"]);
+});
+
+test("закупочная цена и только она: цена контракта (реестр ЕИС, номер контракта из 19 цифр, итоги торгов) не принимается ни одной строкой — в ней маржа победителя", () => {
+  const make = (source: string) => makeObservation({ name: "Уголь ДПК", unit: "т", price: 5000, vat: "without", vatRate: 22, date: "2026-09-01", source, sourceKind: "price_list" });
+  for (const source of ["ЕИС, контракт № 1234567890123456789", "реестр контрактов, выгрузка 22.10.2026", "1234567890123456789", "протокол подведения итогов", "https://zakupki.gov.ru/epz/contract/x"]) {
+    const r = make(source);
+    assert.ok(!r.ok, source);
+    assert.match(r.ok ? "" : r.reason, /цена контракта — в ней маржа победителя; нужна закупочная цена/);
+  }
+  assert.ok(make("Прайс ООО Уголь-Опт от 01.09.2026").ok);
+  assert.ok(make("коммерческое предложение ООО Тепло-Снаб № 15 от 01.09.2026").ok, "предложение поставщика — закупочная цена");
+  const table = observationsFromTable(["Наименование;Цена;Дата;Источник", "Уголь ДПК;5000;01.09.2026;1234567890123456789", "Уголь ДПК;5100;02.09.2026;Прайс Уголь-Опт"].join("\n"), { source: "файл.csv", sourceKind: "price_list", unit: "т", defaultVat: "without" });
+  assert.equal(table.observations.length, 1);
+  assert.match(table.skipped[0].reason, /цена контракта/);
+  const whole = observationsFromTable("Наименование;Цена;Дата\nУголь ДПК;5000;01.09.2026", { source: "ЕИС, реестр контрактов", sourceKind: "price_list", unit: "т", defaultVat: "without" });
+  assert.equal(whole.observations.length, 0, "источник файла — реестр контрактов: ни одна строка не принимается");
+  assert.equal(isSourceKind("price_list") && isSourceKind("supplier_offer") && isSourceKind("exchange") && isSourceKind("other"), true);
+  assert.equal(isSourceKind("eis_contract"), false, "вида «контракт ЕИС» больше нет");
 });

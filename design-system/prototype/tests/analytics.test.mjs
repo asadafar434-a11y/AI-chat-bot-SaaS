@@ -1420,3 +1420,13 @@ test('ценовой бейдж: рыночный ориентир по базе
   const plainChip = renderToStaticMarkup(h(mods.badgeChipUi.PriceBadgeChip, { badge: { status: 'within', title: 'Цена в рыночном диапазоне', missing: [], detail } }));
   assert.equal(plainChip.includes('Рынок по базе цен'), false);
 });
+
+test('расшифровка рейтинга: «цена против рынка», учтённая в рентабельности, подписана «учтено в рентабельности» (не «нет данных») и в нехватке данных не числится; закупочная основа названа в формуле', () => {
+  const merged = { ...READY, factors: READY.factors.map((f) => (f.id === 'price' ? { ...f, score: null, tone: 'muted', note: 'учтено в рентабельности: ваши затраты точнее рыночных', missing: [], mergedInto: 'profit', basis: 'Запас начальной цены над закупочной рыночной ценой; цены контрактов не берутся' } : f)), missing: [{ factor: 'Конкуренция', items: ['нет источника'] }] };
+  const out = renderToStaticMarkup(h(mods.ratingUi.RatingDetails, { rating: merged }));
+  assert.match(text(out), /Цена относительно рынка[\s\S]*учтено в рентабельности/);
+  assert.equal((text(out).match(/нет данных/g) ?? []).length, 2, 'без данных остались только конкуренция и надёжность');
+  assert.match(out, /role="tooltip"[^>]*>[^<]*цены контрактов не берутся/);
+  const card = renderToStaticMarkup(h(mods.ratingUi.TenderRating, { rating: merged }));
+  assert.match(text(card), /по 3 из 5 факторов/, 'учтённый в другом фактор в счёт «из N» не входит');
+});

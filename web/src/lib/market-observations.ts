@@ -1,5 +1,6 @@
 // Рыночные ценовые наблюдения: цена за единицу с источником, датой, регионом и количеством; нормализация, отбор сопоставимых и расчёт рыночного ориентира.
-// Данные накапливаются в общей базе (таблица PriceObservation, lib/market-store.ts) из реальных источников: выгрузки реестра контрактов ЕИС, прайс-листы, таблицы закупок. Источника и даты нет — наблюдения нет.
+// Данные накапливаются в общей базе (таблица PriceObservation, lib/market-store.ts) из реальных источников закупочных цен: прайс-листы производителей и поставщиков, коммерческие предложения, биржевые котировки. Источника и даты нет — наблюдения нет.
+// Рыночная цена здесь — закупочная (за сколько участник может купить). Цена заключённого контракта не принимается: в ней маржа победителя (lib/price-basis.ts).
 // Считает код: среднее, медиана, рыночный диапазон, динамика и различия по регионам — только когда данных достаточно; иначе «недостаточно данных» с причиной. Ничего не выдумывается.
 // Сопоставимость: та же единица, цифры в названии совпадают (мощность, размер, марка), остальные слова похожи, объёмы различаются не больше чем втрое, цена не старше окна.
 // Это ориентир для сравнения цен, а не оценка стоимости конкретного поставщика: характеристики сверяются по названию, глубже программа их не разбирает.
@@ -7,15 +8,19 @@
 
 import { MONEY_OUT, guessRoles, parseDateCell, parseMoney, parseTable } from "@/lib/analog-import";
 import { RIC_METHOD, statsOf, type Analog, type Vat } from "@/lib/indicative-price";
+import { CONTRACT_PRICE_REASON, isContractPriceSource } from "@/lib/price-basis";
 
-export type SourceKind = "eis_contract" | "price_list" | "tender_docs" | "other";
+/** Откуда закупочная цена: прайс производителя или оптового поставщика, коммерческое предложение, биржевая котировка, иной источник закупочных цен. Цена контракта сюда не входит (lib/price-basis.ts). */
+export type SourceKind = "price_list" | "supplier_offer" | "exchange" | "other";
 
 export const SOURCE_KIND_LABELS: Record<SourceKind, string> = {
-  eis_contract: "реестр контрактов ЕИС",
-  price_list: "прайс-лист",
-  tender_docs: "документы закупки",
-  other: "другой источник",
+  price_list: "прайс-лист производителя или поставщика",
+  supplier_offer: "коммерческое предложение поставщика",
+  exchange: "биржевая котировка",
+  other: "другой источник закупочных цен",
 };
+
+export const isSourceKind = (v: unknown): v is SourceKind => typeof v === "string" && v in SOURCE_KIND_LABELS;
 
 export type Observation = {
   /** Ключ позиции: слова названия (основы, по алфавиту) и единица. */
@@ -27,11 +32,11 @@ export type Observation = {
   tokens: string[];
   /** Цена за единицу без НДС, ₽. */
   priceNoVat: number;
-  /** День цены (дата контракта или прайса), ГГГГ-ММ-ДД. */
+  /** День цены (дата прайса, предложения, котировки), ГГГГ-ММ-ДД. */
   observedAt: string;
   region: string | null;
   quantity: number | null;
-  /** Откуда цена: «ЕИС, контракт № …», имя файла и строка. */
+  /** Откуда цена: название прайса или поставщика, дата, файл и строка. */
   source: string;
   sourceKind: SourceKind;
   hash: string;
@@ -130,6 +135,7 @@ export function makeObservation(raw: RawObservation): Built {
   if (!ISO_DAY.test(raw.date) || Number.isNaN(Date.parse(`${raw.date}T00:00:00Z`))) return { ok: false, reason: "нет даты цены — без неё наблюдение не принимается" };
   const source = String(raw.source ?? "").trim().slice(0, 500);
   if (!source) return { ok: false, reason: "не назван источник цены" };
+  if (isContractPriceSource(source)) return { ok: false, reason: CONTRACT_PRICE_REASON };
   const priceNoVat = raw.vat === "with" ? raw.price / (1 + raw.vatRate / 100) : raw.price;
   const unit = normalizeUnit(raw.unit ?? "");
   const tokens = tokensOf(name);
@@ -152,7 +158,7 @@ export function makeObservation(raw: RawObservation): Built {
 
 export type TableMeta = { source: string; sourceKind: SourceKind; unit?: string; region?: string | null; defaultVat: Vat; vatRate?: number };
 
-/** Таблица (выгрузка ЕИС, Excel, прайс — вставленный текст или CSV) → наблюдения. Название, цена и дата обязательны; чего нет — строка пропускается с причиной. */
+/** Таблица (прайс-лист, предложение поставщика, котировки — вставленный текст или CSV) → наблюдения. Название, цена и дата обязательны; чего нет — строка пропускается с причиной. */
 export function observationsFromTable(text: string, meta: TableMeta): { observations: Observation[]; skipped: { line: number; reason: string }[] } {
   const rows = parseTable(text);
   const { hasHeader, roles } = guessRoles(rows);
@@ -177,7 +183,7 @@ export function observationsFromTable(text: string, meta: TableMeta): { observat
     const vatCell = at(r, "vat");
     const vat: Vat = vatCell === "" ? meta.defaultVat : /без/i.test(vatCell) ? "without" : "with";
     const rawSource = at(r, "source");
-    const source = /^\d{19}$/.test(rawSource) ? `ЕИС, контракт № ${rawSource}` : rawSource ? rawSource.slice(0, 200) : `${meta.source}, строка ${line}`;
+    const source = rawSource ? rawSource.slice(0, 200) : `${meta.source}, строка ${line}`;
     const built = makeObservation({ name: at(r, "name"), unit: meta.unit, price, vat, vatRate: meta.vatRate ?? RIC_METHOD.vatRate, date, region: meta.region, quantity: qty, source, sourceKind: meta.sourceKind });
     if (!built.ok) return void skipped.push({ line, reason: built.reason });
     if (seen.has(built.value.hash)) return void skipped.push({ line, reason: "повтор в файле: такая же цена, дата и источник" });

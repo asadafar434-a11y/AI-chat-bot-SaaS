@@ -25,6 +25,8 @@ export type Factor = {
   basis: string;
   /** Чего не хватает, когда score = null. */
   missing: string[];
+  /** Фактор учтён в другом, чтобы не считать одно и то же дважды: балла у него нет, и это не нехватка данных. */
+  mergedInto?: FactorId;
 };
 
 export type Blocker = { id: string; text: string; /** Выше этого балла общий не поднимется. */ cap: number };
@@ -155,21 +157,28 @@ function profitFactor(i: RatingInput): Factor {
   };
 }
 
+// Рынок здесь — закупочная цена (прайсы, предложения поставщиков, биржа), цены контрактов не берутся (lib/price-basis.ts). Фактор показывает, какой запас маржи даёт начальная цена над закупочной рыночной.
+// Маржа одна: пока участник не ввёл свои затраты, её даёт этот фактор (по рынку); когда ввёл — «Рентабельность» (свои затраты точнее рыночных), а этот фактор в балле не участвует, чтобы маржа не считалась дважды.
 function priceFactor(i: RatingInput): Factor {
   const base = {
     id: "price" as const,
     title: TITLES.price,
     weight: FACTOR_WEIGHTS.price,
-    basis: "Начальная цена против РИЦ по вашим ценам-аналогам: в рыночном диапазоне — 100; выше рынка — 85 (есть запас на снижение); ниже рынка — 30 (риск убыточного контракта). Нужно не меньше пяти сопоставимых цен по каждой позиции.",
+    basis:
+      "Запас начальной цены над закупочной рыночной ценой (РИЦ по прайсам, предложениям поставщиков и биржевым ценам; цены контрактов не берутся — в них маржа победителя), в % от начальной цены, к вашей целевой марже: цель достигнута — 100, пропорционально ниже, ниже закупочной цены — 0. Нужно не меньше пяти сопоставимых цен по каждой позиции. Считается, пока вы не ввели свои затраты: после этого маржу даёт «Рентабельность», чтобы не считать её дважды.",
   };
-  const b = i.badge;
-  if (!b || b.status === "insufficient") {
-    return { ...base, score: null, tone: "muted", note: "сравнить с рынком нечем", missing: b?.missing.length ? b.missing.slice(0, 3) : ["Цены-аналоги с источником и датой: не меньше пяти на позицию"] };
+  if (i.econ.ready) {
+    return { ...base, score: null, tone: "muted", note: "учтено в рентабельности: ваши затраты точнее рыночных", missing: [], mergedInto: "profit" };
   }
-  const score = b.status === "within" ? 100 : b.status === "above" ? 85 : 30;
+  const b = i.badge;
+  if (!b || b.status === "insufficient" || !b.detail) {
+    return { ...base, score: null, tone: "muted", note: "закупочной рыночной цены нет", missing: b?.missing.length ? b.missing.slice(0, 3) : ["Закупочные цены: прайсы, предложения поставщиков, биржа — не меньше пяти на позицию"] };
+  }
   const d = b.detail;
-  const dev = d ? `${d.pct >= 0 ? "+" : "−"}${num(Math.abs(d.pct))} % к РИЦ, цен-аналогов ${d.observations.total}` : "";
-  return { ...base, score, tone: toneOfScore(score), note: `${b.title.toLowerCase()}${dev ? `; ${dev}` : ""}`, missing: [] };
+  const target = i.targetMarginPct > 0 ? i.targetMarginPct : 10;
+  const room = d.nmck > 0 ? ((d.nmck - d.ric) / d.nmck) * 100 : 0;
+  const score = Math.round(clamp((room / target) * 100));
+  return { ...base, score, tone: toneOfScore(score), note: `запас над закупочной ценой ${room >= 0 ? "" : "−"}${num(Math.abs(room))} % при цели ${num(target)} %; цен ${d.observations.total}`, missing: [] };
 }
 
 function risksFactor(i: RatingInput): Factor {
@@ -214,9 +223,11 @@ export function rateTender(i: RatingInput): Rating {
   const factors = FACTOR_ORDER.map((id) => byId[id]);
 
   const withData = factors.filter((f) => f.score !== null);
-  const coverage = Math.round(withData.reduce((s, f) => s + f.weight, 0));
+  // Фактор, учтённый в другом, в нехватку данных и в долю данных не входит: его вес из базы доли убирается.
+  const counted = factors.filter((f) => !f.mergedInto);
+  const coverage = Math.round((withData.reduce((s, f) => s + f.weight, 0) / counted.reduce((s, f) => s + f.weight, 0)) * 100);
   const blockers = blockersOf(i);
-  const missing = factors.filter((f) => f.score === null).map((f) => ({ factor: f.title, items: f.missing }));
+  const missing = counted.filter((f) => f.score === null).map((f) => ({ factor: f.title, items: f.missing }));
   if (coverage < MIN_COVERAGE) {
     return { status: "insufficient", score: null, rawScore: null, capped: false, verdict: null, coverage, factors, blockers, missing };
   }

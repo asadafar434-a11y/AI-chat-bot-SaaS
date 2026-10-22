@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { buildRows, decodeText, eisSearchUrl, guessRoles, MAX_IMPORT, parseDateCell, parseMoney, parseTable, toAnalogs } from "./analog-import.ts";
 import { computeRic, DEFAULT_SETTINGS, type RicData } from "./indicative-price.ts";
+import { CONTRACT_PRICE_REASON } from "./price-basis.ts";
 
 const NOW = new Date("2026-10-22T12:00:00Z");
 
@@ -144,18 +145,23 @@ test("предел: больше шестидесяти цен за раз — �
   assert.equal(built.truncated, 75 - MAX_IMPORT);
 });
 
-test("сквозной: выгрузка из ЕИС → аналоги позиции → РИЦ считается по ним, с источником и датой каждой цены", () => {
+test("сквозной: выгрузка из ЕИС → аналоги позиции → цены контрактов в РИЦ не идут (в них маржа победителя); те же цены как закупочные (прайс) — РИЦ считается", () => {
   const rows = parseTable(EIS);
   const g = guessRoles(rows);
   const built = buildRows(rows, g.roles, g.hasHeader, "таблица");
   let n = 0;
   const analogs = toAnalogs(built.rows, "without", () => `i${++n}`);
   const data: RicData = { positions: [{ id: "1", name: "Уголь", unit: "т", qty: "100", analogs }], settings: { ...DEFAULT_SETTINGS, nmckVat: "without" } };
-  const result = computeRic(data, 1_100_000, NOW);
+  const byContracts = computeRic(data, 1_100_000, NOW).positions[0];
+  assert.equal(byContracts.checks.filter((c) => c.state === "used").length, 0);
+  assert.ok(byContracts.checks.every((c) => c.state === "invalid" && c.reason === CONTRACT_PRICE_REASON && c.analog.source.startsWith("ЕИС, контракт №")));
+  assert.equal(computeRic(data, 1_100_000, NOW).ric, null, "по ценам контрактов индикативной цены нет");
+  // Закупочные цены: тот же столбец источника, но прайс поставщика — считается, с источником и датой каждой цены.
+  const priced: RicData = { ...data, positions: [{ ...data.positions[0], analogs: analogs.map((x, i) => ({ ...x, source: `Прайс ООО Уголь-Опт № ${i + 1}` })) }] };
+  const result = computeRic(priced, 1_100_000, NOW);
   const position = result.positions[0];
   assert.equal(position.checks.filter((c) => c.state === "used").length, 3);
-  assert.ok(position.checks.every((c) => c.analog.source.startsWith("ЕИС, контракт №") && /^\d{4}-\d{2}-\d{2}$/.test(c.analog.date)));
-  // Три контракта — порог расчёта (не меньше трёх аналогов), цены однородны: РИЦ = среднее × количество.
+  assert.ok(position.checks.every((c) => /^\d{4}-\d{2}-\d{2}$/.test(c.analog.date)));
   assert.ok(result.ric !== null);
   assert.ok(Math.abs(result.ric - ((9850 + 10120.5 + 9700) / 3) * 100) < 0.01);
 });

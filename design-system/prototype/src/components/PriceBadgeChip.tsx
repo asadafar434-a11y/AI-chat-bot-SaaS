@@ -21,7 +21,7 @@ export function PriceBadgeChip({ badge, market = [] }: { badge: PriceBadge; /** 
       {d ? (
         <HelpTip
           align="start"
-          content={`РИЦ ${Math.round(d.ric).toLocaleString('ru-RU')} ₽, начальная цена ${Math.round(d.nmck).toLocaleString('ru-RU')} ₽; рыночный диапазон ${Math.round(d.range.from).toLocaleString('ru-RU')} – ${Math.round(d.range.to).toLocaleString('ru-RU')} ₽; цены с ${d.dates.from} по ${d.dates.to}. Источники: ${d.sources.join('; ')}. Вывод — повод проверить характеристики и объёмы, а не обвинение заказчика.${marketText}`}
+          content={`РИЦ ${Math.round(d.ric).toLocaleString('ru-RU')} ₽, начальная цена ${Math.round(d.nmck).toLocaleString('ru-RU')} ₽; рыночный диапазон ${Math.round(d.range.from).toLocaleString('ru-RU')} – ${Math.round(d.range.to).toLocaleString('ru-RU')} ₽; цены с ${d.dates.from} по ${d.dates.to}. Источники: ${d.sources.join('; ')}. Рыночная цена здесь — закупочная (прайсы, предложения поставщиков, биржа); цены контрактов не берутся — в них маржа победителя. Вывод — повод проверить характеристики и объёмы, а не обвинение заказчика.${marketText}`}
         />
       ) : (
         (badge.missing.length > 0 || marketText) && <HelpTip align="start" content={`${badge.missing.length > 0 ? `Чего не хватает: ${badge.missing.join('; ')}.` : ''}${marketText}`.trim()} />

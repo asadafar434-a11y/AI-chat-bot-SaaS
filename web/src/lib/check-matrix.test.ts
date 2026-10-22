@@ -152,11 +152,13 @@ test("рентабельность: прибыль в базовом и стре
   assert.equal(none.state, "insufficient");
 });
 
-test("рыночная цена: бейдж «в рынке» — в порядке, «ниже» или «выше» — внимание, мало цен — недостаточно данных с тем, чего не хватает", () => {
-  assert.equal(level(buildMatrix(input()), 7), "ok");
+test("рыночная цена = закупочная: начальная цена около закупочной — внимание (маржи почти нет), существенно ниже — риск, существенно выше — в порядке; мало цен — недостаточно данных с тем, чего не хватает", () => {
+  assert.equal(level(buildMatrix(input()), 7), "attention");
   const high: RicData = { ...RIC_DATA, positions: [{ ...RIC_DATA.positions[0], analogs: ["5000", "5100", "5200", "5050", "5150"].map((p, i) => analog(`h${i}`, p)) }] };
   const ric = computeRic(high, 1_000_000, NOW);
-  assert.equal(level(buildMatrix(input({ ric, badge: priceBadge(ric, high) })), 7), "attention");
+  const status = priceBadge(ric, high).status;
+  assert.ok(status === "below" || status === "above", `закупочные цены сильно расходятся с начальной: ${status}`);
+  assert.equal(level(buildMatrix(input({ ric, badge: priceBadge(ric, high) })), 7), status === "below" ? "risk" : "ok");
   const few: RicData = { ...RIC_DATA, positions: [{ ...RIC_DATA.positions[0], analogs: RIC_DATA.positions[0].analogs.slice(0, 2) }] };
   const ricFew = computeRic(few, 1_000_000, NOW);
   const r = row(buildMatrix(input({ ric: ricFew, badge: priceBadge(ricFew, few) })), 7).result;
