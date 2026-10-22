@@ -44,6 +44,7 @@ before(async () => {
     scenLib: await server.ssrLoadModule('@/lib/ric-scenarios.ts'),
     importUi: await server.ssrLoadModule('/src/components/AnalogImport.tsx'),
     factUi: await server.ssrLoadModule('/src/components/FactCosts.tsx'),
+    intakeUi: await server.ssrLoadModule('/src/components/AnalyticsIntake.tsx'),
     deliveryLib: await server.ssrLoadModule('@/lib/delivery-cost.ts'),
     fxLib: await server.ssrLoadModule('@/lib/fx-risk.ts'),
     factEst: await server.ssrLoadModule('@/lib/fact-estimates.ts'),
@@ -91,7 +92,7 @@ test('меню: есть пункт «Аналитика» — отдельны�
 
 test('раздел: список закупок, «готово» у РИЦ и «скоро» у остального; закупок нет — предложение создать', () => {
   const list = text(
-    renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: [{ id: 'p1', title: 'Поставка угля', price: '25 930 002,00 ₽', kind: '223-ФЗ · аукцион' }], onOpen: none, onNew: none })),
+    renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: [{ id: 'p1', title: 'Поставка угля', price: '25 930 002,00 ₽', kind: '223-ФЗ · аукцион' }], onOpen: none, onUpload: none })),
   );
   assert.match(list, /Поставка угля/);
   assert.match(list, /начальная цена 25 930 002,00 ₽/);
@@ -103,9 +104,9 @@ test('раздел: список закупок, «готово» у РИЦ и �
   assert.match(list, /Сколько это может стоить/);
   assert.match(list, /Какую цену ставить/);
   assert.ok((list.match(/готово/g) ?? []).length >= 5, 'пять шагов готовы');
-  assert.ok((renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: [], onOpen: none, onNew: none })).match(/скоро/g) ?? []).length >= 3, 'остальное помечено «скоро»');
-  assert.match(text(renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: [], onOpen: none, onNew: none }))), /Новая закупка/);
-  assert.match(text(renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: null, onOpen: none, onNew: none }))), /Читаю закупки/);
+  assert.ok((renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: [], onOpen: none, onUpload: none })).match(/скоро/g) ?? []).length >= 3, 'остальное помечено «скоро»');
+  assert.match(text(renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: [], onOpen: none, onUpload: none }))), /Загрузить закупку/);
+  assert.match(text(renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: null, onOpen: none, onUpload: none }))), /Читаю закупки/);
 });
 
 test('пока позиций нет: сказано, что делать — взять из документов или добавить, нужно не меньше трёх аналогов с источником и датой', () => {
@@ -1040,4 +1041,63 @@ test('сколько это может стоить: с цифрами дост�
   assert.match(out, /Свои цифры: доставка и курс валюты/);
   const noPrice = text(renderToStaticMarkup(h(mods.estUi.RiskEstimates, { result: mods.estLib.estimateRisks({ price: null, risks: [], type: 'goods', region: note, assumptions: register.assumptions }), price: null, priceNote: '', hypotheses: [], data: register, sens: mods.sensLib.computeSensitivity(register.sens), defaultDrivers: [], priceHint: '0', onChange: none, facts: { delivery, fx, onLoadFx: async () => null } })));
   assert.equal(noPrice.includes('Свои цифры'), false, 'без цены оценивать нечего');
+});
+
+// ——— Загрузка закупки в «Аналитику» и поиск по всем гипотезам ———
+const intakeForm = (over = {}) =>
+  renderToStaticMarkup(
+    h(mods.intakeUi.AnalyticsIntakeForm, { files: [], failed: null, busy: null, error: '', fields: { title: '', price: '', law: '' }, onFiles: none, onRemove: none, onField: none, ...over }),
+  );
+
+test('загрузить закупку: пустое окно — «бесплатно, без ИИ», куда перетащить, кнопка выбора; полей ещё нет', () => {
+  const out = intakeForm();
+  const t = text(out);
+  assert.match(t, /Бесплатно: без ИИ/);
+  assert.match(t, /Перетащите файлы закупки сюда/);
+  assert.match(t, /Выбрать файлы/);
+  assert.match(out, /type="file"[^>]*multiple/);
+  assert.match(t, /Сканы без ИИ не читаются/);
+  assert.equal(t.includes('Начальная цена'), false);
+});
+
+test('загрузить закупку: файлы с описанием и кнопкой «убрать», найденное — в полях (название, цена, закон кнопками), ошибка и непрочитанное видны', () => {
+  const out = intakeForm({
+    files: [{ name: 'Извещение.docx', meta: 'DOCX · 12 345 симв. · прочитан' }],
+    failed: 'Не прочитаны: скан.pdf — сканы без ИИ не читаются',
+    error: 'Нет связи с сервером',
+    fields: { title: 'Поставка угля', price: '25 930 002 ₽', law: '223' },
+  });
+  const t = text(out);
+  assert.match(t, /Извещение\.docx DOCX · 12 345 симв\. · прочитан/);
+  assert.match(out, /aria-label="Убрать файл Извещение\.docx"/);
+  assert.match(out, /value="Поставка угля"/);
+  assert.match(out, /value="25 930 002 ₽"/);
+  assert.match(out, /aria-pressed="true"[^>]*>223-ФЗ</);
+  assert.match(out, /aria-pressed="false"[^>]*>44-ФЗ</);
+  assert.match(out, /aria-pressed="false"[^>]*>Не указан</);
+  assert.match(out, /role="alert"[^>]*>.*?Нет связи с сервером<\/p>/);
+  assert.match(t, /Не прочитаны: скан\.pdf/);
+});
+
+test('загрузить закупку: пока читаются файлы — «Читаю файлы…» и кнопка выбора недоступна', () => {
+  const out = intakeForm({ busy: 'reading' });
+  assert.match(text(out), /Читаю файлы…/);
+  assert.match(out, /disabled=""[^>]*>Выбрать файлы/);
+});
+
+test('аналитика: кнопка «Загрузить закупку» наверху и при пустом списке, и при заполненном; про платное сказано в подсказке', () => {
+  const withList = text(renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: [{ id: 'p1', title: 'Уголь', price: '1 000 ₽', kind: '44-ФЗ' }], onOpen: none, onUpload: none })));
+  assert.match(withList, /Загрузить закупку/);
+  assert.match(withList, /Загрузите закупку или выберите из списка/);
+  assert.match(withList, /ИИ не используется, платного здесь ничего нет/);
+});
+
+test('проверка поиском: одна кнопка на все гипотезы, которые ещё не искали, с числом; уже найденные в число не входят', () => {
+  const t = text(estimateUi(mods.hiddenLib.EMPTY_REGISTER, 1_000_000, withSearch));
+  assert.match(t, /Проверить поиском \(\d+\)/);
+  assert.match(t, /Обычный бесплатный поиск в интернете\. В запрос уходят только ключевые слова/);
+  const all = (t.match(/Проверить поиском \((\d+)\)/) ?? [])[1];
+  const one = text(estimateUi({ ...mods.hiddenLib.EMPTY_REGISTER, searches: { logistics: RECORD } }, 1_000_000, withSearch));
+  const rest = (one.match(/Проверить поиском \((\d+)\)/) ?? [])[1];
+  assert.ok(Number(rest) === Number(all) - 1 || (all === '1' && rest === undefined), `${all} → ${rest}`);
 });

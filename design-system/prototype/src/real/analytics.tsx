@@ -40,6 +40,7 @@ import { RicPanel } from '../components/RicPanel';
 import { RicScenarioPanel } from '../components/RicScenarioPanel';
 import { ArrowLeft, BarChart2 } from '../lib/icons';
 import { useProfile } from './analysis';
+import { AnalyticsIntake } from './analytics-intake';
 import { useFacts } from './hooks';
 import { usePurchase } from './purchase-provider';
 
@@ -87,8 +88,9 @@ function usePersisted<T>(id: string, load: (id: string) => Promise<T | undefined
 }
 
 // Список закупок раздела «Аналитика».
-export function AnalyticsList({ onOpen, onNew }: { onOpen: (id: string) => void; onNew: () => void }) {
+export function AnalyticsList({ onOpen }: { onOpen: (id: string) => void }) {
   const { purchases } = usePurchases();
+  const [uploading, setUploading] = useState(false);
   const items = useMemo(
     () =>
       purchases === null
@@ -96,7 +98,19 @@ export function AnalyticsList({ onOpen, onNew }: { onOpen: (id: string) => void;
         : purchases.map((p) => ({ id: p.id, title: titleOf(p), price: p.price ?? '', kind: p.kind, sample: p.sample })),
     [purchases],
   );
-  return <AnalyticsHome purchases={items} onOpen={onOpen} onNew={onNew} />;
+  return (
+    <>
+      <AnalyticsHome purchases={items} onOpen={onOpen} onUpload={() => setUploading(true)} />
+      <AnalyticsIntake
+        open={uploading}
+        onClose={() => setUploading(false)}
+        onCreated={(id) => {
+          setUploading(false);
+          onOpen(id);
+        }}
+      />
+    </>
+  );
 }
 
 // Разбор одной закупки. Сверху — итог светофором, резюме и рекомендации (lib/analytics-summary.ts); ниже — закрытые разделы с подробностями: договор, оценка рисков, цена, расчёт заказчика, РИЦ.

@@ -196,7 +196,7 @@ function Product() {
                   <PurchaseAnalytics key={analyticsId} onBack={() => setAnalyticsId(null)} />
                 </PurchaseProvider>
               ) : (
-                <AnalyticsList onOpen={setAnalyticsId} onNew={newTender} />
+                <AnalyticsList onOpen={setAnalyticsId} />
               ))}
             {view === 'search' && <TenderSearch onNew={newTender} />}
             {view === 'history' && <BidHistory purchases={purchases} />}

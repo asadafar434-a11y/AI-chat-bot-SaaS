@@ -1,4 +1,4 @@
-import { BarChart2, ChevronRight, Plus } from '../lib/icons';
+import { BarChart2, ChevronRight, UploadCloud } from '../lib/icons';
 import { Button, Card, HelpTip, Soon } from './ui';
 
 // Раздел «Аналитика» в левом меню: расчёты по закупке отдельно от шагов подготовки заявки. Сейчас готов РИЦ (расчёт индикативной цены); остальное — «скоро».
@@ -10,7 +10,8 @@ type Props = {
   /** null — закупки ещё читаются. */
   purchases: AnalyticsPurchase[] | null;
   onOpen: (id: string) => void;
-  onNew: () => void;
+  /** «Загрузить закупку»: файлы, название и цена — без ИИ (components/AnalyticsIntake.tsx). */
+  onUpload: () => void;
 };
 
 const READY = [
@@ -31,18 +32,24 @@ const COMING = [
   { title: 'Проверки по заказчику', hint: 'конкуренция, суды, ФАС' },
 ];
 
-export function AnalyticsHome({ purchases, onOpen, onNew }: Props) {
+export function AnalyticsHome({ purchases, onOpen, onUpload }: Props) {
   return (
     <div className="space-y-6">
-      <div>
-        <div className="flex items-center gap-2">
-          <BarChart2 className="size-5" />
-          <h1 className="text-xl font-semibold tracking-tight">Аналитика</h1>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <BarChart2 className="size-5" />
+            <h1 className="text-xl font-semibold tracking-tight">Аналитика</h1>
+          </div>
+          <p className="mt-1 flex items-center gap-1.5 text-[13px] text-muted-foreground">
+            Загрузите закупку или выберите из списка
+            <HelpTip align="start" content="Расчёты по закупке на реальных данных: документы заказчика, ваши цены и затраты. ИИ не используется, платного здесь ничего нет. Нет данных — так и написано, цифр не выдумываем." />
+          </p>
         </div>
-        <p className="mt-1 flex items-center gap-1.5 text-[13px] text-muted-foreground">
-          Выберите закупку
-          <HelpTip align="start" content="Расчёты по закупке на реальных данных: документы заказчика, ваши цены и затраты. Нет данных — так и написано, цифр не выдумываем." />
-        </p>
+        <Button onClick={onUpload}>
+          <UploadCloud className="size-4" />
+          Загрузить закупку
+        </Button>
       </div>
 
       <Card className="p-0">
@@ -51,11 +58,7 @@ export function AnalyticsHome({ purchases, onOpen, onNew }: Props) {
           <p className="px-4 py-4 text-[13px] text-muted-foreground">Читаю закупки…</p>
         ) : purchases.length === 0 ? (
           <div className="space-y-3 px-4 py-4 text-[13px]">
-            <p className="text-muted-foreground">Закупок нет.</p>
-            <Button size="sm" onClick={onNew}>
-              <Plus className="size-3.5" />
-              Новая закупка
-            </Button>
+            <p className="text-muted-foreground">Закупок нет — загрузите первую.</p>
           </div>
         ) : (
           <ul className="divide-y divide-border">

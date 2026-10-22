@@ -1,10 +1,11 @@
+import { useState } from 'react';
 import type { Driver, HypothesisView, RegisterData } from '@/lib/hidden-costs';
 import type { Assumptions, EstimateResult } from '@/lib/risk-estimate';
 import type { SensitivityResult } from '@/lib/sensitivity';
 import { queryFor, type SearchContext } from '@/lib/search-queries';
 import type { DeliveryResult } from '@/lib/delivery-cost';
 import type { FxCode, FxResult } from '@/lib/fx-risk';
-import { AlertTriangle, Plus, Trash2 } from '../lib/icons';
+import { AlertTriangle, Plus, Search, Trash2 } from '../lib/icons';
 import { CertaintyBadge } from './Certainty';
 import { FactCosts } from './FactCosts';
 import { Frame, frameBody, frameHead } from './Frame';
@@ -172,6 +173,31 @@ export function RiskEstimates({ result, price, priceNote, hypotheses, data, sens
   const rest = hypotheses.filter((h) => !COVERED.has(h.id));
   const queries = new Map(rest.flatMap((h) => { const q = searchContext && onSearch ? queryFor(h.id, searchContext) : null; return q ? [[h.id, q] as const] : []; }));
   const sorted = [...result.items].sort((a, b) => (a.amount === null ? 1 : 0) - (b.amount === null ? 1 : 0) || (b.amount ?? 0) - (a.amount ?? 0));
+  // «Проверить поиском» сразу по всем гипотезам, которые ещё не искали: по одной, с паузой (поиск не любит частые запросы); на первой ошибке останавливаемся и показываем её.
+  const [restOpen, setRestOpen] = useState(false);
+  const [allBusy, setAllBusy] = useState(false);
+  const [allDone, setAllDone] = useState(0);
+  const [allError, setAllError] = useState<string | null>(null);
+  const pending = [...queries].filter(([id]) => !data.searches[id]);
+  const searchAll = async () => {
+    if (!onSearch) return;
+    const list = [...pending];
+    setAllBusy(true);
+    setAllError(null);
+    setAllDone(0);
+    setRestOpen(true);
+    let done = 0;
+    for (const [id, query] of list) {
+      const problem = await onSearch(id, query);
+      if (problem) {
+        setAllError(problem);
+        break;
+      }
+      setAllDone(++done);
+      if (done < list.length) await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+    setAllBusy(false);
+  };
   return (
     <Frame embedded={embedded}>
       <div className={frameHead(embedded)}>
@@ -241,8 +267,22 @@ export function RiskEstimates({ result, price, priceNote, hypotheses, data, sens
         {facts && price !== null && <FactCosts data={data} delivery={facts.delivery} fx={facts.fx} onChange={onChange} onLoadFx={facts.onLoadFx} />}
         <AssumptionsEditor data={data} onChange={onChange} />
         <Sensitivity data={data} sens={sens} defaultDrivers={defaultDrivers} priceHint={priceHint} onChange={onChange} total={result.total} />
+        {pending.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="secondary" disabled={allBusy} onClick={() => void searchAll()}>
+              <Search className="size-3.5" />
+              {allBusy ? `Ищу: ${allDone} из ${pending.length + allDone}` : `Проверить поиском (${pending.length})`}
+            </Button>
+            <HelpTip align="start" content="Обычный бесплатный поиск в интернете. В запрос уходят только ключевые слова темы, год и регион поставки. Страницы программа не читает: найденное — ссылки, смотрите их сами." />
+          </div>
+        )}
+        {allError && (
+          <p role="alert" className="text-[12px] text-danger">
+            {allError}
+          </p>
+        )}
         {rest.length > 0 && (
-          <details className="text-[12px]">
+          <details className="text-[12px]" open={restOpen} onToggle={(e) => setRestOpen(e.currentTarget.open)}>
             <summary className="cursor-pointer text-muted-foreground">Ещё риски для такой закупки без оценки: {rest.length}{queries.size > 0 && ` · можно проверить поиском: ${queries.size}`}</summary>
             <ul className="mt-2 space-y-1.5">
               {rest.map((h) => (
