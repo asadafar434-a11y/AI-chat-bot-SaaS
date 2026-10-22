@@ -3,6 +3,7 @@
 // «Процент победы» не рисуем: для него нужна история торгов (решение владельца, шаг 8 плана). Матрица из 27 проверок — скоро.
 
 import { percent, rubles } from "@/lib/analytics-summary";
+import type { MatrixSummary } from "@/lib/check-matrix";
 import type { EconResult, LineGroup, Scenario } from "@/lib/economics";
 import type { RicResult } from "@/lib/indicative-price";
 import type { EstimateResult } from "@/lib/risk-estimate";
@@ -107,7 +108,7 @@ export function profitCurve(econ: EconResult): Curve | null {
 export type ChartFact = { id: string; label: string; value: string; hint: string };
 
 // Проценты для карточек над диаграммой: только те, что есть из реальных данных.
-export function chartFacts({ econ, estimate, ric }: { econ: EconResult; estimate: EstimateResult; ric: RicResult | null }): ChartFact[] {
+export function chartFacts({ econ, estimate, ric, matrix }: { econ: EconResult; estimate: EstimateResult; ric: RicResult | null; matrix?: MatrixSummary }): ChartFact[] {
   const out: ChartFact[] = [];
   if (econ.ready) {
     out.push({ id: "margin", label: "Рентабельность", value: percent(econ.scenarios.base.margin), hint: `Прибыль к цене ${rubles(econ.price)} в базовом сценарии` });
@@ -123,6 +124,15 @@ export function chartFacts({ econ, estimate, ric }: { econ: EconResult; estimate
       label: "Начальная цена против РИЦ",
       value: `${ric.deviation.pct > 0 ? "+" : ""}${percent(ric.deviation.pct)}`,
       hint: "Плюс — начальная цена заказчика выше рыночного ориентира, минус — ниже",
+    });
+  }
+  if (matrix) {
+    const done = matrix.program + matrix.manual;
+    out.push({
+      id: "checks",
+      label: "Проверено проверок",
+      value: `${done} из ${matrix.total}`,
+      hint: `${percent(matrix.coveragePct)}: в порядке ${matrix.ok}, внимание ${matrix.attention}, риск ${matrix.risk}; остальные ждут данных`,
     });
   }
   return out;

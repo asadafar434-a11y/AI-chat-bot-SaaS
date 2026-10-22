@@ -5,6 +5,7 @@ import mammoth from "mammoth";
 import { assumptionLines, buildReport, reportFileName, reportHtml, REPORT_FOOTER, type ReportInput } from "./analytics-report.ts";
 import { reportDocx } from "./analytics-report-docx.ts";
 import { buildSummary } from "./analytics-summary.ts";
+import { buildMatrix, summarize } from "./check-matrix.ts";
 import { contractRisks } from "./contract-risks.ts";
 import { DEFAULT_ECON, economics } from "./economics.ts";
 import { computeRic, DEFAULT_SETTINGS, EMPTY_RIC, type RicData } from "./indicative-price.ts";
@@ -290,4 +291,43 @@ test("сфера в отчёте: цен-аналогов нет — метод 
   const docText = (await mammoth.extractRawText({ buffer: Buffer.from(await blob.arrayBuffer()) })).value;
   assert.match(docText, /Резерв на риск/);
   assert.match(docText, /КП перевозчика от 10\.10\.2026/);
+});
+
+test("матрица в отчёте: счёт, пометка «не вероятность победы», все 27 строк с результатом и тем, что установлено или чего не хватает; без матрицы раздела нет", () => {
+  assert.ok(!buildReport(input()).sections.some((x) => /Матрица/.test(x.title)));
+  const base = input();
+  const rows = buildMatrix({
+    kind: "Электронный аукцион · 44-ФЗ",
+    docs: [{ name: "Проект договора.docx", text: CONTRACT }],
+    hasContract: true,
+    risks: base.risks,
+    estimate: base.estimate,
+    econ: base.econ,
+    badge: base.badge,
+    ric: base.ric,
+    nmck: 1_000_000,
+    smeOnly: false,
+    companySme: false,
+    registry: null,
+    evidence: null,
+    manual: { 21: { level: "attention", note: "В КАД 3 дела об оплате за 2025 год", source: "kad.arbitr.ru" } },
+  });
+  const summary = summarize(rows);
+  const r = buildReport(input({ matrix: { rows, summary } }));
+  assert.deepEqual(r.sections.map((x) => x.title).slice(-2), ["Матрица проверок (27)", "Итоговая диаграмма"]);
+  const section = r.sections.find((x) => /Матрица/.test(x.title))!;
+  const text = section.blocks.map((b) => (b.type === "p" ? b.text : "")).join(" ");
+  assert.match(text, /Проверено \d+ из 27 \(\d+,\d %\): в порядке \d+, внимание \d+, риск \d+\. Посчитано программой \d+, записано участником 1/);
+  assert.match(text, /Это не вероятность победы и не оценка заказчика/);
+  const table = section.blocks.find((b) => b.type === "table");
+  assert.ok(table && table.type === "table");
+  assert.equal(table.rows.length, 27);
+  assert.deepEqual(table.rows[20], ["21", "Судебные споры и договорные конфликты", "Проверено участником: внимание", "В КАД 3 дела об оплате за 2025 год (источник: kad.arbitr.ru)"]);
+  assert.match(table.rows[0][3], /Пока нет источника в программе: ЕИС/);
+  assert.equal(table.rows[0][2], "Не проверено");
+  assert.match(table.rows[10][3], /Платите вы:/);
+  // Диаграмма получает «проверено проверок».
+  const chart = r.sections.find((x) => x.title === "Итоговая диаграмма")!;
+  const facts = chart.blocks.find((b) => b.type === "table");
+  assert.ok(facts && facts.type === "table" && facts.rows.some((row) => row[0] === "Проверено проверок"));
 });

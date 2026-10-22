@@ -43,6 +43,8 @@ before(async () => {
     scenUi: await server.ssrLoadModule('/src/components/RicScenarioPanel.tsx'),
     scenLib: await server.ssrLoadModule('@/lib/ric-scenarios.ts'),
     importUi: await server.ssrLoadModule('/src/components/AnalogImport.tsx'),
+    matrixUi: await server.ssrLoadModule('/src/components/CheckMatrix.tsx'),
+    matrixLib: await server.ssrLoadModule('@/lib/check-matrix.ts'),
   };
 });
 
@@ -775,4 +777,70 @@ test('загрузка цен: у каждой позиции РИЦ есть к
   const t = text(panel(d, null));
   assert.equal((t.match(/Загрузить цены из таблицы/g) ?? []).length, 2);
   assert.match(t, /Добавить цену-аналог/);
+});
+
+const matrixRows = (over = {}) => {
+  const docs = [{ name: 'Проект договора.docx', text: ['Договор поставки № 1', '7.3. Исполнитель обязан уплатить Заказчику пеню в размере 0,1% от цены Договора за каждый день просрочки.', '7.4. Исполнитель уплачивает Заказчику штраф в размере 30% от цены Договора за отказ от исполнения.', '3.6. Оплата производится Заказчиком в течение 30 дней с даты акта.', '10.1. Договор заключается после предоставления Исполнителем обеспечения исполнения Договора в размере 5 % от цены.'].join('\n') }];
+  const risks = mods.risksLib.contractRisks(docs);
+  const estimate = mods.estLib.estimateRisks({ price: 1_000_000, risks, type: 'goods', region: null, assumptions: mods.estLib.DEFAULT_ASSUMPTIONS });
+  const econ = mods.econLib.economics({ calc: { ...ECON_CALC, costs: 600_000 }, estimate, settings: mods.econLib.DEFAULT_ECON, price: null });
+  return mods.matrixLib.buildMatrix({ kind: 'Электронный аукцион · 44-ФЗ', docs, hasContract: true, risks, estimate, econ, badge: null, ric: null, nmck: 1_000_000, smeOnly: false, companySme: false, registry: null, evidence: null, ...over });
+};
+const matrixUi = (rows = matrixRows(), data = {}) =>
+  renderToStaticMarkup(h(mods.matrixUi.CheckMatrix, { rows, summary: mods.matrixLib.summarize(rows), data, onChange: none }));
+
+test('матрица: сверху «проверено N из 27» и кнопки-фильтры со счётчиками; карта из 27 клеток по четырём группам', () => {
+  const rows = matrixRows();
+  const s = mods.matrixLib.summarize(rows);
+  const out = matrixUi(rows);
+  const t = text(out);
+  assert.ok(new RegExp('Проверено ' + (s.program + s.manual) + ' из 27 \\(\\d+,\\d %\\)').test(t));
+  for (const chip of [`Все 27`, `Риск ${s.risk}`, `Внимание ${s.attention}`, `В порядке ${s.ok}`, `Нет данных ${s.insufficient}`, `Ждут источника ${s.notChecked}`]) assert.ok(t.includes(chip), chip);
+  assert.equal((out.match(/aria-pressed=/g) ?? []).length, 6);
+  assert.equal((out.match(/aria-label="Проверка \d+: [^"]+\. [^"]+"/g) ?? []).length, 27);
+  for (const g of ['Конкуренция', 'Финансовые условия', 'Квалификация', 'Надёжность и договорные риски']) assert.ok(t.includes(g), g);
+  assert.match(t, /Конкуренция · \d+ из 6/);
+  assert.match(t, /Финансовые условия · \d+ из 7/);
+  assert.match(t, /Квалификация · \d+ из 6/);
+  assert.match(t, /Надёжность и договорные риски · \d+ из 8/);
+});
+
+test('матрица: у строк с вниманием и риском виден факт по этой закупке (пункт, цифра), у «ждёт источника» и «в порядке» лишнего текста нет', () => {
+  const rows = matrixRows();
+  const t = text(matrixUi(rows));
+  assert.match(t, /11 Штрафы, пени и финансовые обязательства Крупная неустойка на вас: Штраф 30 %/);
+  assert.match(t, /10 Сроки оплаты и аванс Оплата долгая: Оплата заказчиком в течение 30 дней/);
+  assert.match(t, /9 Размер обеспечения исполнения контракта В порядке/);
+  assert.match(t, /21 Судебные споры и договорные конфликты Ждёт источника/);
+  assert.equal(t.includes('Пока нет источника в программе'), false, 'длинный текст про отсутствие источника на виду не нужен');
+  assert.match(t, /8 Размер обеспечения заявки Нужно: размер обеспечения заявки/);
+});
+
+test('матрица: «смотреть первым» — до трёх проверок, сначала риск; у каждой номер, название и факт; пояснения «как проверяется» спрятаны', () => {
+  const t = text(matrixUi());
+  const first = t.split('Смотреть первым')[1].split('Конкуренция ·')[0];
+  assert.match(first, /Риск 11\. Штрафы, пени и финансовые обязательства/);
+  assert.ok((first.match(/\d+\. /g) ?? []).length <= 3 * 1 + 3, 'не больше трёх');
+  assert.equal(t.includes('Как оценивается'), false);
+  assert.equal(t.includes('Как проверяется'), false);
+});
+
+test('матрица: записанное вами — помечено «Вы», с вашим фактом; чужой текст остаётся текстом', () => {
+  const rows = matrixRows({ manual: { 21: { level: 'attention', note: '<img src=x onerror=alert(1)> в КАД 3 дела об оплате', source: 'kad.arbitr.ru' } } });
+  const out = matrixUi(rows);
+  assert.equal(out.includes('<img src=x'), false);
+  const t = text(out);
+  const before = mods.matrixLib.summarize(matrixRows()).program;
+  assert.ok(t.includes(`Проверено ${before + 1} из 27`), 'запись участника добавляет одну проверенную');
+  assert.match(t, /21 Судебные споры и договорные конфликты .*в КАД 3 дела об оплате Вы: внимание/);
+});
+
+test('матрица: данных нет совсем — «проверено 0 из 27», у посчитанных «нет данных», у внешних «ждёт источника»; ни одной оценки', () => {
+  const rows = matrixRows({ hasContract: false, risks: [], docs: [], kind: '', econ: { ready: false, reason: 'costs' }, nmck: null });
+  const t = text(matrixUi(rows));
+  assert.match(t, /Проверено 0 из 27 \(0,0 %\)/);
+  assert.match(t, /Риск 0/);
+  assert.match(t, /Внимание 0/);
+  assert.match(t, /В порядке 0/);
+  assert.equal(t.includes('Смотреть первым'), false);
 });

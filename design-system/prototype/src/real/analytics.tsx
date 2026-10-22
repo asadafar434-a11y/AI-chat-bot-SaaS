@@ -2,7 +2,10 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { assumptionLines, buildReport, reportFileName, reportHtml } from '@/lib/analytics-report';
 import { buildSummary, type SectionId } from '@/lib/analytics-summary';
 import { getRegister, getRic, saveRegister, saveRic } from '@/lib/analytics-store';
+import { buildMatrix, summarize, type ManualResult } from '@/lib/check-matrix';
 import { contractRisks, looksLikeContract } from '@/lib/contract-risks';
+import { todayIso } from '@/lib/evidence-base';
+import { checkPurchase } from '@/lib/evidence-match';
 import { DEFAULT_DRIVERS, EMPTY_REGISTER, hypothesesFor, lawOf, placeOf, regionNote, typeOf, type RegisterData } from '@/lib/hidden-costs';
 import { errorMessage, errorText } from '@/lib/http-error';
 import { computeRic, EMPTY_RIC, parseAmount, positionsFromDocuments, type RicData } from '@/lib/indicative-price';
@@ -11,6 +14,7 @@ import { economics, econSettings } from '@/lib/economics';
 import { estimateRisks } from '@/lib/risk-estimate';
 import { findNmckCalculations } from '@/lib/nmck-check';
 import { priceBadge } from '@/lib/price-badge';
+import { detectRegistryDemand } from '@/lib/registry-demand';
 import { titleOf } from '@/lib/purchase';
 import { printHtml } from '@/lib/print-html';
 import { scenarioRic } from '@/lib/ric-scenarios';
@@ -23,6 +27,7 @@ import { normalizeSearches } from '@/lib/web-search';
 import { AnalyticsHome } from '../components/Analytics';
 import { AnalyticsChart } from '../components/AnalyticsChart';
 import { AnalyticsSummary, type ReportBusy } from '../components/AnalyticsSummary';
+import { CheckMatrix } from '../components/CheckMatrix';
 import { Collapsible } from '../components/Collapsible';
 import { ContractRisks } from '../components/ContractRisks';
 import { Economics } from '../components/Economics';
@@ -32,6 +37,7 @@ import { RicPanel } from '../components/RicPanel';
 import { RicScenarioPanel } from '../components/RicScenarioPanel';
 import { ArrowLeft, BarChart2 } from '../lib/icons';
 import { useProfile } from './analysis';
+import { useFacts } from './hooks';
 import { usePurchase } from './purchase-provider';
 
 const SAVE_DELAY = 400;
@@ -147,6 +153,41 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
     }
   };
 
+  // Матрица из 27 проверок: требования заказчика сверяются с базой доказательств компании, остальное берётся из договора, расчёта цены и РИЦ (lib/check-matrix.ts).
+  const factsState = useFacts();
+  const evidence = useMemo(() => {
+    if (!factsState.ready) return null;
+    try {
+      return checkPurchase(purchase, { facts: factsState.facts, profile }, todayIso());
+    } catch {
+      return null;
+    }
+  }, [purchase, factsState.ready, factsState.facts, profile]);
+  const registryDemand = useMemo(() => detectRegistryDemand(documents), [documents]);
+  const matrixData = (register.data ?? EMPTY_REGISTER).matrix;
+  const matrixRows = useMemo(
+    () =>
+      buildMatrix({
+        kind: purchase.kind,
+        docs: plain,
+        hasContract,
+        risks,
+        estimate,
+        econ,
+        badge,
+        ric: result,
+        nmck,
+        smeOnly: calc.smeOnly,
+        companySme: Boolean(profile.smeCategory?.trim()),
+        registry: registryDemand,
+        evidence,
+        manual: Object.fromEntries(Object.entries(matrixData?.manual ?? {}).map(([k, v]) => [Number(k), v as ManualResult])),
+        weights: Object.fromEntries(Object.entries(matrixData?.weights ?? {}).map(([k, v]) => [Number(k), v])),
+      }),
+    [purchase.kind, plain, hasContract, risks, estimate, econ, badge, result, nmck, calc.smeOnly, profile.smeCategory, registryDemand, evidence, matrixData],
+  );
+  const matrixSummary = useMemo(() => summarize(matrixRows), [matrixRows]);
+
   const title = titleOf(purchase);
   const summary = useMemo(
     () =>
@@ -162,12 +203,13 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
         badge,
         calcs,
         region: regionInfo,
+        matrix: matrixSummary,
       }),
-    [title, purchase.kind, purchase.tpPrice, nmck, hasContract, risks, estimate, econ, badge, calcs, regionInfo],
+    [title, purchase.kind, purchase.tpPrice, nmck, hasContract, risks, estimate, econ, badge, calcs, regionInfo, matrixSummary],
   );
   const needCosts = !econ.ready && econ.reason === 'costs';
   // Разделы закрыты: сверху резюме. Исключения: без ваших затрат цену не назвать — раздел с затратами открыт сразу; итоговая диаграмма открыта, когда есть что рисовать.
-  const [open, setOpen] = useState<Record<SectionId, boolean>>(() => ({ risks: false, estimate: false, economics: needCosts, nmck: false, ric: false, chart: econ.ready }));
+  const [open, setOpen] = useState<Record<SectionId, boolean>>(() => ({ risks: false, estimate: false, economics: needCosts, nmck: false, ric: false, matrix: false, chart: econ.ready }));
   const toggle = (id: SectionId) => setOpen((o) => ({ ...o, [id]: !o[id] }));
   const goTo = (id: SectionId) => {
     setOpen((o) => ({ ...o, [id]: true }));
@@ -192,6 +234,7 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
       badge,
       assumptions: assumptionLines(assumptions),
       ricScenario: data && result ? scenarioRic(data, result, purchase.subject ?? '', type) : null,
+      matrix: { rows: matrixRows, summary: matrixSummary },
       searches: Object.entries((register.data ?? EMPTY_REGISTER).searches).flatMap(([id, record]) => {
         const h = hypotheses.find((x) => x.id === id);
         return h ? [{ title: h.title, record }] : [];
@@ -263,8 +306,19 @@ export function PurchaseAnalytics({ onBack }: { onBack: () => void }) {
         );
       case 'nmck':
         return <NmckCheck embedded calcs={calcs} />;
+      case 'matrix':
+        return register.data ? (
+          <CheckMatrix
+            rows={matrixRows}
+            summary={matrixSummary}
+            data={register.data.matrix ?? {}}
+            onChange={(next) => register.change({ ...register.data!, matrix: next.weights || next.manual ? next : undefined })}
+          />
+        ) : (
+          loading
+        );
       case 'chart':
-        return <AnalyticsChart econ={econ} estimate={estimate} ric={result} />;
+        return <AnalyticsChart econ={econ} estimate={estimate} ric={result} matrix={matrixSummary} />;
       case 'ric':
         return data && result && badge ? (
           <div className="space-y-4">

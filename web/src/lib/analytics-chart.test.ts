@@ -179,3 +179,14 @@ test("подписи оси: тысячи и миллионы сжаты, мин
   assert.equal(compactRub(950), "950");
   assert.equal(compactRub(2_000_000), "2 млн");
 });
+
+test("проценты для карточек: проверено проверок из 27 — когда есть матрица; охват и число по уровням", () => {
+  const econ = econOf();
+  const estimate = estimateOf();
+  const matrix = { total: 27, program: 9, manual: 1, insufficient: 5, notChecked: 12, coveragePct: (10 / 27) * 100, ok: 6, attention: 3, risk: 1, uniqueAttention: 2, uniqueRisk: 1, groups: [], first: [] };
+  const facts = chartFacts({ econ, estimate, ric: null, matrix });
+  const f = facts.find((x) => x.id === "checks")!;
+  assert.equal(f.value, "10 из 27");
+  assert.match(f.hint.replace(/\s/g, " "), /^37,0 %: в порядке 6, внимание 3, риск 1; остальные ждут данных$/);
+  assert.equal(chartFacts({ econ, estimate, ric: null }).some((x) => x.id === "checks"), false);
+});

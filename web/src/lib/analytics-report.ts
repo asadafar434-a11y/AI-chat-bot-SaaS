@@ -9,6 +9,7 @@ import type { RicResult } from "@/lib/indicative-price";
 import type { Assumptions, EstimateResult } from "@/lib/risk-estimate";
 import { chartFacts, priceBar, riskShares, SCENARIO_LABELS, type PartId } from "@/lib/analytics-chart";
 import { rubles, type Summary } from "@/lib/analytics-summary";
+import { LEVEL_TEXT, type CheckRow, type MatrixSummary } from "@/lib/check-matrix";
 import { METHOD_LABELS, type ScenarioRic } from "@/lib/ric-scenarios";
 import type { SearchRecord } from "@/lib/web-search";
 
@@ -41,6 +42,8 @@ export type ReportInput = {
   calcs: NmckCalc[];
   ric: RicResult | null;
   badge: PriceBadge | null;
+  /** Матрица из 27 проверок: все строки и счёт. */
+  matrix?: { rows: CheckRow[]; summary: MatrixSummary };
   /** РИЦ по сценарию сферы: метод, поправки, резерв на отраслевые риски. */
   ricScenario?: ScenarioRic | null;
   /** Что нашёл обычный поиск по гипотезам (по какой, запрос, результаты): в отчёте с пометкой «не проверено». */
@@ -225,6 +228,22 @@ function ricSection(i: ReportInput): ReportSection {
   return { title: "РИЦ: расчёт индикативной цены", blocks };
 }
 
+function matrixSection(i: ReportInput): ReportSection | null {
+  const m = i.matrix;
+  if (!m) return null;
+  const s = m.summary;
+  const blocks: ReportBlock[] = [
+    { type: "p", text: `Проверено ${s.program + s.manual} из ${s.total} (${pct(s.coveragePct)}): в порядке ${s.ok}, внимание ${s.attention}, риск ${s.risk}. Посчитано программой ${s.program}, записано участником ${s.manual}, не хватает данных ${s.insufficient}, ждут внешних источников ${s.notChecked}. Один и тот же риск, описанный несколькими проверками, считается один раз.`, bold: true },
+    { type: "p", text: "Это не вероятность победы и не оценка заказчика: проверки показывают, что установлено и чего не хватает. Выводы формулируются как факты и основания.", muted: true },
+  ];
+  const resultText = (r: CheckRow["result"]) =>
+    r.state === "checked" ? LEVEL_TEXT[r.level] : r.state === "manual" ? `Проверено участником: ${LEVEL_TEXT[r.level].toLowerCase()}` : r.state === "insufficient" ? "Недостаточно данных" : "Не проверено";
+  const detail = (r: CheckRow["result"]) =>
+    r.state === "checked" ? [r.summary, ...r.facts].join(" ") : r.state === "manual" ? `${r.summary}${r.source ? ` (источник: ${r.source})` : ""}` : `${r.summary}${r.missing.length > 0 ? ` Нужно: ${r.missing.join("; ")}.` : ""}`;
+  blocks.push({ type: "table", head: ["№", "Проверка", "Результат", "Что установлено или чего не хватает"], rows: m.rows.map((r) => [String(r.def.n), r.def.title, resultText(r.result), detail(r.result)]) });
+  return { title: "Матрица проверок (27)", blocks };
+}
+
 function searchSection(i: ReportInput): ReportSection | null {
   const found = (i.searches ?? []).filter((x) => x.record.hits.length > 0 || x.record.query);
   if (found.length === 0) return null;
@@ -245,7 +264,7 @@ const PART_TONE: Record<PartId, BarTone> = { costs: "ink", taxes: "mid", risks: 
 
 function chartSection(i: ReportInput): ReportSection {
   const blocks: ReportBlock[] = [];
-  const facts = chartFacts({ econ: i.econ, estimate: i.estimate, ric: i.ric });
+  const facts = chartFacts({ econ: i.econ, estimate: i.estimate, ric: i.ric, matrix: i.matrix?.summary });
   if (facts.length > 0) blocks.push({ type: "table", head: ["Показатель", "Значение", "Пояснение"], rows: facts.map((f) => [f.label, f.value, f.hint]) });
   for (const scenario of ["base", "stress"] as const) {
     const bar = priceBar(i.econ, scenario);
@@ -272,7 +291,7 @@ export function buildReport(i: ReportInput): Report {
     subtitle: i.subtitle,
     date: dateRu(i.date),
     verdict: { label: i.summary.verdict.label, reasons: i.summary.verdict.reasons },
-    sections: [summarySection(i), contractSection(i), estimateSection(i), economicsSection(i), nmckSection(i), ricSection(i), searchSection(i), chartSection(i)].filter((x): x is ReportSection => x !== null),
+    sections: [summarySection(i), contractSection(i), estimateSection(i), economicsSection(i), nmckSection(i), ricSection(i), searchSection(i), matrixSection(i), chartSection(i)].filter((x): x is ReportSection => x !== null),
     footer: REPORT_FOOTER,
   };
 }

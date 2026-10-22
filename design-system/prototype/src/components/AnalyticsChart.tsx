@@ -14,6 +14,7 @@ import {
 } from '@/lib/analytics-chart';
 import { percent, rubles } from '@/lib/analytics-summary';
 import type { EconResult, Scenario } from '@/lib/economics';
+import type { MatrixSummary } from '@/lib/check-matrix';
 import type { RicResult } from '@/lib/indicative-price';
 import type { EstimateResult } from '@/lib/risk-estimate';
 import { CertaintyBadge } from './Certainty';
@@ -54,8 +55,8 @@ function Segmented({ value, onChange }: { value: Scenario; onChange: (s: Scenari
   );
 }
 
-function Facts({ econ, estimate, ric }: { econ: EconResult; estimate: EstimateResult; ric: RicResult | null }) {
-  const facts = chartFacts({ econ, estimate, ric });
+function Facts({ econ, estimate, ric, matrix }: { econ: EconResult; estimate: EstimateResult; ric: RicResult | null; matrix?: MatrixSummary }) {
+  const facts = chartFacts({ econ, estimate, ric, matrix });
   if (facts.length === 0) return null;
   return (
     <dl className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-2">
@@ -367,7 +368,7 @@ function CurveSection({ curve }: { curve: Curve }) {
   );
 }
 
-export function AnalyticsChart({ econ, estimate, ric }: { econ: EconResult; estimate: EstimateResult; ric: RicResult | null }) {
+export function AnalyticsChart({ econ, estimate, ric, matrix }: { econ: EconResult; estimate: EstimateResult; ric: RicResult | null; matrix?: MatrixSummary }) {
   const shares = riskShares(estimate);
   const curve = profitCurve(econ);
   return (
@@ -379,12 +380,12 @@ export function AnalyticsChart({ econ, estimate, ric }: { econ: EconResult; esti
           content="Все проценты и суммы считает программа из ваших затрат, условий договора и допущений, которые видно и можно поменять в блоках выше. Это оценка «если случится», а не прогноз. Каждое значение есть и текстом."
         />
       </div>
-      <Facts econ={econ} estimate={estimate} ric={ric} />
+      <Facts econ={econ} estimate={estimate} ric={ric} matrix={matrix} />
       <PriceSection econ={econ} />
       <RiskSection shares={shares} />
       {curve && <CurveSection curve={curve} />}
       <p className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
-        Процент победы не показываем: для него нужна история торгов. Матрица из 27 проверок и шансы на победу — <Soon />
+        Процент победы не показываем: для него нужна история торгов. Шансы на победу и проверки по заказчику (суды, ФАС, история) — <Soon />
       </p>
     </div>
   );

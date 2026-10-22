@@ -2,6 +2,7 @@
 // экономика, расчёт цены у заказчика) — без ИИ и без новых цифр. Подробности лежат в раскрывающихся разделах и в отчёте для скачивания (lib/analytics-report.ts).
 // Итог — не процент и не балл: светофор с причинами, чтобы выдуманное число не выглядело вероятностью победы. Решение об участии — за человеком.
 
+import type { MatrixSummary } from "@/lib/check-matrix";
 import type { ContractRisk } from "@/lib/contract-risks";
 import type { EconResult } from "@/lib/economics";
 import type { RegionNote } from "@/lib/hidden-costs";
@@ -30,9 +31,11 @@ export type SummaryInput = {
   badge: PriceBadge | null;
   calcs: NmckCalc[];
   region: RegionNote | null;
+  /** Матрица проверок (lib/check-matrix.ts): критичный риск в ней не даёт итогу «участвовать можно». */
+  matrix?: MatrixSummary;
 };
 
-export type SectionId = "risks" | "estimate" | "economics" | "nmck" | "ric" | "chart";
+export type SectionId = "risks" | "estimate" | "economics" | "nmck" | "ric" | "matrix" | "chart";
 export type SectionBrief = { id: SectionId; title: string; brief: string };
 
 export type Summary = {
@@ -71,6 +74,10 @@ function verdictOf(i: SummaryInput): Summary["verdict"] {
   if (heavy) reasons.push(`В договоре крупная неустойка: ${heavy.title}.`);
   if (econ.scenarios.base.profit > 0 && estimate.total > econ.scenarios.base.profit) {
     reasons.push(`Оценённые риски (${rubles(estimate.total)}) больше вашей прибыли в базовом сценарии (${rubles(econ.scenarios.base.profit)}).`);
+  }
+  // Риск по критичной проверке матрицы (важность 3) — повод не говорить «можно», даже если деньги сходятся.
+  for (const r of (i.matrix?.first ?? []).filter((x) => x.weight === 3 && x.result.state !== "insufficient" && x.result.state !== "not_checked" && x.result.level === "risk").slice(0, 2)) {
+    reasons.push(`В матрице проверок риск по критичной проверке ${r.def.n}. ${r.def.title}: ${r.result.summary}`);
   }
   if (reasons.length > 0) return { level: "careful", label: VERDICT_LABELS.careful, reasons };
   return {
@@ -142,6 +149,13 @@ export function buildSummary(i: SummaryInput): Summary {
     { id: "economics", title: "Какую цену ставить", brief: !e.ready ? "нужны ваши затраты" : e.target !== null ? `целевая ${rubles(e.target)}` : e.min !== null ? `не ниже ${rubles(e.min)}` : "убыток по начальной цене" },
     { id: "nmck", title: "Расчёт цены у заказчика", brief: i.calcs.length === 0 ? "не найден" : `замечаний: ${i.calcs.filter((c) => c.issues.some((x) => x.level === "warn")).length} из ${i.calcs.length}` },
     { id: "ric", title: "РИЦ: ваши цены-аналоги", brief: !i.badge ? "не заполнено" : i.badge.status === "insufficient" ? "данных пока мало" : i.badge.title },
+    {
+      id: "matrix",
+      title: "Матрица проверок (27)",
+      brief: i.matrix
+        ? `проверено ${i.matrix.program + i.matrix.manual} из ${i.matrix.total}${i.matrix.risk > 0 ? ` · риск ${i.matrix.risk}` : ""}${i.matrix.attention > 0 ? ` · внимание ${i.matrix.attention}` : ""}`
+        : "считаю…",
+    },
     {
       id: "chart",
       title: "Итоговая диаграмма",

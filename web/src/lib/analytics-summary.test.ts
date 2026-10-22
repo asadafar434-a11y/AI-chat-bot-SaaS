@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { buildSummary as rawSummary, rubles, VERDICT_LABELS, type Summary, type SummaryInput } from "./analytics-summary.ts";
+import { buildMatrix, summarize } from "./check-matrix.ts";
 import { contractRisks } from "./contract-risks.ts";
 import { DEFAULT_ECON, economics } from "./economics.ts";
 import { regionNote } from "./hidden-costs.ts";
@@ -131,7 +132,7 @@ test("строки разделов для раскрывающихся заго
   assert.equal(brief("nmck"), "не найден");
   assert.equal(brief("ric"), "не заполнено");
   assert.match(brief("chart"), /^рентабельность \d+,\d % · риски до \d+,\d %$/);
-  assert.deepEqual(s.sections.map((x) => x.id), ["risks", "estimate", "economics", "nmck", "ric", "chart"]);
+  assert.deepEqual(s.sections.map((x) => x.id), ["risks", "estimate", "economics", "nmck", "ric", "matrix", "chart"]);
 });
 
 test("суммы не рвутся на строки: пробелы внутри числа и перед «₽» и «%» неразрывные", () => {
@@ -141,4 +142,36 @@ test("суммы не рвутся на строки: пробелы внутр�
   assert.match(s.text, /начальная цена 1 000 000 ₽/);
   assert.match(s.text, /\d+,\d % цены/);
   assert.ok(!/\d \d{3}/.test(s.verdict.reasons.join(" ")));
+});
+
+test("матрица в резюме: строка раздела — сколько проверено, риск и внимание; критичный риск матрицы не даёт сказать «можно»", () => {
+  const base = input({}, { costs: 500_000 }, ["3.6. Оплата производится Заказчиком в течение 10 дней с даты акта."]);
+  const calm = buildSummary(base);
+  assert.equal(calm.verdict.level, "go");
+  assert.equal(calm.sections.find((x) => x.id === "matrix")!.brief, "считаю…");
+  // Матрица: нет лицензии, которой требует заказчик (критичная проверка 15, риск).
+  const rows = buildMatrix({
+    kind: "Электронный аукцион · 44-ФЗ",
+    docs: [],
+    hasContract: true,
+    risks: base.risks,
+    estimate: base.estimate,
+    econ: base.econ,
+    badge: null,
+    ric: null,
+    nmck: 1_000_000,
+    smeOnly: false,
+    companySme: false,
+    registry: null,
+    evidence: [{ requirement: { id: "r", text: "Наличие лицензии" }, needs: [], checks: [{ need: { kind: "license", label: "Лицензия или допуск", optional: false, scoring: false, requirement: { id: "r", group: "participant", text: "Наличие лицензии на деятельность" } }, status: "needs_evidence", facts: [], reasons: ["в базе нет"] }] }] as never,
+  });
+  const matrix = summarize(rows);
+  assert.ok(matrix.risk >= 1);
+  const withMatrix = buildSummary({ ...base, matrix });
+  assert.equal(withMatrix.verdict.level, "careful");
+  assert.ok(withMatrix.verdict.reasons.some((r) => /В матрице проверок риск по критичной проверке 15\. Соответствие требованиям к лицензиям/.test(r)));
+  assert.match(withMatrix.sections.find((x) => x.id === "matrix")!.brief, /^проверено \d+ из 27 · риск 1/);
+  // Риск по обычной (не критичной) проверке итог не меняет.
+  const light = { ...matrix, first: matrix.first.map((r) => ({ ...r, weight: 1 as const })) };
+  assert.equal(buildSummary({ ...base, matrix: light }).verdict.level, "go");
 });
