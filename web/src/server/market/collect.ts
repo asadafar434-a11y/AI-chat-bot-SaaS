@@ -1,4 +1,4 @@
-import { buildUserPrompt, checkOffer, parseModelAnswer, SYSTEM_PROMPT, type Checked, type Wanted } from "../../lib/price-extract.ts";
+import { buildUserPrompt, checkOffer, parseModelAnswer, SYSTEM_PROMPT, type Checked, type RawOffer, type Wanted } from "../../lib/price-extract.ts";
 import type { Observation } from "../../lib/market-observations.ts";
 import { priceExcerpt } from "../../lib/page-text.ts";
 import type { PageFetch } from "./fetch-page.ts";
@@ -18,6 +18,8 @@ export type CollectDeps = {
   worstCaseRub: (promptChars: number) => number;
   usdRub: number;
   today: () => string;
+  /** Пауза между запросами к бесплатному поиску: он блокирует частые запросы («подтвердите, что вы человек»). Тесты её не подставляют. */
+  pause?: () => Promise<void>;
 };
 
 // maxPages — сколько страниц читает платная модель; maxCandidates — сколько страниц просматривается, чтобы выбрать из них те, на которых вообще есть цена (бесплатно): по умолчанию столько же, сколько maxPages.
@@ -55,6 +57,7 @@ export async function collectPrices(deps: CollectDeps, options: CollectOptions):
   const result: CollectResult = { pages: [], accepted: [], rejected: [], spentRub: 0, calls: 0, stoppedByCap: false, searchErrors: [] };
   const found: SearchHit[][] = [];
   for (const query of options.queries) {
+    if (found.length > 0) await deps.pause?.();
     try {
       found.push(await deps.search(query));
     } catch (e) {
@@ -79,6 +82,8 @@ export async function collectPrices(deps: CollectDeps, options: CollectOptions):
 
   const day = deps.today();
   const seen = new Set<string>();
+  // Предложения, отклонённые только как розничные: если по позиции больше ничего не нашлось, они принимаются с пометкой (запасной проход).
+  const retail: { offer: RawOffer; text: string; ctx: { url: string; title: string; day: string } }[] = [];
   for (const hit of picked) {
     if (result.calls >= options.maxPages) break;
     const outcome: PageOutcome = { url: hit.url, domain: hit.domain, title: hit.title, status: "skipped", offers: [] };
@@ -126,6 +131,19 @@ export async function collectPrices(deps: CollectDeps, options: CollectOptions):
         }
       } else {
         result.rejected.push({ url: page.finalUrl, reason: checked.reason, detail: checked.detail, quote: offer.quote, price: offer.price, product: offer.product });
+        if (checked.reason === "розничная цена") retail.push({ offer, text: excerpt.text, ctx: { url: page.finalUrl, title: excerpt.title || hit.title, day } });
+      }
+    }
+  }
+  // Запасной проход: оптовых и каталожных цен нет совсем — берём розничные (не больше пяти), каждая с пометкой «розничная цена» в источнике.
+  if (result.accepted.length === 0 && retail.length > 0) {
+    for (const r of retail.slice(0, 5)) {
+      const checked = checkOffer(r.offer, r.text, options.wanted, { ...r.ctx, allowRetail: true });
+      if (checked.ok && !seen.has(checked.observation.hash)) {
+        seen.add(checked.observation.hash);
+        result.accepted.push(checked.observation);
+        const at = result.rejected.findIndex((x) => x.url === r.ctx.url && x.price === r.offer.price && x.reason === "розничная цена");
+        if (at >= 0) result.rejected.splice(at, 1);
       }
     }
   }

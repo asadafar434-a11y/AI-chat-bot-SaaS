@@ -97,15 +97,16 @@ const numbersIn = (s: string): number[] =>
     .filter((n): n is number => n !== null);
 
 /** Проверка одного предложения. Что не прошло — не принимается: цитата не со страницы, число не из цитаты, другая единица, розница, неясные опт или НДС. */
-export function checkOffer(offer: RawOffer, pageText: string, wanted: Wanted, ctx: { url: string; title: string; day: string; vatRate?: number }): Checked {
+// allowRetail — запасной проход, когда оптовых и каталожных цен по позиции не нашлось совсем (лекарства и другие товары, у которых в интернете есть только розница): розничная цена принимается с пометкой в источнике.
+export function checkOffer(offer: RawOffer, pageText: string, wanted: Wanted, ctx: { url: string; title: string; day: string; vatRate?: number; allowRetail?: boolean }): Checked {
   const reject = (reason: RejectReason, detail?: string): Checked => ({ ok: false, reason, detail, offer });
   const quote = normalizeForQuote(offer.quote);
   if (quote.length < 12 || !normalizeForQuote(pageText).includes(quote)) return reject("цитаты нет на странице");
   if (!numbersIn(offer.quote).some((n) => Math.abs(n - offer.price) < 0.005)) return reject("цены нет в цитате");
   if (normalizeUnit(offer.unit) !== normalizeUnit(wanted.unit)) return reject("не та единица измерения", `${offer.unit || "не названа"} вместо ${wanted.unit}`);
-  if (offer.priceType === "retail") return reject("розничная цена");
+  if (offer.priceType === "retail" && !ctx.allowRetail) return reject("розничная цена");
   // Оптовость на странице не названа (цена из каталога производителя или поставщика: для техники и оборудования другой обычно и нет) — цена принимается с пометкой в источнике; прямо названная розница — нет.
-  const priceNote = offer.priceType === "wholesale" ? "" : "; цена из каталога поставщика, оптовость на странице не названа";
+  const priceNote = offer.priceType === "wholesale" ? "" : offer.priceType === "retail" ? "; розничная цена магазина или аптеки — закупочная может быть ниже" : "; цена из каталога поставщика, оптовость на странице не названа";
   // НДС. Назвала модель — цитата о НДС должна быть на странице и говорить то же самое (слова модели тоже проверяются). Страница про НДС молчит — цена принимается как цена без НДС с пометкой в источнике
   // (решение владельца 22.10.2026): себестоимость при этом не занижается. Если НДС назван в самой цитате, а модель написала «не указан», верим тексту страницы.
   const vatEvidence = [offer.quote, offer.vatQuote && normalizeForQuote(pageText).includes(normalizeForQuote(offer.vatQuote)) ? offer.vatQuote : ""].join(" ").toLowerCase().replace(/ё/g, "е");

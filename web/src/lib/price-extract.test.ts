@@ -119,3 +119,13 @@ test("цена контракта не пройдёт даже с хорошей
   assert.equal(r.reason, "цена не принята");
   assert.match(r.detail ?? "", /цена контракта/);
 });
+
+test("розничная цена: по умолчанию отклоняется; в запасном проходе (allowRetail) принимается с пометкой в источнике; единицы «уп.» и «упаковка» — одно и то же", () => {
+  const retail = offer({ priceType: "retail" });
+  assert.equal(checkOffer(retail, PAGE, WANTED, CTX).ok, false);
+  const r = checkOffer(retail, PAGE, WANTED, { ...CTX, allowRetail: true });
+  assert.ok(r.ok);
+  assert.match(r.observation.source, /розничная цена магазина или аптеки — закупочная может быть ниже/);
+  const pack = checkOffer(offer({ unit: "уп." }), PAGE, { ...WANTED, unit: "упаковка" }, CTX);
+  assert.equal(pack.ok, true, "«уп.» — это «упаковка»");
+});

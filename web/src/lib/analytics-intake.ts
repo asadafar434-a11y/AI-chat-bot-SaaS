@@ -49,17 +49,34 @@ const rubles = (n: number) => {
   return `${whole.replace(/\B(?=(\d{3})+(?!\d))/g, " ")}${frac === "00" ? "" : `,${frac}`} ₽`;
 };
 
-/** Начальная (максимальная) цена из текстов документов: берётся значение, которое названо чаще всего (извещение и проект договора обычно называют одно и то же). */
+// Перед названием цены стоит «5 % от», «размер обеспечения», «аванс», «шаг аукциона»: это доля от цены или обеспечение, а не сама цена.
+const SHARE_BEFORE = /(?:обеспечени|\d\s*%|процент|аванс|шаг\s+аукцион|штраф|пени|неустойк)[^\n]{0,70}$/i;
+
+/** Начальная (максимальная) цена из текстов документов: берётся значение, которое названо чаще всего (извещение и проект договора обычно называют одно и то же); при равенстве — большее. */
 export function findPrice(docs: Doc[]): string {
   const counts = new Map<number, number>();
   for (const doc of docs) {
     const re = new RegExp(`${PRICE_LABEL}[^\\d\\n]{0,120}?${MONEY}`, "gi");
     for (const m of doc.text.matchAll(re)) {
+      const at = m.index ?? 0;
+      if (SHARE_BEFORE.test(doc.text.slice(Math.max(0, at - 90), at))) continue;
       const value = moneyOf(m[1]);
       if (value !== null) counts.set(value, (counts.get(value) ?? 0) + 1);
     }
   }
-  const best = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+  // Рядом с названием цены числа не нашлось (между ними длинная оговорка: «…налогов и других платежей 6 507 611,75 руб.»): берём самое большое число в той же строке дальше по тексту.
+  if (counts.size === 0) {
+    for (const doc of docs) {
+      for (const m of doc.text.matchAll(new RegExp(PRICE_LABEL, "gi"))) {
+        const at = m.index ?? 0;
+        if (SHARE_BEFORE.test(doc.text.slice(Math.max(0, at - 90), at))) continue;
+        const line = doc.text.slice(at + m[0].length, at + m[0].length + 400).split("\n")[0];
+        const values = [...line.matchAll(new RegExp(MONEY, "g"))].map((x) => moneyOf(x[1])).filter((v): v is number => v !== null);
+        if (values.length > 0) counts.set(Math.max(...values), (counts.get(Math.max(...values)) ?? 0) + 1);
+      }
+    }
+  }
+  const best = [...counts.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0];
   return best ? rubles(best[0]) : "";
 }
 

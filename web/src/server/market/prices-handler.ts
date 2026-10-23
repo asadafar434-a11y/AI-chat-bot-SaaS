@@ -26,6 +26,8 @@ export type PricesDeps = {
   capRub: number;
   budgetText: string;
   now?: () => Date;
+  /** Пауза между запросами к бесплатному поиску (см. CollectDeps.pause). */
+  pause?: () => Promise<void>;
 };
 
 // pagesRead — страниц, которые прочитала модель; pagesSeen — всего просмотрено; pagesWithPrice — на скольких из них вообще нашлось что-то похожее на цену (остальные модели не отправляются); reasons — почему отклонены предложения.
@@ -57,6 +59,7 @@ export async function handlePrices(request: Request, deps: PricesDeps): Promise<
   let spentRub = 0;
   let stopped = false;
   for (const p of positions) {
+    if (results.length > 0) await deps.pause?.();
     const queries = searchQueriesFor(p);
     if (queries.length === 0) {
       results.push({ key: p.key, observations: [], pagesRead: 0, rejected: 0 });
@@ -70,6 +73,7 @@ export async function handlePrices(request: Request, deps: PricesDeps): Promise<
         worstCaseRub: deps.worstCaseRub,
         usdRub: deps.usdRub,
         today: () => day,
+        pause: deps.pause,
       },
       // Остаток потолка переходит дальше: что не потратила одна позиция, может потратить другая, но общий потолок не превышается.
       { wanted: { name: p.name, unit: p.unit, region: p.region }, queries, maxPages: MAX_PAGES, maxCandidates: MAX_CANDIDATES, capRub: Math.min(perPosition * 2, deps.capRub - spentRub) },

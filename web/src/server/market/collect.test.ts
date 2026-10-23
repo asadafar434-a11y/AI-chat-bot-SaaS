@@ -136,3 +136,19 @@ test("что похоже на цену: число с «₽» или «руб»
   assert.equal(hasPriceLike("Цена по запросу, звоните"), false);
   assert.equal(hasPriceLike("Мощность 300 А, масса 120 кг, 3 фазы"), false);
 });
+
+test("лекарства и другие товары, у которых в интернете только розница: оптовых и каталожных цен нет — розничные принимаются запасным проходом с пометкой; есть хоть одна не розничная — розничные не берутся", async () => {
+  const pages = { "https://a.ru/p1": page("11 130"), "https://b.ru/p1": page("11 500") };
+  const only = deps({ pages, search: async () => [hit("a.ru"), hit("b.ru")], ask: async (_s, user) => ({ text: answerFor(/— ([\d ]+) руб/.exec(user)?.[1] ?? "1", { priceType: "retail" }), usd: 0.01 }) });
+  const r = await collectPrices(only.d, { wanted: WANTED, queries: ["q"], maxPages: 4, capRub: 40 });
+  assert.equal(r.accepted.length, 2, "запасной проход принял обе розничные цены");
+  assert.equal(r.rejected.length, 0, "принятые из списка отклонённых убраны");
+  assert.ok(r.accepted.every((o) => /розничная цена магазина или аптеки — закупочная может быть ниже/.test(o.source)), "в источнике пометка про розницу");
+
+  let n = 0;
+  const mixed = deps({ pages, search: async () => [hit("a.ru"), hit("b.ru")], ask: async (_s, user) => ({ text: answerFor(/— ([\d ]+) руб/.exec(user)?.[1] ?? "1", { priceType: n++ === 0 ? "wholesale" : "retail" }), usd: 0.01 }) });
+  const m = await collectPrices(mixed.d, { wanted: WANTED, queries: ["q"], maxPages: 4, capRub: 40 });
+  assert.equal(m.accepted.length, 1, "есть оптовая — розничная не берётся");
+  assert.equal(m.rejected.length, 1);
+  assert.equal(m.rejected[0].reason, "розничная цена");
+});

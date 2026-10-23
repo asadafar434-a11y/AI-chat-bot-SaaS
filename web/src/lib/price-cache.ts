@@ -62,9 +62,15 @@ export const MAX_SEARCH_TRIES = RETRY_DELAYS_MS.length + 1;
 const retryable = (r: PriceResult) => r.observations.length === 0 && r.pagesSeen === 0 && (r.tries ?? 1) < MAX_SEARCH_TRIES;
 const delayOf = (r: PriceResult) => RETRY_DELAYS_MS[Math.min((r.tries ?? 1) - 1, RETRY_DELAYS_MS.length - 1)];
 
+// Повторять можно и после неудачи целиком (поиск заблокирован, error), пока записи нет недели.
+const withinTtl = (saved: SavedPrices, now: Date) => {
+  const age = now.getTime() - Date.parse(saved.at);
+  return Number.isFinite(age) && age >= 0 && age < PRICES_TTL_DAYS * DAY;
+};
+
 /** Когда можно повторить поиск хотя бы по одной позиции без страниц: null — повторять нечего. */
 export function nextRetryAt(saved: SavedPrices | null | undefined, now: Date): number | null {
-  if (!saved || !isFresh(saved, now)) return null;
+  if (!saved || !withinTtl(saved, now)) return null;
   const left = saved.results.filter(retryable);
   const base = Date.parse(saved.retriedAt ?? saved.at);
   return left.length > 0 && Number.isFinite(base) ? base + Math.min(...left.map(delayOf)) : null;
@@ -72,7 +78,7 @@ export function nextRetryAt(saved: SavedPrices | null | undefined, now: Date): n
 
 /** Ключи позиций, по которым поиск пора повторить. */
 export function retryKeys(saved: SavedPrices | null | undefined, now: Date): string[] {
-  if (!saved || !isFresh(saved, now)) return [];
+  if (!saved || !withinTtl(saved, now)) return [];
   const base = Date.parse(saved.retriedAt ?? saved.at);
   return Number.isFinite(base) ? saved.results.filter((r) => retryable(r) && now.getTime() >= base + delayOf(r)).map((r) => r.key) : [];
 }
@@ -80,11 +86,16 @@ export function retryKeys(saved: SavedPrices | null | undefined, now: Date): str
 /** Результат повтора: по повторённым позициям — новый (попыток на одну больше), остальное как было; траты складываются. */
 export function mergeRetry(saved: SavedPrices, fresh: SavedPrices, keys: string[], at: string): SavedPrices {
   const byKey = new Map(fresh.results.map((r) => [r.key, r]));
+  const results = saved.results.map((r) => (keys.includes(r.key) ? { ...(byKey.get(r.key) ?? r), tries: (r.tries ?? 1) + 1 } : r));
+  // Поиск ответил (хоть одна страница или найденная цена) — прежняя неудача снимается; нет — остаётся.
+  const answered = results.some((r) => r.observations.length > 0 || (r.pagesSeen ?? 0) > 0);
+  const { error: oldError, ...rest } = saved;
   return {
-    ...saved,
+    ...rest,
+    ...(!answered && oldError && { error: oldError }),
     retriedAt: at,
     spentRub: Math.round((saved.spentRub + fresh.spentRub) * 100) / 100,
-    results: saved.results.map((r) => (keys.includes(r.key) ? { ...(byKey.get(r.key) ?? r), tries: (r.tries ?? 1) + 1 } : r)),
+    results,
   };
 }
 

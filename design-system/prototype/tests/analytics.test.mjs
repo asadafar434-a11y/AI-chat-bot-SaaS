@@ -1064,8 +1064,8 @@ test('загрузить закупку: пустое окно — «беспл�
   assert.match(t, /Бесплатно: без ИИ/, 'ИИ выключен — загрузка и всё остальное без платного');
   const formWith = (over) => renderToStaticMarkup(h(mods.intakeUi.AnalyticsIntakeForm, { files: [], failed: null, busy: null, error: '', fields: { title: '', price: '', law: '' }, onFiles: none, onRemove: none, onField: none, ...over }));
   const aiOnForm = formWith({ aiOn: true });
-  assert.match(aiOnForm, /Загрузка бесплатна · поиск цен платный, до 30 ₽/);
-  assert.match(aiOnForm, /По кнопке «Открыть аналитику» программа один раз ищет закупочные цены по главным позициям в интернете платной моделью/, 'честно сказано, что именно платное и когда');
+  assert.match(aiOnForm, /Платно: разбор документов ≈55 ₽ и поиск цен до 30 ₽/);
+  assert.match(aiOnForm, /По кнопке «Открыть аналитику» программа сразу разбирает документы[^<]*и ищет закупочные цены по главным позициям в интернете/, 'честно сказано, что именно платное и когда');
   assert.match(formWith({ aiOn: false }), /закупочные цены в интернете искаться не будут/);
   assert.match(t, /Перетащите файлы закупки сюда/);
   assert.match(t, /Выбрать файлы/);
@@ -1542,6 +1542,9 @@ test('«Открыть аналитику»: позиции берутся из 
   assert.match(src, /aiOn\) \{/, 'без включённого ИИ поиск не идёт');
   assert.match(src, /searchLivePrices\(id, picks, placeOf\(docs\)\?\.region\.name \?\? null, signatureOf\(picks\)\)/);
   assert.match(src, /savePrices\(id, saved\)/, 'найденное сохраняется у закупки — экран откроется уже с ценами');
+  assert.match(src, /extractRequirements\(upload\.documents, id\)/, 'разбор документов идёт сам, одновременно с поиском цен (Promise.all)');
+  assert.match(src, /Promise\.all\(\[/);
+  assert.match(src, /price: touched\.current\.has\('price'\) \? purchase\.price : f\.price \|\| purchase\.price/, 'цену, вписанную участником, разбор не затирает, иначе берётся проверенная по документам');
   assert.ok(src.indexOf('searchLivePrices(id') < src.indexOf('onCreated(id)'), 'сначала цены, потом открытие экрана');
   const screen = renderToStaticMarkup(h(mods.intakeUi.AnalyticsIntakeForm, { files: [{ name: 'ТЗ.docx', meta: '1 страница' }], failed: null, busy: 'searching', status: 'Позиций в документах: 2. Ищу закупочные цены по главным (2) — до двух минут.', aiOn: true, error: '', fields: { title: 'Агрегаты', price: '9 305 651,64', law: '223' }, onFiles: none, onRemove: none, onField: none }));
   assert.match(text(screen), /Позиций в документах: 2\. Ищу закупочные цены по главным \(2\) — до двух минут\./);

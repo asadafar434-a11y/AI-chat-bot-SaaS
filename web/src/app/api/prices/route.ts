@@ -34,5 +34,6 @@ export async function POST(request: Request) {
     usdRub,
     capRub,
     budgetText: BUDGET_TEXT,
+    pause: () => new Promise((resolve) => setTimeout(resolve, 1500)),
   });
 }

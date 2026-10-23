@@ -182,7 +182,13 @@ test("повтор поиска: позиции, по которым не наш
   assert.deepEqual(retryKeys(base, at(RETRY_AFTER_MS)), ["c"], "только позиция без страниц");
   assert.deepEqual(retryKeys({ ...base, results: [rec("a", { pagesSeen: 8 }), rec("b", { observations: obs })] }, at(RETRY_AFTER_MS)), [], "повторять нечего");
   assert.equal(nextRetryAt({ ...base, results: [rec("a", { pagesSeen: 8 })] }, at(0)), null);
-  assert.equal(nextRetryAt({ ...base, error: "поиск не ответил" }, at(0)), null, "неудача целиком лечится общим правилом «через час»");
+  assert.equal(nextRetryAt({ ...base, error: "поиск не ответил" }, at(0)), T0 + RETRY_AFTER_MS, "после неудачи целиком (поиск заблокирован) повтор тоже идёт, в пределах недели");
+  const blocked = { ...base, error: "поиск не ответил (просит подтвердить, что вы человек)", results: [rec("c", { pagesSeen: 0 })] };
+  assert.deepEqual(retryKeys(blocked, at(RETRY_AFTER_MS)), ["c"]);
+  const lifted = mergeRetry(blocked, { at: "x", signature: "s", spentRub: 0.5, results: [rec("c", { observations: obs, pagesSeen: 4 })] }, ["c"], new Date(T0 + RETRY_AFTER_MS).toISOString());
+  assert.equal(lifted.error, undefined, "поиск ответил — прежняя неудача снята");
+  const still = mergeRetry(blocked, { at: "x", signature: "s", spentRub: 0, error: "поиск не ответил", results: [rec("c", { pagesSeen: 0 })] }, ["c"], new Date(T0 + RETRY_AFTER_MS).toISOString());
+  assert.equal(still.error, blocked.error, "ответа нет — неудача остаётся");
   assert.equal(nextRetryAt(base, at(PRICES_TTL_DAYS * 86_400_000 + 1)), null, "старше недели — общий пересчёт");
 
   const retried = mergeRetry(base, { at: "x", signature: "s", spentRub: 0.4, results: [rec("c", { observations: obs, pagesSeen: 5, pagesRead: 2 })] }, ["c"], new Date(T0 + RETRY_AFTER_MS).toISOString());
