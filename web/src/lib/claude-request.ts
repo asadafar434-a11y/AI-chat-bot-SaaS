@@ -134,6 +134,8 @@ type AskJson<T> = {
   effort?: "low" | "medium" | "high";
   // Номер заявки (закупки) — для бюджета ИИ на заявку; без него — только общий журнал расходов.
   appId?: string | null;
+  // Другая модель для этого запроса (по умолчанию — основная, CLAUDE_MODEL).
+  model?: string;
 };
 
 // Задание + схема ответа идут после документов. Если JSON не сошёлся со схемой, модель один раз
@@ -143,9 +145,9 @@ type AskJson<T> = {
 export async function askJson<T>(ask: AskJson<T>): Promise<T> {
   if (await budgetOver(ask.appId ?? null)) throw new BudgetOver();
   // Отпечаток — по настоящим данным, а не по тексту с метками: у двух разных участников метки совпадут.
-  const { label, documents, extra, instructions, schema, system, cache, effort } = ask;
+  const { label, documents, extra, instructions, schema, system, cache, effort, model } = ask;
   const task = typeof instructions === "function" ? instructions((text) => text) : instructions;
-  const key = requestKey({ label, documents, extra, task, schema: z.toJSONSchema(schema), system, cache, effort });
+  const key = requestKey({ label, documents, extra, task, schema: z.toJSONSchema(schema), system, cache, effort, model });
   const { promise, shared } = dedup.run(key, () => askOnce(ask));
   if (shared) console.log(`[ИИ] ${ask.label}: такой же запрос уже идёт — ждём его ответ, без второго обращения к модели`);
   return (await promise) as T;
@@ -162,6 +164,7 @@ async function askOnce<T>({
   cache = true,
   effort,
   appId = null,
+  model,
 }: AskJson<T>): Promise<T> {
   const client = new Anthropic();
   // Порядок важен: документы — первыми, как в любом запросе по закупке, потом всё остальное.
@@ -172,6 +175,7 @@ async function askOnce<T>({
   const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: [...docs, ...blocks, { type: "text", text: task }] }];
   const request = {
     ...baseRequest,
+    ...(model && { model }),
     ...(system && { system: withMaskNote(system) }),
     ...(effort && { output_config: { effort } }),
     max_tokens: 64000,

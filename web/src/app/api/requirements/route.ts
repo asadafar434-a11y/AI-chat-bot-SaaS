@@ -1,4 +1,5 @@
 import { appIdOf, requireAiAuth } from "@/lib/ai-guard";
+import { ANALYSIS_MODEL } from "@/lib/claude";
 import { claudeErrorText, NO_KEY_TEXT } from "@/lib/claude-errors";
 import { askJson, ModelStop } from "@/lib/claude-request";
 import { MAX_CONTEXT_CHARS } from "@/lib/chat-types";
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
     const knowledge = await draftKnowledgeBlock(DRAFT_REQ_KB_QUERY);
     const draft = await askJson({
       label: "requirements",
+      model: ANALYSIS_MODEL,
       appId: appIdOf(request),
       documents,
       extra: knowledge ? [knowledgeTextBlock(knowledge)] : [],

@@ -17,7 +17,7 @@ import { POST as facts } from "./my-docs/facts/route.ts";
 import { POST as requirements } from "./requirements/route.ts";
 import { POST as tp } from "./tp/route.ts";
 
-type Seen = { system: string; blocks: { type: string; title?: string; text: string }[] };
+type Seen = { model: string; system: string; blocks: { type: string; title?: string; text: string }[] };
 
 let server: Server;
 let reply = "";
@@ -41,6 +41,7 @@ before(async () => {
     const first = request.messages[0].content as string | { type: string; title?: string; source?: { data: string }; text?: string }[];
     const content = typeof first === "string" ? [{ type: "text", text: first }] : first;
     seen.push({
+      model: String(request.model),
       system: typeof request.system === "string" ? request.system : JSON.stringify(request.system),
       blocks: content.map((b) => ({ type: b.type, title: b.title, text: b.source?.data ?? b.text ?? "" })),
     });
@@ -150,6 +151,7 @@ test("xlsx → требования: таблица дошла до модели
   const out = await res.json();
 
   // Модель получила оба документа целиком, отдельными блоками, а не пересказ.
+  assert.equal(seen[0].model, "claude-sonnet-5-5", "разбор документов идёт на Sonnet — вдвое дешевле (решение владельца 23.10.2026)");
   assert.deepEqual(seen[0].blocks.filter((b) => b.type === "document").map((b) => b.title), ["Извещение.txt", "ТЗ.xlsx"]);
   assert.match(seen[0].blocks.find((b) => b.title === "ТЗ.xlsx")!.text, /Картридж \| Совместимость с принтером HP LaserJet \| 20/);
 
@@ -269,6 +271,7 @@ test("техпредложение: образцы участника уходя
   // Заказчик: «плотность не менее 80», модель написала «80» — это граница заказчика, а не значение участника.
   assert.equal(out.goods[0].characteristics, "Плотность [число, не меньше 80] г/м², марка [марка бумаги]");
 
+  assert.equal(seen[0].model, "claude-opus-5-5", "составление заявки остаётся на основной модели");
   const titles = seen[0].blocks.filter((b) => b.type === "document").map((b) => b.title);
   assert.deepEqual(titles, ["Извещение.txt", "ТЗ.xlsx", "Образец участника: Мой прошлый ТП.docx"]);
 });
@@ -300,6 +303,7 @@ test("проверка заявки: цитата требования ищет�
   assert.deepEqual([out.findings[0].verified, out.findings[0].appVerified], [true, true]);
   assert.deepEqual([out.findings[1].verified, out.findings[1].appVerified], [false, false], "выдуманные цитаты помечаются");
   assert.equal(out.okCount, 4);
+  assert.equal(seen[0].model, "claude-opus-5-5", "проверка заявки остаётся на основной модели");
   assert.match(seen[0].blocks.at(-2)!.title ?? "", /Заявка участника: Заявка/);
 });
 
