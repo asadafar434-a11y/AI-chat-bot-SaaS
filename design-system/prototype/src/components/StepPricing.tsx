@@ -28,6 +28,7 @@ export function StepPricing({
   onPutPrice,
   notes,
   unitSum,
+  volume,
   onNext,
   onBack,
 }: {
@@ -42,6 +43,8 @@ export function StepPricing({
   notes: string[];
   // Торг по сумме цен единиц (документы закупки): начальная сумма и цены единиц, из которых она сложена, в рублях.
   unitSum?: { start: number; parts: number[] };
+  // Объём закупки из документов (детодни, человеко-часы, м², рейсы…): себестоимость вписывается на единицу, итог — единица × объём.
+  volume?: { total: number; unit: string; unitOf: string; unitsLabel: string; one: 'одного' | 'одной' };
   onNext: () => void;
   onBack: () => void;
 }) {
@@ -265,6 +268,18 @@ export function StepPricing({
           {showCosts && (
             <div className="animate-fade-up mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
               <Field label="Начальная цена, ₽" value={calc.nmck} onChange={setNum('nmck')} hint="Начальная (максимальная) цена контракта — из извещения. Предложить больше нельзя." />
+              {volume && (
+                <Field
+                  label={`Себестоимость ${volume.one} ${volume.unitOf}, ₽`}
+                  value={calc.costs ? Math.round((calc.costs / volume.total) * 100) / 100 : null}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[\s ]/g, '').replace(',', '.');
+                    const unit = Number(raw);
+                    set({ costs: raw === '' || !Number.isFinite(unit) || unit <= 0 ? null : Math.round(unit * volume.total * 100) / 100 });
+                  }}
+                  hint={`Сколько обходится ${volume.one === 'одной' ? 'одна' : 'один'} ${volume.unit} (материалы, работа, оборудование, накладные). По документам объём — ${volume.total.toLocaleString('ru-RU')} ${volume.unitsLabel}: впишите одну цифру, и общая себестоимость посчитается сама.`}
+                />
+              )}
               <Field label="Себестоимость, ₽" value={calc.costs} onChange={setNum('costs')} hint="Сколько вы платите поставщикам и тратите на исполнение: товар, работа, доставка." />
               <Field label="Расходы на участие, ₽" value={calc.extra} onChange={setNum('extra')} hint="Обеспечение заявки, плата площадке, дорога — всё, что платите за участие." />
               <Field label="Налог с выручки, %" value={calc.taxPct} onChange={setNum('taxPct')} hint="Например, 6% на УСН «Доходы»." />

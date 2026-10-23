@@ -3,7 +3,7 @@
 // Базы нет, она пуста или цен мало — расчёт остаётся таким, каким был: ничего не выдумывается.
 
 import { parseAmount, type Analog, type RicData } from "@/lib/indicative-price";
-import { MAX_POSITIONS, type MarketPosition } from "@/lib/market-request";
+import { MAX_POSITIONS } from "@/lib/market-request";
 import { analogsFrom, marketStats, type MarketStats, type Observation } from "@/lib/market-observations";
 
 export type MarketResultLite = { key: string; stats: MarketStats; analogs: Analog[] };

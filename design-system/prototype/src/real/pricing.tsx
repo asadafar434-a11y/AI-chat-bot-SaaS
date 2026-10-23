@@ -5,6 +5,7 @@ import { calcFor } from '@/lib/price-calc';
 import { auctionStepNote, mentionsReductionCoefficient, reductionCoefficientText, vatOnTopNote } from '@/lib/price-terms';
 import type { PriceCalc } from '@/lib/price-floor';
 import { specNotes } from '@/lib/spec-notes';
+import { findServiceVolume } from '@/lib/service-volume';
 import { findUnitSum, unitSumNotes } from '@/lib/unit-sum';
 import { StepPricing } from '../components/StepPricing';
 import { useProfile } from './analysis';
@@ -27,6 +28,8 @@ export function PurchasePricing({ onNext, onBack }: { onNext: () => void; onBack
       spec: specNotes({ documents, profile, nmck }),
       // Торг по сумме цен единиц: начальная сумма и порог снижения на 25 %.
       unit: findUnitSum(documents),
+      // Объём услуги или работы (детодни, человеко-часы, м², рейсы…) из таблицы документов: по нему вписывается себестоимость единицы.
+      volume: findServiceVolume(documents),
       unitNotes: unitSumNotes(documents),
       // Совместная закупка: заказчики, максимум цены по договорам и обеспечение по каждому.
       customers: customersNotes(documents, { nmck, securityPct: calc.securityPct ?? null }),
@@ -44,6 +47,10 @@ export function PurchasePricing({ onNext, onBack }: { onNext: () => void; onBack
   const weight = priceWeightNote(purchase.criteria);
   if (weight) notes.push(weight);
   notes.push(...fromDocs.customers, ...fromDocs.spec, ...fromDocs.unitNotes);
+  if (fromDocs.volume && nmck && nmck > 0) {
+    const v = fromDocs.volume;
+    notes.push(`Объём по документам: ${v.total.toLocaleString('ru-RU')} ${v.unitsLabel}${v.people !== null ? ` (${v.people.toLocaleString('ru-RU')} чел.)` : ''}; заказчик закладывает ≈ ${(nmck / v.total).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽ за ${v.unit}`);
+  }
   if (fromDocs.step) notes.push(fromDocs.step);
   if (fromDocs.vatOnTop) notes.push(fromDocs.vatOnTop);
   if (fromDocs.coefficient) notes.push(reductionCoefficientText(nmck, calc.price ?? null));
@@ -57,6 +64,7 @@ export function PurchasePricing({ onNext, onBack }: { onNext: () => void; onBack
       onPutPrice={(price) => update({ tpPrice: price })}
       notes={notes}
       unitSum={fromDocs.unit ? { start: fromDocs.unit.sum, parts: fromDocs.unit.parts } : undefined}
+      volume={fromDocs.volume ? { total: fromDocs.volume.total, unit: fromDocs.volume.unit, unitOf: fromDocs.volume.unitOf, unitsLabel: fromDocs.volume.unitsLabel, one: fromDocs.volume.one } : undefined}
       onNext={onNext}
       onBack={onBack}
     />

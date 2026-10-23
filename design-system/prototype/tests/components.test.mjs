@@ -751,3 +751,22 @@ test('шаг «Цена»: расходов нет — вместо нижней
   assert.equal(/border-success\/40|border-danger\/40/.test(out), false);
   assert.match(plainText(out), /Себестоимость, ₽/);
 });
+
+test('шаг «Цена»: объём услуги из ТЗ (детодни) — поле «Себестоимость одного детодня»; без объёма поля нет; при вписанной себестоимости блок расходов свёрнут', () => {
+  const calc = { nmck: 10_542_628.64, price: null, costs: null, extra: null, taxPct: null, guaranteeRatePct: null, days: null, securityPct: null };
+  const props = { kind: '223-ФЗ · запрос предложений', calc, set() {}, onPutPrice() {}, notes: [], onNext() {}, onBack() {} };
+  const volume = { total: 54112, unit: 'детодень', unitOf: 'детодня', unitsLabel: 'детодней', one: 'одного' };
+  const withVolume = html(h(mods.pricing.StepPricing, { ...props, volume }));
+  assert.match(withVolume, /Себестоимость одного детодня, ₽/);
+  assert.match(withVolume, /54[^<]112 детодней/, 'в подсказке — объём по документам');
+  assert.match(withVolume, /Сколько обходится один детодень/);
+  // Не только питание: смена — женского рода, площадь — м².
+  const shifts = html(h(mods.pricing.StepPricing, { ...props, volume: { total: 365, unit: 'смена', unitOf: 'смены', unitsLabel: 'смен', one: 'одной' } }));
+  assert.match(shifts, /Себестоимость одной смены, ₽/);
+  assert.match(shifts, /Сколько обходится одна смена/);
+  assert.match(html(h(mods.pricing.StepPricing, { ...props, volume: { total: 2500, unit: 'м²', unitOf: 'м²', unitsLabel: 'м²', one: 'одного' } })), /Себестоимость одного м², ₽/);
+  assert.doesNotMatch(html(h(mods.pricing.StepPricing, props)), /Себестоимость одного/);
+  // Когда себестоимость уже вписана, блок «Мои расходы» свёрнут (как и раньше): поле одного детодня открывается вместе с ним.
+  const closed = html(h(mods.pricing.StepPricing, { ...props, calc: { ...calc, costs: 10_822_400 }, volume }));
+  assert.doesNotMatch(closed, /Себестоимость одного детодня/);
+});

@@ -127,7 +127,6 @@ function fromChecks(id: FactorId, rows: CheckRow[], basis: string, missingText: 
   const doneWeight = done.reduce((s, r) => s + r.weight, 0);
   const base = { id, title: TITLES[id], weight: FACTOR_WEIGHTS[id], basis };
   if (total === 0 || (doneWeight / total) * 100 < FACTOR_MIN_COVERAGE) {
-    const waiting = rows.filter((r) => levelOf(r) === null);
     return {
       ...base,
       score: null,

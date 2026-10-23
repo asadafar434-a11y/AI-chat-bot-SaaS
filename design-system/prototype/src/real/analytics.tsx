@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { assumptionLines, buildReport, reportFileName, reportHtml } from '@/lib/analytics-report';
 import { buildSummary, findingsOf, rubles, searchFinding, type SummaryInput } from '@/lib/analytics-summary';
 import { purchaseCost } from '@/lib/position-prices';
+import { findServiceVolume } from '@/lib/service-volume';
 import { rateTender } from '@/lib/tender-rating';
 import { getRegister, getRic, saveRegister, saveRic } from '@/lib/analytics-store';
 import { buildMatrix, summarize, type ManualResult } from '@/lib/check-matrix';
@@ -35,6 +36,7 @@ import { AnalyticsFindings } from '../components/AnalyticsFindings';
 import { AnalyticsSummary, type ReportBusy } from '../components/AnalyticsSummary';
 import { Collapsible } from '../components/Collapsible';
 import { PositionPricesCard } from '../components/PositionPrices';
+import { ServiceVolumeCard } from '../components/ServiceVolume';
 import { PriceBadgeChip } from '../components/PriceBadgeChip';
 import { TenderRating } from '../components/TenderRating';
 import { ArrowLeft, BarChart2 } from '../lib/icons';
@@ -155,6 +157,8 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
   // Расчёт цены: найденное в закупке и введённое на шаге «Цена» (читаем, не меняем); свои затраты из этого раздела — поверх, если шаг «Цена» пуст.
   const assumptions = (register.data ?? EMPTY_REGISTER).assumptions;
   const stepCalc = useMemo(() => calcFor(purchase), [purchase]);
+  // Объём закупки из таблицы документов (детодни, человеко-часы, м², рейсы…): показывается, когда найден; себестоимость единицы вписывают на шаге «Цена».
+  const volume = useMemo(() => findServiceVolume(plain), [plain]);
   // Закупка товара по найденным закупочным ценам: цена × количество по каждой позиции (lib/position-prices.ts). Начальная цена «без НДС» — без НДС и считаем.
   const autoCost = useMemo(
     () => (market.prices ? purchaseCost(market.prices, { withVat: !/без\s+НДС/i.test(purchase.price ?? ''), vatRate: data?.settings.vatRate ?? 22 }) : null),
@@ -360,6 +364,7 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
         </div>
       </div>
       {/* Товары и найденные закупочные цены — сразу под названием закупки: это то, что участник ищет первым (владелец, 23.10.2026: «где товар, цена его?»). Цен нет — блока нет. */}
+      {volume && <ServiceVolumeCard volume={volume} nmck={nmck} costs={stepCalc.costs ?? null} />}
       {market.prices && <PositionPricesCard prices={market.prices} total={market.positionsTotal} />}
       <TenderRating rating={rating} />
       <AnalyticsSummary

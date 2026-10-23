@@ -1573,3 +1573,32 @@ test('повтор поиска по позициям, где он ничего 
   assert.match(hook, /mergeRetry\(saved, fresh, keys,/, 'результат объединяется с найденным');
   assert.match(hook, /setTimeout\(\(\) => setTick/, 'срок ждётся таймером, а не опросом');
 });
+
+test('объём услуги: детодни из ТЗ, цена заказчика за единицу и себестоимость участника; без себестоимости — подсказка, куда её вписать', async () => {
+  const mod = await server.ssrLoadModule('/src/components/ServiceVolume.tsx');
+  const volume = { doc: 'Приложение № 2 Техническое задание.docx', unit: 'детодень', unitsLabel: 'детодней', unitOf: 'детодня', one: 'одного', rows: new Array(10).fill(null).map((_, i) => ({ category: 'К' + i, people: 1, period: 1, units: 1 })), people: 608, total: 54112 };
+  const empty = text(renderToStaticMarkup(h(mod.ServiceVolumeCard, { volume, nmck: 10542628.64, costs: null })));
+  assert.match(empty, /Объём закупки/);
+  assert.match(empty, /54[^\d]112 детодней/);
+  assert.match(empty, /608 чел\. · 10 категорий/);
+  assert.match(empty, /Заказчик закладывает ≈ 194,83 ₽ за детодень/);
+  assert.match(empty, /Впишите себестоимость одного детодня на шаге «Цена»/);
+  const filled = text(renderToStaticMarkup(h(mod.ServiceVolumeCard, { volume, nmck: 10542628.64, costs: 10822400 })));
+  assert.match(filled, /Ваша себестоимость: 200,00 ₽ за детодень/);
+  assert.match(filled, /выше цены заказчика на 5,17 ₽ — по начальной цене убыток/, 'себестоимость выше цены заказчика — сказано, что убыток');
+  const margin = text(renderToStaticMarkup(h(mod.ServiceVolumeCard, { volume, nmck: 10542628.64, costs: 54112 * 150 })));
+  assert.match(margin, /запас до цены заказчика 44,83 ₽/);
+  assert.doesNotMatch(filled, /Впишите себестоимость/);
+  // Не только люди и дни: площадь, смены — любая единица объёма из документов; людей в строке нет.
+  const area = { doc: 'Ведомость.docx', unit: 'м²', unitsLabel: 'м²', unitOf: 'м²', one: 'одного', rows: [{ category: 'Уборка', units: 1200 }, { category: 'Мойка окон', units: 800 }, { category: 'Двор', units: 500 }], people: null, total: 2500 };
+  const areaText = text(renderToStaticMarkup(h(mod.ServiceVolumeCard, { volume: area, nmck: 500000, costs: null })));
+  assert.match(areaText, /2[^\d]500 м²/);
+  assert.match(areaText, /3 позиции · Ведомость\.docx/);
+  assert.doesNotMatch(areaText, /чел\./);
+  assert.match(areaText, /Заказчик закладывает ≈ 200,00 ₽ за м²/);
+  const shifts = { doc: 'ТЗ', unit: 'смена', unitsLabel: 'смен', unitOf: 'смены', one: 'одной', rows: [{ category: 'Охрана', units: 365 }], people: null, total: 365 };
+  assert.match(text(renderToStaticMarkup(h(mod.ServiceVolumeCard, { volume: shifts, nmck: 730000, costs: null }))), /Впишите себестоимость одной смены на шаге «Цена»/);
+  const screen = readFileSync(path.join(root, 'src/real/analytics.tsx'), 'utf8');
+  assert.match(screen, /findServiceVolume\(plain\)/);
+  assert.ok(screen.indexOf('<ServiceVolumeCard') < screen.indexOf('<TenderRating'), 'объём — наверху, выше рейтинга');
+});

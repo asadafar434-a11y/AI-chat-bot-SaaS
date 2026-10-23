@@ -80,8 +80,10 @@ export async function fetchLimitRows(inn: string, deps: GrlsDeps = {}): Promise<
   };
 
   const first = await send({});
-  let html = await search(formFields(first), "", "");
-  let { rows, total } = parseLimitRows(html);
+  const html = await search(formFields(first), "", "");
+  const parsed = parseLimitRows(html);
+  const total = parsed.total;
+  let rows = parsed.rows;
   // Остальные страницы просим одновременно, от состояния первой страницы: так вдвое быстрее, а реестру это не нагрузка (две-пять страниц).
   const pages = Math.min(MAX_PAGES, Math.ceil((total ?? rows.length) / 10));
   if (pages >= 2) {
