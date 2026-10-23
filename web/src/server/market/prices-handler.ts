@@ -33,7 +33,7 @@ export type PricesDeps = {
 };
 
 // pagesRead — страниц, которые прочитала модель; pagesSeen — всего просмотрено; pagesWithPrice — на скольких из них вообще нашлось что-то похожее на цену (остальные модели не отправляются); reasons — почему отклонены предложения.
-export type PricePositionResult = { key: string; observations: Observation[]; pagesRead: number; rejected: number; pagesSeen?: number; pagesWithPrice?: number; reasons?: string[] };
+export type PricePositionResult = { key: string; observations: Observation[]; pagesRead: number; rejected: number; pagesSeen?: number; pagesWithPrice?: number; onRequest?: number; reasons?: string[] };
 
 const plain = (message: string, status: number) => new Response(message, { status, headers: { "Content-Type": "text/plain; charset=utf-8" } });
 // Страниц читает модель — не больше пяти на позицию; просматривается до десяти (бесплатно), чтобы выбрать те, где есть цена.
@@ -95,6 +95,7 @@ export async function handlePrices(request: Request, deps: PricesDeps): Promise<
       rejected: r.rejected.length,
       pagesSeen: r.pages.length,
       pagesWithPrice: r.pages.filter((x) => x.status === "read" || x.skipReason?.startsWith("модель не ответила")).length,
+      onRequest: r.pages.filter((x) => x.skipReason === "цена по запросу").length,
       reasons: [...new Set(r.rejected.map((x) => x.reason))],
     });
     if (r.stoppedByCap || deps.capRub - spentRub <= 0) {

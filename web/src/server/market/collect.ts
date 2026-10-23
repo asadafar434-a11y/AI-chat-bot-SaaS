@@ -29,6 +29,10 @@ export type CollectOptions = { wanted: Wanted; queries: string[]; maxPages: numb
 const PRICE_LIKE = /\d(?:[\d\s  .,]*\d)?\s*(?:₽|руб|р\.|rub)|(?:цена|стоимость|price)[^\n]{0,60}\d{3}/i;
 export const hasPriceLike = (text: string) => PRICE_LIKE.test(text);
 
+// Страница прямо говорит, что цены не называет: «цена по запросу», «стоимость уточняйте». Производители оборудования часто так делают: цену узнают только запросом коммерческого предложения.
+const ON_REQUEST = /(?:цен[аы]|стоимост[ьи])[^\n.]{0,40}по\s+запросу|по\s+запросу[^\n.]{0,12}(?:цен|стоимост)|(?:цен[уа]|стоимост[ьи])\s+уточня[а-яё]*|договорн[а-яё]*\s+цен/i;
+export const saysPriceOnRequest = (text: string) => ON_REQUEST.test(text);
+
 export type PageOutcome = {
   url: string;
   domain: string;
@@ -99,7 +103,7 @@ export async function collectPrices(deps: CollectDeps, options: CollectOptions):
       continue;
     }
     if (!hasPriceLike(excerpt.text)) {
-      outcome.skipReason = "на странице нет цены";
+      outcome.skipReason = saysPriceOnRequest(excerpt.text) ? "цена по запросу" : "на странице нет цены";
       outcome.chars = excerpt.text.length;
       continue;
     }

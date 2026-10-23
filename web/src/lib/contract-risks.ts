@@ -56,6 +56,8 @@ export type ContractRisk = {
   level: "warn" | "info";
   /** Крупная неустойка по порогам RISK_RULES. */
   heavy?: boolean;
+  /** За что неустойка, если договор говорит прямо: «несоответствие страны происхождения», «нарушение сроков». */
+  cause?: string;
   n?: RiskNumbers;
   /** Предложение договора как написано, до 260 знаков. */
   quote: string;
@@ -93,11 +95,20 @@ function penaltyParty(s: string): RiskParty {
   return "none";
 }
 
+// За что неустойка — только по прямым словам договора, иначе не угадываем.
+const CAUSES: [RegExp, string][] = [
+  [/стран[а-яё]*\s+происхождени/i, "несоответствие страны происхождения"],
+  [/нарушени[а-яё]*[^.]{0,30}срок/i, "нарушение сроков"],
+  [/качеств|недостатк|брак/i, "ненадлежащее качество"],
+];
+const causeOf = (s: string) => CAUSES.find(([re]) => re.test(s))?.[1];
+
 // Ставка: «1/300 ключевой ставки», «0,1 % … за каждый день», «0,01 %», «5 000 рублей» — и от чего считается («от цены ГПД», «от стоимости работ»).
 function penaltyRate(s: string): { title: string; heavy: boolean; n: RiskNumbers } | null {
   const frac = /1\/(\d+)\s*(?:\([^)]*\)\s*)?(?:ключев|ставк|действующ)/i.exec(s);
   const pct = PERCENT.exec(s);
-  const money = /(\d[\d\s ]{0,12}(?:[.,]\d{1,2})?)\s*(?:руб|₽)/i.exec(s);
+  // «50 000 (пятидесяти тысяч) рублей»: сумма цифрами, слова в скобках, потом «рублей».
+  const money = /(\d[\d\s ]{0,12}(?:[.,]\d{1,2})?)\s*(?:\([^)]{0,60}\)\s*)?(?:руб|₽)/i.exec(s);
   let rate = "";
   let percent = 0;
   if (frac) rate = `1/${frac[1]} ключевой ставки`;
@@ -112,9 +123,10 @@ function penaltyRate(s: string): { title: string; heavy: boolean; n: RiskNumbers
   const after = pct ? s.slice(pct.index + pct[0].length) : frac ? s.slice(frac.index + frac[0].length) : "";
   const from = /^[^.;]{0,30}?(от\s+(?:[а-яё]+\s+){0,4}?(?:цен[а-яё]*|стоимост[а-яё]*|сумм[а-яё]*|задолженност[а-яё]*|долг[а-яё]*)(?:\s+(?!(?:за|но|и|в|не|по|при|либо|или)(?![а-яё]))[а-яё]+){0,2})/i.exec(after);
   const capMatch = /не\s+более\s+(\d+(?:[.,]\d+)?)\s*(?:\([^)]{0,40}\)\s*)?(?:%|процент)/i.exec(s);
-  const parts = [`${word} ${rate}`, perDay ? "за каждый день просрочки" : "", from ? clean(from[1]) : "", capMatch ? `не более ${fmt(num(capMatch[1]))} % цены` : ""].filter(Boolean);
+  const perCase = !perDay && /за\s+каждый\s+(?:случай|факт)/i.test(s);
+  const parts = [`${word} ${rate}`, perDay ? "за каждый день просрочки" : "", perCase ? "за каждый случай нарушения" : "", from ? clean(from[1]) : "", capMatch ? `не более ${fmt(num(capMatch[1]))} % цены` : ""].filter(Boolean);
   const heavy = (perDay && percent >= RISK_RULES.heavyPenaltyPerDayPct) || (!perDay && percent >= RISK_RULES.heavyFinePct);
-  const rubles = !frac && !pct && money ? num(clean(money[1]).replace(/s/g, "")) : undefined;
+  const rubles = !frac && !pct && money ? num(clean(money[1]).replace(/[\s  ]/g, "")) : undefined;
   const n: RiskNumbers = { perDay, ...(frac && { frac: Number(frac[1]) }), ...(pct && !frac && { percent }), ...(rubles !== undefined && Number.isFinite(rubles) && { rub: rubles }), ...(capMatch && { cap: num(capMatch[1]) }) };
   return { title: parts.join(", "), heavy, n };
 }
@@ -134,7 +146,9 @@ const CONDITIONAL = /^(?:в\s+случае,?\s+(?:если|когда)|если|
 
 const NO_ADVANCE = /(?:аванс[а-яё]*|авансирование)[^.]{0,60}(?:не\s+предусмотрен|не\s+осуществля|не\s+выплачива|не\s+производ|не\s+предоставля)/i;
 const ADVANCE = /аванс[а-яё]*[^.]{0,80}?(\d+(?:[.,]\d+)?)\s*(?:\([^)]{0,40}\)\s*)?(?:%|процент)/i;
-const SECURITY_NONE = /обеспечени[а-яё]*\s+исполнени[а-яё]*[^.]{0,60}(?:не\s+установлен|не\s+требуется|не\s+предусмотрен)/i;
+const SECURITY_LEAD = /^обеспечени[а-яё]*\s+исполнени[а-яё]*/i;
+const PENALTY_RATE_WORDS = /(?:пен[яиеюь]|неустойк[а-яё]*|штраф[а-яё]*)\s+в\s+размере|за\s+каждый\s+(?:календарный\s+)?день/i;
+const SECURITY_NONE =/обеспечени[а-яё]*\s+исполнени[а-яё]*[^.]{0,60}(?:не\s+установлен|не\s+требуется|не\s+предусмотрен)/i;
 const SECURITY_SIZE = /обеспечени[а-яё]*\s+исполнени[а-яё]*[^.]{0,120}?(?:в\s+размере|размер[а-яё]*)[^.]{0,60}?(\d+(?:[.,]\d+)?)\s*(?:\([^)]{0,40}\)\s*)?(?:%|процент)/i;
 const VOLUME = /(?:количеств|объ[её]м)[^.]{0,120}(?:измен|увелич|уменьш)[^.]{0,160}?(?:не\s+более|до)\s+(\d+(?:[.,]\d+)?)\s*(?:\([^)]{0,40}\)\s*)?(?:%|процент)/i;
 
@@ -161,17 +175,27 @@ const costKind = (s: string) => COST_KINDS.find(([re]) => re.test(s))?.[1] ?? "�
 
 // ——— Разбор ———
 
-type Sentence = { text: string; clause: string; doc: string };
+/** lead — вводная строка списка («Покупатель вправе потребовать уплаты Поставщиком:»): пункты списка сами о том, кто платит, молчат. */
+type Sentence = { text: string; clause: string; doc: string; lead?: string };
+
+const BULLET = /^\s*[–—•-]\s*\S/;
 
 function sentencesOf(doc: Doc): Sentence[] {
   const out: Sentence[] = [];
+  let lead: { text: string; clause: string } | null = null;
   for (const line of doc.text.split(/\n+/)) {
     const m = CLAUSE.exec(line);
     const clause = m ? m[1].replace(/\.$/, "") : "";
-    for (const text of line.replace(CLAUSE, "").split(/(?<=\.)\s+(?=[А-ЯЁ«])/)) {
+    const bullet = !m && BULLET.test(line);
+    if (!bullet) lead = null;
+    const items = line.replace(CLAUSE, "").split(/(?<=\.)\s+(?=[А-ЯЁ«])/);
+    for (const text of items) {
       const t = clean(text);
-      if (t.length >= 25) out.push({ text: t, clause, doc: doc.name });
+      if (t.length < 25) continue;
+      out.push(bullet && lead ? { text: t, clause: lead.clause, doc: doc.name, lead: lead.text } : { text: t, clause, doc: doc.name });
     }
+    // Вводная строка списка кончается двоеточием: следующие строки с тире — её пункты.
+    if (!bullet && /:\s*$/.test(line)) lead = { text: clean(line.replace(CLAUSE, "")), clause };
   }
   return out;
 }
@@ -214,11 +238,25 @@ export function contractRisks(documents: Doc[]): ContractRisk[] {
     for (const s of sentencesOf(doc)) {
       const t = s.text;
 
+      // «Обеспечение исполнения … в размере 5 % цены … подлежит возврату … включая оплату неустойки (пеней, штрафов)»: слова о неустойке здесь — условие возврата денег, а не ставка.
+      if (SECURITY_LEAD.test(t) && !PENALTY_RATE_WORDS.test(t) && !CONDITIONAL.test(t)) {
+        const size = PERCENT.exec(t);
+        if (size) {
+          const pctValue = num(size[1]);
+          add(s, { kind: "security", party: "you", level: pctValue >= RISK_RULES.highSecurityPct ? "warn" : "info", title: `Обеспечение исполнения: ${fmt(pctValue)} %`, n: { percent: pctValue } });
+          continue;
+        }
+      }
+
       if (PENALTY.test(t)) {
-        const party = penaltyParty(t);
+        // Пункт списка («– неустойки в размере 0,1 % … за каждый день просрочки») — кто платит, сказано во вводной строке.
+        let party = penaltyParty(t);
+        if (party === "none" && s.lead) party = penaltyParty(`${s.lead} ${t}`);
         const rate = penaltyRate(t);
         if (rate && party !== "none") {
-          add(s, { kind: "penalty", party, level: party === "you" ? "warn" : "info", title: rate.title, n: rate.n, ...(party === "you" && rate.heavy && { heavy: true }) });
+          // Пеня за день просрочки сама говорит, за что она; причина нужна штрафам.
+          const cause = rate.n.perDay ? undefined : causeOf(t);
+          add(s, { kind: "penalty", party, level: party === "you" ? "warn" : "info", title: rate.title, n: rate.n, ...(party === "you" && rate.heavy && { heavy: true }), ...(cause && { cause }) });
         }
         continue;
       }

@@ -1,7 +1,7 @@
 // Сбор закупочных цен: страницы из поиска, по одной с сайта, чтение моделью с потолком расходов, проверка кодом — npm test (поиск, сеть и модель подставлены, денег нет).
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { collectPrices, hasPriceLike, type CollectDeps, type SearchHit } from "./collect.ts";
+import { collectPrices, hasPriceLike, saysPriceOnRequest, type CollectDeps, type SearchHit } from "./collect.ts";
 
 const WANTED = { name: "Уголь каменный ДПК", unit: "т", region: null };
 const page = (price: string) => `<html><head><title>Уголь ДПК — прайс</title></head><body><h1>Уголь марки Д</h1><p>Оптовая цена на уголь</p><p>Каменный уголь ДПК навалом, 1 тн — ${price} руб. Цена с НДС, самовывоз.</p><p>Звоните нам по телефону для уточнения условий поставки и наличия на складе.</p></body></html>`;
@@ -135,6 +135,16 @@ test("что похоже на цену: число с «₽» или «руб»
   assert.equal(hasPriceLike("Агрегат 1 305 ₽"), true);
   assert.equal(hasPriceLike("Цена по запросу, звоните"), false);
   assert.equal(hasPriceLike("Мощность 300 А, масса 120 кг, 3 фазы"), false);
+});
+
+test("страница, где цена «по запросу», помечается так (а не «нет цены») и модели не отправляется", async () => {
+  const onRequest = `<html><head><title>МАКС-300</title></head><body><h1>Сварочный агрегат МАКС-300</h1><p>Подробные технические характеристики и описание оборудования. Цена по запросу — оставьте заявку, и менеджер пришлёт коммерческое предложение.</p></body></html>`;
+  const { d, asked } = deps({ pages: { "https://a.ru/p1": onRequest }, search: async () => [hit("a.ru")] });
+  const r = await collectPrices(d, { wanted: WANTED, queries: ["q"], maxPages: 2, capRub: 40 });
+  assert.equal(r.pages[0].skipReason, "цена по запросу");
+  assert.equal(asked.length, 0, "платная модель страницу без цены не читает");
+  assert.equal(saysPriceOnRequest("Доставка и документы по запросу"), false, "«по запросу» не про цену — не считается");
+  assert.equal(saysPriceOnRequest("Стоимость уточняйте у менеджера"), true);
 });
 
 test("лекарства и другие товары, у которых в интернете только розница: оптовых и каталожных цен нет — розничные принимаются запасным проходом с пометкой; есть хоть одна не розничная — розничные не берутся", async () => {

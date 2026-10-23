@@ -135,6 +135,16 @@ test("подпись внизу: нет позиций, но не хватает
   assert.equal(priceSearchFinding({ state: "no-positions" }).tone, "muted");
 });
 
+test("«цена по запросу»: продавцы цену не называют — подпись так и говорит и советует запросить коммерческое предложение; число страниц сохраняется", () => {
+  const at = "2026-10-23T08:00:00.000Z";
+  const rec = (over: Record<string, unknown>) => ({ key: "p", observations: [], pagesRead: 0, rejected: 0, ...over });
+  const text = (results: unknown[]) => priceSearchFinding({ state: "done", saved: { at, signature: "s", results, spentRub: 0 } as never }).text;
+  assert.equal(text([rec({ pagesSeen: 9, pagesWithPrice: 0, onRequest: 6 })]), "цены закрыты: у продавцов «цена по запросу» (страниц: 6 из 9, на 23.10.2026) — запросите у них коммерческое предложение");
+  // Есть страницы с ценой, но предложения не подошли — обычная подпись, не «цены закрыты».
+  assert.match(text([rec({ pagesSeen: 9, pagesWithPrice: 2, onRequest: 4 })]), /подходящих цен в интернете не нашла/);
+  assert.equal(normalizePrices({ at, signature: "s", results: [{ key: "p", observations: [], pagesRead: 0, rejected: 0, pagesSeen: 3, onRequest: 2 }] })?.results[0].onRequest, 2);
+});
+
 test("«или эквивалент» — слова заказчика, а не название товара: из запроса в поиск, из задания модели и из сравнения названий они убираются", () => {
   assert.equal(cleanProductName("Сварочный агрегат МАКС-300 или эквивалент"), "Сварочный агрегат МАКС-300");
   assert.equal(cleanProductName("Автономный дизельный сварочный агрегат АДД - 2х2501 в УРАЛ или эквивалент"), "Автономный дизельный сварочный агрегат АДД - 2х2501 в УРАЛ");

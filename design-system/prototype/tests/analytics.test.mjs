@@ -1477,7 +1477,8 @@ test('живой поиск закупочных цен: без кнопок —
   assert.match(hook, /shouldSearch\(saved, signature/, 'неделя годности и пауза после неудачи');
   assert.match(hook, /savePrices\(purchaseId, next\)/);
   const screen = readFileSync(path.join(root, 'src/real/analytics.tsx'), 'utf8');
-  assert.match(screen, /lines=\{\[\.\.\.findings, market\.finding\]\}/, 'строка «Закупочные цены» — в подписи внизу экрана');
+  assert.match(screen, /lines=\{lines\}/);
+  assert.match(screen, /return \[\.\.\.out, market\.finding\]/, 'строка «Закупочные цены» — в подписи внизу экрана, последней');
   assert.equal(/Найти закупочные цены/.test(screen), false, 'кнопки нет: аналитика ищет сама');
 });
 
@@ -1572,6 +1573,40 @@ test('повтор поиска по позициям, где он ничего 
   assert.match(hook, /picks\.filter\(\(p\) => keys\.includes\(p\.id\)\)/, 'ищутся только позиции без страниц');
   assert.match(hook, /mergeRetry\(saved, fresh, keys,/, 'результат объединяется с найденным');
   assert.match(hook, /setTimeout\(\(\) => setTick/, 'срок ждётся таймером, а не опросом');
+});
+
+test('предложения поставщиков у заказчика: три ТКП из «Обоснования НМЦ» — диапазон, разброс, по какому взята начальная цена, шаг аукциона; в экран закупки блок и строка подписи подключены', async () => {
+  const mod = await server.ssrLoadModule('/src/components/CustomerQuotes.tsx');
+  const quotes = {
+    doc: 'Приложение №9 к ДоЗ - ОБОСНОВАНИЕ НМЦ.docx',
+    quotes: [
+      { label: 'ТКП №1', price: 9305651.64 },
+      { label: 'ТКП №2', price: 9377049.18 },
+      { label: 'ТКП №3', price: 9581967.21 },
+    ],
+    min: 9305651.64,
+    max: 9581967.21,
+    mean: 9421556.01,
+    spreadPct: 2.969,
+    vat: 'without',
+  };
+  const step = 'Шаг аукциона по документам — от 0,5 % до 5 % начальной цены: от 46 528,26 ₽ до 465 282,58 ₽ за один шаг';
+  const out = text(renderToStaticMarkup(h(mod.CustomerQuotesCard, { quotes, nmck: 9305651.64, step })));
+  assert.match(out, /Предложения поставщиков у заказчика/);
+  assert.match(out, /Подтверждено/);
+  assert.match(out, /9[^\d]305[^\d]651,64 ₽ – 9[^\d]581[^\d]967,21 ₽/);
+  assert.match(out, /3 предложения · разброс 3,0 % · без НДС/);
+  assert.match(out, /ТКП №2.*9[^\d]377[^\d]049,18 ₽/);
+  assert.match(out, /Начальная цена заказчика взята по минимальному предложению/);
+  assert.match(out, /Шаг аукциона по документам — от 0,5 % до 5 %/);
+  assert.match(out, /Приложение №9 к ДоЗ/);
+  // Начальная цена не совпала ни с одним предложением — ничего о выборе не утверждаем.
+  assert.doesNotMatch(text(renderToStaticMarkup(h(mod.CustomerQuotesCard, { quotes, nmck: 9400000, step: null }))), /Начальная цена заказчика/);
+  const screen = readFileSync(path.join(root, 'src/real/analytics.tsx'), 'utf8');
+  assert.match(screen, /findCustomerQuotes\(plain\)/);
+  assert.match(screen, /<CustomerQuotesCard quotes=\{quotes\}/);
+  assert.match(screen, /quotesFinding\(quotes, nmck\)/);
+  assert.ok(screen.indexOf('<CustomerQuotesCard') < screen.indexOf('<TenderRating'), 'предложения заказчика — выше рейтинга');
 });
 
 test('объём услуги: детодни из ТЗ, цена заказчика за единицу и себестоимость участника; без себестоимости — подсказка, куда её вписать', async () => {

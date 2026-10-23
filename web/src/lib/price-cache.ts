@@ -13,7 +13,7 @@ const DAY = 86_400_000;
 
 // pagesSeen / pagesWithPrice / reasons — для подписи, почему цен нет: сколько страниц просмотрено, на скольких было что-то похожее на цену, почему отклонены предложения (у прежних записей их нет).
 // tries — сколько раз искали по этой позиции (повтор после блокировки поиска — retryKeys); у прежних записей его нет, это одна попытка.
-export type PriceResult = { key: string; observations: Observation[]; pagesRead: number; rejected: number; pagesSeen?: number; pagesWithPrice?: number; reasons?: string[]; tries?: number };
+export type PriceResult = { key: string; observations: Observation[]; pagesRead: number; rejected: number; pagesSeen?: number; pagesWithPrice?: number; onRequest?: number; reasons?: string[]; tries?: number };
 
 /** Что сохранено у закупки. error — последняя неудача; results пусты, если искали, но ничего не нашлось. */
 export type SavedPrices = {
@@ -124,6 +124,9 @@ function noPricesText(saved: SavedPrices | null | undefined, when: string): stri
   const withPrice = rs.reduce((s, r) => s + (r.pagesWithPrice ?? 0), 0);
   const rejected = rs.reduce((s, r) => s + r.rejected, 0);
   const reasons = [...new Set(rs.flatMap((r) => r.reasons ?? []))];
+  // Продавцы и производители цену не называют («цена по запросу»): честно сказать об этом и что делать, а не «ничего не нашла».
+  const onRequest = rs.reduce((s, r) => s + (r.onRequest ?? 0), 0);
+  if (onRequest > 0 && withPrice === 0) return `цены закрыты: у продавцов «цена по запросу» (страниц: ${onRequest} из ${seen}, ${when}) — запросите у них коммерческое предложение`;
   const parts = [`страниц просмотрено ${seen}`, withPrice > 0 ? `с ценой на странице ${withPrice}` : "цены на страницах не выложены"];
   if (rejected > 0) parts.push(`отклонено ${rejected}${reasons.length > 0 ? ` (${reasons.join(", ")})` : ""}`);
   return `подходящих цен в интернете не нашла (${when}): ${parts.join(", ")}`;
@@ -177,6 +180,7 @@ export function normalizePrices(raw: unknown): SavedPrices | undefined {
         rejected: typeof y.rejected === "number" ? y.rejected : 0,
         ...(typeof y.pagesSeen === "number" && { pagesSeen: y.pagesSeen }),
         ...(typeof y.pagesWithPrice === "number" && { pagesWithPrice: y.pagesWithPrice }),
+        ...(typeof y.onRequest === "number" && { onRequest: y.onRequest }),
         ...(typeof y.tries === "number" && y.tries >= 1 && { tries: Math.min(Math.floor(y.tries), 9) }),
         ...(reasons.length > 0 && { reasons }),
       },

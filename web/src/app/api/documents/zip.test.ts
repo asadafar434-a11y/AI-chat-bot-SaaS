@@ -28,6 +28,27 @@ test("zip → каждый файл внутри читается как обы�
   assert.match(failed[0].reason, /вложенный архив/);
 });
 
+test("архив в архиве: приложения внутри вложенного zip читаются как обычные файлы (так отдаёт площадка «Приложение №1 — Технические требования»)", async () => {
+  const inner = zipSync({ "Приложение №1 — Технические требования.txt": strToU8("Сварочный агрегат МАКС-300, 1 шт."), "Таблица 1.1.txt": strToU8("Сварочный агрегат МАКС-500, 2 шт.") });
+  const res = await send(zip({ "ДоЗ.txt": strToU8("Документация о закупке"), "Приложение №1 к ДоЗ.zip": inner }));
+  const { documents, failed } = await res.json();
+  assert.deepEqual(documents.map((d: { name: string }) => d.name).sort(), ["Таблица 1.1.txt", "ДоЗ.txt", "Приложение №1 — Технические требования.txt"].sort());
+  assert.match(documents.find((d: { name: string }) => d.name === "Таблица 1.1.txt").text, /МАКС-500/);
+  assert.equal(failed.length, 0);
+});
+
+test("архив в архиве в архиве и форматы .7z/.rar не читаются — и в списке «не прочитано» сказано, почему", async () => {
+  const deep = zipSync({ "глубоко.txt": strToU8("лишний файл") });
+  const middle = zipSync({ "середина.txt": strToU8("средний файл"), "третий.zip": deep });
+  const res = await send(zip({ "ДоЗ.txt": strToU8("Документация"), "второй.zip": middle, "Приложение №5.7z": strToU8("7z-данные"), "старый.rar": strToU8("rar-данные") }));
+  const { documents, failed } = await res.json();
+  assert.deepEqual(documents.map((d: { name: string }) => d.name).sort(), ["ДоЗ.txt", "середина.txt"].sort());
+  const why = (name: string) => failed.find((f: { name: string }) => f.name.endsWith(` → ${name}`))?.reason ?? "";
+  assert.match(why("третий.zip"), /глубже двух уровней/);
+  assert.match(why("Приложение №5.7z"), /формат \.7z пока не читается/);
+  assert.match(why("старый.rar"), /формат \.rar пока не читается/);
+});
+
 test("zip с именами в кодировке DOS (CP866) — имена читаются по-русски", async () => {
   // «Извещение.txt» в CP866: байты, записанные как latin1-символы — так их отдаёт старый архиватор.
   const cp866 = "\x88\xa7\xa2\xa5\xe9\xa5\xad\xa8\xa5.txt";

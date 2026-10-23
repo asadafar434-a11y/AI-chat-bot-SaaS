@@ -124,11 +124,13 @@ export function estimateRisks({ price, risks, type, region, assumptions: a, fact
     })
     .filter((x): x is { r: ContractRisk; amount: number; scenario: string } => x !== null)
     .sort((x, y) => y.amount - x.amount)
+    // Два размера пени в одном пункте («0,1 % …, а если срыв сдвинул поставку другому получателю, — 0,2 %») — это варианты одного события, а не два платежа: считаем больший.
+    .filter((x, i, all) => !x.r.n!.perDay || !x.r.clause || all.findIndex((y) => y.r.n!.perDay && y.r.clause === x.r.clause) === i)
     .slice(0, MAX_PENALTIES);
   for (const m of mine) {
     push({
       id: `penalty-${items.length}`,
-      title: m.r.n!.perDay ? `Просрочка: пеня ${m.r.n!.frac ? `1/${m.r.n!.frac} ключевой ставки` : `${ru(m.r.n!.percent ?? 0)} % в день`}` : "Штраф за нарушение условий",
+      title: m.r.n!.perDay ? `Просрочка: пеня ${m.r.n!.frac ? `1/${m.r.n!.frac} ключевой ставки` : `${ru(m.r.n!.percent ?? 0)} % в день`}` : m.r.cause ? `Штраф: ${m.r.cause}` : "Штраф за нарушение условий",
       scenario: m.scenario,
       amount: m.amount,
       basis: `${where(m.r)}; цена контракта ${ru(price)} ₽`,

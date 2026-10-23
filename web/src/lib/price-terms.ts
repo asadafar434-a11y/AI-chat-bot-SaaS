@@ -8,6 +8,8 @@ type Doc = { name: string; text: string };
 const NUMBER = String.raw`(\d+(?:[.,]\d+)?)`;
 const PERCENT = String.raw`\s*(?:%|процент[а-яё]*)`;
 const RANGE = new RegExp(String.raw`от\s+${NUMBER}${PERCENT}?\s+до\s+${NUMBER}${PERCENT}`, "i");
+// «0,5% – 5,0% от НМЦ» — диапазон через тире (так пишут в таблице «Шаг аукциона: | 0,5% – 5,0% от НМЦ»).
+const DASH_RANGE = new RegExp(String.raw`${NUMBER}${PERCENT}\s*[–—-]\s*${NUMBER}${PERCENT}`, "i");
 const SINGLE = new RegExp(String.raw`${NUMBER}${PERCENT}`, "i");
 
 export type AuctionStep = { from: number; to: number; text: [string, string] };
@@ -19,7 +21,7 @@ export function findAuctionStep(documents: Doc[]): AuctionStep | null {
   for (const doc of documents) {
     for (const m of doc.text.matchAll(/шаг[а-яё]*\s+аукцион[а-яё]*/gi)) {
       const window = doc.text.slice(m.index, m.index + 200).split(/[.;](?=\s|$)/)[0] ?? "";
-      const range = RANGE.exec(window);
+      const range = RANGE.exec(window) ?? DASH_RANGE.exec(window);
       if (range) return { from: num(range[1]), to: num(range[2]), text: [range[1], range[2]] };
       const single = SINGLE.exec(window);
       if (single) return { from: num(single[1]), to: num(single[1]), text: [single[1], single[1]] };

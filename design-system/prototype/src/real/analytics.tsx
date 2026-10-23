@@ -3,6 +3,8 @@ import { assumptionLines, buildReport, reportFileName, reportHtml } from '@/lib/
 import { buildSummary, findingsOf, rubles, searchFinding, type SummaryInput } from '@/lib/analytics-summary';
 import { purchaseCost } from '@/lib/position-prices';
 import { findServiceVolume } from '@/lib/service-volume';
+import { findCustomerQuotes, quotesFinding } from '@/lib/customer-quotes';
+import { auctionStepNote } from '@/lib/price-terms';
 import { rateTender } from '@/lib/tender-rating';
 import { getRegister, getRic, saveRegister, saveRic } from '@/lib/analytics-store';
 import { buildMatrix, summarize, type ManualResult } from '@/lib/check-matrix';
@@ -35,6 +37,7 @@ import { AnalyticsChart } from '../components/AnalyticsChart';
 import { AnalyticsFindings } from '../components/AnalyticsFindings';
 import { AnalyticsSummary, type ReportBusy } from '../components/AnalyticsSummary';
 import { Collapsible } from '../components/Collapsible';
+import { CustomerQuotesCard } from '../components/CustomerQuotes';
 import { PositionPricesCard } from '../components/PositionPrices';
 import { ServiceVolumeCard } from '../components/ServiceVolume';
 import { PriceBadgeChip } from '../components/PriceBadgeChip';
@@ -159,6 +162,9 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
   const stepCalc = useMemo(() => calcFor(purchase), [purchase]);
   // Объём закупки из таблицы документов (детодни, человеко-часы, м², рейсы…): показывается, когда найден; себестоимость единицы вписывают на шаге «Цена».
   const volume = useMemo(() => findServiceVolume(plain), [plain]);
+  // Предложения поставщиков из обоснования начальной цены у заказчика (ТКП №1…№3) и шаг аукциона: читает код из документов, без ИИ; показываются, когда найдены.
+  const quotes = useMemo(() => findCustomerQuotes(plain), [plain]);
+  const auctionStep = useMemo(() => auctionStepNote(plain, nmck), [plain, nmck]);
   // Закупка товара по найденным закупочным ценам: цена × количество по каждой позиции (lib/position-prices.ts). Начальная цена «без НДС» — без НДС и считаем.
   const autoCost = useMemo(
     () => (market.prices ? purchaseCost(market.prices, { withVat: !/без\s+НДС/i.test(purchase.price ?? ''), vatRate: data?.settings.vatRate ?? 22 }) : null),
@@ -276,6 +282,15 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
   );
   const summary = useMemo(() => buildSummary(summaryInput), [summaryInput]);
   const findings = useMemo(() => findingsOf(summaryInput), [summaryInput]);
+  // Подпись внизу: строка о предложениях поставщиков — сразу после «Цена и рынок», закупочные цены — в конце.
+  const lines = useMemo(() => {
+    const out = [...findings];
+    if (quotes) {
+      const at = out.findIndex((l) => l.label === 'Цена и рынок');
+      out.splice(at < 0 ? out.length : at + 1, 0, quotesFinding(quotes, nmck));
+    }
+    return [...out, market.finding];
+  }, [findings, quotes, nmck, market.finding]);
   const chartSection = summary.sections.find((s) => s.id === 'chart');
   // Рейтинг привлекательности: балл по шести факторам из уже посчитанного (lib/tender-rating.ts), без ИИ.
   const rating = useMemo(
@@ -366,6 +381,7 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
       {/* Товары и найденные закупочные цены — сразу под названием закупки: это то, что участник ищет первым (владелец, 23.10.2026: «где товар, цена его?»). Цен нет — блока нет. */}
       {volume && <ServiceVolumeCard volume={volume} nmck={nmck} costs={stepCalc.costs ?? null} />}
       {market.prices && <PositionPricesCard prices={market.prices} total={market.positionsTotal} />}
+      {quotes && <CustomerQuotesCard quotes={quotes} nmck={nmck} step={auctionStep} />}
       <TenderRating rating={rating} />
       <AnalyticsSummary
         summary={summary}
@@ -390,7 +406,7 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
       )}
 
       <AnalyticsFindings
-        lines={[...findings, market.finding]}
+        lines={lines}
         search={{
           line: searchFinding(searchStat),
           pending: pendingTopics.length,
