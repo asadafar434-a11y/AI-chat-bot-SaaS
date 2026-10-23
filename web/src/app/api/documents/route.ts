@@ -34,10 +34,10 @@ export async function POST(request: Request) {
   const documents: ChatDocument[] = [];
   const failed: Failed[] = [];
 
-  // Архив .zip раскладывается на файлы — они читаются как обычные.
+  // Архив .zip или .7z раскладывается на файлы (вложенные архивы тоже) — они читаются как обычные.
   const queue: File[] = [];
   for (const file of files) {
-    if (!/.zip$/i.test(file.name)) {
+    if (!/\.(zip|7z)$/i.test(file.name)) {
       queue.push(file);
       continue;
     }
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
       failed.push({ name: file.name, reason: problem });
       continue;
     }
-    const unpacked = unzipFiles(new Uint8Array(await file.arrayBuffer()));
+    const unpacked = await unzipFiles(new Uint8Array(await file.arrayBuffer()), file.name);
     if ("error" in unpacked) {
       failed.push({ name: file.name, reason: unpacked.error });
       continue;

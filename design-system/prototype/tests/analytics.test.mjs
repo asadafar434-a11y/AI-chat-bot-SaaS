@@ -1501,7 +1501,9 @@ test('товары и закупочные цены: у позиции — на�
   assert.match(out, /<a href="https:\/\/shop3\.ru\/price"[^>]*rel="noopener noreferrer"/, 'ссылка открывается безопасно');
   assert.match(t, /shop3\.ru — 5 100 ₽\/т, 20\.10\.2026/);
   assert.match(t, /shop9\.ru — 5 150 ₽\/т, 19\.10\.2026 · «Уголь ДПК 6-13»/, 'название у поставщика показано, если отличается');
-  assert.match(t, /Цены есть по 1 из 3 позиций · закупка по найденным ценам: 7 650 000 ₽ \(по 1 из 3\)/);
+  assert.match(t, /Цены только по 1 из 3 позиций/, 'цены не по всем позициям — бейдж говорит это прямо');
+  assert.match(out, /bg-danger\/10 text-danger/, 'и он красный (владелец, 23.10.2026: «заметнее красным цветом или бейджик»)');
+  assert.match(t, /закупка по найденным ценам: 7 650 000 ₽ \(по 1 из 3\)/);
   assert.match(t, /цены на 20\.10\.2026/);
   assert.match(out, /Не проверено/, 'метка достоверности: цены из интернета не проверены у поставщика');
 });
@@ -1510,8 +1512,18 @@ test('товары и закупочные цены: цен меньше пят�
   const few = priceCard([priceRow({ state: 'few', median: null, n: 3, range: { from: 5000, to: 5100 }, gapPct: null, cost: null })], { cost: null, costPositions: 0 });
   assert.match(text(few), /5 000 ₽ – 5 100 ₽\/т · найдено цен: 3, для вывода нужно не меньше пяти/);
   assert.equal(text(few).includes('закупка по найденным ценам'), false, 'стоимости нет');
-  const mixed = priceCard([priceRow(), priceRow({ id: 'p2', name: 'Кокс', state: 'none', median: null, range: null, n: 0, sources: [], cost: null })]);
-  assert.equal(text(mixed).includes('Кокс'), false, 'по позиции цен нет — её в блоке нет');
+  const mixed = priceCard([priceRow(), priceRow({ id: 'p2', name: 'Кокс или эквивалент', state: 'none', median: null, range: null, n: 0, sources: [], cost: null })]);
+  const mixedText = text(mixed);
+  assert.equal(mixedText.includes('Кокс или'), false, 'по позиции цен нет — карточки у неё нет, «или эквивалент» из названия убрано');
+  assert.match(mixedText, /Цены только по 1 из 2 позиций/);
+  assert.match(mixedText, /Без цены: Кокс — поиск подходящих цен не нашёл: у продавцов может быть «цена по запросу», запросите коммерческое предложение/, 'позиции без цены названы в строке под бейджем');
+  const skipped = text(priceCard([priceRow(), priceRow({ id: 'p3', name: 'Кокс', state: 'not-searched', median: null, range: null, n: 0, sources: [], cost: null })]));
+  assert.match(skipped, /Без цены: Кокс — по части позиций не искали: ищем до шести главных/);
+  // Цены по всем позициям — бейдж зелёный, строки «Без цены» нет.
+  const all = priceCard([priceRow()]);
+  assert.match(text(all), /Цены по всем 1 позиции/);
+  assert.match(all, /bg-success\/10/);
+  assert.equal(text(all).includes('Без цены'), false);
   for (const state of ['none', 'not-searched', 'searching', 'off', 'failed']) {
     assert.equal(priceCard([priceRow({ state, median: null, range: null, n: 0, sources: [], cost: null })]), '', `состояние «${state}» — блока нет`);
   }

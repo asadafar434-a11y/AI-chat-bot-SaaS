@@ -18,7 +18,8 @@ const stripExt = (name: string) => name.replace(/\.[A-Za-z0-9]{2,5}$/, "");
 
 // Значение после подписи: «Подпись: значение», «Подпись | значение» (ячейка таблицы) или значение на следующей строке.
 function after(text: string, label: RegExp): string {
-  const inline = new RegExp(`(?:${label.source})[^\\n:|\\t]{0,40}[:|\\t]\\s*([^\\n|]{4,220})`, "i").exec(text)?.[1];
+  // После двоеточия в таблице бывает ещё одна граница ячейки: «Заказчик: | Наименование (полное): …» — значение за ней.
+  const inline = new RegExp(`(?:${label.source})[^\\n:|\\t]{0,40}[:|\\t]\\s*(?:\\|\\s*)?([^\\n|]{4,220})`, "i").exec(text)?.[1];
   if (inline && /[A-Za-zА-Яа-яЁё0-9]/.test(inline)) return clean(inline).replace(/[.;,]+$/, "");
   const nextLine = new RegExp(`(?:${label.source})[^\\n]{0,40}\\n\\s*([^\\n|]{4,220})`, "i").exec(text)?.[1];
   return nextLine ? clean(nextLine).replace(/[.;,]+$/, "") : "";
@@ -83,8 +84,10 @@ export function findPrice(docs: Doc[]): string {
 /** Закон: чаще названный из 44-ФЗ и 223-ФЗ; не назван ни один — пусто. */
 export function findLaw(docs: Doc[]): Law {
   const all = docs.map((d) => d.text).join("\n");
-  const n44 = (all.match(/(?<!\d)44[\s-]*ФЗ/gi) ?? []).length;
-  const n223 = (all.match(/(?<!\d)223[\s-]*ФЗ/gi) ?? []).length;
+  // «Положение о закупке» бывает только у закупок по 223-ФЗ, «контрактная система» — только у 44-ФЗ: такие слова весят как упоминание закона.
+  // В документации по 223-ФЗ закон 44-ФЗ тоже называют (реестр недобросовестных поставщиков, постановления), и счёт одних названий закона бывает ничьей.
+  const n44 = (all.match(/(?<!\d)44[\s-]*ФЗ/gi) ?? []).length + (all.match(/контрактн[а-яё]+\s+систем/gi) ?? []).length;
+  const n223 = (all.match(/(?<!\d)223[\s-]*ФЗ/gi) ?? []).length + (all.match(/положени[а-яё]*\s+о\s+закупк/gi) ?? []).length;
   if (n44 === 0 && n223 === 0) return "";
   return n44 >= n223 ? "44" : "223";
 }
@@ -108,9 +111,23 @@ export function findMethod(docs: Doc[]): string {
 
 const shorten = (s: string, max: number) => (s.length <= max ? s : `${s.slice(0, max - 1).trimEnd()}…`);
 
+// «Лот № 22216015-ТПИР ОНМ-2026-ДГК ОКПД2: 28.29.70.110 Поставка сварочных агрегатов…» → «Поставка сварочных агрегатов…»: номер лота и код ОКПД2 названием не служат.
+function subjectTitle(s: string): string {
+  const code = /ОКПД\s*2?\s*:?\s*\d[\d.]{4,}\s*/i.exec(s);
+  return code && code.index < 80 ? clean(s.slice(code.index + code[0].length)) || s : s;
+}
+
+// «Наименование (полное): Акционерное общество «…»; Наименование (сокращенное): АО «…»; Место нахождения: …» → только полное наименование.
+function customerName(s: string): string {
+  return clean(/наименование\s*\(полное\)\s*:\s*([^;]+)/i.exec(s)?.[1] ?? s);
+}
+
+// Не название и не заказчик: «не указан», номер пункта с началом абзаца («1.1. В соответствии с настоящим Договором…»).
+const NOT_A_VALUE = /^(?:не\s+указан|нет)$|^\d+(?:\.\d+)+\.?\s/i;
+
 export function introOf(docs: Doc[]): Intro {
-  const subject = firstFound(docs, SUBJECT, (v) => !/^(?:не\s+указан|нет)$/i.test(v));
-  const customer = firstFound(docs, CUSTOMER, (v) => v.length >= 6 && !/^(?:не\s+указан|нет)$/i.test(v));
+  const subject = subjectTitle(firstFound(docs, SUBJECT, (v) => !NOT_A_VALUE.test(v)));
+  const customer = customerName(firstFound(docs, CUSTOMER, (v) => v.length >= 6 && !NOT_A_VALUE.test(v)));
   const law = findLaw(docs);
   const method = findMethod(docs);
   const first = docs[0] ? stripExt(docs[0].name) : "";

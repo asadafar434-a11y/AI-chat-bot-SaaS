@@ -1,6 +1,7 @@
 import type { PositionPriceRow, PositionPrices } from '@/lib/position-prices';
+import { cleanProductName } from '@/lib/prices-request';
 import { CertaintyBadge } from './Certainty';
-import { Card, HelpTip } from './ui';
+import { Badge, Card, HelpTip } from './ui';
 
 // «Товары и закупочные цены» (22–23.10.2026, владелец: «где товар, цена его?»): по каждой позиции закупки — за сколько её можно купить по ценам из интернета (lib/position-prices.ts),
 // с поставщиком, датой и ссылкой. Цен нет — блока нет вовсе (решение владельца: «если цен нет, то не надо»). Закупочная цена, не цена контракта.
@@ -64,6 +65,8 @@ export function PositionPricesCard({ prices, total }: { prices: PositionPrices; 
   const rows = pricedRows(prices);
   if (rows.length === 0) return null;
   const shown = rows.slice(0, MAX_ROWS);
+  const complete = rows.length >= total;
+  const missing = prices.rows.filter((r) => r.state !== 'found' && r.state !== 'few');
   return (
     <Card className="space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -78,15 +81,28 @@ export function PositionPricesCard({ prices, total }: { prices: PositionPrices; 
         ))}
       </ul>
       {rows.length > shown.length && <p className="text-[12px] text-muted-foreground">и ещё {rows.length - shown.length} с ценами — в отчёте</p>}
-      <p className="border-t border-border pt-3 text-[12px] text-muted-foreground">
-        Цены есть по {rows.length} из {total} {total === 1 ? 'позиции' : 'позиций'}
-        {prices.cost !== null && (
-          <>
-            {' '}· закупка по найденным ценам: <span className="font-semibold text-foreground">{rub(prices.cost)}</span>
-            {prices.costPositions < rows.length || prices.costPositions < total ? ` (по ${prices.costPositions} из ${total})` : ''}
-          </>
+      <div className="space-y-2 border-t border-border pt-3 text-[12px] text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          {/* Цены не по всем позициям — красным бейджем (владелец, 23.10.2026: «это заметнее красным цветом или бейджик»): итог закупки по найденным ценам тогда неполный. */}
+          <Badge tone={complete ? 'success' : 'danger'} wrap>
+            {complete ? `Цены по всем ${total} ${total === 1 ? 'позиции' : 'позициям'}` : `Цены только по ${rows.length} из ${total} ${total === 1 ? 'позиции' : 'позиций'}`}
+          </Badge>
+          {prices.cost !== null && (
+            <span>
+              закупка по найденным ценам: <span className="font-semibold text-foreground">{rub(prices.cost)}</span>
+              {prices.costPositions < rows.length || prices.costPositions < total ? ` (по ${prices.costPositions} из ${total})` : ''}
+            </span>
+          )}
+        </div>
+        {missing.length > 0 && (
+          <p className="break-words">
+            <span className="font-semibold text-danger">Без цены:</span> {missing.slice(0, 4).map((r) => cleanProductName(r.name)).join(', ')}
+            {missing.length > 4 ? ` и ещё ${missing.length - 4}` : ''}
+            {missing.some((r) => r.state === 'none') && ' — поиск подходящих цен не нашёл: у продавцов может быть «цена по запросу», запросите коммерческое предложение'}
+            {missing.some((r) => r.state === 'not-searched') && ' — по части позиций не искали: ищем до шести главных'}
+          </p>
         )}
-      </p>
+      </div>
     </Card>
   );
 }

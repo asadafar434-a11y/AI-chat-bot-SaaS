@@ -15,7 +15,7 @@ export const forServer = (documents: SentDocument[]): SentDocument[] =>
   fitDocuments(documents.map(({ name, text, scan }) => ({ name, text, ...(scan && { scan }) }))).documents;
 
 // Что можно загрузить: сканы и фото распознаёт ИИ, старый Word и RTF читаются без него.
-export const ACCEPTED_FILES = ".pdf,.docx,.doc,.rtf,.xls,.xlsx,.xlsm,.zip,.txt,.md,.jpg,.jpeg,.png";
+export const ACCEPTED_FILES = ".pdf,.docx,.doc,.rtf,.xls,.xlsx,.xlsm,.zip,.7z,.txt,.md,.jpg,.jpeg,.png";
 
 // Файл больше 40 МБ — это уже не документ закупки, а архив сканов: его стоит разделить.
 // За один раз — не больше 20 файлов. Те же пределы проверяет сервер.
