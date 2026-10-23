@@ -1,6 +1,6 @@
 import "server-only";
 import type { Observation } from "@/lib/market-observations";
-import { parsePricesRequest, searchQueriesFor } from "@/lib/prices-request";
+import { parsePricesRequest, searchQueriesFor, type PricePosition } from "@/lib/prices-request";
 import { badRequest, readJson } from "@/lib/read-json";
 import { moscowDay } from "@/lib/registry-types";
 import { collectPrices, type CollectDeps } from "@/server/market/collect";
@@ -28,6 +28,8 @@ export type PricesDeps = {
   now?: () => Date;
   /** Пауза между запросами к бесплатному поиску (см. CollectDeps.pause). */
   pause?: () => Promise<void>;
+  /** Официальный источник цен по позиции, если он есть (реестр предельных цен на лекарства): бесплатно и без модели. null или пусто — не лекарство или в реестре нет, идёт обычный поиск. */
+  registry?: (position: PricePosition, day: string) => Promise<Observation[] | null>;
 };
 
 // pagesRead — страниц, которые прочитала модель; pagesSeen — всего просмотрено; pagesWithPrice — на скольких из них вообще нашлось что-то похожее на цену (остальные модели не отправляются); reasons — почему отклонены предложения.
@@ -59,6 +61,12 @@ export async function handlePrices(request: Request, deps: PricesDeps): Promise<
   let spentRub = 0;
   let stopped = false;
   for (const p of positions) {
+    // Лекарство из реестра предельных цен: официальные цены с датой решения, платный поиск по сайтам не нужен.
+    const official = await deps.registry?.(p, day).catch(() => null);
+    if (official && official.length > 0) {
+      results.push({ key: p.key, observations: official, pagesRead: 0, rejected: 0, pagesSeen: 1, pagesWithPrice: 1 });
+      continue;
+    }
     if (results.length > 0) await deps.pause?.();
     const queries = searchQueriesFor(p);
     if (queries.length === 0) {

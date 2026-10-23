@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { assumptionLines, buildReport, reportFileName, reportHtml } from '@/lib/analytics-report';
-import { buildSummary, findingsOf, searchFinding, type SummaryInput } from '@/lib/analytics-summary';
+import { buildSummary, findingsOf, rubles, searchFinding, type SummaryInput } from '@/lib/analytics-summary';
+import { purchaseCost } from '@/lib/position-prices';
 import { rateTender } from '@/lib/tender-rating';
 import { getRegister, getRic, saveRegister, saveRic } from '@/lib/analytics-store';
 import { buildMatrix, summarize, type ManualResult } from '@/lib/check-matrix';
@@ -154,10 +155,17 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
   // Расчёт цены: найденное в закупке и введённое на шаге «Цена» (читаем, не меняем); свои затраты из этого раздела — поверх, если шаг «Цена» пуст.
   const assumptions = (register.data ?? EMPTY_REGISTER).assumptions;
   const stepCalc = useMemo(() => calcFor(purchase), [purchase]);
+  // Закупка товара по найденным закупочным ценам: цена × количество по каждой позиции (lib/position-prices.ts). Начальная цена «без НДС» — без НДС и считаем.
+  const autoCost = useMemo(
+    () => (market.prices ? purchaseCost(market.prices, { withVat: !/без\s+НДС/i.test(purchase.price ?? ''), vatRate: data?.settings.vatRate ?? 22 }) : null),
+    [market.prices, purchase.price, data],
+  );
   const calc = useMemo(() => {
     const e = (register.data ?? EMPTY_REGISTER).econ;
-    return { ...stepCalc, costs: parseAmount(e.costs) ?? stepCalc.costs, extra: parseAmount(e.extra) ?? stepCalc.extra, taxPct: parseAmount(e.taxPct) ?? stepCalc.taxPct };
-  }, [stepCalc, register.data]);
+    // Себестоимость: вписанная участником важнее всего; нет её — из шага «Цена»; нет и там — по найденным закупочным ценам и количествам (владелец, 23.10.2026: «чтобы ты сразу считал, когда есть цена и количество»).
+    return { ...stepCalc, costs: parseAmount(e.costs) ?? stepCalc.costs ?? autoCost?.total ?? null, extra: parseAmount(e.extra) ?? stepCalc.extra, taxPct: parseAmount(e.taxPct) ?? stepCalc.taxPct };
+  }, [stepCalc, register.data, autoCost]);
+  const costsAuto = Boolean(autoCost?.total) && !parseAmount((register.data ?? EMPTY_REGISTER).econ.costs) && !stepCalc.costs;
   const econ = useMemo(() => economics({ calc, estimate, settings: econSettings(assumptions), price }), [calc, estimate, assumptions, price]);
 
   // Проверка гипотез обычным поиском: в запрос идут только ключевые слова темы, год и регион места поставки из документов (lib/search-queries.ts). Результат сохраняется у закупки.
@@ -360,7 +368,8 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
         error={reportError}
         onWord={() => void downloadWord()}
         onPdf={downloadPdf}
-        action={needCosts && onCosts ? { label: 'Ввести себестоимость на шаге «Цена» →', onClick: onCosts } : undefined}
+        action={(needCosts || costsAuto) && onCosts ? { label: costsAuto ? 'Уточнить себестоимость на шаге «Цена» →' : 'Ввести себестоимость на шаге «Цена» →', onClick: onCosts } : undefined}
+        costNote={costsAuto && autoCost?.total ? `Себестоимость посчитана сама по найденным закупочным ценам: ${rubles(autoCost.total)} (${autoCost.lines.length} ${autoCost.lines.length === 1 ? 'позиция' : 'позиций'}, ${/без\s+НДС/i.test(purchase.price ?? '') ? 'без НДС' : 'с НДС'}; при нескольких ценах — медиана, при двух — большая). Доставка, работа и ваши расходы сюда не входят: впишите свои на шаге «Цена».` : undefined}
         analyze={onAnalyze ? { label: analyzed ? 'Перейти к анализу →' : 'Анализировать документы →', onClick: onAnalyze } : undefined}
       />
       {saveError && (

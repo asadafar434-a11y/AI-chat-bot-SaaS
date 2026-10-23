@@ -3,7 +3,8 @@ import { cleanQuery } from "@/lib/web-search";
 // Запрос «найти закупочные цены в интернете по позициям закупки» (/api/prices): на сервер уходят только название, единица, регион и количество — документы и реквизиты не уходят.
 // Поисковые запросы строятся из тех же слов и проходят ту же очистку, что и в остальном поиске (lib/web-search.ts: cleanQuery): ни почты, ни телефонов, ни длинных чисел.
 
-export const MAX_PRICE_POSITIONS = 4;
+// До шести позиций за раз: лекарства берутся из реестра бесплатно, остальные читает платная модель (до 30 ₽ на запрос — потолок остаётся).
+export const MAX_PRICE_POSITIONS = 6;
 const MAX_NAME = 200;
 
 export type PricePosition = { key: string; name: string; unit: string; quantity: number | null; region: string | null };

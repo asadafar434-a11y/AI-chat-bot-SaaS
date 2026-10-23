@@ -12,10 +12,10 @@ const pos = (id: string, name: string, qty: string, customerUnit?: number): RicP
 const NOW = new Date("2026-10-22T12:00:00Z");
 const saved = (over: Partial<SavedPrices> = {}): SavedPrices => ({ at: "2026-10-20T12:00:00Z", signature: "s", results: [], spentRub: 3, ...over });
 
-test("позиции для поиска: самые крупные по сумме (количество × начальная цена за единицу), без суммы — по порядку; не больше четырёх; пустые названия не берутся", () => {
+test("позиции для поиска: самые крупные по сумме (количество × начальная цена за единицу), без суммы — по порядку; не больше шести; пустые названия не берутся", () => {
   const list = [pos("1", "Мелочь", "1", 10), pos("2", "Уголь", "1 500", 5000), pos("3", "Без цены", "100"), pos("4", "Щебень", "200", 900), pos("5", "Песок", "50", 600), pos("6", "Цемент", "10", 4000), pos("7", "", "5", 99)];
-  assert.deepEqual(pickPositions(list).map((p) => p.id), ["2", "4", "6", "5"], "по убыванию суммы (7,5 млн, 180 тыс., 40 тыс., 30 тыс.), ровно четыре");
-  assert.equal(MAX_PRICE_POSITIONS, 4);
+  assert.deepEqual(pickPositions(list).map((p) => p.id), ["2", "4", "6", "5", "1", "3"], "по убыванию суммы (7,5 млн, 180 тыс., 40 тыс., 30 тыс., 10), затем без суммы; пустое название не берётся");
+  assert.equal(MAX_PRICE_POSITIONS, 6);
   assert.deepEqual(pickPositions(list, 2).map((p) => p.id), ["2", "4"]);
   assert.deepEqual(pickPositions([pos("a", "Первая", "5"), pos("b", "Вторая", "7")]).map((p) => p.id), ["a", "b"], "суммы нет — как в бланке");
 });
@@ -64,7 +64,7 @@ test("подпись внизу экрана: ИИ выключен, позиц�
   assert.equal(none.tone, "muted");
 });
 
-test("запрос: позиции с названием и единицей, не больше четырёх; повтор ключа, пустое название, пустой список — отказ; запросы в поиск — без почты и длинных чисел", () => {
+test("запрос: позиции с названием и единицей, не больше шести; повтор ключа, пустое название, пустой список — отказ; запросы в поиск — без почты и длинных чисел", () => {
   const ok = parsePricesRequest({ positions: [{ key: "a", name: "  Уголь   каменный ДПК ", unit: "т", quantity: 1500, region: "Севастополь" }, { name: "Щебень" }] });
   assert.ok(ok.ok);
   assert.deepEqual(ok.value.positions[0], { key: "a", name: "Уголь каменный ДПК", unit: "т", quantity: 1500, region: "Севастополь" });
@@ -76,7 +76,7 @@ test("запрос: позиции с названием и единицей, н
   assert.match(bad({ positions: [] })!, /Нет позиций/);
   assert.match(bad({ positions: [{ name: "" }] })!, /нет названия/);
   assert.match(bad({ positions: [{ key: "x", name: "Уголь" }, { key: "x", name: "Щебень" }] })!, /повторяется/);
-  assert.match(bad({ positions: Array.from({ length: 5 }, (_, i) => ({ key: String(i), name: "Уголь" })) })!, /не больше 4/);
+  assert.match(bad({ positions: Array.from({ length: 7 }, (_, i) => ({ key: String(i), name: "Уголь" })) })!, /не больше 6/);
   assert.deepEqual(searchQueriesFor({ name: "Уголь каменный ДПК", unit: "т", region: "Севастополь" }), ["Уголь каменный ДПК цена за т оптом", "купить Уголь каменный ДПК Севастополь"]);
   assert.deepEqual(searchQueriesFor({ name: "Щебень", unit: "", region: null }), ["Щебень цена оптом", "купить Щебень"]);
   assert.deepEqual(searchQueriesFor({ name: "Уголь info@firma.ru 89001234567", unit: "т", region: null }), [], "почта и длинные числа в поиск не уходят");

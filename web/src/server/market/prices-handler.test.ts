@@ -1,6 +1,7 @@
 // Живой поиск закупочных цен: доступ, ИИ выключен, бюджет, потолок расходов, результат по позициям — npm test (поиск, сеть и модель подставлены, денег нет).
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { makeObservation } from "../../lib/market-observations.ts";
 import { handlePrices, type PricesDeps } from "./prices-handler.ts";
 
 const NOW = new Date("2026-10-22T16:00:00Z");
@@ -106,4 +107,24 @@ test("несколько позиций делят потолок; поиск н
   assert.equal(json.spentRub, 0);
   assert.deepEqual(json.results.map((r: { key: string; observations: unknown[] }) => [r.key, r.observations.length]), [["a", 0], ["b", 0]]);
   assert.equal(blocked.asked.length, 0);
+});
+
+test("лекарство из реестра предельных цен: цены берутся оттуда бесплатно — ни поиска по сайтам, ни модели; нет в реестре — обычный поиск", async () => {
+  const drug = { positions: [{ key: "d", name: "Дабрафениб 75 мг № 120, капсулы", unit: "упаковка", quantity: 25 }, { key: "p1", name: "Уголь каменный ДПК", unit: "т", quantity: 1500 }] };
+  const built = makeObservation({ name: "Дабрафениб 75 мг № 120, капсулы (Тафинлар)", unit: "упаковка", price: 226039.65, vat: "without", vatRate: 10, date: "2026-10-14", source: "grls.rosminzdrav.ru: Реестр предельных отпускных цен на ЖНВЛП (ГРЛС) — потолок; https://grls.rosminzdrav.ru/PriceLims.aspx", sourceKind: "price_list" });
+  assert.ok(built.ok);
+  const asked: string[] = [];
+  const { d, asked: modelCalls, searched } = deps({ registry: async (p) => { asked.push(p.name); return p.key === "d" ? [built.value] : null; } });
+  const res = await handlePrices(post(drug, { "x-application-id": "app-1" }), d);
+  assert.equal(res.status, 200);
+  const json = await res.json();
+  assert.deepEqual(asked, ["Дабрафениб 75 мг № 120, капсулы", "Уголь каменный ДПК"], "реестр спрашивается по каждой позиции");
+  const [first, second] = json.results;
+  assert.equal(first.key, "d");
+  assert.equal(first.observations[0].priceNoVat, 226039.65);
+  assert.equal(first.pagesRead, 0, "по лекарству модель страниц не читала");
+  assert.equal(second.key, "p1");
+  assert.ok(second.observations.length > 0, "уголь ищется обычным путём");
+  assert.ok(searched.every((q) => !/Дабрафениб/.test(q)), "в поиск по сайтам лекарство не уходило");
+  assert.ok(modelCalls.every((c) => !/Дабрафениб/.test(c.user)), "и модели страницы про лекарство не отправлялись");
 });

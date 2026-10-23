@@ -29,6 +29,8 @@ export type PositionPriceRow = {
   sources: PriceSource[];
   /** Закупочная стоимость позиции: медиана × количество; null — нет медианы или количества. */
   cost: number | null;
+  /** Все сопоставимые цены без НДС за единицу, по возрастанию (для расчёта себестоимости). */
+  unitPrices: number[];
 };
 
 export type PositionPrices = {
@@ -84,13 +86,56 @@ export function priceLines(prices: PositionPrices): string[] {
   });
 }
 
+// ——— Себестоимость закупки по найденным закупочным ценам ———
+
+export type CostLine = { id: string; name: string; qty: number; unit: number; sum: number };
+export type PurchaseCost = {
+  /** Сумма по всем позициям; null — хотя бы по одной позиции нет цены или количества: полную себестоимость закупки назвать нельзя. */
+  total: number | null;
+  /** По скольким позициям есть и цена, и количество; из скольких всего. */
+  covered: number;
+  of: number;
+  /** Сумма по тем позициям, где она посчитана (когда total = null). */
+  partial: number | null;
+  lines: CostLine[];
+};
+
+const median = (sorted: number[]) => (sorted.length % 2 === 1 ? sorted[(sorted.length - 1) / 2] : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2);
+
+/** Цена единицы для расчёта: медиана найденных цен; цен одна — она; цен две — большая (запас: «лучше недооценить прибыль, чем переоценить»). Цены без НДС. */
+export const unitForCost = (row: Pick<PositionPriceRow, "unitPrices" | "median">): number | null => {
+  const p = row.unitPrices;
+  if (p.length === 0) return null;
+  if (p.length === 2) return p[1];
+  return row.median ?? median(p);
+};
+
+/**
+ * Себестоимость закупки по найденным закупочным ценам: цена единицы × количество по каждой позиции, плюс НДС, если начальная цена с НДС (покупаете вы тоже с НДС; лекарства из реестра предельных цен — 10 %).
+ * Только то, что найдено: позиции без цены или количества в сумму не входят, и тогда полной суммы нет (total = null). Доставка, работа и ваши расходы сюда не входят.
+ */
+export function purchaseCost(prices: PositionPrices, opts: { withVat: boolean; vatRate: number }): PurchaseCost {
+  const lines: CostLine[] = [];
+  for (const r of prices.rows) {
+    const unit = unitForCost(r);
+    const qty = parseAmount(r.qty);
+    if (unit === null || qty === null || qty <= 0) continue;
+    const rate = r.sources.some((s) => s.host === "grls.rosminzdrav.ru") ? 10 : opts.vatRate;
+    const gross = opts.withVat ? unit * (1 + rate / 100) : unit;
+    lines.push({ id: r.id, name: r.name, qty, unit: Math.round(gross * 100) / 100, sum: Math.round(gross * qty * 100) / 100 });
+  }
+  const sum = lines.reduce((s, l) => s + l.sum, 0);
+  const of = prices.rows.length;
+  return { total: of > 0 && lines.length === of ? Math.round(sum * 100) / 100 : null, covered: lines.length, of, partial: lines.length > 0 ? Math.round(sum * 100) / 100 : null, lines };
+}
+
 export function positionPrices(data: RicData, saved: SavedPrices | null | undefined, searchedIds: string[], state: PriceState, today: string): PositionPrices {
   const searched = new Set(searchedIds);
   const results = new Map((saved?.results ?? []).map((r) => [r.key, r.observations]));
   const rows = data.positions.map((p): PositionPriceRow => {
     const quantity = parseAmount(p.qty);
     const customerUnit = p.customerUnit !== undefined && p.customerUnit > 0 ? p.customerUnit : null;
-    const empty = { id: p.id, name: p.name, unit: p.unit, qty: p.qty, customerUnit, median: null, range: null, n: 0, gapPct: null, sources: [] as PriceSource[], cost: null };
+    const empty = { id: p.id, name: p.name, unit: p.unit, qty: p.qty, customerUnit, median: null, range: null, n: 0, gapPct: null, sources: [] as PriceSource[], cost: null, unitPrices: [] as number[] };
     if (!searched.has(p.id)) return { ...empty, state: "not-searched" };
     if (state !== "done") return { ...empty, state: state === "off" ? "off" : state === "failed" ? "failed" : "searching" };
     const target = { name: p.name, unit: p.unit, quantity: quantity !== null && quantity > 0 ? quantity : null };
@@ -112,6 +157,7 @@ export function positionPrices(data: RicData, saved: SavedPrices | null | undefi
       gapPct: inBasis !== null && customerUnit !== null ? ((customerUnit - inBasis) / inBasis) * 100 : null,
       sources,
       cost: median !== null && quantity !== null && quantity > 0 ? Math.round(median * quantity * 100) / 100 : null,
+      unitPrices: [...prices].sort((a, b) => a - b),
     };
   });
   const costRows = rows.filter((r) => r.cost !== null);

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { DEFAULT_SETTINGS, type RicData } from "./indicative-price.ts";
 import { makeObservation, type Observation } from "./market-observations.ts";
-import { missingSpecNote, positionPrices, priceLines } from "./position-prices.ts";
+import { missingSpecNote, positionPrices, priceLines, purchaseCost, unitForCost } from "./position-prices.ts";
 import type { SavedPrices } from "./price-cache.ts";
 
 const obs = (price: number, host: string, name = "Уголь каменный ДПК", tail = `; https://${host}/price`, unit = "т"): Observation => {
@@ -123,4 +123,39 @@ test("строки про найденные цены: даже одна цен�
   assert.deepEqual(priceLines(rows([])), []);
   const pair: RicData = { ...data(), positions: [{ ...data().positions[0], name: "Уголь каменный ДПК или эквивалент" }] };
   assert.deepEqual(priceLines(positionPrices(pair, saved([FIVE[2]]), ["p1"], "done", "2026-10-22")), ["«Уголь каменный ДПК»: 5 100 ₽ за т — shop3.ru, одна цена"], "«или эквивалент» в строке не пишется");
+});
+
+test("себестоимость закупки по найденным ценам: цена единицы × количество по каждой позиции, плюс НДС, если начальная цена с НДС; полная сумма — только когда цена и количество есть по всем позициям", () => {
+  const many: RicData = { ...data(), positions: [{ id: "p1", name: "Уголь каменный ДПК", unit: "т", qty: "1 500", analogs: [] }, { id: "p2", name: "Уголь каменный ДПК", unit: "т", qty: "10", analogs: [] }], settings: { ...DEFAULT_SETTINGS, nmckVat: "with", vatRate: 20 } };
+  const s: SavedPrices = { ...saved(FIVE), results: [{ key: "p1", observations: FIVE, pagesRead: 5, rejected: 0 }, { key: "p2", observations: [], pagesRead: 0, rejected: 0 }] };
+  const prices = positionPrices(many, s, ["p1", "p2"], "done", "2026-10-22");
+  const part = purchaseCost(prices, { withVat: true, vatRate: 20 });
+  assert.equal(part.total, null, "по второй позиции цены нет — полной суммы нет");
+  assert.equal(part.covered, 1);
+  assert.equal(part.of, 2);
+  assert.equal(part.partial, 9_180_000, "5 100 × 1,2 × 1 500");
+  const both: SavedPrices = { ...s, results: [s.results[0], { key: "p2", observations: FIVE, pagesRead: 5, rejected: 0 }] };
+  const all = purchaseCost(positionPrices(many, both, ["p1", "p2"], "done", "2026-10-22"), { withVat: true, vatRate: 20 });
+  assert.equal(all.total, 9_180_000 + 61_200, "5 100 × 1,2 × 10 = 61 200");
+  const net = purchaseCost(positionPrices(many, both, ["p1", "p2"], "done", "2026-10-22"), { withVat: false, vatRate: 20 });
+  assert.equal(net.total, 7_650_000 + 51_000, "начальная цена без НДС — НДС не добавляется");
+  assert.equal(purchaseCost({ rows: [], priced: 0, cost: null, costPositions: 0, asOf: null }, { withVat: true, vatRate: 20 }).total, null, "позиций нет — суммы нет");
+});
+
+test("цена единицы для себестоимости: одна цена — она; две — большая (запас); три и больше — медиана; лекарство из реестра — НДС 10 %", () => {
+  const u = (unitPrices: number[], median: number | null = null) => unitForCost({ unitPrices, median });
+  assert.equal(u([100]), 100);
+  assert.equal(u([100, 300]), 300);
+  assert.equal(u([100, 200, 900]), 200);
+  assert.equal(u([100, 200, 300, 400]), 250);
+  assert.equal(u([]), null);
+  const drug: RicData = { positions: [{ id: "d", name: "Дабрафениб 75 мг № 120, капсулы", unit: "упаковка", qty: "25", analogs: [] }], settings: { ...DEFAULT_SETTINGS, nmckVat: "with", vatRate: 22 } };
+  const mk = (price: number, tradeName: string) => {
+    const b = makeObservation({ name: `Дабрафениб 75 мг № 120, капсулы (${tradeName})`, unit: "упаковка", price, vat: "without", vatRate: 10, date: "2026-10-14", source: `grls.rosminzdrav.ru: Реестр предельных отпускных цен на ЖНВЛП (ГРЛС) — потолок; https://grls.rosminzdrav.ru/PriceLims.aspx`, sourceKind: "price_list" });
+    if (!b.ok) throw new Error(b.reason);
+    return b.value;
+  };
+  const s: SavedPrices = { at: "2026-10-23T08:00:00.000Z", signature: "s", spentRub: 0, results: [{ key: "d", observations: [mk(113019.82, "АМЕДАРТ"), mk(135623.79, "Промомед"), mk(226039.65, "Тафинлар")], pagesRead: 0, rejected: 0 }] };
+  const cost = purchaseCost(positionPrices(drug, s, ["d"], "done", "2026-10-23"), { withVat: true, vatRate: 22 });
+  assert.equal(cost.total, Math.round(135623.79 * 1.1 * 25 * 100) / 100, "медиана трёх цен 135 623,79 × 1,1 (лекарства — 10 %, а не 22 %) × 25 упаковок");
 });

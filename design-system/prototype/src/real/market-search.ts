@@ -7,7 +7,7 @@ import { aiHeaders } from '@/lib/purchase';
 // и для экрана закупки (поиск при открытии, если цен ещё нет или они старше недели). Запрос идёт через aiHeaders: выключенный переключатель «ИИ» его не пускает.
 // Никогда не бросает ошибку: неудача возвращается записью с причиной (повтор не раньше чем через час — lib/price-cache.ts).
 // По скольким самым крупным позициям ищем цены (остальные не ищутся: каждая позиция — несколько платных вызовов модели).
-export const MAX_SEARCH_POSITIONS = 3;
+export const MAX_SEARCH_POSITIONS = 6;
 
 export async function searchLivePrices(purchaseId: string, picks: RicPosition[], region: string | null, signature: string): Promise<SavedPrices> {
   const at = new Date().toISOString();

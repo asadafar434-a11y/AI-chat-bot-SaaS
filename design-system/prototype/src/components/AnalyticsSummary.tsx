@@ -30,6 +30,7 @@ export function AnalyticsSummary({
   onPdf,
   action,
   analyze,
+  costNote,
 }: {
   summary: Summary;
   busy: ReportBusy;
@@ -40,6 +41,8 @@ export function AnalyticsSummary({
   action?: { label: string; onClick: () => void };
   /** Дальше по закупке: шаг «Анализ» (загрузка уже пройдена). Стоит на самой плашке итога. */
   analyze?: { label: string; onClick: () => void };
+  /** Себестоимость взята из найденных закупочных цен, а не вписана участником: откуда она, и что в неё не входит. */
+  costNote?: string;
 }) {
   const [adviceOpen, setAdviceOpen] = useState(false);
   const { verdict } = summary;
@@ -80,6 +83,16 @@ export function AnalyticsSummary({
                   </div>
                 ))}
               </dl>
+            )}
+            {costNote && (
+              <div className="mt-3 space-y-2">
+                <p className="text-[12px] text-muted-foreground">{costNote}</p>
+                {action && (
+                  <Button size="sm" variant="secondary" onClick={action.onClick}>
+                    {action.label}
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         ) : (

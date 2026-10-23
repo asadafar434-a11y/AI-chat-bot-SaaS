@@ -1,12 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { PRICES } from "@/lib/ai-cost";
 import { appIdOf, BUDGET_TEXT, budgetOver, chargeAi, requireAiAuth } from "@/lib/ai-guard";
+import { lookupDrugLimits } from "@/server/drug-prices/grls";
 import { fetchHtml } from "@/server/market/fetch-page";
 import { handlePrices } from "@/server/market/prices-handler";
 import { createSearcher } from "@/server/web-search/search";
 
 // Живой поиск закупочных цен при разборе закупки. Платная часть — чтение страниц моделью: вызовы идут только при ключе модели на сервере, под бюджетом ИИ на закупку и потолком на запрос (PRICE_SEARCH_CAP_RUB, по умолчанию 30 ₽).
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 // Один поисковик на процесс: у него общая память на час и общий счёт запросов в минуту.
 const search = createSearcher();
@@ -35,5 +36,6 @@ export async function POST(request: Request) {
     capRub,
     budgetText: BUDGET_TEXT,
     pause: () => new Promise((resolve) => setTimeout(resolve, 1500)),
+    registry: (position, day) => lookupDrugLimits(position.name, day),
   });
 }
