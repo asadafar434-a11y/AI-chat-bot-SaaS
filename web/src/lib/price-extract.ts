@@ -1,5 +1,5 @@
 // Закупочные цены со страниц поставщиков: задание модели, разбор её ответа и проверка кодом. Модель только читает страницу и выписывает предложения с цитатой; верит ей код не вслепую:
-// цитата должна быть на странице дословно, число цены — в цитате, единица совпадать с нужной, цена — оптовая, НДС — названа. Что не прошло проверку, в базу не идёт и показывается с причиной.
+// цитата должна быть на странице дословно, число цены — в цитате, единица совпадать с нужной, цена — не розничная, НДС — названа. Что не прошло проверку, в базу не идёт и показывается с причиной.
 // Страница — чужой текст: она не может давать модели указания, и ответ модели не исполняется (в нём только JSON, который разбирает код). Модуль без зависимостей от сети: его проверяют тесты (npm test).
 
 import { parseMoney } from "@/lib/analog-import";
@@ -104,7 +104,8 @@ export function checkOffer(offer: RawOffer, pageText: string, wanted: Wanted, ct
   if (!numbersIn(offer.quote).some((n) => Math.abs(n - offer.price) < 0.005)) return reject("цены нет в цитате");
   if (normalizeUnit(offer.unit) !== normalizeUnit(wanted.unit)) return reject("не та единица измерения", `${offer.unit || "не названа"} вместо ${wanted.unit}`);
   if (offer.priceType === "retail") return reject("розничная цена");
-  if (offer.priceType !== "wholesale") return reject("оптовая цена не подтверждена");
+  // Оптовость на странице не названа (цена из каталога производителя или поставщика: для техники и оборудования другой обычно и нет) — цена принимается с пометкой в источнике; прямо названная розница — нет.
+  const priceNote = offer.priceType === "wholesale" ? "" : "; цена из каталога поставщика, оптовость на странице не названа";
   // НДС. Назвала модель — цитата о НДС должна быть на странице и говорить то же самое (слова модели тоже проверяются). Страница про НДС молчит — цена принимается как цена без НДС с пометкой в источнике
   // (решение владельца 22.10.2026): себестоимость при этом не занижается. Если НДС назван в самой цитате, а модель написала «не указан», верим тексту страницы.
   const vatEvidence = [offer.quote, offer.vatQuote && normalizeForQuote(pageText).includes(normalizeForQuote(offer.vatQuote)) ? offer.vatQuote : ""].join(" ").toLowerCase().replace(/ё/g, "е");
@@ -129,7 +130,7 @@ export function checkOffer(offer: RawOffer, pageText: string, wanted: Wanted, ct
   })();
   const [y, m, d] = ctx.day.split("-");
   const terms = offer.conditions ? `; условия: ${offer.conditions}` : "";
-  const source = `${host}: ${ctx.title || "страница поставщика"} — страница, проверено ${d}.${m}.${y}${terms}${vatNote}; ${ctx.url}`;
+  const source = `${host}: ${ctx.title || "страница поставщика"} — страница, проверено ${d}.${m}.${y}${terms}${vatNote}${priceNote}; ${ctx.url}`;
   const built = makeObservation({
     name: offer.product,
     unit: offer.unit,

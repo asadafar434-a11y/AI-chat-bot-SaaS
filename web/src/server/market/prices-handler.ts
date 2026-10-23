@@ -28,10 +28,13 @@ export type PricesDeps = {
   now?: () => Date;
 };
 
-export type PricePositionResult = { key: string; observations: Observation[]; pagesRead: number; rejected: number };
+// pagesRead — страниц, которые прочитала модель; pagesSeen — всего просмотрено; pagesWithPrice — на скольких из них вообще нашлось что-то похожее на цену (остальные модели не отправляются); reasons — почему отклонены предложения.
+export type PricePositionResult = { key: string; observations: Observation[]; pagesRead: number; rejected: number; pagesSeen?: number; pagesWithPrice?: number; reasons?: string[] };
 
 const plain = (message: string, status: number) => new Response(message, { status, headers: { "Content-Type": "text/plain; charset=utf-8" } });
-const MAX_PAGES = 4;
+// Страниц читает модель — не больше пяти на позицию; просматривается до десяти (бесплатно), чтобы выбрать те, где есть цена.
+const MAX_PAGES = 5;
+const MAX_CANDIDATES = 10;
 
 export async function handlePrices(request: Request, deps: PricesDeps): Promise<Response> {
   const denied = await deps.authorize(request);
@@ -69,11 +72,19 @@ export async function handlePrices(request: Request, deps: PricesDeps): Promise<
         today: () => day,
       },
       // Остаток потолка переходит дальше: что не потратила одна позиция, может потратить другая, но общий потолок не превышается.
-      { wanted: { name: p.name, unit: p.unit, region: p.region }, queries, maxPages: MAX_PAGES, capRub: Math.min(perPosition * 2, deps.capRub - spentRub) },
+      { wanted: { name: p.name, unit: p.unit, region: p.region }, queries, maxPages: MAX_PAGES, maxCandidates: MAX_CANDIDATES, capRub: Math.min(perPosition * 2, deps.capRub - spentRub) },
     );
     spentRub = Math.round((spentRub + r.spentRub) * 100) / 100;
     for (const e of r.searchErrors) errors.add(/подтвердить, что вы человек|не отвечает/.test(e) ? "поиск не ответил (просит подтвердить, что вы человек)" : "поиск не удался");
-    results.push({ key: p.key, observations: r.accepted, pagesRead: r.pages.filter((x) => x.status === "read").length, rejected: r.rejected.length });
+    results.push({
+      key: p.key,
+      observations: r.accepted,
+      pagesRead: r.pages.filter((x) => x.status === "read").length,
+      rejected: r.rejected.length,
+      pagesSeen: r.pages.length,
+      pagesWithPrice: r.pages.filter((x) => x.status === "read" || x.skipReason?.startsWith("модель не ответила")).length,
+      reasons: [...new Set(r.rejected.map((x) => x.reason))],
+    });
     if (r.stoppedByCap || deps.capRub - spentRub <= 0) {
       stopped = true;
       break;

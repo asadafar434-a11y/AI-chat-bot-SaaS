@@ -20,7 +20,12 @@ export type CollectDeps = {
   today: () => string;
 };
 
-export type CollectOptions = { wanted: Wanted; queries: string[]; maxPages: number; capRub: number };
+// maxPages — сколько страниц читает платная модель; maxCandidates — сколько страниц просматривается, чтобы выбрать из них те, на которых вообще есть цена (бесплатно): по умолчанию столько же, сколько maxPages.
+export type CollectOptions = { wanted: Wanted; queries: string[]; maxPages: number; maxCandidates?: number; capRub: number };
+
+// На странице есть что-то похожее на цену: число с «₽», «руб», «р.» или слово «цена» рядом с числом. Нет — модели её не отправляем (платный вызов впустую): листаем дальше.
+const PRICE_LIKE = /\d(?:[\d\s  .,]*\d)?\s*(?:₽|руб|р\.|rub)|(?:цена|стоимость|price)[^\n]{0,60}\d{3}/i;
+export const hasPriceLike = (text: string) => PRICE_LIKE.test(text);
 
 export type PageOutcome = {
   url: string;
@@ -60,10 +65,11 @@ export async function collectPrices(deps: CollectDeps, options: CollectOptions):
   // Страницы по очереди из каждого запроса, по одной с сайта.
   const picked: SearchHit[] = [];
   const domains = new Set<string>();
-  for (let i = 0; picked.length < options.maxPages && found.some((list) => i < list.length); i++) {
+  const maxCandidates = Math.max(options.maxCandidates ?? options.maxPages, options.maxPages);
+  for (let i = 0; picked.length < maxCandidates && found.some((list) => i < list.length); i++) {
     for (const list of found) {
       const hit = list[i];
-      if (!hit || picked.length >= options.maxPages) continue;
+      if (!hit || picked.length >= maxCandidates) continue;
       const domain = hit.domain.replace(/^www\./, "").toLowerCase();
       if (domains.has(domain) || SKIP_DOMAINS.test(domain)) continue;
       domains.add(domain);
@@ -74,6 +80,7 @@ export async function collectPrices(deps: CollectDeps, options: CollectOptions):
   const day = deps.today();
   const seen = new Set<string>();
   for (const hit of picked) {
+    if (result.calls >= options.maxPages) break;
     const outcome: PageOutcome = { url: hit.url, domain: hit.domain, title: hit.title, status: "skipped", offers: [] };
     result.pages.push(outcome);
     const page = await deps.fetchPage(hit.url);
@@ -84,6 +91,11 @@ export async function collectPrices(deps: CollectDeps, options: CollectOptions):
     const excerpt = priceExcerpt(page.html);
     if (excerpt.text.length < 80) {
       outcome.skipReason = "на странице почти нет текста";
+      continue;
+    }
+    if (!hasPriceLike(excerpt.text)) {
+      outcome.skipReason = "на странице нет цены";
+      outcome.chars = excerpt.text.length;
       continue;
     }
     const user = buildUserPrompt(options.wanted, { url: page.finalUrl, title: excerpt.title || hit.title, text: excerpt.text });

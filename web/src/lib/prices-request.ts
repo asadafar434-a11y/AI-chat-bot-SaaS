@@ -11,10 +11,17 @@ export type PricesRequest = { positions: PricePosition[] };
 
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "");
 
-/** Запросы в поиск по одной позиции: цена за единицу оптом и «купить оптом» (с регионом, если он назван). Запрос, не прошедший очистку, отбрасывается. */
+/** «или эквивалент», «(аналог)» — слова заказчика, а не название товара: в поиске и в задании модели они только мешают («МАКС-300 или эквивалент» ничего не находит). */
+export function cleanProductName(name: string): string {
+  const cleaned = name.replace(/[\s,;(]*(?:или\s+)?(?:эквивалент|аналог)[а-яё]*\)?/gi, "").replace(/\s+/g, " ").replace(/[\s,;-]+$/, "").trim();
+  return cleaned.length >= 2 ? cleaned : name;
+}
+
+/** Запросы в поиск по одной позиции: цена за единицу оптом и «купить» (с регионом, если он назван). Запрос, не прошедший очистку, отбрасывается. */
 export function searchQueriesFor(p: Pick<PricePosition, "name" | "unit" | "region">): string[] {
   const unit = p.unit ? ` за ${p.unit}` : "";
-  const raw = [`${p.name} цена${unit} оптом`, `купить ${p.name} оптом${p.region ? ` ${p.region}` : ""}`];
+  const name = cleanProductName(p.name);
+  const raw = [`${name} цена${unit} оптом`, `купить ${name}${p.region ? ` ${p.region}` : ""}`];
   return raw.flatMap((q) => {
     const checked = cleanQuery(q);
     return checked.ok ? [checked.query] : [];
@@ -29,7 +36,7 @@ export function parsePricesRequest(body: unknown): { ok: true; value: PricesRequ
   const seen = new Set<string>();
   for (const raw of input.positions) {
     const p = (raw ?? {}) as { key?: unknown; name?: unknown; unit?: unknown; quantity?: unknown; region?: unknown };
-    const name = text(p.name, MAX_NAME);
+    const name = cleanProductName(text(p.name, MAX_NAME));
     const key = text(p.key, 100) || String(positions.length);
     if (name.length < 2) return { ok: false, error: "У позиции нет названия." };
     if (seen.has(key)) return { ok: false, error: `Ключ позиции повторяется: ${key}.` };

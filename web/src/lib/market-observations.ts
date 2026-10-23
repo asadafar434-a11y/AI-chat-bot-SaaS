@@ -69,7 +69,7 @@ export function normalizeUnit(raw: string): string {
   return UNITS[t] ?? UNITS[t.replace(/\s+/g, "")] ?? t.replace(/[^a-zа-я0-9²³]/g, "");
 }
 
-const STOP = new Set(["для", "и", "в", "на", "с", "по", "из", "к", "от", "до", "без", "или", "при", "под", "над", "за", "не", "тип", "типа", "вид", "вида", "марка", "марки"]);
+const STOP = new Set(["для", "и", "в", "на", "с", "по", "из", "к", "от", "до", "без", "или", "при", "под", "над", "за", "не", "тип", "типа", "вид", "вида", "марка", "марки", "эквивалент", "эквивалента", "аналог", "аналога"]);
 
 /** Слова названия: нижний регистр, без «ё», основа слова — первые пять букв (падежи и числа сходятся: «угля», «уголь»); цифры целиком. */
 export function tokensOf(name: string): string[] {
@@ -222,10 +222,30 @@ export const MARKET_METHOD = {
 
 const isNumeric = (t: string) => /^\d/.test(t);
 
+// Стандарты — не модель товара: один и тот же ГОСТ бывает у разных изделий.
+const CODE_STOP = new Set(["гост", "ост", "din", "iso", "снип", "тор"]);
+
+/** Модельные обозначения в названии («МАКС-500», «АДД - 2х2501», «ВВГ 3х2,5»): буквы и цифры, склеенные без пробелов и дефисов. Одно и то же обозначение у заказчика и у поставщика — тот же товар, даже если остальные слова названы по-разному. */
+export function modelCodes(name: string): Set<string> {
+  const text = String(name ?? "").toLowerCase().replace(/ё/g, "е").replace(/(\d),(\d)/g, "$1.$2");
+  const out = new Set<string>();
+  for (const m of text.matchAll(/([a-zа-я]{3,})\s?-?\s?(\d[\d.a-zа-ях×-]*)/g)) {
+    if (CODE_STOP.has(m[1])) continue;
+    const digits = m[2].replace(/[-.]+$/, "");
+    if (digits.replace(/\D/g, "").length < 2) continue;
+    out.add(m[1] + digits.replace(/-/g, ""));
+  }
+  return out;
+}
+
 export type Comparable = { ok: true } | { ok: false; reason: "unit" | "characteristics" | "words" | "volume" };
 
 export function comparable(target: Target, o: Observation): Comparable {
   if (normalizeUnit(target.unit ?? "") !== o.unit) return { ok: false, reason: "unit" };
+  // Совпало модельное обозначение (МАКС-500) — это тот же товар, остальные слова названия сравнивать незачем; единица и объём проверяются как обычно.
+  const codes = modelCodes(o.name);
+  const sameModel = [...modelCodes(target.name)].some((c) => codes.has(c));
+  if (sameModel) return volumeOk(target, o);
   const a = tokensOf(target.name);
   const b = o.tokens;
   const an = a.filter(isNumeric);
@@ -236,6 +256,10 @@ export function comparable(target: Target, o: Observation): Comparable {
   const common = [...aw].filter((t) => bw.has(t)).length;
   const union = new Set([...aw, ...bw]).size;
   if (union === 0 || common / union < MARKET_METHOD.minSimilarity) return { ok: false, reason: "words" };
+  return volumeOk(target, o);
+}
+
+function volumeOk(target: Target, o: Observation): Comparable {
   if (target.quantity && o.quantity) {
     const ratio = target.quantity > o.quantity ? target.quantity / o.quantity : o.quantity / target.quantity;
     if (ratio > MARKET_METHOD.maxVolumeRatio) return { ok: false, reason: "volume" };

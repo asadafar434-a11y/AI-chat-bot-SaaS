@@ -1,7 +1,7 @@
 // Сбор закупочных цен: страницы из поиска, по одной с сайта, чтение моделью с потолком расходов, проверка кодом — npm test (поиск, сеть и модель подставлены, денег нет).
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { collectPrices, type CollectDeps, type SearchHit } from "./collect.ts";
+import { collectPrices, hasPriceLike, type CollectDeps, type SearchHit } from "./collect.ts";
 
 const WANTED = { name: "Уголь каменный ДПК", unit: "т", region: null };
 const page = (price: string) => `<html><head><title>Уголь ДПК — прайс</title></head><body><h1>Уголь марки Д</h1><p>Оптовая цена на уголь</p><p>Каменный уголь ДПК навалом, 1 тн — ${price} руб. Цена с НДС, самовывоз.</p><p>Звоните нам по телефону для уточнения условий поставки и наличия на складе.</p></body></html>`;
@@ -102,4 +102,37 @@ test("без поисковых результатов — пустой итог
   assert.equal(r.pages.length, 0);
   assert.equal(asked.length, 0);
   assert.equal(r.spentRub, 0);
+});
+
+test("страницы без цены не отправляются модели (платный вызов впустую): просматриваются дальше, пока не наберётся нужное число страниц с ценой", async () => {
+  const noPrice = (n: string) => `<html><head><title>Каталог ${n}</title></head><body><h1>Сварочные агрегаты</h1><p>Подробные технические характеристики и описание оборудования, доставка по всей России, звоните нам для уточнения условий.</p></body></html>`;
+  const pages: Record<string, string> = {
+    "https://a.ru/p1": noPrice("a"),
+    "https://b.ru/p1": noPrice("b"),
+    "https://c.ru/p1": page("10 900"),
+    "https://d.ru/p1": page("11 100"),
+  };
+  const { d, asked } = deps({ pages, search: async () => [hit("a.ru"), hit("b.ru"), hit("c.ru"), hit("d.ru")] });
+  const r = await collectPrices(d, { wanted: WANTED, queries: ["q"], maxPages: 2, maxCandidates: 4, capRub: 40 });
+  assert.equal(asked.length, 2, "модель читает только страницы с ценой");
+  assert.deepEqual(r.pages.map((p) => `${p.domain}:${p.status}`), ["a.ru:skipped", "b.ru:skipped", "c.ru:read", "d.ru:read"]);
+  assert.equal(r.pages[0].skipReason, "на странице нет цены");
+  assert.equal(r.accepted.length, 2);
+  assert.equal(r.spentRub, 3.2);
+});
+
+test("кандидатов больше, чем страниц для модели: после maxPages вызовов сбор останавливается и лишнего не читает", async () => {
+  const pages: Record<string, string> = { "https://a.ru/p1": page("10 900"), "https://b.ru/p1": page("11 100"), "https://c.ru/p1": page("11 300") };
+  const { d, asked } = deps({ pages, search: async () => [hit("a.ru"), hit("b.ru"), hit("c.ru")] });
+  const r = await collectPrices(d, { wanted: WANTED, queries: ["q"], maxPages: 2, maxCandidates: 3, capRub: 40 });
+  assert.equal(asked.length, 2);
+  assert.equal(r.pages.length, 2);
+});
+
+test("что похоже на цену: число с «₽» или «руб», слово «цена» рядом с числом; просто текст и мелкие числа — нет", () => {
+  assert.equal(hasPriceLike("Цена: 1162635 руб."), true);
+  assert.equal(hasPriceLike("Стоимость 455 ₽ за штуку"), true);
+  assert.equal(hasPriceLike("Агрегат 1 305 ₽"), true);
+  assert.equal(hasPriceLike("Цена по запросу, звоните"), false);
+  assert.equal(hasPriceLike("Мощность 300 А, масса 120 кг, 3 фазы"), false);
 });

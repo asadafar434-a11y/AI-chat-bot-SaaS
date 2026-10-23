@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { DEFAULT_SETTINGS, type RicData } from "./indicative-price.ts";
 import { makeObservation, type Observation } from "./market-observations.ts";
-import { missingSpecNote, positionPrices } from "./position-prices.ts";
+import { missingSpecNote, positionPrices, priceLines } from "./position-prices.ts";
 import type { SavedPrices } from "./price-cache.ts";
 
-const obs = (price: number, host: string, name = "Уголь каменный ДПК", tail = `; https://${host}/price`): Observation => {
-  const built = makeObservation({ name, unit: "т", price, vat: "without", vatRate: 22, date: "2026-10-20", source: `${host}: каталог — страница, проверено 20.10.2026${tail}`, sourceKind: "supplier_offer" });
+const obs = (price: number, host: string, name = "Уголь каменный ДПК", tail = `; https://${host}/price`, unit = "т"): Observation => {
+  const built = makeObservation({ name, unit, price, vat: "without", vatRate: 22, date: "2026-10-20", source: `${host}: каталог — страница, проверено 20.10.2026${tail}`, sourceKind: "supplier_offer" });
   if (!built.ok) throw new Error(built.reason);
   return built.value;
 };
@@ -100,4 +100,27 @@ test("нет файла технических требований: заказ�
   assert.ok(missingSpecNote([main, { name: "Приложение №10.xlsx", text: "x" }]) !== null, "«Приложение №10» — не «№1»");
   assert.equal(missingSpecNote([{ name: "Извещение.docx", text: "Закупка угля. Позиции — в таблице ниже." }, ...others]), null, "заказчик об отдельном файле не пишет");
   assert.equal(missingSpecNote([]), null);
+});
+
+test("тот же товар по модельному обозначению: «МАКС-500» у заказчика и у поставщика — одна позиция, хотя остальные слова названы по-разному; другая модель — нет", () => {
+  const data500: RicData = { positions: [{ id: "p2", name: "Многопостовой автономный комплекс сварки МАКС-500 или эквивалент", unit: "шт", qty: "2", analogs: [] }], settings: { ...DEFAULT_SETTINGS, nmckVat: "without" } };
+  const kvant = obs(1507504, "gk-sk.ru", "Сварочный агрегат НПП КВАНТ МАКС-500, 2 поста, дизельный", "; https://gk-sk.ru/x", "шт");
+  const row = positionPrices(data500, { ...saved([kvant]), results: [{ key: "p2", observations: [kvant], pagesRead: 1, rejected: 0 }] }, ["p2"], "done", "2026-10-22").rows[0];
+  assert.equal(row.state, "few", "одна цена — показана, вывода по ней нет");
+  assert.equal(row.n, 1);
+  assert.deepEqual(row.range, { from: 1507504, to: 1507504 });
+  assert.equal(row.sources[0].host, "gk-sk.ru");
+  const other = obs(900000, "x.ru", "Сварочный агрегат КВАНТ МАКС-300", "; https://x.ru/y", "шт");
+  const none = positionPrices(data500, { ...saved([other]), results: [{ key: "p2", observations: [other], pagesRead: 1, rejected: 0 }] }, ["p2"], "done", "2026-10-22").rows[0];
+  assert.equal(none.state, "none", "МАКС-300 — другая модель");
+});
+
+test("строки про найденные цены: даже одна цена называется целиком — с поставщиком; от пяти — медиана и диапазон; нет цен — строк нет", () => {
+  const rows = (observations: Observation[]) => positionPrices(data(), saved(observations), ["p1"], "done", "2026-10-22");
+  assert.deepEqual(priceLines(rows([FIVE[2]])), ["«Уголь каменный ДПК»: 5 100 ₽ за т — shop3.ru, одна цена"]);
+  assert.deepEqual(priceLines(rows(FIVE.slice(0, 2))), ["«Уголь каменный ДПК»: 5 000 ₽ – 5 050 ₽ за т, цен 2 (для вывода нужно не меньше пяти)"]);
+  assert.deepEqual(priceLines(rows(FIVE)), ["«Уголь каменный ДПК»: 5 100 ₽ за т (диапазон 5 000 ₽ – 5 200 ₽, цен 5)"]);
+  assert.deepEqual(priceLines(rows([])), []);
+  const pair: RicData = { ...data(), positions: [{ ...data().positions[0], name: "Уголь каменный ДПК или эквивалент" }] };
+  assert.deepEqual(priceLines(positionPrices(pair, saved([FIVE[2]]), ["p1"], "done", "2026-10-22")), ["«Уголь каменный ДПК»: 5 100 ₽ за т — shop3.ru, одна цена"], "«или эквивалент» в строке не пишется");
 });

@@ -3,8 +3,8 @@ import type { FindingLine } from '@/lib/analytics-summary';
 import { getPrices, savePrices } from '@/lib/analytics-store';
 import { positionsFromDocuments, type RicData } from '@/lib/indicative-price';
 import { liveToLite, marketLines, marketRequestOf, withMarketAnalogs, type MarketResultLite } from '@/lib/market-merge';
-import { missingSpecNote, positionPrices } from '@/lib/position-prices';
-import { isFresh, pickPositions, priceSearchFinding, shouldSearch, signatureOf, type PriceState, type SavedPrices } from '@/lib/price-cache';
+import { missingSpecNote, positionPrices, priceLines } from '@/lib/position-prices';
+import { isFresh, mergeRetry, nextRetryAt, pickPositions, priceSearchFinding, retryKeys, shouldSearch, signatureOf, type PriceState, type SavedPrices } from '@/lib/price-cache';
 import { serverReadsEnabled } from '@/lib/server-reads';
 import { useAiEnabled } from '../lib/use-ai-mode';
 import { MAX_SEARCH_POSITIONS, searchLivePrices } from './market-search';
@@ -83,18 +83,40 @@ export function useMarketBase(data: RicData | null, docs: Doc[], region: string 
     })();
   }, [saved, signature, aiOn, purchaseId, region]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Повтор поиска по позициям, по которым он ничего не вернул (бесплатный поиск часто блокирует запрос): через десять минут, не больше трёх попыток; найденные цены не трогаются (lib/price-cache.ts, mergeRetry).
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (!saved || picks.length === 0 || !aiOn || running.current || saved.signature !== signature) return;
+    const now = new Date();
+    const keys = retryKeys(saved, now);
+    if (keys.length === 0) {
+      const due = nextRetryAt(saved, now);
+      if (due === null) return;
+      const timer = setTimeout(() => setTick((n) => n + 1), Math.max(1000, due - now.getTime()));
+      return () => clearTimeout(timer);
+    }
+    running.current = true;
+    void (async () => {
+      const fresh = await searchLivePrices(purchaseId, picks.filter((p) => keys.includes(p.id)), region, signature);
+      const merged = mergeRetry(saved, fresh, keys, new Date().toISOString());
+      setSaved(merged);
+      void savePrices(purchaseId, merged).catch(() => undefined);
+      running.current = false;
+    })();
+  }, [saved, signature, aiOn, purchaseId, region, tick]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const today = new Date().toISOString().slice(0, 10);
   const live = useMemo(() => (withPositions && isFresh(saved, new Date()) && saved ? liveToLite(withPositions.positions, saved.results, today, newId) : []), [withPositions, saved, today]);
 
   const effective = useMemo(() => (withPositions ? withMarketAnalogs(withMarketAnalogs(withPositions, market), live) : null), [withPositions, market, live]);
-  const lines = useMemo(() => (withPositions ? marketLines(withPositions, [...market, ...live]) : []), [withPositions, market, live]);
-
   const state: PriceState = picks.length === 0 ? 'no-positions' : isFresh(saved, new Date()) ? 'done' : !aiOn ? 'off' : searching || saved === undefined ? 'searching' : saved?.error ? 'failed' : 'searching';
-  const liveLines = useMemo(() => (withPositions ? marketLines(withPositions, live) : []), [withPositions, live]);
   // Заказчик пишет, что список товаров — в отдельном файле технических требований, а файла в закупке нет: об этом говорит строка «Закупочные цены» и рейтинг.
   const specNote = useMemo(() => (picks.length === 0 ? missingSpecNote(docs) : null), [picks.length, docs]);
-  const finding: FindingLine = priceSearchFinding({ state, saved, note: state === 'no-positions' ? (specNote ?? `проверила все файлы (${docs.length}): таблицы товаров с количеством нет — искать цены не по чему`) : saved?.error, highlights: liveLines });
   // Товары закупки с найденными закупочными ценами — для блока «Товары и закупочные цены»; нет цен — блок не рисуется.
   const prices = useMemo(() => (withPositions ? positionPrices(withPositions, saved, picks.map((p) => p.id), state, today) : null), [withPositions, saved, picks, state, today]);
+  // Найденные цены строками — для подписи внизу и подсказки бейджа; даже одна цена называется целиком (владелец, 23.10.2026: «если только одна цена — всё равно показывай»).
+  const found = useMemo(() => (prices ? priceLines(prices) : []), [prices]);
+  const lines = useMemo(() => [...(withPositions ? marketLines(withPositions, market) : []), ...found], [withPositions, market, found]);
+  const finding: FindingLine = priceSearchFinding({ state, saved, note: state === 'no-positions' ? (specNote ?? `проверила все файлы (${docs.length}): таблицы товаров с количеством нет — искать цены не по чему`) : saved?.error, highlights: found });
   return { data: effective, lines, finding, prices, positionsTotal: withPositions?.positions.length ?? 0, specNote };
 }

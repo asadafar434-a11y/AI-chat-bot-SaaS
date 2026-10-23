@@ -1,7 +1,7 @@
 // Рыночные ценовые наблюдения: нормализация, сопоставимость, статистика только при достаточных данных, загрузка из таблицы — npm test (без базы и сети).
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { analogsFrom, comparable, hashOf, isSourceKind, keyOf, makeObservation, MARKET_METHOD, marketStats, normalizeUnit, observationsFromTable, tokensOf, type Observation } from "./market-observations.ts";
+import { analogsFrom, comparable, hashOf, isSourceKind, keyOf, makeObservation, MARKET_METHOD, marketStats, modelCodes, normalizeUnit, observationsFromTable, tokensOf, type Observation } from "./market-observations.ts";
 
 const obs = (name: string, price: number, date: string, over: Partial<Parameters<typeof makeObservation>[0]> = {}): Observation => {
   const built = makeObservation({ name, unit: "т", price, vat: "without", vatRate: 22, date, source: `прайс поставщика № ${Math.round(price)}-${date}`, sourceKind: "price_list", ...over });
@@ -169,4 +169,27 @@ test("закупочная цена и только она: цена контр�
   assert.equal(whole.observations.length, 0, "источник файла — реестр контрактов: ни одна строка не принимается");
   assert.equal(isSourceKind("price_list") && isSourceKind("supplier_offer") && isSourceKind("exchange") && isSourceKind("other"), true);
   assert.equal(isSourceKind("eis_contract"), false, "вида «контракт ЕИС» больше нет");
+});
+
+test("модельные обозначения: буквы и цифры склеиваются без пробелов и дефисов; стандарты не считаются моделью", () => {
+  assert.deepEqual([...modelCodes("Многопостовой автономный комплекс сварки МАКС-500 или эквивалент")], ["макс500"]);
+  assert.deepEqual([...modelCodes("Автономный дизельный сварочный агрегат АДД - 2х2501 в УРАЛ или эквивалент")], ["адд2х2501"]);
+  assert.deepEqual([...modelCodes("Агрегат АДД-2х2501 У1, 2 поста")], ["адд2х2501"]);
+  assert.deepEqual([...modelCodes("Труба по ГОСТ 3262-75")], [], "ГОСТ — не модель");
+  assert.deepEqual([...modelCodes("Уголь каменный ДПК")], []);
+  assert.deepEqual([...modelCodes("Кабель ВВГ 3х2,5")], ["ввг3х2.5"]);
+});
+
+test("сопоставимость: совпало модельное обозначение — это тот же товар при любых других словах; единица и объём всё равно проверяются", () => {
+  const mk = (name: string, unit = "шт", quantity: number | null = null) => {
+    const b = makeObservation({ name, unit, price: 1000, vat: "without", vatRate: 22, date: "2026-10-20", quantity, source: "shop.ru: каталог", sourceKind: "price_list" });
+    if (!b.ok) throw new Error(b.reason);
+    return b.value;
+  };
+  const target = { name: "Многопостовой автономный комплекс сварки МАКС-500 или эквивалент", unit: "шт" };
+  assert.deepEqual(comparable(target, mk("Сварочный агрегат НПП КВАНТ МАКС-500, 2 поста, дизельный")), { ok: true });
+  assert.deepEqual(comparable(target, mk("Сварочный агрегат МАКС-500", "кг")), { ok: false, reason: "unit" });
+  assert.deepEqual(comparable({ ...target, quantity: 2 }, mk("Агрегат МАКС-500", "шт", 100)), { ok: false, reason: "volume" });
+  assert.equal(comparable(target, mk("Сварочный агрегат КВАНТ МАКС-300")).ok, false, "другая модель");
+  assert.deepEqual(comparable({ name: "Уголь каменный ДПК", unit: "т" }, mk("Уголь каменный ДПК фракция", "т")), { ok: true }, "обычное сравнение по словам работает как раньше");
 });

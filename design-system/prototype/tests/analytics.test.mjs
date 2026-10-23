@@ -1550,3 +1550,23 @@ test('«Открыть аналитику»: позиции берутся из 
   const modal = readFileSync(path.join(root, 'src/components/AnalyticsIntake.tsx'), 'utf8');
   assert.match(modal, /form\.busy === 'searching' \? 'Ищу цены…'/);
 });
+
+test('одна найденная цена показывается везде: в блоке товаров, в строке «Закупочные цены» внизу и в подсказке ценового бейджа — а не только «цен мало»', () => {
+  const hook = readFileSync(path.join(root, 'src/real/market.ts'), 'utf8');
+  assert.match(hook, /const found = useMemo\(\(\) => \(prices \? priceLines\(prices\) : \[\]\), \[prices\]\)/);
+  assert.match(hook, /highlights: found/, 'строка «Закупочные цены» берёт найденные цены');
+  assert.match(hook, /\.\.\.found\]/, 'подсказка бейджа получает те же строки');
+  const row = priceRow({ state: 'few', median: null, n: 1, range: { from: 1507504, to: 1507504 }, gapPct: null, cost: null, unit: 'шт', qty: '2', sources: [{ host: 'gk-sk.ru', product: 'Сварочный агрегат НПП КВАНТ МАКС-500, 2 поста, дизельный', price: 1507504, date: '2026-10-23', url: 'https://gk-sk.ru/x' }] });
+  const out = text(priceCard([row], { cost: null, costPositions: 0 }, 3));
+  assert.match(out, /1 507 504 ₽\/шт · найдено цен: 1, для вывода нужно не меньше пяти/, 'одна цена видна в блоке');
+  assert.match(out, /gk-sk\.ru — 1 507 504 ₽\/шт, 23\.10\.2026/);
+});
+
+test('повтор поиска по позициям, где он ничего не вернул: по таймеру через десять минут, только при включённом ИИ, найденное объединяется, а не затирается', () => {
+  const hook = readFileSync(path.join(root, 'src/real/market.ts'), 'utf8');
+  assert.match(hook, /const keys = retryKeys\(saved, now\)/);
+  assert.match(hook, /!aiOn \|\| running\.current/, 'ИИ выключен — повторов нет; два поиска разом не идут');
+  assert.match(hook, /picks\.filter\(\(p\) => keys\.includes\(p\.id\)\)/, 'ищутся только позиции без страниц');
+  assert.match(hook, /mergeRetry\(saved, fresh, keys,/, 'результат объединяется с найденным');
+  assert.match(hook, /setTimeout\(\(\) => setTick/, 'срок ждётся таймером, а не опросом');
+});

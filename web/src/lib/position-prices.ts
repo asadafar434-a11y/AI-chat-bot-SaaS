@@ -4,6 +4,7 @@
 import { parseAmount, type RicData } from "@/lib/indicative-price";
 import { comparable, marketStats, type Observation } from "@/lib/market-observations";
 import type { PriceState, SavedPrices } from "@/lib/price-cache";
+import { cleanProductName } from "@/lib/prices-request";
 
 export type PriceSource = { host: string; product: string; price: number; date: string; url: string | null };
 
@@ -68,6 +69,20 @@ const urlOf = (source: string): string | null => {
 };
 
 const sourceOf = (o: Observation): PriceSource => ({ host: hostOf(o.source), product: o.name, price: o.priceNoVat, date: o.observedAt, url: urlOf(o.source) });
+
+const glue = (t: string) => t.replace(/[\u00a0\u202f]/g, " ");
+const rub = (n: number) => glue(`${Math.round(n).toLocaleString("ru-RU")} ₽`);
+
+/** Короткие строки про найденные цены — для подписи внизу экрана и подсказки ценового бейджа. Даже одна найденная цена называется целиком (поставщик и дата), а не «цен мало»: решение владельца 23.10.2026. */
+export function priceLines(prices: PositionPrices): string[] {
+  return prices.rows.flatMap((r) => {
+    const name = `«${cleanProductName(r.name)}»`;
+    if (r.state === "found" && r.median !== null && r.range) return [`${name}: ${rub(r.median)} за ${r.unit || "ед."} (диапазон ${rub(r.range.from)} – ${rub(r.range.to)}, цен ${r.n})`];
+    if (r.state !== "few" || !r.range) return [];
+    if (r.n === 1) return [`${name}: ${rub(r.range.from)} за ${r.unit || "ед."} — ${r.sources[0]?.host ?? "поставщик"}, одна цена`];
+    return [`${name}: ${rub(r.range.from)} – ${rub(r.range.to)} за ${r.unit || "ед."}, цен ${r.n} (для вывода нужно не меньше пяти)`];
+  });
+}
 
 export function positionPrices(data: RicData, saved: SavedPrices | null | undefined, searchedIds: string[], state: PriceState, today: string): PositionPrices {
   const searched = new Set(searchedIds);

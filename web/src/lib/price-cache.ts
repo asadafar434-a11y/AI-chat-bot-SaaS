@@ -11,7 +11,9 @@ export const PRICES_TTL_DAYS = 7;
 export const FAILURE_TTL_MS = 60 * 60 * 1000;
 const DAY = 86_400_000;
 
-export type PriceResult = { key: string; observations: Observation[]; pagesRead: number; rejected: number };
+// pagesSeen / pagesWithPrice / reasons — для подписи, почему цен нет: сколько страниц просмотрено, на скольких было что-то похожее на цену, почему отклонены предложения (у прежних записей их нет).
+// tries — сколько раз искали по этой позиции (повтор после блокировки поиска — retryKeys); у прежних записей его нет, это одна попытка.
+export type PriceResult = { key: string; observations: Observation[]; pagesRead: number; rejected: number; pagesSeen?: number; pagesWithPrice?: number; reasons?: string[]; tries?: number };
 
 /** Что сохранено у закупки. error — последняя неудача; results пусты, если искали, но ничего не нашлось. */
 export type SavedPrices = {
@@ -21,6 +23,8 @@ export type SavedPrices = {
   results: PriceResult[];
   spentRub: number;
   error?: string;
+  /** Когда в последний раз повторяли поиск по позициям, по которым он ничего не вернул. */
+  retriedAt?: string;
 };
 
 export type PriceState = "off" | "no-positions" | "searching" | "done" | "failed";
@@ -49,6 +53,41 @@ export function shouldSearch(saved: SavedPrices | null | undefined, signature: s
   return saved.error ? age >= FAILURE_TTL_MS : age >= PRICES_TTL_DAYS * DAY;
 }
 
+// Поиск по позиции ничего не вернул (ни одной страницы) — чаще всего бесплатный поиск заблокировал запрос. Такие позиции ищутся ещё раз: через десять минут, потом через час, потом через шесть часов — четыре попытки всего;
+// найденное по другим позициям не трогается. Пока блокировка не спала, чаще пробовать бесполезно.
+export const RETRY_DELAYS_MS = [10 * 60 * 1000, 60 * 60 * 1000, 6 * 60 * 60 * 1000];
+export const RETRY_AFTER_MS = RETRY_DELAYS_MS[0];
+export const MAX_SEARCH_TRIES = RETRY_DELAYS_MS.length + 1;
+
+const retryable = (r: PriceResult) => r.observations.length === 0 && r.pagesSeen === 0 && (r.tries ?? 1) < MAX_SEARCH_TRIES;
+const delayOf = (r: PriceResult) => RETRY_DELAYS_MS[Math.min((r.tries ?? 1) - 1, RETRY_DELAYS_MS.length - 1)];
+
+/** Когда можно повторить поиск хотя бы по одной позиции без страниц: null — повторять нечего. */
+export function nextRetryAt(saved: SavedPrices | null | undefined, now: Date): number | null {
+  if (!saved || !isFresh(saved, now)) return null;
+  const left = saved.results.filter(retryable);
+  const base = Date.parse(saved.retriedAt ?? saved.at);
+  return left.length > 0 && Number.isFinite(base) ? base + Math.min(...left.map(delayOf)) : null;
+}
+
+/** Ключи позиций, по которым поиск пора повторить. */
+export function retryKeys(saved: SavedPrices | null | undefined, now: Date): string[] {
+  if (!saved || !isFresh(saved, now)) return [];
+  const base = Date.parse(saved.retriedAt ?? saved.at);
+  return Number.isFinite(base) ? saved.results.filter((r) => retryable(r) && now.getTime() >= base + delayOf(r)).map((r) => r.key) : [];
+}
+
+/** Результат повтора: по повторённым позициям — новый (попыток на одну больше), остальное как было; траты складываются. */
+export function mergeRetry(saved: SavedPrices, fresh: SavedPrices, keys: string[], at: string): SavedPrices {
+  const byKey = new Map(fresh.results.map((r) => [r.key, r]));
+  return {
+    ...saved,
+    retriedAt: at,
+    spentRub: Math.round((saved.spentRub + fresh.spentRub) * 100) / 100,
+    results: saved.results.map((r) => (keys.includes(r.key) ? { ...(byKey.get(r.key) ?? r), tries: (r.tries ?? 1) + 1 } : r)),
+  };
+}
+
 /** Найденные цены годны, пока не прошла неделя: старше — в расчёт не идут. */
 export const isFresh = (saved: SavedPrices | null | undefined, now: Date): boolean => {
   if (!saved || saved.error) return false;
@@ -65,6 +104,20 @@ const plural = (n: number, one: string, few: string, many: string) => (n % 10 ==
 
 /** Строка подписи внизу экрана: что нашлось (или почему не искали), без лишних слов. */
 /** highlights — готовые строки о ценах по позициям («Уголь»: медиана…, диапазон…, цен N) из lib/market-merge.ts: если они есть, в подписи видны сами цены, а не только их число. */
+/** Почему цен нет — фактами: сколько страниц просмотрено, на скольких было что-то похожее на цену, сколько предложений отклонено и по какой причине. Прежние записи без этих чисел — как раньше. */
+function noPricesText(saved: SavedPrices | null | undefined, when: string): string {
+  const rs = saved?.results ?? [];
+  const read = rs.reduce((s, r) => s + r.pagesRead, 0);
+  if (!rs.some((r) => r.pagesSeen !== undefined)) return `в интернете подходящих цен не нашла (${when}, страниц прочитано: ${read})`;
+  const seen = rs.reduce((s, r) => s + (r.pagesSeen ?? 0), 0);
+  const withPrice = rs.reduce((s, r) => s + (r.pagesWithPrice ?? 0), 0);
+  const rejected = rs.reduce((s, r) => s + r.rejected, 0);
+  const reasons = [...new Set(rs.flatMap((r) => r.reasons ?? []))];
+  const parts = [`страниц просмотрено ${seen}`, withPrice > 0 ? `с ценой на странице ${withPrice}` : "цены на страницах не выложены"];
+  if (rejected > 0) parts.push(`отклонено ${rejected}${reasons.length > 0 ? ` (${reasons.join(", ")})` : ""}`);
+  return `подходящих цен в интернете не нашла (${when}): ${parts.join(", ")}`;
+}
+
 export function priceSearchFinding(i: { state: PriceState; saved?: SavedPrices | null; note?: string; highlights?: string[] }): FindingLine {
   const label = "Закупочные цены";
   switch (i.state) {
@@ -81,9 +134,13 @@ export function priceSearchFinding(i: { state: PriceState; saved?: SavedPrices |
       const found = saved?.results.reduce((s, r) => s + r.observations.length, 0) ?? 0;
       const positions = saved?.results.filter((r) => r.observations.length > 0).length ?? 0;
       const when = saved ? `на ${dayText(saved.at)}` : "";
-      if (found === 0) return { label, text: `в интернете подходящих оптовых цен не нашла (${when}, страниц прочитано: ${saved?.results.reduce((s, r) => s + r.pagesRead, 0) ?? 0})`, tone: "muted" };
-      if (i.highlights && i.highlights.length > 0) return { label, text: `${i.highlights.slice(0, 2).join("; ")} · ${when}`, tone: "good" };
-      return { label, text: `найдено ${found} ${plural(found, "цена", "цены", "цен")} по ${positions} ${plural(positions, "позиции", "позициям", "позициям")} ${when}; пересчёт — раз в ${PRICES_TTL_DAYS} дней`, tone: "good" };
+      if (found === 0) return { label, text: noPricesText(saved, when), tone: "muted" };
+      // Позиции, по которым цены не нашлись; если поиск по позиции вообще ничего не вернул — вероятно, бесплатный поиск заблокировал запрос.
+      const empty = saved?.results.filter((r) => r.observations.length === 0) ?? [];
+      const silent = empty.filter((r) => r.pagesSeen === 0).length;
+      const missing = empty.length > 0 ? `; без цены: ${empty.length} ${plural(empty.length, "позиция", "позиции", "позиций")}${silent > 0 ? ` (по ${silent} поиск ничего не вернул — возможно, бесплатный поиск заблокирован)` : ""}` : "";
+      if (i.highlights && i.highlights.length > 0) return { label, text: `${i.highlights.slice(0, 3).join("; ")} · ${when}${missing}`, tone: "good" };
+      return { label, text: `найдено ${found} ${plural(found, "цена", "цены", "цен")} по ${positions} ${plural(positions, "позиции", "позициям", "позициям")} ${when}${missing}; пересчёт — раз в ${PRICES_TTL_DAYS} дней`, tone: "good" };
     }
   }
 }
@@ -100,7 +157,19 @@ export function normalizePrices(raw: unknown): SavedPrices | undefined {
   const results: PriceResult[] = x.results.flatMap((r) => {
     const y = (r ?? {}) as Record<string, unknown>;
     if (typeof y.key !== "string" || !Array.isArray(y.observations)) return [];
-    return [{ key: y.key, observations: y.observations.filter(isObservation), pagesRead: typeof y.pagesRead === "number" ? y.pagesRead : 0, rejected: typeof y.rejected === "number" ? y.rejected : 0 }];
+    const reasons = Array.isArray(y.reasons) ? y.reasons.filter((s): s is string => typeof s === "string").slice(0, 6) : [];
+    return [
+      {
+        key: y.key,
+        observations: y.observations.filter(isObservation),
+        pagesRead: typeof y.pagesRead === "number" ? y.pagesRead : 0,
+        rejected: typeof y.rejected === "number" ? y.rejected : 0,
+        ...(typeof y.pagesSeen === "number" && { pagesSeen: y.pagesSeen }),
+        ...(typeof y.pagesWithPrice === "number" && { pagesWithPrice: y.pagesWithPrice }),
+        ...(typeof y.tries === "number" && y.tries >= 1 && { tries: Math.min(Math.floor(y.tries), 9) }),
+        ...(reasons.length > 0 && { reasons }),
+      },
+    ];
   });
-  return { at: x.at, signature: x.signature, results, spentRub: typeof x.spentRub === "number" ? x.spentRub : 0, ...(typeof x.error === "string" && { error: x.error }) };
+  return { at: x.at, signature: x.signature, results, spentRub: typeof x.spentRub === "number" ? x.spentRub : 0, ...(typeof x.error === "string" && { error: x.error }), ...(typeof x.retriedAt === "string" && { retriedAt: x.retriedAt }) };
 }
