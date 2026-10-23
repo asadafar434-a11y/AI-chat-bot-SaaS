@@ -1520,7 +1520,7 @@ test('товары и закупочные цены: цен меньше пят�
 test('товары и закупочные цены: блок стоит на экране закупки после плашки итога и подключён к хуку рынка; платный поиск при выключенном ИИ по-прежнему не идёт', () => {
   const screen = readFileSync(path.join(root, 'src/real/analytics.tsx'), 'utf8');
   assert.match(screen, /<PositionPricesCard prices=\{market\.prices\} total=\{market\.positionsTotal\} \/>/);
-  assert.ok(screen.indexOf('<PositionPricesCard') > screen.indexOf('<AnalyticsSummary'), 'после плашки итога');
+  assert.ok(screen.indexOf('<PositionPricesCard') < screen.indexOf('<TenderRating'), 'товары и цены — сразу под названием закупки, выше рейтинга и плашки итога');
   assert.ok(screen.indexOf('<PositionPricesCard') < screen.indexOf('<AnalyticsFindings'), 'до подписи внизу');
   const hook = readFileSync(path.join(root, 'src/real/market.ts'), 'utf8');
   assert.match(hook, /positionPrices\(withPositions, saved/);

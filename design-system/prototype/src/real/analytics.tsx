@@ -351,6 +351,8 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
           </div>
         </div>
       </div>
+      {/* Товары и найденные закупочные цены — сразу под названием закупки: это то, что участник ищет первым (владелец, 23.10.2026: «где товар, цена его?»). Цен нет — блока нет. */}
+      {market.prices && <PositionPricesCard prices={market.prices} total={market.positionsTotal} />}
       <TenderRating rating={rating} />
       <AnalyticsSummary
         summary={summary}
@@ -366,8 +368,6 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
           {saveError}
         </p>
       )}
-
-      {market.prices && <PositionPricesCard prices={market.prices} total={market.positionsTotal} />}
 
       {chartSection && (
         <Collapsible title={chartSection.title} brief={chartSection.brief} tone={chartSection.tone} open={chartOpen} onToggle={() => setChartOpen((v) => !v)}>
