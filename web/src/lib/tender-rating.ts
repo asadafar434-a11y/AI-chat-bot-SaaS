@@ -65,6 +65,8 @@ export type RatingInput = {
   matrix: CheckRow[];
   /** Целевая маржа из допущений расчёта, %. */
   targetMarginPct: number;
+  /** Главная причина, почему рынка нет (например, нет файла технических требований со списком товаров): идёт первой в «чего не хватает» у фактора цены. */
+  priceNote?: string | null;
 };
 
 /** Меньше этой доли веса с данными балл не показываем. */
@@ -78,7 +80,7 @@ export const FACTOR_WEIGHTS: Record<FactorId, number> = { profile: 25, profit: 2
 /** Откуда берутся данные каждого фактора — показывается в расшифровке: что учтено и чего не хватает. */
 export const FACTOR_SOURCES: Record<FactorId, string> = {
   profile: "требования заказчика из документов и база доказательств вашей компании (лицензии, опыт, персонал, оборудование)",
-  profit: "ваши затраты на шаге «Цена», налог и обеспечение",
+  profit: "ваша себестоимость (шаг «Цена», блок «Мои расходы»), налог и обеспечение",
   price: "закупочные цены поставщиков, найденные в интернете (пока вы не ввели свои затраты)",
   risks: "проект договора закупки: неустойка, срок оплаты, обеспечение, гарантия, твёрдая цена",
   competition: "закупки заказчика и участники в ЕИС (источник не подключён)",
@@ -156,7 +158,7 @@ function profitFactor(i: RatingInput): FactorCore {
   };
   const e = i.econ;
   if (!e.ready) {
-    return { ...base, score: null, tone: "muted", note: e.reason === "costs" ? "ваших затрат нет" : "начальной цены нет", missing: [e.reason === "costs" ? "Затраты на исполнение — на шаге «Цена»" : "Начальная цена в документах"] };
+    return { ...base, score: null, tone: "muted", note: e.reason === "costs" ? "ваших затрат нет" : "начальной цены нет", missing: [e.reason === "costs" ? "Себестоимость — на шаге «Цена», блок «Мои расходы», поле «Себестоимость, ₽»" : "Начальная цена в документах"] };
   }
   // Риски по договору считаются отдельным фактором: здесь они из прибыли выведены.
   const riskLines = e.scenarios.base.lines.filter((l) => l.group === "risks").reduce((s, l) => s + l.amount, 0);
@@ -191,7 +193,8 @@ function priceFactor(i: RatingInput): FactorCore {
   }
   const b = i.badge;
   if (!b || b.status === "insufficient" || !b.detail) {
-    return { ...base, score: null, tone: "muted", note: "закупочной рыночной цены нет", missing: b?.missing.length ? b.missing.slice(0, 3) : ["Закупочные цены: прайсы, предложения поставщиков, биржа — не меньше пяти на позицию"] };
+    const reason = b?.missing.length ? b.missing.slice(0, 3) : ["Закупочные цены: прайсы, предложения поставщиков, биржа — не меньше пяти на позицию"];
+    return { ...base, score: null, tone: "muted", note: "закупочной рыночной цены нет", missing: i.priceNote ? [i.priceNote, ...reason] : reason };
   }
   const d = b.detail;
   const target = i.targetMarginPct > 0 ? i.targetMarginPct : 10;

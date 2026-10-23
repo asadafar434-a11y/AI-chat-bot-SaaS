@@ -267,8 +267,8 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
   const chartSection = summary.sections.find((s) => s.id === 'chart');
   // Рейтинг привлекательности: балл по шести факторам из уже посчитанного (lib/tender-rating.ts), без ИИ.
   const rating = useMemo(
-    () => rateTender({ econ, estimate, hasContract, badge, matrix: matrixRows, targetMarginPct: assumptions.targetMarginPct }),
-    [econ, estimate, hasContract, badge, matrixRows, assumptions.targetMarginPct],
+    () => rateTender({ econ, estimate, hasContract, badge, matrix: matrixRows, targetMarginPct: assumptions.targetMarginPct, priceNote: market.specNote }),
+    [econ, estimate, hasContract, badge, matrixRows, assumptions.targetMarginPct, market.specNote],
   );
   const needCosts = !econ.ready && econ.reason === 'costs';
   // Загрузка уже пройдена: с плашки итога — дальше, на шаг «Анализ». Если ИИ закупку ещё не разбирал, на шаге будет кнопка разбора.
@@ -358,7 +358,7 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
         error={reportError}
         onWord={() => void downloadWord()}
         onPdf={downloadPdf}
-        action={needCosts && onCosts ? { label: 'Ввести затраты на шаге «Цена» →', onClick: onCosts } : undefined}
+        action={needCosts && onCosts ? { label: 'Ввести себестоимость на шаге «Цена» →', onClick: onCosts } : undefined}
         analyze={onAnalyze ? { label: analyzed ? 'Перейти к анализу →' : 'Анализировать документы →', onClick: onAnalyze } : undefined}
       />
       {saveError && (

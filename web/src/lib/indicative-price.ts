@@ -7,6 +7,7 @@
 // сумма по закупке и отклонение от начальной цены показываются, только когда цена есть по каждой позиции.
 
 import { CONTRACT_PRICE_REASON, isContractPriceSource } from "@/lib/price-basis";
+import { findGoodsTable } from "@/lib/goods-table";
 import { baseUnitPrices, findSpecification } from "@/lib/spec-table";
 
 export const RIC_METHOD = {
@@ -243,7 +244,17 @@ type Doc = { name: string; text: string };
 /** Позиции из бланка заказчика «Спецификация» или «Расчёт цены» и его начальные цены за единицу — всё, что заказчик уже написал; аналогов у позиций ещё нет. */
 export function positionsFromDocuments(documents: Doc[]): { doc: string; title: string; positions: RicPosition[]; vatRate: number | null } | null {
   const spec = findSpecification(documents);
-  if (!spec) return null;
+  if (!spec) {
+    // Бланка «Спецификация» нет — берём таблицу товаров из технических требований: название и количество, без цен заказчика.
+    const goods = findGoodsTable(documents);
+    if (!goods) return null;
+    return {
+      doc: goods.doc,
+      title: "Таблица товаров",
+      vatRate: null,
+      positions: goods.rows.map((row, i) => ({ id: `doc-${i + 1}`, name: row.name, unit: row.unit, qty: String(row.qty).replace(".", ","), analogs: [] })),
+    };
+  }
   const prices = baseUnitPrices(spec.rows, documents);
   return {
     doc: spec.doc,

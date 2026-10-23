@@ -64,7 +64,7 @@ test("данных нет — балла нет: статус «недостат
   assert.equal(r.coverage, 0);
   assert.ok(r.factors.every((f) => f.score === null && f.missing.length > 0));
   assert.equal(r.missing.length, 6);
-  assert.match(by(r, "profit").missing[0], /Затраты на исполнение — на шаге «Цена»/);
+  assert.match(by(r, "profit").missing[0], /Себестоимость — на шаге «Цена», блок «Мои расходы»/);
   assert.match(by(r, "risks").missing[0], /Проект договора/);
 });
 
@@ -116,7 +116,7 @@ test("профиль и риски по договору (40 % веса) — б�
 test("у каждого фактора назван источник данных: откуда берётся и что подключено, а что нет", () => {
   const r = rateTender(input({ matrix: matrix(QUAL_OK) }, { costs: 500_000 }));
   for (const f of r.factors) assert.ok(f.source.length > 15, f.id);
-  assert.match(by(r, "profit").source, /затраты на шаге «Цена»/);
+  assert.match(by(r, "profit").source, /себестоимость \(шаг «Цена», блок «Мои расходы»\)/);
   assert.match(by(r, "price").source, /закупочные цены поставщиков/);
   assert.match(by(r, "risks").source, /проект договора/);
   assert.match(by(r, "competition").source, /источник не подключён/);
@@ -231,4 +231,13 @@ test("факторы идут в заданном порядке; у каждо�
     assert.equal(f.weight, FACTOR_WEIGHTS[f.id]);
     if (f.score === null && !f.mergedInto) assert.ok(f.missing.length > 0, f.id);
   }
+});
+
+test("цена против рынка без данных: причина «нет файла технических требований» идёт первой в списке, чего не хватает", () => {
+  const note = "нет файла «Приложение № 1 — Технические требования»: заказчик приложил его отдельно";
+  const r = rateTender({ ...input({ econ: { ready: false, reason: "costs" } }), priceNote: note });
+  assert.equal(by(r, "price").missing[0], note);
+  assert.ok(by(r, "price").missing.length >= 2, "дальше — обычная причина от ценового бейджа");
+  const plain = rateTender(input({ econ: { ready: false, reason: "costs" } }));
+  assert.ok(!by(plain, "price").missing.includes(note));
 });

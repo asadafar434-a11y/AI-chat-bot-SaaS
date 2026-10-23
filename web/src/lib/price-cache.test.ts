@@ -127,3 +127,9 @@ test("подпись с ценами: если есть строки о цена
   assert.equal(text.tone, "good");
   assert.match(priceSearchFinding({ state: "done", saved: s, highlights: [] }).text, /найдено 5 цен по 1 позиции/);
 });
+
+test("подпись внизу: нет позиций, но не хватает файла технических требований — говорит об этом (янтарным), а не «искать нечего»", () => {
+  const note = "нет файла «Приложение № 1 — Технические требования»: заказчик приложил его отдельно — добавьте его в закупку";
+  assert.deepEqual(priceSearchFinding({ state: "no-positions", note }), { label: "Закупочные цены", text: note, tone: "warn" });
+  assert.equal(priceSearchFinding({ state: "no-positions" }).tone, "muted");
+});

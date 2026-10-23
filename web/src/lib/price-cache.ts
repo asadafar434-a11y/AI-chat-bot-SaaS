@@ -71,7 +71,7 @@ export function priceSearchFinding(i: { state: PriceState; saved?: SavedPrices |
     case "off":
       return { label, text: "ИИ выключен — цены в интернете не искались", tone: "muted" };
     case "no-positions":
-      return { label, text: "в документах нет списка позиций — искать нечего", tone: "muted" };
+      return i.note ? { label, text: i.note, tone: "warn" } : { label, text: "в документах нет списка позиций — искать нечего", tone: "muted" };
     case "searching":
       return { label, text: "ищу в интернете…", tone: "muted" };
     case "failed":

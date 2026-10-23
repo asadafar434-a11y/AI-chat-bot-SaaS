@@ -3,8 +3,9 @@ import type { IntakeFields, Law } from '@/lib/analytics-intake';
 import { AlertTriangle, FileText, Loader2, UploadCloud, X } from '../lib/icons';
 import { Badge, Button, HelpTip, IconButton, Modal } from './ui';
 
-// «Загрузить закупку» в разделе «Аналитика»: файлы → название, цена и закон, найденные программой, → открыть расчёт. Платного ИИ здесь нет (lib/analytics-intake.ts):
-// файлы читает сервер как текст, а найденное участник видит и может поправить до сохранения. Требования и заявка — на обычной загрузке закупки.
+// «Загрузить закупку» в разделе «Аналитика»: файлы → название, цена и закон, найденные программой, → открыть расчёт. Загрузка без ИИ (lib/analytics-intake.ts): файлы читает сервер как текст,
+// а найденное участник видит и может поправить до сохранения. По «Открыть аналитику» один раз ищутся закупочные цены в интернете (платно, до 30 ₽, только при включённом «ИИ») — пока идёт поиск, окно это показывает.
+// Требования и заявка — на обычной загрузке закупки.
 
 export type IntakeFile = { name: string; meta: string };
 
@@ -12,7 +13,11 @@ export type AnalyticsIntakeFormProps = {
   files: IntakeFile[];
   /** Файлы, которые не прочитались, одной строкой: имя — причина. */
   failed: string | null;
-  busy: 'reading' | 'saving' | null;
+  busy: 'reading' | 'saving' | 'searching' | null;
+  /** Что сейчас делается, одной строкой (при поиске цен). */
+  status?: string | null;
+  /** ИИ включён: при открытии аналитики будут искаться закупочные цены (платно). */
+  aiOn?: boolean;
   error: string;
   fields: IntakeFields;
   onFiles: (files: File[]) => void;
@@ -45,17 +50,21 @@ const LAWS: { id: Law; label: string }[] = [
   { id: '', label: 'Не указан' },
 ];
 
-export function AnalyticsIntakeForm({ files, failed, busy, error, fields, onFiles, onRemove, onField }: AnalyticsIntakeFormProps) {
+export function AnalyticsIntakeForm({ files, failed, busy, status, aiOn = false, error, fields, onFiles, onRemove, onField }: AnalyticsIntakeFormProps) {
   const input = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const reading = busy === 'reading';
   return (
     <div className="space-y-4 px-5 py-4 text-[13px]">
       <div className="flex flex-wrap items-center gap-2">
-        <Badge tone="success">Бесплатно: без ИИ</Badge>
+        {aiOn ? <Badge tone="warn">Загрузка бесплатна · поиск цен платный, до 30 ₽</Badge> : <Badge tone="success">Бесплатно: без ИИ</Badge>}
         <HelpTip
           align="start"
-          content="Файлы читает сервер как текст; название, цену и закон находит программа и показывает вам. ИИ не используется. Курс ЦБ и поиск в интернете — бесплатные. Сканы без ИИ не читаются: для них есть обычная загрузка закупки."
+          content={
+            aiOn
+              ? "Файлы читает сервер как текст; название, цену, закон и список товаров находит программа — ИИ здесь не используется. По кнопке «Открыть аналитику» программа один раз ищет закупочные цены по главным позициям в интернете платной моделью: примерно 3–10 ₽ на закупку, не больше 30 ₽, до двух минут. Выключить можно переключателем «ИИ» в меню. Сканы без ИИ не читаются: для них есть обычная загрузка закупки."
+              : "Файлы читает сервер как текст; название, цену, закон и список товаров находит программа — ИИ здесь не используется. Переключатель «ИИ» выключен: закупочные цены в интернете искаться не будут. Сканы без ИИ не читаются: для них есть обычная загрузка закупки."
+          }
         />
       </div>
 
@@ -87,12 +96,18 @@ export function AnalyticsIntakeForm({ files, failed, busy, error, fields, onFile
             if (picked.length > 0) onFiles(picked);
           }}
         />
-        <Button size="sm" variant="secondary" disabled={reading || busy === 'saving'} onClick={() => input.current?.click()}>
+        <Button size="sm" variant="secondary" disabled={busy !== null} onClick={() => input.current?.click()}>
           Выбрать файлы
         </Button>
         <p className="text-[11px] text-muted-foreground">PDF, Word, Excel, ZIP</p>
       </div>
 
+      {busy === 'searching' && status && (
+        <p role="status" className="flex items-start gap-1.5 text-[12px]">
+          <Loader2 className="mt-0.5 size-3.5 shrink-0 animate-spin text-muted-foreground" />
+          <span className="break-words">{status}</span>
+        </p>
+      )}
       {error && (
         <p role="alert" className="flex items-start gap-1.5 text-[12px] text-danger">
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
@@ -173,7 +188,7 @@ export function AnalyticsIntakeModal({
             Отмена
           </Button>
           <Button size="sm" disabled={!canSave || form.busy !== null} onClick={onSave}>
-            {form.busy === 'saving' ? 'Открываю…' : 'Открыть аналитику'}
+            {form.busy === 'searching' ? 'Ищу цены…' : form.busy === 'saving' ? 'Открываю…' : 'Открыть аналитику'}
           </Button>
         </>
       }

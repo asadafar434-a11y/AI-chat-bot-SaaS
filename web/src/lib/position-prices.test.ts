@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { DEFAULT_SETTINGS, type RicData } from "./indicative-price.ts";
 import { makeObservation, type Observation } from "./market-observations.ts";
-import { positionPrices } from "./position-prices.ts";
+import { missingSpecNote, positionPrices } from "./position-prices.ts";
 import type { SavedPrices } from "./price-cache.ts";
 
 const obs = (price: number, host: string, name = "Уголь каменный ДПК", tail = `; https://${host}/price`): Observation => {
@@ -88,4 +88,16 @@ test("количества нет — стоимость позиции не с�
   assert.equal(r.rows[1].state, "none");
   assert.equal(r.costPositions, 1);
   assert.equal(r.cost, 7_650_000);
+});
+
+test("нет файла технических требований: заказчик пишет «в отдельном файле», а файла в закупке нет — сказано, что добавить; файл есть или заказчик молчит — тишина", () => {
+  const main = { name: "ДоЗ_Аукцион МСП_Поставка агрегатов сварочных.docx", text: "6. Приложение № 1 – Технические требования\n6.1 Пояснения к Техническим требованиям\n6.1.1 Технические требования к закупаемой продукции приведены в отдельном файле (предоставляются отдельным документом в составе Документации о закупке)." };
+  const others = [{ name: "Приложение №2 к ДоЗ - ПРОЕКТ ДОГОВОРА.docx", text: "Договор" }, { name: "Приложение №10 к ДоЗ - ФОРМА ЗАЯВКИ.xlsx", text: "Заявка" }];
+  assert.match(missingSpecNote([main, ...others]) ?? "", /проверила все файлы \(3\): списка товаров с количеством нет, только название лота[\s\S]*Приложение № 1/);
+  assert.equal(missingSpecNote([main, ...others, { name: "Приложение №1 к ДоЗ - Технические требования.docx", text: "Сварочный агрегат — 3 шт." }]), null, "файл приложен");
+  assert.equal(missingSpecNote([main, { name: "ТЗ.docx", text: "x" }]), null, "файл назван «ТЗ»");
+  assert.equal(missingSpecNote([main, { name: "Спецификация.xlsx", text: "x" }]), null);
+  assert.ok(missingSpecNote([main, { name: "Приложение №10.xlsx", text: "x" }]) !== null, "«Приложение №10» — не «№1»");
+  assert.equal(missingSpecNote([{ name: "Извещение.docx", text: "Закупка угля. Позиции — в таблице ниже." }, ...others]), null, "заказчик об отдельном файле не пишет");
+  assert.equal(missingSpecNote([]), null);
 });

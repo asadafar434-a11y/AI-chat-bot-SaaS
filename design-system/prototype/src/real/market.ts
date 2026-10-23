@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FindingLine } from '@/lib/analytics-summary';
 import { getPrices, savePrices } from '@/lib/analytics-store';
-import { errorMessage, errorText } from '@/lib/http-error';
-import { parseAmount, positionsFromDocuments, type RicData } from '@/lib/indicative-price';
+import { positionsFromDocuments, type RicData } from '@/lib/indicative-price';
 import { liveToLite, marketLines, marketRequestOf, withMarketAnalogs, type MarketResultLite } from '@/lib/market-merge';
-import { positionPrices } from '@/lib/position-prices';
-import { isFresh, normalizePrices, pickPositions, priceSearchFinding, shouldSearch, signatureOf, type PriceState, type SavedPrices } from '@/lib/price-cache';
-import { aiHeaders } from '@/lib/purchase';
+import { missingSpecNote, positionPrices } from '@/lib/position-prices';
+import { isFresh, pickPositions, priceSearchFinding, shouldSearch, signatureOf, type PriceState, type SavedPrices } from '@/lib/price-cache';
 import { serverReadsEnabled } from '@/lib/server-reads';
 import { useAiEnabled } from '../lib/use-ai-mode';
+import { MAX_SEARCH_POSITIONS, searchLivePrices } from './market-search';
 
 // Расчёт цены относительно рынка под капотом, без ввода и кнопок участника (решения владельца 22.10.2026: «аналитика сама ищет в интернете; цены всегда по факту; рынок — закупочная цена»):
 //  1) позиции берутся из бланка заказчика «Спецификация» (если участник свои не вводил);
@@ -19,7 +18,6 @@ import { useAiEnabled } from '../lib/use-ai-mode';
 
 type Doc = { name: string; text: string };
 
-const MAX_SEARCH_POSITIONS = 3;
 let counter = 0;
 const newId = () => `live-${++counter}`;
 
@@ -77,24 +75,7 @@ export function useMarketBase(data: RicData | null, docs: Doc[], region: string 
     running.current = true;
     setSearching(true);
     void (async () => {
-      let next: SavedPrices;
-      const at = new Date().toISOString();
-      try {
-        const res = await fetch('/api/prices', {
-          method: 'POST',
-          headers: aiHeaders(purchaseId),
-          body: JSON.stringify({ positions: picks.map((p) => ({ key: p.id, name: p.name, unit: p.unit, ...(parseAmount(p.qty) ? { quantity: parseAmount(p.qty) } : {}), ...(region ? { region } : {}) })) }),
-        });
-        if (!res.ok) throw new Error(await errorText(res, 'Поиск цен сейчас недоступен.'));
-        const json = (await res.json()) as { results?: unknown; spentRub?: unknown; searchErrors?: unknown };
-        const parsed = normalizePrices({ at, signature, results: json.results, spentRub: json.spentRub });
-        const found = parsed?.results.some((r) => r.observations.length > 0) ?? false;
-        const errors = Array.isArray(json.searchErrors) ? json.searchErrors.filter((e): e is string => typeof e === 'string') : [];
-        // Поиск не ответил и ничего не нашлось — это неудача (повторим через час), а не «цен нет».
-        next = { at, signature, results: parsed?.results ?? [], spentRub: parsed?.spentRub ?? 0, ...(!found && errors.length > 0 && { error: errors.join('; ') }) };
-      } catch (e) {
-        next = { at, signature, results: [], spentRub: 0, error: errorMessage(e) };
-      }
+      const next = await searchLivePrices(purchaseId, picks, region, signature);
       setSaved(next);
       void savePrices(purchaseId, next).catch(() => undefined);
       running.current = false;
@@ -110,8 +91,10 @@ export function useMarketBase(data: RicData | null, docs: Doc[], region: string 
 
   const state: PriceState = picks.length === 0 ? 'no-positions' : isFresh(saved, new Date()) ? 'done' : !aiOn ? 'off' : searching || saved === undefined ? 'searching' : saved?.error ? 'failed' : 'searching';
   const liveLines = useMemo(() => (withPositions ? marketLines(withPositions, live) : []), [withPositions, live]);
-  const finding: FindingLine = priceSearchFinding({ state, saved, note: saved?.error, highlights: liveLines });
+  // Заказчик пишет, что список товаров — в отдельном файле технических требований, а файла в закупке нет: об этом говорит строка «Закупочные цены» и рейтинг.
+  const specNote = useMemo(() => (picks.length === 0 ? missingSpecNote(docs) : null), [picks.length, docs]);
+  const finding: FindingLine = priceSearchFinding({ state, saved, note: state === 'no-positions' ? (specNote ?? `проверила все файлы (${docs.length}): таблицы товаров с количеством нет — искать цены не по чему`) : saved?.error, highlights: liveLines });
   // Товары закупки с найденными закупочными ценами — для блока «Товары и закупочные цены»; нет цен — блок не рисуется.
   const prices = useMemo(() => (withPositions ? positionPrices(withPositions, saved, picks.map((p) => p.id), state, today) : null), [withPositions, saved, picks, state, today]);
-  return { data: effective, lines, finding, prices, positionsTotal: withPositions?.positions.length ?? 0 };
+  return { data: effective, lines, finding, prices, positionsTotal: withPositions?.positions.length ?? 0, specNote };
 }

@@ -1061,7 +1061,12 @@ const intakeForm = (over = {}) =>
 test('загрузить закупку: пустое окно — «бесплатно, без ИИ», куда перетащить, кнопка выбора; полей ещё нет', () => {
   const out = intakeForm();
   const t = text(out);
-  assert.match(t, /Бесплатно: без ИИ/);
+  assert.match(t, /Бесплатно: без ИИ/, 'ИИ выключен — загрузка и всё остальное без платного');
+  const formWith = (over) => renderToStaticMarkup(h(mods.intakeUi.AnalyticsIntakeForm, { files: [], failed: null, busy: null, error: '', fields: { title: '', price: '', law: '' }, onFiles: none, onRemove: none, onField: none, ...over }));
+  const aiOnForm = formWith({ aiOn: true });
+  assert.match(aiOnForm, /Загрузка бесплатна · поиск цен платный, до 30 ₽/);
+  assert.match(aiOnForm, /По кнопке «Открыть аналитику» программа один раз ищет закупочные цены по главным позициям в интернете платной моделью/, 'честно сказано, что именно платное и когда');
+  assert.match(formWith({ aiOn: false }), /закупочные цены в интернете искаться не будут/);
   assert.match(t, /Перетащите файлы закупки сюда/);
   assert.match(t, /Выбрать файлы/);
   assert.match(out, /type="file"[^>]*multiple/);
@@ -1098,7 +1103,8 @@ test('аналитика: кнопка «Загрузить закупку» н�
   const withList = text(renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: [{ id: 'p1', title: 'Уголь', price: '1 000 ₽', kind: '44-ФЗ' }], onOpen: none, onUpload: none })));
   assert.match(withList, /Загрузить закупку/);
   assert.match(withList, /Загрузите закупку или выберите из списка/);
-  assert.match(withList, /ИИ не используется, платного здесь ничего нет/);
+  assert.match(withList, /Расчёты считает код, без ИИ; платным бывает только поиск закупочных цен/);
+  assert.equal(withList.includes('платного здесь ничего нет'), false, 'устаревшее обещание «ничего платного» убрано');
 });
 
 test('проверка поиском: одна кнопка на все гипотезы, которые ещё не искали, с числом; уже найденные в число не входят', () => {
@@ -1303,7 +1309,7 @@ test('экран закупки: ни одного поля ввода и «По
     assert.equal(src.includes(gone), false, `на экране закупки не должно быть: ${gone}`);
   }
   assert.match(src, /AnalyticsFindings/);
-  assert.match(src, /Ввести затраты на шаге «Цена»/);
+  assert.match(src, /Ввести себестоимость на шаге «Цена»/);
 });
 
 // ——— Рейтинг привлекательности тендера ———
@@ -1463,8 +1469,10 @@ test('расшифровка рейтинга: «цена против рынк�
 
 test('живой поиск закупочных цен: без кнопок — при открытии экрана; только при включённом ИИ; запрос идёт через общий помощник с заголовками ИИ; найденное хранится у закупки и показано в подписи', () => {
   const hook = readFileSync(path.join(root, 'src/real/market.ts'), 'utf8');
-  assert.match(hook, /fetch\('\/api\/prices'/);
-  assert.match(hook, /aiHeaders\(purchaseId\)/, 'запрос по правилам ИИ: выключенный ИИ запрос не пускает');
+  assert.match(hook, /searchLivePrices\(purchaseId, picks, region, signature\)/);
+  const search = readFileSync(path.join(root, 'src/real/market-search.ts'), 'utf8');
+  assert.match(search, /fetch\('\/api\/prices'/);
+  assert.match(search, /aiHeaders\(purchaseId\)/, 'запрос по правилам ИИ: выключенный ИИ запрос не пускает');
   assert.match(hook, /!aiOn/, 'ИИ выключен — не ищем');
   assert.match(hook, /shouldSearch\(saved, signature/, 'неделя годности и пауза после неудачи');
   assert.match(hook, /savePrices\(purchaseId, next\)/);
@@ -1516,4 +1524,29 @@ test('товары и закупочные цены: блок стоит на э
   assert.ok(screen.indexOf('<PositionPricesCard') < screen.indexOf('<AnalyticsFindings'), 'до подписи внизу');
   const hook = readFileSync(path.join(root, 'src/real/market.ts'), 'utf8');
   assert.match(hook, /positionPrices\(withPositions, saved/);
+});
+
+test('нет файла технических требований: строка «Закупочные цены» и рейтинг говорят об этом (причина идёт из хука рынка), кнопка называет настоящее поле «себестоимость»', () => {
+  const hook = readFileSync(path.join(root, 'src/real/market.ts'), 'utf8');
+  assert.match(hook, /missingSpecNote\(docs\)/);
+  assert.match(hook, /note: state === 'no-positions' \? \(specNote \?\? `проверила все файлы/, 'и без «отдельного файла» экран говорит, что проверены все файлы');
+  const screen = readFileSync(path.join(root, 'src/real/analytics.tsx'), 'utf8');
+  assert.match(screen, /priceNote: market\.specNote/);
+  assert.match(screen, /Ввести себестоимость на шаге «Цена»/);
+});
+
+test('«Открыть аналитику»: позиции берутся из документов и цены ищутся до открытия экрана — только при включённом ИИ, одним поиском по главным позициям; идёт индикатор', () => {
+  const src = readFileSync(path.join(root, 'src/real/analytics-intake.tsx'), 'utf8');
+  assert.match(src, /positionsFromDocuments\(docs\)/, 'позиции из документов (бланк «Спецификация» или таблица товаров)');
+  assert.match(src, /pickPositions\(found\.positions, MAX_SEARCH_POSITIONS\)/, 'главные позиции — те же, что ищет экран закупки: подпись совпадает, повторного поиска нет');
+  assert.match(src, /aiOn\) \{/, 'без включённого ИИ поиск не идёт');
+  assert.match(src, /searchLivePrices\(id, picks, placeOf\(docs\)\?\.region\.name \?\? null, signatureOf\(picks\)\)/);
+  assert.match(src, /savePrices\(id, saved\)/, 'найденное сохраняется у закупки — экран откроется уже с ценами');
+  assert.ok(src.indexOf('searchLivePrices(id') < src.indexOf('onCreated(id)'), 'сначала цены, потом открытие экрана');
+  const screen = renderToStaticMarkup(h(mods.intakeUi.AnalyticsIntakeForm, { files: [{ name: 'ТЗ.docx', meta: '1 страница' }], failed: null, busy: 'searching', status: 'Позиций в документах: 2. Ищу закупочные цены по главным (2) — до двух минут.', aiOn: true, error: '', fields: { title: 'Агрегаты', price: '9 305 651,64', law: '223' }, onFiles: none, onRemove: none, onField: none }));
+  assert.match(text(screen), /Позиций в документах: 2\. Ищу закупочные цены по главным \(2\) — до двух минут\./);
+  assert.match(screen, /role="status"/);
+  assert.match(screen, /disabled=""[^>]*>Выбрать файлы/, 'пока идёт поиск, файлы менять нельзя');
+  const modal = readFileSync(path.join(root, 'src/components/AnalyticsIntake.tsx'), 'utf8');
+  assert.match(modal, /form\.busy === 'searching' \? 'Ищу цены…'/);
 });
