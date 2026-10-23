@@ -11,6 +11,9 @@ import type { EstimateResult } from "@/lib/risk-estimate";
 export type FactorId = "profile" | "profit" | "competition" | "price" | "reliability" | "risks";
 export type RatingTone = "good" | "warn" | "danger" | "muted";
 
+/** Фактор без поля source: его добавляет rateTender из FACTOR_SOURCES. */
+export type FactorCore = Omit<Factor, "source">;
+
 export type Factor = {
   id: FactorId;
   title: string;
@@ -19,6 +22,8 @@ export type Factor = {
   /** 0–100; null — данных не хватает, фактор в балле не участвует. */
   score: number | null;
   tone: RatingTone;
+  /** По каким данным считается фактор (откуда берутся числа). */
+  source: string;
   /** Что получилось, фактами: цифры и названия проверок. */
   note: string;
   /** Как считается — формула словами. */
@@ -36,6 +41,8 @@ export type Verdict = { label: string; tone: RatingTone };
 export type Rating = {
   /** ready — балл посчитан; insufficient — данных меньше половины по весу, балла нет. */
   status: "ready" | "insufficient";
+  /** Балл посчитан по неполным данным (меньше 70 % веса): показывается с пометкой «предварительно», пока не появятся остальные данные. */
+  preliminary: boolean;
   /** Итоговый балл с учётом критических препятствий. */
   score: number | null;
   /** Балл по факторам до ограничения препятствиями. */
@@ -61,10 +68,22 @@ export type RatingInput = {
 };
 
 /** Меньше этой доли веса с данными балл не показываем. */
-export const MIN_COVERAGE = 50;
+// Ниже этой доли веса с данными балла нет; от неё до FULL_COVERAGE — предварительная оценка с пометкой, выше — обычная.
+export const MIN_COVERAGE = 35;
+export const FULL_COVERAGE = 70;
 const FACTOR_MIN_COVERAGE = 50;
 
 export const FACTOR_WEIGHTS: Record<FactorId, number> = { profile: 25, profit: 25, price: 15, risks: 15, competition: 10, reliability: 10 };
+
+/** Откуда берутся данные каждого фактора — показывается в расшифровке: что учтено и чего не хватает. */
+export const FACTOR_SOURCES: Record<FactorId, string> = {
+  profile: "требования заказчика из документов и база доказательств вашей компании (лицензии, опыт, персонал, оборудование)",
+  profit: "ваши затраты на шаге «Цена», налог и обеспечение",
+  price: "закупочные цены поставщиков, найденные в интернете (пока вы не ввели свои затраты)",
+  risks: "проект договора закупки: неустойка, срок оплаты, обеспечение, гарантия, твёрдая цена",
+  competition: "закупки заказчика и участники в ЕИС (источник не подключён)",
+  reliability: "ЕИС, картотека арбитражных дел, ФАС, статус заказчика (источники не подключены)",
+};
 
 const TITLES: Record<FactorId, string> = {
   profile: "Соответствие профилю компании",
@@ -100,7 +119,7 @@ const num = (x: number) => x.toLocaleString("ru-RU", { maximumFractionDigits: 1 
 const levelOf = (r: CheckRow): Level | null => (r.result.state === "checked" || r.result.state === "manual" ? r.result.level : null);
 
 /** Фактор из проверок матрицы: средний балл по уровням с весами проверок; данные есть, если проверено не меньше половины веса. */
-function fromChecks(id: FactorId, rows: CheckRow[], basis: string, missingText: string): Factor {
+function fromChecks(id: FactorId, rows: CheckRow[], basis: string, missingText: string): FactorCore {
   const total = rows.reduce((s, r) => s + r.weight, 0);
   const done = rows.filter((r) => levelOf(r) !== null);
   const doneWeight = done.reduce((s, r) => s + r.weight, 0);
@@ -112,7 +131,7 @@ function fromChecks(id: FactorId, rows: CheckRow[], basis: string, missingText: 
       score: null,
       tone: "muted",
       note: `проверено ${done.length} из ${rows.length}`,
-      missing: [missingText, ...waiting.slice(0, 4).map((r) => `${r.def.n}. ${r.def.title}`)],
+      missing: [missingText],
     };
   }
   const score = Math.round(done.reduce((s, r) => s + LEVEL_POINTS[levelOf(r)!] * r.weight, 0) / doneWeight);
@@ -128,7 +147,7 @@ function fromChecks(id: FactorId, rows: CheckRow[], basis: string, missingText: 
 
 const groupRows = (matrix: CheckRow[], group: GroupId, ns?: number[]) => matrix.filter((r) => r.def.group === group && (!ns || ns.includes(r.def.n)));
 
-function profitFactor(i: RatingInput): Factor {
+function profitFactor(i: RatingInput): FactorCore {
   const base = {
     id: "profit" as const,
     title: TITLES.profit,
@@ -159,7 +178,7 @@ function profitFactor(i: RatingInput): Factor {
 
 // Рынок здесь — закупочная цена (прайсы, предложения поставщиков, биржа), цены контрактов не берутся (lib/price-basis.ts). Фактор показывает, какой запас маржи даёт начальная цена над закупочной рыночной.
 // Маржа одна: пока участник не ввёл свои затраты, её даёт этот фактор (по рынку); когда ввёл — «Рентабельность» (свои затраты точнее рыночных), а этот фактор в балле не участвует, чтобы маржа не считалась дважды.
-function priceFactor(i: RatingInput): Factor {
+function priceFactor(i: RatingInput): FactorCore {
   const base = {
     id: "price" as const,
     title: TITLES.price,
@@ -181,7 +200,7 @@ function priceFactor(i: RatingInput): Factor {
   return { ...base, score, tone: toneOfScore(score), note: `запас над закупочной ценой ${room >= 0 ? "" : "−"}${num(Math.abs(room))} % при цели ${num(target)} %; цен ${d.observations.total}`, missing: [] };
 }
 
-function risksFactor(i: RatingInput): Factor {
+function risksFactor(i: RatingInput): FactorCore {
   const base = {
     id: "risks" as const,
     title: TITLES.risks,
@@ -219,8 +238,8 @@ export function rateTender(i: RatingInput): Rating {
     "Проверки надёжности заказчика (история исполнения, суды, ФАС, статус) и условия договора об отказе и приёмке: те же уровни.",
     "Источники о заказчике (ЕИС, картотека арбитражных дел, ФАС, ЕГРЮЛ) в программе не подключены",
   );
-  const byId: Record<FactorId, Factor> = { profile, profit: profitFactor(i), price: priceFactor(i), risks: risksFactor(i), competition, reliability };
-  const factors = FACTOR_ORDER.map((id) => byId[id]);
+  const byId: Record<FactorId, FactorCore> = { profile, profit: profitFactor(i), price: priceFactor(i), risks: risksFactor(i), competition, reliability };
+  const factors: Factor[] = FACTOR_ORDER.map((id) => ({ ...byId[id], source: FACTOR_SOURCES[id] }));
 
   const withData = factors.filter((f) => f.score !== null);
   // Фактор, учтённый в другом, в нехватку данных и в долю данных не входит: его вес из базы доли убирается.
@@ -229,10 +248,10 @@ export function rateTender(i: RatingInput): Rating {
   const blockers = blockersOf(i);
   const missing = counted.filter((f) => f.score === null).map((f) => ({ factor: f.title, items: f.missing }));
   if (coverage < MIN_COVERAGE) {
-    return { status: "insufficient", score: null, rawScore: null, capped: false, verdict: null, coverage, factors, blockers, missing };
+    return { status: "insufficient", preliminary: false, score: null, rawScore: null, capped: false, verdict: null, coverage, factors, blockers, missing };
   }
   const rawScore = Math.round(withData.reduce((s, f) => s + f.score! * f.weight, 0) / withData.reduce((s, f) => s + f.weight, 0));
   const cap = blockers.length > 0 ? Math.min(...blockers.map((b) => b.cap)) : 100;
   const score = Math.min(rawScore, cap);
-  return { status: "ready", score, rawScore, capped: score < rawScore, verdict: verdictOf(score), coverage, factors, blockers, missing };
+  return { status: "ready", preliminary: coverage < FULL_COVERAGE, score, rawScore, capped: score < rawScore, verdict: verdictOf(score), coverage, factors, blockers, missing };
 }

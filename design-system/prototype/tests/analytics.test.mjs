@@ -43,6 +43,7 @@ before(async () => {
     ratingUi: await server.ssrLoadModule('/src/components/TenderRating.tsx'),
     ratingLib: await server.ssrLoadModule('@/lib/tender-rating.ts'),
     badgeChipUi: await server.ssrLoadModule('/src/components/PriceBadgeChip.tsx'),
+    positionPricesUi: await server.ssrLoadModule('/src/components/PositionPrices.tsx'),
     collapsible: await server.ssrLoadModule('/src/components/Collapsible.tsx'),
     chartUi: await server.ssrLoadModule('/src/components/AnalyticsChart.tsx'),
     scenUi: await server.ssrLoadModule('/src/components/RicScenarioPanel.tsx'),
@@ -1341,7 +1342,7 @@ test('рейтинг: цвет кольца по баллу — зелёный, 
   assert.match(none, /aria-label="Рейтинг не посчитан: недостаточно данных для оценки/);
   assert.match(none, /stroke-dasharray="3 5"/);
   assert.match(text(none), /Недостаточно данных для оценки/);
-  assert.match(text(none), /данных 25 % из нужных 50 %/);
+  assert.match(text(none), /данных 25 % из нужных 35 %/);
   assert.match(none, />—</);
 });
 
@@ -1360,21 +1361,49 @@ test('рейтинг: критические препятствия — отде
   assert.match(out, /text-danger/);
 });
 
-test('расшифровка рейтинга: шесть факторов с весом, баллом и формулой в подсказке; факторы без данных — «нет данных» и список, чего не хватает', () => {
-  const out = renderToStaticMarkup(h(mods.ratingUi.RatingDetails, { rating: READY }));
+test('расшифровка рейтинга: факторы с данными — с весом, баллом, формулой в подсказке и источником данных; факторы без данных — отдельным блоком «Нет данных» с тем, что нужно, и источником', () => {
+  const sourced = {
+    ...READY,
+    factors: READY.factors.map((f) => ({ ...f, source: `источник ${f.id}` })),
+  };
+  const out = renderToStaticMarkup(h(mods.ratingUi.RatingDetails, { rating: sourced }));
   for (const title of ['Соответствие профилю компании', 'Рентабельность', 'Цена относительно рынка', 'Риски исполнения', 'Конкуренция', 'Надёжность заказчика']) {
     assert.ok(text(out).includes(title), title);
   }
   assert.match(text(out), /вес 25 %/);
   assert.match(text(out), /100 из 100/);
   assert.match(text(out), /64 из 100/);
-  assert.equal((text(out).match(/нет данных/g) ?? []).length, 3, 'три фактора без данных');
+  assert.equal((text(out).match(/ из 100/g) ?? []).length, 3, 'баллы только у трёх факторов с данными: выдуманных оценок нет');
   assert.match(out, /role="tooltip"[^>]*>[^<]*как считается profile/);
-  assert.match(text(out), /Не хватает данных/);
-  assert.match(text(out), /Конкуренция: Источник данных о конкуренции \(ЕИС\) в программе не подключён/);
+  assert.match(text(out), /Из чего складывается балл/);
+  assert.match(text(out), /Данные: источник profile/, 'у фактора с баллом сказано, на каких данных он стоит');
+  assert.match(text(out), /Нет данных(?!:)[\s\S]*Цена относительно рынка · вес 15 %/, 'блок «Нет данных»: что за фактор и сколько весит');
+  assert.equal((text(out).match(/Нужно: чего не хватает/g) ?? []).length, 3, 'у каждого фактора без данных сказано, что нужно');
+  assert.match(text(out), /Данные: источник competition/, 'и откуда они должны прийти');
+  assert.match(text(out), /Посчитано по: соответствие профилю компании, рентабельность, риски исполнения\./);
+  assert.match(text(out), /Нет данных: цена относительно рынка, конкуренция, надёжность заказчика\./);
   assert.match(text(out), /Это не вероятность победы и не прогноз/);
   assert.match(text(out), /Факторы без данных в балле не участвуют/);
   assert.equal(/Критические препятствия/.test(text(out)), false, 'препятствий нет — блока нет');
+  assert.equal(text(out).includes('Показывает, насколько закупка выгодна'), false, 'расплывчатой фразы нет');
+});
+
+test('рейтинг: меньше 70 % данных — балл с пометкой «предварительно» в карточке и в расшифровке; обычный балл без пометки', () => {
+  const prelim = { ...READY, preliminary: true, coverage: 40 };
+  assert.match(text(ratingCard(prelim)), /предварительно/);
+  assert.match(renderToStaticMarkup(h(mods.ratingUi.RatingDetails, { rating: prelim })), /предварительно/);
+  assert.match(ratingCard(prelim), /\(предварительно\)/, 'и в подписи для чтения с экрана');
+  assert.equal(text(ratingCard({ ...READY, preliminary: false })).includes('предварительно'), false);
+  assert.equal(text(renderToStaticMarkup(h(mods.ratingUi.RatingDetails, { rating: { ...READY, preliminary: false } }))).includes('предварительно'), false);
+});
+
+test('рейтинг без балла: расшифровка не пустая — сказано, что данных нет, и перечислены факторы с тем, что нужно', () => {
+  const none = { status: 'insufficient', preliminary: false, score: null, rawScore: null, capped: false, verdict: null, coverage: 20, blockers: [], factors: READY.factors.map((f) => ({ ...f, score: null, tone: 'muted', missing: ['чего не хватает'] })), missing: READY.missing };
+  const out = renderToStaticMarkup(h(mods.ratingUi.RatingDetails, { rating: none }));
+  assert.match(text(out), /Недостаточно данных для оценки/);
+  assert.match(text(out), /Ни по одному фактору данных пока нет\./);
+  assert.equal(text(out).includes('Из чего складывается балл'), false, 'раздела с баллами нет');
+  assert.equal((text(out).match(/Нужно: чего не хватает/g) ?? []).length, 6);
 });
 
 test('расшифровка рейтинга: препятствия отдельным блоком с пометкой, до какого балла он ограничен', () => {
@@ -1425,7 +1454,8 @@ test('расшифровка рейтинга: «цена против рынк�
   const merged = { ...READY, factors: READY.factors.map((f) => (f.id === 'price' ? { ...f, score: null, tone: 'muted', note: 'учтено в рентабельности: ваши затраты точнее рыночных', missing: [], mergedInto: 'profit', basis: 'Запас начальной цены над закупочной рыночной ценой; цены контрактов не берутся' } : f)), missing: [{ factor: 'Конкуренция', items: ['нет источника'] }] };
   const out = renderToStaticMarkup(h(mods.ratingUi.RatingDetails, { rating: merged }));
   assert.match(text(out), /Цена относительно рынка[\s\S]*учтено в рентабельности/);
-  assert.equal((text(out).match(/нет данных/g) ?? []).length, 2, 'без данных остались только конкуренция и надёжность');
+  assert.equal((text(out).match(/Нужно: /g) ?? []).length, 2, 'без данных остались только конкуренция и надёжность');
+  assert.match(text(out), /Нет данных: конкуренция, надёжность заказчика\./, 'учтённая в другом цена в «нет данных» не числится');
   assert.match(out, /role="tooltip"[^>]*>[^<]*цены контрактов не берутся/);
   const card = renderToStaticMarkup(h(mods.ratingUi.TenderRating, { rating: merged }));
   assert.match(text(card), /по 3 из 5 факторов/, 'учтённый в другом фактор в счёт «из N» не входит');
@@ -1441,4 +1471,49 @@ test('живой поиск закупочных цен: без кнопок —
   const screen = readFileSync(path.join(root, 'src/real/analytics.tsx'), 'utf8');
   assert.match(screen, /lines=\{\[\.\.\.findings, market\.finding\]\}/, 'строка «Закупочные цены» — в подписи внизу экрана');
   assert.equal(/Найти закупочные цены/.test(screen), false, 'кнопки нет: аналитика ищет сама');
+});
+
+// ——— Товары и закупочные цены ———
+const priceRow = (over = {}) => ({
+  id: 'p1', name: 'Уголь каменный ДПК', unit: 'т', qty: '1500', customerUnit: 6100, state: 'found', median: 5100, range: { from: 5000, to: 5200 }, n: 5, gapPct: 19.6, cost: 7650000,
+  sources: [{ host: 'shop3.ru', product: 'Уголь каменный ДПК', price: 5100, date: '2026-10-20', url: 'https://shop3.ru/price' }, { host: 'shop9.ru', product: 'Уголь ДПК 6-13', price: 5150, date: '2026-10-19', url: null }],
+  ...over,
+});
+const priceCard = (rows, over = {}, total = rows.length) => renderToStaticMarkup(h(mods.positionPricesUi.PositionPricesCard, { prices: { rows, priced: rows.length, cost: 7650000, costPositions: 1, asOf: '2026-10-20', ...over }, total }));
+
+test('товары и закупочные цены: у позиции — название, количество, закупочная цена крупно, диапазон и число цен, начальная цена заказчика с отличием, поставщики с датой и ссылкой', () => {
+  const out = priceCard([priceRow()], {}, 3);
+  const t = text(out);
+  assert.match(t, /Товары и закупочные цены/);
+  assert.match(t, /Уголь каменный ДПК · 1500 т/);
+  assert.match(t, /5 100 ₽\/т/);
+  assert.match(t, /диапазон 5 000 ₽ – 5 200 ₽ · цен 5/);
+  assert.match(t, /Начальная цена заказчика 6 100 ₽\/т · \+19,6 % к закупке/);
+  assert.match(out, /<a href="https:\/\/shop3\.ru\/price"[^>]*rel="noopener noreferrer"/, 'ссылка открывается безопасно');
+  assert.match(t, /shop3\.ru — 5 100 ₽\/т, 20\.10\.2026/);
+  assert.match(t, /shop9\.ru — 5 150 ₽\/т, 19\.10\.2026 · «Уголь ДПК 6-13»/, 'название у поставщика показано, если отличается');
+  assert.match(t, /Цены есть по 1 из 3 позиций · закупка по найденным ценам: 7 650 000 ₽ \(по 1 из 3\)/);
+  assert.match(t, /цены на 20\.10\.2026/);
+  assert.match(out, /Не проверено/, 'метка достоверности: цены из интернета не проверены у поставщика');
+});
+
+test('товары и закупочные цены: цен меньше пяти — показаны найденные без вывода; позиции без цен в блоке не показываются; цен нет вовсе — блока нет', () => {
+  const few = priceCard([priceRow({ state: 'few', median: null, n: 3, range: { from: 5000, to: 5100 }, gapPct: null, cost: null })], { cost: null, costPositions: 0 });
+  assert.match(text(few), /5 000 ₽ – 5 100 ₽\/т · найдено цен: 3, для вывода нужно не меньше пяти/);
+  assert.equal(text(few).includes('закупка по найденным ценам'), false, 'стоимости нет');
+  const mixed = priceCard([priceRow(), priceRow({ id: 'p2', name: 'Кокс', state: 'none', median: null, range: null, n: 0, sources: [], cost: null })]);
+  assert.equal(text(mixed).includes('Кокс'), false, 'по позиции цен нет — её в блоке нет');
+  for (const state of ['none', 'not-searched', 'searching', 'off', 'failed']) {
+    assert.equal(priceCard([priceRow({ state, median: null, range: null, n: 0, sources: [], cost: null })]), '', `состояние «${state}» — блока нет`);
+  }
+  assert.equal(priceCard([]), '');
+});
+
+test('товары и закупочные цены: блок стоит на экране закупки после плашки итога и подключён к хуку рынка; платный поиск при выключенном ИИ по-прежнему не идёт', () => {
+  const screen = readFileSync(path.join(root, 'src/real/analytics.tsx'), 'utf8');
+  assert.match(screen, /<PositionPricesCard prices=\{market\.prices\} total=\{market\.positionsTotal\} \/>/);
+  assert.ok(screen.indexOf('<PositionPricesCard') > screen.indexOf('<AnalyticsSummary'), 'после плашки итога');
+  assert.ok(screen.indexOf('<PositionPricesCard') < screen.indexOf('<AnalyticsFindings'), 'до подписи внизу');
+  const hook = readFileSync(path.join(root, 'src/real/market.ts'), 'utf8');
+  assert.match(hook, /positionPrices\(withPositions, saved/);
 });

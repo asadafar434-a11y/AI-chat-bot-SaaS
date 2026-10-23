@@ -3,8 +3,9 @@ import { MIN_COVERAGE, type Factor, type Rating, type RatingTone } from '@/lib/t
 import { AlertTriangle, ChevronRight } from '../lib/icons';
 import { HelpTip, Modal } from './ui';
 
-// Рейтинг привлекательности тендера: круговой индикатор 0–100, вердикт рядом, по нажатию — расшифровка по шести факторам (lib/tender-rating.ts).
-// Балл считает код по прозрачным правилам, а не ИИ. Это не вероятность победы. Критические препятствия и нехватка данных показаны отдельно от балла.
+// Рейтинг привлекательности тендера: круговой индикатор 0–100, вердикт рядом, по нажатию — расшифровка (lib/tender-rating.ts).
+// Балл считает код по прозрачным правилам, а не ИИ. Это не вероятность победы. В расшифровке сказано, по каким именно данным посчитан балл и чего нет; критические препятствия показаны отдельно.
+// Данных мало (меньше 70 % веса, но не меньше 35 %) — балл предварительный и помечен так; меньше 35 % — балла нет.
 
 const RING_TEXT: Record<RatingTone, string> = { good: 'text-success', warn: 'text-warn-foreground', danger: 'text-danger', muted: 'text-muted-foreground' };
 const BAR: Record<RatingTone, string> = { good: 'bg-success', warn: 'bg-warn', danger: 'bg-danger', muted: 'bg-muted-foreground/40' };
@@ -38,28 +39,38 @@ function FactorRow({ f }: { f: Factor }) {
           <span className="text-[11px] font-normal text-muted-foreground">вес {f.weight} %</span>
           <HelpTip align="start" content={f.basis} />
         </p>
-        <p className={`font-mono text-[13px] font-bold ${f.score === null ? 'text-muted-foreground' : RING_TEXT[f.tone]}`}>{f.score === null ? (f.mergedInto ? 'учтено в рентабельности' : 'нет данных') : `${f.score} из 100`}</p>
+        <p className={`font-mono text-[13px] font-bold ${RING_TEXT[f.tone]}`}>{f.score} из 100</p>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-secondary" aria-hidden>
-        {f.score !== null && <div className={`h-full rounded-full ${BAR[f.tone]}`} style={{ width: `${f.score}%` }} />}
+        <div className={`h-full rounded-full ${BAR[f.tone]}`} style={{ width: `${f.score}%` }} />
       </div>
-      <p className="break-words text-[12px] text-muted-foreground">{f.note}</p>
+      <p className="break-words text-[12px]">{f.note}</p>
+      {f.source && <p className="break-words text-[11px] text-muted-foreground">Данные: {f.source}</p>}
     </li>
   );
 }
 
-// Расшифровка: препятствия, факторы с баллами и формулами, чего не хватает. Вынесена отдельно, чтобы её проверяли тесты без окна.
+// Расшифровка: препятствия, факторы с баллами и данными, на которых они стоят, и отдельно — чего нет и что сделать. Вынесена отдельно, чтобы её проверяли тесты без окна.
 export function RatingDetails({ rating }: { rating: Rating }) {
   const ready = rating.status === 'ready';
   const tone: RatingTone = ready ? rating.verdict!.tone : 'muted';
   const label = ready ? rating.verdict!.label : 'Недостаточно данных для оценки';
+  const withData = rating.factors.filter((f) => f.score !== null);
+  const absent = rating.factors.filter((f) => f.score === null && !f.mergedInto);
+  const merged = rating.factors.filter((f) => f.score === null && f.mergedInto);
   return (
     <div className="space-y-5 p-5">
       <div className="flex items-center gap-4">
         <RatingRing score={rating.score} tone={tone} size={88} />
         <div className="min-w-0">
-          <p className={`text-xl font-bold tracking-tight ${ready ? RING_TEXT[tone] : 'text-foreground'}`}>{label}</p>
-          <p className="mt-1 text-[12px] text-muted-foreground">Показывает, насколько закупка выгодна и безопасна для вас при ваших данных. Это не вероятность победы и не прогноз.</p>
+          <p className={`flex flex-wrap items-center gap-x-2 text-xl font-bold tracking-tight ${ready ? RING_TEXT[tone] : 'text-foreground'}`}>
+            {label}
+            {ready && rating.preliminary && <span className="rounded-full border border-warn/40 bg-warn-surface px-2 py-0.5 text-[11px] font-medium tracking-normal text-warn-foreground">предварительно</span>}
+          </p>
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            {withData.length > 0 ? `Посчитано по: ${withData.map((f) => f.title.toLowerCase()).join(', ')}.` : 'Ни по одному фактору данных пока нет.'}
+            {absent.length > 0 ? ` Нет данных: ${absent.map((f) => f.title.toLowerCase()).join(', ')}.` : ''} Это не вероятность победы и не прогноз.
+          </p>
         </div>
       </div>
 
@@ -78,23 +89,38 @@ export function RatingDetails({ rating }: { rating: Rating }) {
         </section>
       )}
 
-      <section>
-        <p className="mb-2 text-[13px] font-bold">Из чего складывается балл</p>
-        <ul className="divide-y divide-border">
-          {rating.factors.map((f) => (
-            <FactorRow key={f.id} f={f} />
-          ))}
-        </ul>
-        <p className="mt-3 text-[12px] text-muted-foreground">Факторы без данных в балле не участвуют: оценки по ним не выдумываются, остальные веса пересчитываются.</p>
-      </section>
+      {withData.length > 0 && (
+        <section>
+          <p className="mb-2 text-[13px] font-bold">Из чего складывается балл</p>
+          <ul className="divide-y divide-border">
+            {withData.map((f) => (
+              <FactorRow key={f.id} f={f} />
+            ))}
+            {merged.map((f) => (
+              <li key={f.id} className="space-y-0.5 py-3 last:pb-0">
+                <p className="flex items-center gap-1.5 text-[13px] font-semibold">
+                  {f.title}
+                  <HelpTip align="start" content={f.basis} />
+                </p>
+                <p className="break-words text-[12px] text-muted-foreground">{f.note}</p>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-[12px] text-muted-foreground">Факторы без данных в балле не участвуют: оценки по ним не выдумываются. Появятся данные — балл станет точнее.</p>
+        </section>
+      )}
 
-      {rating.missing.length > 0 && (
+      {absent.length > 0 && (
         <section className="space-y-2 rounded-lg border border-border bg-secondary/40 p-3">
-          <p className="text-[13px] font-bold">Не хватает данных</p>
-          <ul className="space-y-1.5">
-            {rating.missing.map((m) => (
-              <li key={m.factor} className="text-[12px]">
-                <span className="font-semibold">{m.factor}:</span> <span className="text-muted-foreground">{m.items.join('; ')}</span>
+          <p className="text-[13px] font-bold">Нет данных</p>
+          <ul className="space-y-2">
+            {absent.map((f) => (
+              <li key={f.id} className="text-[12px]">
+                <p className="font-semibold">
+                  {f.title} <span className="font-normal text-muted-foreground">· вес {f.weight} %</span>
+                </p>
+                {f.missing[0] && <p className="text-muted-foreground">Нужно: {f.missing[0]}</p>}
+                {f.source && <p className="text-[11px] text-muted-foreground">Данные: {f.source}</p>}
               </li>
             ))}
           </ul>
@@ -109,7 +135,9 @@ export function TenderRating({ rating }: { rating: Rating }) {
   const ready = rating.status === 'ready';
   const tone: RatingTone = ready ? rating.verdict!.tone : 'muted';
   const label = ready ? rating.verdict!.label : 'Недостаточно данных для оценки';
-  const aria = ready ? `Рейтинг привлекательности ${rating.score} из 100: ${label}. Открыть расшифровку` : `Рейтинг не посчитан: ${label.toLowerCase()}. Открыть, чего не хватает`;
+  const aria = ready
+    ? `Рейтинг привлекательности ${rating.score} из 100${rating.preliminary ? ' (предварительно)' : ''}: ${label}. Открыть расшифровку`
+    : `Рейтинг не посчитан: ${label.toLowerCase()}. Открыть, чего не хватает`;
   const withData = rating.factors.filter((f) => f.score !== null);
   return (
     <>
@@ -123,10 +151,13 @@ export function TenderRating({ rating }: { rating: Rating }) {
           <RatingRing score={rating.score} tone={tone} />
           <span className="min-w-0 flex-1">
             <span className="block text-[11px] font-medium text-muted-foreground">Привлекательность тендера · не вероятность победы</span>
-            <span className={`mt-0.5 block text-xl font-bold tracking-tight ${ready ? RING_TEXT[tone] : 'text-foreground'}`}>{label}</span>
+            <span className={`mt-0.5 flex flex-wrap items-center gap-x-2 text-xl font-bold tracking-tight ${ready ? RING_TEXT[tone] : 'text-foreground'}`}>
+              {label}
+              {ready && rating.preliminary && <span className="rounded-full border border-warn/40 bg-warn-surface px-2 py-0.5 text-[11px] font-medium tracking-normal text-warn-foreground">предварительно</span>}
+            </span>
             <span className="mt-0.5 block text-[12px] text-muted-foreground">
               {ready
-                ? `по ${withData.length} из ${rating.factors.filter((f) => !f.mergedInto).length} факторов${rating.capped ? ` · ограничено препятствием (без него ${rating.rawScore})` : ''}`
+                ? `по ${withData.length} из ${rating.factors.filter((f) => !f.mergedInto).length} факторов: ${withData.map((f) => f.title.toLowerCase()).join(', ')}${rating.capped ? ` · ограничено препятствием (без него ${rating.rawScore})` : ''}`
                 : `данных ${rating.coverage} % из нужных ${MIN_COVERAGE} %`}
             </span>
           </span>

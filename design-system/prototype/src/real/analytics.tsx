@@ -33,6 +33,7 @@ import { AnalyticsChart } from '../components/AnalyticsChart';
 import { AnalyticsFindings } from '../components/AnalyticsFindings';
 import { AnalyticsSummary, type ReportBusy } from '../components/AnalyticsSummary';
 import { Collapsible } from '../components/Collapsible';
+import { PositionPricesCard } from '../components/PositionPrices';
 import { PriceBadgeChip } from '../components/PriceBadgeChip';
 import { TenderRating } from '../components/TenderRating';
 import { ArrowLeft, BarChart2 } from '../lib/icons';
@@ -365,6 +366,8 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
           {saveError}
         </p>
       )}
+
+      {market.prices && <PositionPricesCard prices={market.prices} total={market.positionsTotal} />}
 
       {chartSection && (
         <Collapsible title={chartSection.title} brief={chartSection.brief} tone={chartSection.tone} open={chartOpen} onToggle={() => setChartOpen((v) => !v)}>

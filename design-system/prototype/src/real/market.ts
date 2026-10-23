@@ -4,6 +4,7 @@ import { getPrices, savePrices } from '@/lib/analytics-store';
 import { errorMessage, errorText } from '@/lib/http-error';
 import { parseAmount, positionsFromDocuments, type RicData } from '@/lib/indicative-price';
 import { liveToLite, marketLines, marketRequestOf, withMarketAnalogs, type MarketResultLite } from '@/lib/market-merge';
+import { positionPrices } from '@/lib/position-prices';
 import { isFresh, normalizePrices, pickPositions, priceSearchFinding, shouldSearch, signatureOf, type PriceState, type SavedPrices } from '@/lib/price-cache';
 import { aiHeaders } from '@/lib/purchase';
 import { serverReadsEnabled } from '@/lib/server-reads';
@@ -110,5 +111,7 @@ export function useMarketBase(data: RicData | null, docs: Doc[], region: string 
   const state: PriceState = picks.length === 0 ? 'no-positions' : isFresh(saved, new Date()) ? 'done' : !aiOn ? 'off' : searching || saved === undefined ? 'searching' : saved?.error ? 'failed' : 'searching';
   const liveLines = useMemo(() => (withPositions ? marketLines(withPositions, live) : []), [withPositions, live]);
   const finding: FindingLine = priceSearchFinding({ state, saved, note: saved?.error, highlights: liveLines });
-  return { data: effective, lines, finding };
+  // Товары закупки с найденными закупочными ценами — для блока «Товары и закупочные цены»; нет цен — блок не рисуется.
+  const prices = useMemo(() => (withPositions ? positionPrices(withPositions, saved, picks.map((p) => p.id), state, today) : null), [withPositions, saved, picks, state, today]);
+  return { data: effective, lines, finding, prices, positionsTotal: withPositions?.positions.length ?? 0 };
 }

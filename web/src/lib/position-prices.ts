@@ -1,0 +1,101 @@
+// Товары закупки и их закупочные цены из интернета (lib/price-cache.ts) — по позициям, с источником и датой. Без ИИ: показывается только то, что нашли и проверили (price-extract.ts),
+// нет цены — так и сказано, ничего не выдумывается. Рынок — только закупочная цена (за сколько можно купить), цены контрактов сюда не попадают (lib/price-basis.ts).
+
+import { parseAmount, type RicData } from "@/lib/indicative-price";
+import { comparable, marketStats, type Observation } from "@/lib/market-observations";
+import type { PriceState, SavedPrices } from "@/lib/price-cache";
+
+export type PriceSource = { host: string; product: string; price: number; date: string; url: string | null };
+
+/** found — цен хватает для вывода (не меньше пяти); few — найдены, но мало; none — искали, подходящих нет; searching / off / failed — поиск идёт, выключен, не удался; not-searched — по этой позиции не искали. */
+export type PositionPriceState = "found" | "few" | "none" | "searching" | "off" | "failed" | "not-searched";
+
+export type PositionPriceRow = {
+  id: string;
+  name: string;
+  unit: string;
+  qty: string;
+  customerUnit: number | null;
+  state: PositionPriceState;
+  /** Закупочная цена за единицу без НДС: медиана сопоставимых цен; null — для вывода цен мало. */
+  median: number | null;
+  range: { from: number; to: number } | null;
+  /** Сколько сопоставимых цен найдено. */
+  n: number;
+  /** Начальная цена заказчика к закупочной медиане в основе НДС заказчика, %. Плюс — заказчик заложил больше, чем стоит закупка. */
+  gapPct: number | null;
+  /** До трёх цен, ближайших к медиане, с поставщиком, датой и ссылкой. */
+  sources: PriceSource[];
+  /** Закупочная стоимость позиции: медиана × количество; null — нет медианы или количества. */
+  cost: number | null;
+};
+
+export type PositionPrices = {
+  rows: PositionPriceRow[];
+  /** Позиций, по которым есть закупочная цена для вывода. */
+  priced: number;
+  /** Закупочная стоимость тех позиций, у которых есть цена и количество; null — таких нет. */
+  cost: number | null;
+  costPositions: number;
+  /** Самая свежая дата среди показанных цен. */
+  asOf: string | null;
+};
+
+const hostOf = (source: string): string => {
+  const head = source.split(": ")[0]?.trim() ?? "";
+  return /^[\w.-]{3,80}$/.test(head) ? head : "поставщик";
+};
+
+const urlOf = (source: string): string | null => {
+  const m = /;\s*(https?:\/\/\S+)\s*$/.exec(source);
+  if (!m) return null;
+  try {
+    const u = new URL(m[1]);
+    return u.protocol === "http:" || u.protocol === "https:" ? u.toString() : null;
+  } catch {
+    return null;
+  }
+};
+
+const sourceOf = (o: Observation): PriceSource => ({ host: hostOf(o.source), product: o.name, price: o.priceNoVat, date: o.observedAt, url: urlOf(o.source) });
+
+export function positionPrices(data: RicData, saved: SavedPrices | null | undefined, searchedIds: string[], state: PriceState, today: string): PositionPrices {
+  const searched = new Set(searchedIds);
+  const results = new Map((saved?.results ?? []).map((r) => [r.key, r.observations]));
+  const rows = data.positions.map((p): PositionPriceRow => {
+    const quantity = parseAmount(p.qty);
+    const customerUnit = p.customerUnit !== undefined && p.customerUnit > 0 ? p.customerUnit : null;
+    const empty = { id: p.id, name: p.name, unit: p.unit, qty: p.qty, customerUnit, median: null, range: null, n: 0, gapPct: null, sources: [] as PriceSource[], cost: null };
+    if (!searched.has(p.id)) return { ...empty, state: "not-searched" };
+    if (state !== "done") return { ...empty, state: state === "off" ? "off" : state === "failed" ? "failed" : "searching" };
+    const target = { name: p.name, unit: p.unit, quantity: quantity !== null && quantity > 0 ? quantity : null };
+    const usable = (results.get(p.id) ?? []).filter((o) => comparable(target, o).ok);
+    if (usable.length === 0) return { ...empty, state: "none" };
+    const stats = marketStats(target, usable, today);
+    const median = stats.status !== "insufficient" ? stats.median : null;
+    const prices = usable.map((o) => o.priceNoVat);
+    const range = stats.range ?? { from: Math.min(...prices), to: Math.max(...prices) };
+    const around = median ?? prices.reduce((s, x) => s + x, 0) / prices.length;
+    const sources = [...usable].sort((a, b) => Math.abs(a.priceNoVat - around) - Math.abs(b.priceNoVat - around)).slice(0, 3).map(sourceOf);
+    const inBasis = median === null ? null : data.settings.nmckVat === "with" ? median * (1 + data.settings.vatRate / 100) : median;
+    return {
+      ...empty,
+      state: median === null ? "few" : "found",
+      median,
+      range,
+      n: usable.length,
+      gapPct: inBasis !== null && customerUnit !== null ? ((customerUnit - inBasis) / inBasis) * 100 : null,
+      sources,
+      cost: median !== null && quantity !== null && quantity > 0 ? Math.round(median * quantity * 100) / 100 : null,
+    };
+  });
+  const costRows = rows.filter((r) => r.cost !== null);
+  const dates = rows.flatMap((r) => r.sources.map((s) => s.date)).sort();
+  return {
+    rows,
+    priced: rows.filter((r) => r.state === "found").length,
+    cost: costRows.length > 0 ? Math.round(costRows.reduce((s, r) => s + r.cost!, 0) * 100) / 100 : null,
+    costPositions: costRows.length,
+    asOf: dates.length > 0 ? dates[dates.length - 1] : null,
+  };
+}

@@ -7,7 +7,7 @@ import type { PriceBadge } from "./price-badge.ts";
 import { contractRisks } from "./contract-risks.ts";
 import type { PriceCalc } from "./price-floor.ts";
 import { DEFAULT_ASSUMPTIONS, estimateRisks } from "./risk-estimate.ts";
-import { FACTOR_WEIGHTS, MIN_COVERAGE, rateTender, VERDICTS, verdictOf, type RatingInput } from "./tender-rating.ts";
+import { FACTOR_WEIGHTS, FULL_COVERAGE, MIN_COVERAGE, rateTender, VERDICTS, verdictOf, type RatingInput } from "./tender-rating.ts";
 
 const CALC: PriceCalc = { nmck: 1_000_000, costs: 700_000, extra: 10_000, taxPct: 6, securityPct: 5, smeOnly: false, exempt: false, method: "guarantee", guaranteeRatePct: null, moneyRatePct: null, days: null, antiDumping: false, goodFaith: false, price: null };
 const CALM = ["3.6. Оплата производится Заказчиком в течение 10 дней с даты акта."];
@@ -84,7 +84,7 @@ test("есть всё, что программа считает сама: бал
   assert.equal(r.capped, false);
 });
 
-test("меньше половины веса с данными — балла нет (только профиль); ровно половина — балл есть", () => {
+test("меньше 35 % веса с данными — балла нет (только профиль или только рентабельность); от 35 % балл есть", () => {
   const onlyProfile = rateTender(input({ econ: { ready: false, reason: "costs" }, hasContract: false, matrix: matrix(QUAL_OK) }));
   assert.equal(onlyProfile.coverage, 25);
   assert.equal(onlyProfile.status, "insufficient");
@@ -95,6 +95,32 @@ test("меньше половины веса с данными — балла н
   const thin = rateTender(input({ hasContract: false }, { costs: 500_000 }));
   assert.equal(thin.coverage, 29, "только рентабельность: 25 из 85");
   assert.equal(thin.status, "insufficient");
+});
+
+test("профиль и риски по договору (40 % веса) — балл уже есть, но предварительный; 70 % и больше — обычный балл без пометки", () => {
+  assert.equal(MIN_COVERAGE, 35);
+  assert.equal(FULL_COVERAGE, 70);
+  const early = rateTender(input({ econ: { ready: false, reason: "costs" }, matrix: matrix(QUAL_OK) }));
+  assert.equal(early.coverage, 40, "профиль 25 + риски 15 из 100: затрат нет, вес «цены против рынка» остаётся в базе");
+  assert.equal(early.status, "ready");
+  assert.equal(early.preliminary, true);
+  assert.notEqual(early.score, null);
+  const full = rateTender(input({ matrix: matrix(QUAL_OK), badge: badge("within") }, { costs: 500_000 }));
+  assert.equal(full.coverage, 76);
+  assert.equal(full.preliminary, false);
+  const none = rateTender(input({ econ: { ready: false, reason: "costs" }, hasContract: false }));
+  assert.equal(none.status, "insufficient");
+  assert.equal(none.preliminary, false, "балла нет — пометка не нужна");
+});
+
+test("у каждого фактора назван источник данных: откуда берётся и что подключено, а что нет", () => {
+  const r = rateTender(input({ matrix: matrix(QUAL_OK) }, { costs: 500_000 }));
+  for (const f of r.factors) assert.ok(f.source.length > 15, f.id);
+  assert.match(by(r, "profit").source, /затраты на шаге «Цена»/);
+  assert.match(by(r, "price").source, /закупочные цены поставщиков/);
+  assert.match(by(r, "risks").source, /проект договора/);
+  assert.match(by(r, "competition").source, /источник не подключён/);
+  assert.match(by(r, "reliability").source, /источники не подключены/);
 });
 
 test("рентабельность: цель по марже достигнута — 100, вдвое меньше — 50; убыток при росте затрат (без рисков по договору) — не выше 60; затрат нет — нет данных", () => {
