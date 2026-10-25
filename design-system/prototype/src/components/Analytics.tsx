@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { BarChart2, ChevronRight, UploadCloud } from '../lib/icons';
 import { Button, Card, HelpTip, Soon } from './ui';
 
@@ -12,6 +13,8 @@ type Props = {
   onOpen: (id: string) => void;
   /** «Загрузить закупку»: файлы, название и цена — без ИИ (components/AnalyticsIntake.tsx). */
   onUpload: () => void;
+  /** Блок между шапкой и списком закупок: «Проверка контрагента по ИНН» (real/counterparty.tsx). */
+  extra?: ReactNode;
 };
 
 const READY = [
@@ -24,15 +27,17 @@ const READY = [
   { title: 'Итоговая диаграмма', hint: 'из чего складывается цена' },
   { title: 'Сценарии РИЦ по сферам', hint: 'девять сфер: метод и поправки' },
   { title: 'Матрица из 27 проверок', hint: '15 считает программа' },
+  { title: 'Проверка контрагента по ИНН', hint: 'ЕГРЮЛ, Федресурс, отчётность' },
 ];
 
 const COMING = [
   { title: 'Ещё риски из договора (с ИИ)', hint: 'приёмка, субподряд, расторжение' },
   { title: 'Проверка гипотез поиском', hint: 'топливо, материалы, зарплаты' },
   { title: 'Проверки по заказчику', hint: 'конкуренция, суды, ФАС' },
+  { title: 'Суды, приставы и РНП по ИНН сами', hint: 'сейчас — ссылки на ручную проверку' },
 ];
 
-export function AnalyticsHome({ purchases, onOpen, onUpload }: Props) {
+export function AnalyticsHome({ purchases, onOpen, onUpload, extra }: Props) {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -51,6 +56,8 @@ export function AnalyticsHome({ purchases, onOpen, onUpload }: Props) {
           Загрузить закупку
         </Button>
       </div>
+
+      {extra}
 
       <Card className="p-0">
         <div className="border-b border-border px-4 py-3 text-sm font-medium">Закупки</div>

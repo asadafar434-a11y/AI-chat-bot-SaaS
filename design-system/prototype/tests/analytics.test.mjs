@@ -1587,6 +1587,73 @@ test('повтор поиска по позициям, где он ничего 
   assert.match(hook, /setTimeout\(\(\) => setTick/, 'срок ждётся таймером, а не опросом');
 });
 
+test('проверка контрагента по ИНН: форма, ошибка словами, отчёт с фактами и отчётностью по годам, красный статус банкротства, ссылки на ручную проверку; блок стоит на главной «Аналитики»', async () => {
+  const mod = await server.ssrLoadModule('/src/components/Counterparty.tsx');
+  const props = { inn: '', onInn() {}, onCheck() {}, busy: false, error: null, report: null };
+  const empty = renderToStaticMarkup(h(mod.CounterpartyCard, props));
+  assert.match(text(empty), /Проверка контрагента по ИНН/);
+  assert.match(text(empty), /Бесплатно: без ИИ/);
+  assert.match(empty, /placeholder="ИНН: 10 цифр у организации, 12 у ИП"/);
+  assert.match(empty, /<button[^>]*type="submit"[^>]*>Проверить<\/button>/);
+  assert.match(empty, /class="sr-only">ИНН организации или ИП</, 'у поля есть подпись для чтения с экрана');
+  assert.doesNotMatch(empty, /role="alert"/);
+
+  const bad = renderToStaticMarkup(h(mod.CounterpartyCard, { ...props, inn: '123', error: 'ИНН — 10 цифр у организации или 12 у ИП, а у вас 3.' }));
+  assert.match(bad, /role="alert"[^>]*>ИНН — 10 цифр/);
+  assert.match(bad, /aria-invalid="true"/);
+  assert.match(text(renderToStaticMarkup(h(mod.CounterpartyCard, { ...props, busy: true }))), /Проверяю…[\s\S]*Спрашиваю ЕГРЮЛ, Федресурс и ГИР БО/);
+
+  const links = [
+    { id: 'rnp', title: 'Реестр недобросовестных поставщиков', hint: 'ЕИС, поиск по ИНН', url: 'https://zakupki.gov.ru/epz/dishonestsupplier/search/results.html?searchString=1434031363' },
+    { id: 'kad', title: 'Арбитражные дела', hint: 'КАД: вставьте ИНН 1434031363 в поиск', url: 'https://kad.arbitr.ru/' },
+  ];
+  const ok = { ok: true };
+  const report = {
+    inn: '1434031363', kind: 'legal', at: '2026-10-25T09:00:00.000Z', name: 'АО "ДГК"', identity: { ogrn: '1051401746769', kpp: '272101001', region: 'Хабаровский край' },
+    address: '680000, ХАБАРОВСКИЙ КРАЙ, Г. ХАБАРОВСК', status: { text: 'Действующее', tone: 'good' },
+    facts: [
+      { id: 'age', label: 'Возраст', text: 'зарегистрирована 19.12.2005, 20 лет', tone: 'muted' },
+      { id: 'loss', label: 'Результат', text: 'убыток за 2025 год: −13,1 млрд ₽', tone: 'warn' },
+      { id: 'equity', label: 'Капитал', text: 'собственный капитал отрицательный на конец 2025 года: −51,3 млрд ₽ — обязательства больше активов', tone: 'danger' },
+    ],
+    statements: [{ year: 2025, revenue: 140930138, netProfit: -13075211, assets: 161324221, equity: -51330552 }, { year: 2024, revenue: 120394401, netProfit: -42658831, assets: 139198678, equity: -38255341 }],
+    links, sources: { egrul: ok, fedresurs: ok, bo: ok },
+  };
+  const full = renderToStaticMarkup(h(mod.CounterpartyCard, { ...props, inn: '1434031363', report }));
+  const t = text(full);
+  assert.match(t, /АО (?:"|&quot;)ДГК(?:"|&quot;)/);
+  assert.match(full, /bg-success\/10[^>]*>Действующее</, 'статус «Действующее» — зелёным');
+  assert.match(t, /ИНН 1434031363 · ОГРН 1051401746769 · КПП 272101001/);
+  assert.match(t, /Возраст: зарегистрирована 19\.12\.2005, 20 лет/);
+  assert.match(t, /Капитал: собственный капитал отрицательный на конец 2025 года/);
+  assert.match(t, /Бухгалтерская отчётность \(ГИР БО ФНС\)/);
+  assert.match(t, /2025[\s\S]*140,9 млрд ₽[\s\S]*−13,1 млрд ₽[\s\S]*161,3 млрд ₽[\s\S]*−51,3 млрд ₽/, 'отчётность по годам в одной строке');
+  assert.match(full, /class="font-mono text-danger">−13,1/, 'отрицательные суммы красным');
+  assert.match(full, /<a href="https:\/\/zakupki\.gov\.ru\/epz\/dishonestsupplier\/search\/results\.html\?searchString=1434031363"[^>]*rel="noopener noreferrer"/, 'РНП открывается с подставленным ИНН и безопасно');
+  assert.match(t, /Проверить вручную — без капчи эти реестры не отдают/);
+  assert.match(t, /Данные ЕГРЮЛ, Федресурс, ГИР БО ФНС на 25\.10\.2026 \d{2}:\d{2}\. Это сведения реестров, а не заключение о надёжности\./);
+  assert.match(full, /Подтверждено/);
+  assert.doesNotMatch(full, /Не всё получилось/);
+
+  const bankrupt = renderToStaticMarkup(h(mod.CounterpartyCard, { ...props, report: { ...report, name: 'ООО "ВОЗРОЖДЕНИЕ ПЕТЕРБУРГА"', status: { text: 'Юридическое лицо признано несостоятельным (банкротом) и в отношении него открыто конкурсное производство', tone: 'danger' }, facts: [], statements: [] } }));
+  assert.match(bankrupt, /bg-danger\/10[^>]*>Юридическое лицо признано несостоятельным/, 'банкротство — красным, словами реестра');
+  assert.doesNotMatch(bankrupt, /Бухгалтерская отчётность/, 'нет отчётности — таблицы нет');
+
+  const partial = text(renderToStaticMarkup(h(mod.CounterpartyCard, { ...props, report: { ...report, sources: { egrul: ok, fedresurs: { ok: false, reason: 'Федресурс отказал в доступе (просит подождать)' }, bo: ok } } })));
+  assert.match(partial, /Не всё получилось: Федресурс отказал в доступе \(просит подождать\)\. Повторите проверку позже\./);
+  const nothing = text(renderToStaticMarkup(h(mod.CounterpartyCard, { ...props, report: { ...report, identity: null, status: null, facts: [], statements: [] } })));
+  assert.match(nothing, /Организации с ИНН 1434031363 в реестрах не нашлось/);
+  assert.doesNotMatch(nothing, /Не всё получилось/, 'реестры ответили — это «нет такой организации», а не сбой');
+
+  const screen = readFileSync(path.join(root, 'src/real/analytics.tsx'), 'utf8');
+  assert.match(screen, /extra=\{<CounterpartyBlock \/>\}/);
+  const home = readFileSync(path.join(root, 'src/components/Analytics.tsx'), 'utf8');
+  assert.ok(home.indexOf('{extra}') < home.indexOf('>Закупки<'), 'проверка контрагента — над списком закупок');
+  const client = readFileSync(path.join(root, 'src/real/counterparty.tsx'), 'utf8');
+  assert.match(client, /fetch\('\/api\/counterparty'/);
+  assert.match(client, /innProblem\(digits\)/, 'кривой ИНН не уходит на сервер');
+});
+
 test('предложения поставщиков у заказчика: три ТКП из «Обоснования НМЦ» — диапазон, разброс, по какому взята начальная цена, шаг аукциона; в экран закупки блок и строка подписи подключены', async () => {
   const mod = await server.ssrLoadModule('/src/components/CustomerQuotes.tsx');
   const quotes = {

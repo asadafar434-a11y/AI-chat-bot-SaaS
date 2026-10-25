@@ -46,6 +46,7 @@ import { ArrowLeft, BarChart2 } from '../lib/icons';
 import { useProfile } from './analysis';
 import { useMarketBase } from './market';
 import { AnalyticsIntake } from './analytics-intake';
+import { CounterpartyBlock } from './counterparty';
 import { useFacts } from './hooks';
 import { usePurchase } from './purchase-provider';
 
@@ -105,7 +106,7 @@ export function AnalyticsList({ onOpen }: { onOpen: (id: string) => void }) {
   );
   return (
     <>
-      <AnalyticsHome purchases={items} onOpen={onOpen} onUpload={() => setUploading(true)} />
+      <AnalyticsHome purchases={items} onOpen={onOpen} onUpload={() => setUploading(true)} extra={<CounterpartyBlock />} />
       <AnalyticsIntake
         open={uploading}
         onClose={() => setUploading(false)}
