@@ -235,8 +235,8 @@ evidence-подтверждения, scope-guard (44-ФЗ + device/medicine), с
 - Проведён инженерный ревью: `docs/core/medical-rules-review.md`; статусы R1–R17 отмечены.
 - Созданы документы `docs/core/STATE.md`, `docs/tasks/core-v1.md`.
 - Скопированы исходники доски: `docs/core/figma-board.txt`, `docs/core/figma-board-nodes.json`.
-- Phase 1 и PostgreSQL-проверка закоммичены (`cfce9f9`, `d1f908f`); rate limit и
-  идемпотентность пока не закоммичены.
+- Phase 1, PostgreSQL-проверка, rate limit и идемпотентность закоммичены
+  (`cfce9f9`, `d1f908f`, `e4cc75f`) и запушены.
 
 ## 7. Следующий шаг
 
