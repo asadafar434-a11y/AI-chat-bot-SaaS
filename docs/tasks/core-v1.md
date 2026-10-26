@@ -523,16 +523,17 @@ Live-адаптер к реестру лекарственных средств 
 - сервис `createCoreRun`/`listCoreRuns` с проверкой членства и скоупа;
 - API `POST /api/core/medical/run` (флаг `SERVER_WRITES=1`);
 - API `GET /api/core/medical/runs` (флаг `SERVER_READS=1`);
-- zod-валидация `FlowInput`, лимит входа 512 КБ, запрет `organizationId` в теле.
+- zod-валидация `FlowInput`, лимит входа 512 КБ, запрет `organizationId` в теле;
+- интеграционные тесты CoreRun на живой PostgreSQL.
 
 Проверка:
-- `npx prisma validate` и `npx prisma generate`: без ошибок;
-- targeted core-run: `6/6 pass`;
-- полный `npm test`: `1113` тестов, `1069 pass`, `0 fail`, `43 skipped`, `1 todo`;
+- `npx prisma validate`, `npx prisma generate` и `prisma migrate deploy` на
+  `tender_lawyer_test`: без ошибок;
+- targeted core-run: `6/6` unit + `2/2` integration;
+- полный `npm test` без БД: `1115` тестов, `1071 pass`, `0 fail`, `43 skipped`;
+- полный `npm test` с `TEST_DATABASE_URL`: `1115` тестов, `1114 pass`,
+  `0 fail`, `0 skipped`;
 - `npx tsc --noEmit` и `npx eslint src`: без ошибок.
-
-Не применено: миграция ещё не выполнялась в среде; rate limits/idempotency для
-внешних API-клиентов не добавлены.
 
 ## 9. Команды проверки
 
