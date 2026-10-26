@@ -45,6 +45,7 @@ export type CoreRunRow = {
   moduleVersion: string;
   outcome: string;
   riskScore: number | null;
+  idempotencyKey: string | null;
   input: unknown;
   result: unknown;
   createdAt: Date;

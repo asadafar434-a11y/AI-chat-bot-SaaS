@@ -397,6 +397,7 @@ model CoreRun {
   moduleVersion   String   @db.VarChar(20)
   outcome         String   @db.VarChar(40)
   riskScore       Int?
+  idempotencyKey  String?  @db.VarChar(200)
   input           Json
   result          Json
   createdAt       DateTime @default(now()) @db.Timestamptz(3)
@@ -405,6 +406,7 @@ model CoreRun {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   createdBy    User?        @relation("CoreRunCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
+  @@unique([organizationId, idempotencyKey])
   @@index([organizationId, createdAt])
   @@index([organizationId, moduleKey])
   @@index([createdByUserId])

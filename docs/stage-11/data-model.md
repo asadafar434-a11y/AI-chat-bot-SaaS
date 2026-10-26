@@ -327,6 +327,7 @@ unique и проверяется сервисом** (см. [auth-tenancy.md](aut
 | `moduleKey` / `moduleVersion` | `String` | модуль и его версия |
 | `outcome` | `String` | итог flow |
 | `riskScore` | `Int?` | итоговый риск, если рассчитан |
+| `idempotencyKey` | `String?` | ключ повтора, уникальный внутри организации |
 | `input` / `result` | `Json` | снимок входа и результата |
 | `createdAt` / `updatedAt` | `DateTime` | |
 

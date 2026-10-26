@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ACCESS_COOKIE, accessPassword, accessToken, closedWithoutPassword, sameToken } from "@/lib/access";
 import { isLegalPath } from "@/lib/legal";
-import { AI_PER_IP, AI_TOTAL, clientIp, createLimiter, FILES_PER_IP, waitText } from "@/lib/rate-limit";
+import { AI_PER_IP, AI_TOTAL, clientIp, CORE_RUN_PER_IP, createLimiter, FILES_PER_IP, waitText } from "@/lib/rate-limit";
 import { SECURE_SESSION_COOKIE_NAME, SESSION_COOKIE_NAME } from "@/server/auth/session";
 
 // Cookie серверной сессии Auth.js. Наличие проверяется «оптимистично»: реальная проверка
@@ -18,6 +18,7 @@ const text = (message: string, status: number, retryAfter?: number) =>
 const aiPerIp = createLimiter(AI_PER_IP);
 const aiTotal = createLimiter(AI_TOTAL);
 const filesPerIp = createLimiter(FILES_PER_IP);
+const coreRunsPerIp = createLimiter(CORE_RUN_PER_IP);
 
 // Liveness/readiness probes должны отвечать без входа: их опрашивает балансировщик,
 // а не человек. Данные они не отдают — только состояние процесса/БД.
@@ -30,6 +31,10 @@ function tooMany(request: NextRequest): NextResponse | null {
     return null;
   }
   const ip = clientIp(request.headers.get("x-forwarded-for"));
+  if (pathname === "/api/core/medical/run") {
+    const wait = coreRunsPerIp(ip);
+    return wait ? text(`Слишком много запусков core-модуля — продолжите ${waitText(wait)}.`, 429, wait) : null;
+  }
   if (pathname === "/api/documents") {
     const wait = filesPerIp(ip);
     return wait ? text(`Слишком много файлов подряд — продолжите ${waitText(wait)}.`, 429, wait) : null;

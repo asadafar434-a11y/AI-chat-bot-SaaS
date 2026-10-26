@@ -11,6 +11,7 @@ import type { OrgScope } from "../db/org-scope.ts";
 import { orgRepositories, requireOrganizationAccess } from "../db/repositories/index.ts";
 
 const MAX_INPUT_BYTES = 512 * 1024;
+const IDEMPOTENCY_KEY = /^[A-Za-z0-9._:-]+$/;
 
 const EvidenceSchema = z
   .object({
@@ -40,6 +41,7 @@ export type CoreRunSummary = {
 export type CoreRunCreated = {
   id: string;
   result: ReturnType<typeof runFlow>;
+  replayed: boolean;
 };
 
 function parseInput(raw: unknown): FlowInput {
@@ -54,38 +56,75 @@ function parseInput(raw: unknown): FlowInput {
   return parsed.data;
 }
 
+function normalizeIdempotencyKey(raw: unknown): string | null {
+  if (raw === undefined || raw === null) return null;
+  if (typeof raw !== "string") {
+    throw new InvalidArgumentError("core.run: некорректный Idempotency-Key");
+  }
+  const key = raw.trim();
+  if (key.length === 0) return null;
+  if (key.length > 200 || !IDEMPOTENCY_KEY.test(key)) {
+    throw new InvalidArgumentError("core.run: некорректный Idempotency-Key");
+  }
+  return key;
+}
+
 /** Запуск медицинского core-модуля и сохранение снимка в организации пользователя. */
-export async function createCoreRun(ctx: WriteContext, rawInput: unknown): Promise<CoreRunCreated> {
+export async function createCoreRun(
+  ctx: WriteContext,
+  rawInput: unknown,
+  rawIdempotencyKey?: unknown,
+): Promise<CoreRunCreated> {
   await requireOrganizationAccess(ctx.db, ctx.scope, ctx.userId);
+  const key = normalizeIdempotencyKey(rawIdempotencyKey);
+  const repo = () => orgRepositories(ctx.db, ctx.scope).coreRun;
+
+  if (key) {
+    const existing = await repo().list({ where: { idempotencyKey: key }, take: 1 });
+    if (existing[0]) {
+      return { id: existing[0].id, result: existing[0].result as ReturnType<typeof runFlow>, replayed: true };
+    }
+  }
+
   const input = parseInput(rawInput);
   const result = runFlow(medicalModule, input);
   const riskScore = typeof result.outputs.riskScore === "number" ? result.outputs.riskScore : null;
 
-  const row = await ctx.run(async (db) => {
-    const created = await orgRepositories(db, ctx.scope).coreRun.create({
-      createdByUserId: ctx.userId,
-      moduleKey: result.moduleKey,
-      moduleVersion: result.moduleVersion,
-      outcome: result.outcome,
-      riskScore,
-      input,
-      result,
-    });
-    await auditEvent(db, ctx.scope, {
-      actorUserId: ctx.userId,
-      action: "core.run.created",
-      entityType: "core_run",
-      entityId: created.id,
-      metadata: {
+  try {
+    const row = await ctx.run(async (db) => {
+      const created = await orgRepositories(db, ctx.scope).coreRun.create({
+        createdByUserId: ctx.userId,
         moduleKey: result.moduleKey,
         moduleVersion: result.moduleVersion,
         outcome: result.outcome,
-      },
+        riskScore,
+        idempotencyKey: key,
+        input,
+        result,
+      });
+      await auditEvent(db, ctx.scope, {
+        actorUserId: ctx.userId,
+        action: "core.run.created",
+        entityType: "core_run",
+        entityId: created.id,
+        metadata: {
+          moduleKey: result.moduleKey,
+          moduleVersion: result.moduleVersion,
+          outcome: result.outcome,
+        },
+      });
+      return created;
     });
-    return created;
-  });
-
-  return { id: row.id, result };
+    return { id: row.id, result, replayed: false };
+  } catch (error) {
+    if (key) {
+      const existing = await repo().list({ where: { idempotencyKey: key }, take: 1 });
+      if (existing[0]) {
+        return { id: existing[0].id, result: existing[0].result as ReturnType<typeof runFlow>, replayed: true };
+      }
+    }
+    throw error;
+  }
 }
 
 /** Список последних запусков в скоупе. Полные input/result в список не отдаются. */

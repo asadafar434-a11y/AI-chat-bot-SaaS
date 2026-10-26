@@ -25,6 +25,7 @@ test("core run: запуск сохраняется с результатом и
   const created = await createCoreRun(ctx, validMedicalInput);
 
   assert.equal(created.result.outcome, "prepare_application");
+  assert.equal(created.replayed, false);
   const rows = memory.table("coreRun");
   assert.equal(rows.length, 1);
   const row = rows[0] as Record<string, unknown>;
@@ -42,6 +43,37 @@ test("core run: запуск сохраняется с результатом и
   assert.equal(audits[0]?.action, "core.run.created");
   assert.equal(audits[0]?.entityType, "core_run");
   assert.equal(audits[0]?.entityId, created.id);
+});
+
+test("core run: повтор с тем же Idempotency-Key возвращает тот же запуск", async () => {
+  const { ctx, memory } = makeCtx();
+
+  const first = await createCoreRun(ctx, validMedicalInput, "run-1");
+  const second = await createCoreRun(ctx, validMedicalInput, "run-1");
+
+  assert.equal(first.replayed, false);
+  assert.equal(second.replayed, true);
+  assert.equal(second.id, first.id);
+  assert.equal(memory.table("coreRun").length, 1);
+  assert.equal(memory.table("auditEvent").length, 1);
+  assert.equal((memory.table("coreRun")[0] as Record<string, unknown>).idempotencyKey, "run-1");
+});
+
+test("core run: разные Idempotency-Key создают разные запуски", async () => {
+  const { ctx, memory } = makeCtx();
+
+  const first = await createCoreRun(ctx, validMedicalInput, "run-1");
+  const second = await createCoreRun(ctx, validMedicalInput, "run-2");
+
+  assert.notEqual(second.id, first.id);
+  assert.equal(memory.table("coreRun").length, 2);
+});
+
+test("core run: некорректный Idempotency-Key отклоняется", async () => {
+  const { ctx } = makeCtx();
+
+  await assert.rejects(() => createCoreRun(ctx, validMedicalInput, "bad key"), /Idempotency-Key/);
+  await assert.rejects(() => createCoreRun(ctx, validMedicalInput, "x".repeat(201)), /Idempotency-Key/);
 });
 
 test("core run: список ограничен организацией", async () => {

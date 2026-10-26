@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { NextRequest } from "next/server";
 import { ACCESS_COOKIE, accessToken } from "./lib/access.ts";
-import { AI_PER_IP, FILES_PER_IP } from "./lib/rate-limit.ts";
+import { AI_PER_IP, CORE_RUN_PER_IP, FILES_PER_IP } from "./lib/rate-limit.ts";
 import { proxy } from "./proxy.ts";
 
 // Окружение — на время одного теста.
@@ -99,6 +99,19 @@ test("загрузка файлов — свой лимит", async () => {
     assert.equal(over.status, 429);
     assert.match(await over.text(), /Слишком много файлов подряд/);
     // Запросы к ИИ с того же адреса лимит файлов не трогает.
+    assert.equal((await proxy(post("/api/chat", ip))).status, 200);
+  });
+});
+
+test("запуски core-модуля — свой лимит, не лимит ИИ", async () => {
+  await withEnv({ NODE_ENV: "development", ACCESS_PASSWORD: undefined }, async () => {
+    const ip = nextIp();
+    for (let i = 0; i < CORE_RUN_PER_IP[0].max; i++) {
+      assert.equal((await proxy(post("/api/core/medical/run", ip))).status, 200);
+    }
+    const over = await proxy(post("/api/core/medical/run", ip));
+    assert.equal(over.status, 429);
+    assert.match(await over.text(), /Слишком много запусков core-модуля/);
     assert.equal((await proxy(post("/api/chat", ip))).status, 200);
   });
 });

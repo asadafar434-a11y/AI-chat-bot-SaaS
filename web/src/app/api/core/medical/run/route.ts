@@ -17,8 +17,12 @@ export async function POST(request: Request) {
     if (!body || typeof body !== "object" || !("input" in body)) {
       return new Response("Некорректное тело", { status: 400 });
     }
-    const created = await createCoreRun(access.ctx, body.input);
-    return writeJson(created, 201);
+    const created = await createCoreRun(
+      access.ctx,
+      body.input,
+      request.headers.get("idempotency-key"),
+    );
+    return writeJson(created, created.replayed ? 200 : 201);
   } catch (error) {
     return writeError(error);
   }

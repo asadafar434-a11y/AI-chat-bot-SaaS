@@ -95,6 +95,22 @@ test("Phase 1: запуск сохраняется, аудит пишется, �
   }
 });
 
+test("Phase 1: Idempotency-Key не создаёт второй запуск", { skip }, async () => {
+  const ctx = await makeCtx("r3");
+  try {
+    const first = await createCoreRun(ctx.ctx, validMedicalInput, "integration-run-1");
+    const second = await createCoreRun(ctx.ctx, validMedicalInput, "integration-run-1");
+
+    assert.equal(first.replayed, false);
+    assert.equal(second.replayed, true);
+    assert.equal(second.id, first.id);
+    assert.equal(await ctx.prisma.coreRun.count({ where: { organizationId: ctx.orgA } }), 1);
+    assert.equal(await ctx.prisma.auditEvent.count({ where: { organizationId: ctx.orgA } }), 1);
+  } finally {
+    await cleanup(ctx);
+  }
+});
+
 test("Phase 1: запись coreRun и аудита откатывается вместе", { skip }, async () => {
   const ctx = await makeCtx("r2");
   try {

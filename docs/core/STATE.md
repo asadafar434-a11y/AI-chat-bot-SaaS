@@ -217,23 +217,26 @@ evidence-подтверждения, scope-guard (44-ФЗ + device/medicine), с
   findings, склеивает дубли и берёт максимальный риск.
 - R17 реализован: `buildPostAwardChecklist` собирает post-award документы
   для медизделий и лекарств с учётом требований.
-- Phase 1: добавлена модель `CoreRun`, миграция `s12_core_runs`, scoped-репозиторий,
-  аудит `core.run.created`, сервис запуска и API:
-  `POST /api/core/medical/run`, `GET /api/core/medical/runs`.
-- Phase 1 проверен на живой PostgreSQL: миграция применена к `tender_lawyer_test`,
-  интеграционные тесты `CoreRun` проходят, включая tenant isolation и откат аудита.
+- Phase 1: добавлена модель `CoreRun`, миграции `s12_core_runs` и
+  `s12_core_run_idempotency`, scoped-репозиторий, аудит `core.run.created`,
+  сервис запуска и API: `POST /api/core/medical/run`, `GET /api/core/medical/runs`.
+- Phase 1 проверен на живой PostgreSQL: миграции применены к `tender_lawyer_test`,
+  интеграционные тесты `CoreRun` проходят, включая tenant isolation, откат аудита
+  и повтор с тем же `Idempotency-Key`.
+- Для API добавлены отдельный rate limit `CORE_RUN_PER_IP` и идемпотентность.
 - Всего 45 правил; 70 golden-сценариев в `medical.golden.test.ts` и
   `medicine.golden.test.ts`.
-- Targeted-прогон core/server: `146/146` core + `6/6` core-run service + `2/2` core-run integration.
-- Полный `npm test` без БД: 1115 тестов, 1071 pass, 0 fail, 43 skipped, 1 todo.
-- Полный `npm test` с `TEST_DATABASE_URL`: 1115 тестов, 1114 pass, 0 fail, 0 skipped, 1 todo.
+- Targeted-прогон core/server: `146/146` core + `9/9` core-run service + `3/3` core-run integration.
+- Полный `npm test` без БД: 1120 тестов, 1075 pass, 0 fail, 44 skipped, 1 todo.
+- Полный `npm test` с `TEST_DATABASE_URL`: 1120 тестов, 1119 pass, 0 fail, 0 skipped, 1 todo.
 - `npx tsc --noEmit`, `npx eslint src/lib/core --no-cache` и `npx eslint src` проходят.
 - `npx prisma validate`, `npx prisma generate` и `prisma migrate deploy` на тестовой БД проходят.
 - Существующая логика `web/src/lib` не изменялась: добавлен только новый каталог `core`.
 - Проведён инженерный ревью: `docs/core/medical-rules-review.md`; статусы R1–R17 отмечены.
 - Созданы документы `docs/core/STATE.md`, `docs/tasks/core-v1.md`.
 - Скопированы исходники доски: `docs/core/figma-board.txt`, `docs/core/figma-board-nodes.json`.
-- Phase 1 закоммичен и запушен (`cfce9f9`); интеграционный тест CoreRun пока не закоммичен.
+- Phase 1 и PostgreSQL-проверка закоммичены (`cfce9f9`, `d1f908f`); rate limit и
+  идемпотентность пока не закоммичены.
 
 ## 7. Следующий шаг
 
@@ -242,9 +245,9 @@ evidence-подтверждения, scope-guard (44-ФЗ + device/medicine), с
    актуальным актам (надбавки уже сверяются по evidence).
 3. Подключить live-адаптеры реестров к `registryRecord` и
    `medicineRegistrationRecord` (контракты и проверки готовы).
-4. Добавить rate limits/idempotency для API, если появятся внешние клиенты.
-5. Подключить текущий UI к ядру за флагом (позже, отдельным этапом).
-6. Добавить второй модуль после юридического ревью медицинского.
+4. Подключить текущий UI к ядру за флагом (позже, отдельным этапом).
+5. Добавить второй модуль после юридического ревью медицинского.
+6. Решить, нужны ли API-ключи для внешних клиентов.
 
 ## 8. Как продолжить в новом чате
 
@@ -359,3 +362,7 @@ web/src/lib и существующие тесты без явного разр�
   Миграция применена к `tender_lawyer_test`; интеграционные тесты CoreRun
   проходят. Полный прогон с БД: 1114 pass / 0 fail / 0 skipped.
   prisma validate/generate, tsc и eslint зелёные.
+- 2026-10-26: добавлены `Idempotency-Key` для core-run (уникальность внутри
+  организации) и отдельный `CORE_RUN_PER_IP` rate limit. Миграция
+  `s12_core_run_idempotency` применена к `tender_lawyer_test`.
+  Полный прогон с БД: 1119 pass / 0 fail / 0 skipped; tsc и eslint зелёные.

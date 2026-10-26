@@ -517,21 +517,23 @@ Live-адаптер к реестру лекарственных средств 
 ## 8.20. Результат Phase 1 — API + PostgreSQL
 
 Добавлено:
-- Prisma-модель `CoreRun` и миграция `20261026000000_s12_core_runs`;
+- Prisma-модель `CoreRun` и миграции `s12_core_runs`, `s12_core_run_idempotency`;
 - `coreRun` в structural `DbClient`, scoped-репозитории и тестовых фейках;
 - аудит `core.run.created` / `core_run`;
 - сервис `createCoreRun`/`listCoreRuns` с проверкой членства и скоупа;
 - API `POST /api/core/medical/run` (флаг `SERVER_WRITES=1`);
 - API `GET /api/core/medical/runs` (флаг `SERVER_READS=1`);
 - zod-валидация `FlowInput`, лимит входа 512 КБ, запрет `organizationId` в теле;
+- `Idempotency-Key` с уникальностью внутри организации;
+- отдельный `CORE_RUN_PER_IP` rate limit;
 - интеграционные тесты CoreRun на живой PostgreSQL.
 
 Проверка:
 - `npx prisma validate`, `npx prisma generate` и `prisma migrate deploy` на
   `tender_lawyer_test`: без ошибок;
-- targeted core-run: `6/6` unit + `2/2` integration;
-- полный `npm test` без БД: `1115` тестов, `1071 pass`, `0 fail`, `43 skipped`;
-- полный `npm test` с `TEST_DATABASE_URL`: `1115` тестов, `1114 pass`,
+- targeted core-run: `9/9` unit + `3/3` integration;
+- полный `npm test` без БД: `1120` тестов, `1075 pass`, `0 fail`, `44 skipped`;
+- полный `npm test` с `TEST_DATABASE_URL`: `1120` тестов, `1119 pass`,
   `0 fail`, `0 skipped`;
 - `npx tsc --noEmit` и `npx eslint src`: без ошибок.
 
@@ -566,11 +568,11 @@ node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
 
 ## 11. Открытые вопросы
 
-1. Когда применяем миграцию `s12_core_runs` и проверяем API на PostgreSQL?
-2. Нужны ли rate limits/idempotency для внешних API-клиентов?
-3. Кто проводит юридический ревью правил и как фиксируем редакции?
-4. Когда подключаем текущий UI к ядру за флагом?
-5. Какой второй модуль берём после медицинского?
+1. Нужны ли API-ключи для внешних клиентов?
+2. Кто проводит юридический ревью правил и как фиксируем редакции?
+3. Когда подключаем текущий UI к ядру за флагом?
+4. Какой второй модуль берём после медицинского?
+5. Когда расширяем лекарственный блок (ЖНВЛП/НДС)?
 
 ## 12. Ссылки
 
