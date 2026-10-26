@@ -22,6 +22,9 @@ export type RuleRef = {
   riskLevel: RiskLevel;
   effectiveFrom: string;
   source: string;
+  reviewedAt?: string;
+  edition?: string;
+  sourceUrl?: string;
   status: RuleStatus;
 };
 

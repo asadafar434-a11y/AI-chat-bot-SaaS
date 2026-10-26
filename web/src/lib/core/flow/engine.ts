@@ -119,7 +119,8 @@ function executeNode(
     context.findings.push(toFinding(node.id, rule, evaluation));
     if (evaluation.missing.length > 0) {
       for (const field of evaluation.missing) {
-        addMissing(context, { nodeId: node.id, field, label: field, kind: "extract" });
+        const label = rule.requiredDocument ? `${rule.requiredDocument} (${field})` : field;
+        addMissing(context, { nodeId: node.id, field, label, kind: "extract" });
       }
       trace.push({ nodeId: node.id, type: node.type, status: "missing", detail: evaluation.detail });
       const always = findEdge(edges, node.id, "always");

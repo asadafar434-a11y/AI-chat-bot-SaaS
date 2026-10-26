@@ -32,6 +32,17 @@ test("недостающее поле останавливает поток и �
   assert.equal(result.findings[0]?.status, "unknown");
 });
 
+test("проверка добавляет requiredDocument в label", () => {
+  const flow = testFlow();
+  const extract = flow.nodes.find((node) => node.id === "extract");
+  if (extract?.type === "extract") extract.source = "optional";
+
+  const result = runFlow(flow, { data: {} });
+
+  assert.equal(result.missing[0]?.field, "flag");
+  assert.equal(result.missing[0]?.label, "Документ (flag)");
+});
+
 test("вопрос выбирает ветку по ответу", () => {
   const result = runFlow(questionFlow(), { data: {}, answers: { question: true } });
 

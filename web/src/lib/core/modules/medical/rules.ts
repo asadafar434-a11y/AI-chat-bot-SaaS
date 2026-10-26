@@ -646,6 +646,40 @@ export const medicalRules: Rule[] = [
     },
   },
   {
+    id: "medical.delivery_schedule",
+    law: "44-ФЗ",
+    article: "ст. 33",
+    condition: "Срок поставки соответствует требованиям закупки",
+    requiredDocument: "Подтверждение срока поставки",
+    validationLogic: "deliveryRequiredDate → deliveryOfferedDate <= required; иначе maxDeliveryDays → deliveryDays <= max",
+    riskLevel: "high",
+    effectiveFrom: "2014-01-01",
+    source: LAW_44_ART_43,
+    status: "seed",
+    evaluate: (context) => {
+      const requiredDate = textField(context, "deliveryRequiredDate");
+      if (requiredDate) {
+        const offeredDate = textField(context, "deliveryOfferedDate");
+        if (!offeredDate) return needs("deliveryOfferedDate", "Не указан предлагаемый срок поставки");
+        const requiredTime = Date.parse(requiredDate);
+        const offeredTime = Date.parse(offeredDate);
+        if (Number.isNaN(requiredTime) || Number.isNaN(offeredTime)) {
+          return needs("deliveryOfferedDate", "Некорректная дата срока поставки");
+        }
+        if (offeredTime > requiredTime) {
+          return fail(`Поставка ${offeredDate} позже требуемой ${requiredDate}`);
+        }
+        return pass(`Поставка ${offeredDate} не позже требуемой ${requiredDate}`);
+      }
+      const maxDays = numberField(context, "maxDeliveryDays");
+      if (maxDays === null) return pass("Требование к сроку поставки не установлено");
+      const days = numberField(context, "deliveryDays");
+      if (days === null) return needs("deliveryDays", "Не указан срок поставки в днях");
+      if (days > maxDays) return fail(`Срок поставки ${days} дн. больше допустимого ${maxDays} дн.`);
+      return pass(`Срок поставки ${days} дн. не больше допустимого ${maxDays} дн.`);
+    },
+  },
+  {
     id: "medical.margin",
     law: "internal",
     article: "economics",

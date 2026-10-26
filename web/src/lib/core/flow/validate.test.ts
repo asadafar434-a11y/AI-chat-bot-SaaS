@@ -62,6 +62,40 @@ test("у правила некорректная дата", () => {
   assert.equal(hasCode(flow, "rule.effective_from"), true);
 });
 
+test("legal_reviewed требует reviewedAt и edition", () => {
+  const flow = testFlow();
+  flow.rules = [{ ...testRule, status: "legal_reviewed" }];
+
+  assert.equal(hasCode(flow, "rule.reviewed_at"), true);
+  assert.equal(hasCode(flow, "rule.edition"), true);
+});
+
+test("legal_reviewed с метаданными проходит", () => {
+  const flow = testFlow();
+  flow.rules = [
+    {
+      ...testRule,
+      status: "legal_reviewed",
+      reviewedAt: "2026-10-26",
+      edition: "ред. 2026",
+      sourceUrl: "https://www.consultant.ru/document/cons_doc_LAW_144624/",
+    },
+  ];
+
+  const metadataIssues = validateFlow(flow).filter((issue) =>
+    ["rule.reviewed_at", "rule.edition", "rule.source_url"].includes(issue.code)
+  );
+  assert.deepEqual(metadataIssues, []);
+});
+
+test("некорректные reviewedAt и sourceUrl отклоняются", () => {
+  const flow = testFlow();
+  flow.rules = [{ ...testRule, reviewedAt: "2026-13-01", sourceUrl: "ftp://example.test/law" }];
+
+  assert.equal(hasCode(flow, "rule.reviewed_at"), true);
+  assert.equal(hasCode(flow, "rule.source_url"), true);
+});
+
 test("дубликат правила", () => {
   const flow = testFlow();
   flow.rules.push({ ...testRule });

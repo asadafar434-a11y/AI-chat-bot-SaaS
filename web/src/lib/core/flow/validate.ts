@@ -19,6 +19,15 @@ const isDate = (value: string): boolean => {
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 };
 
+const isHttpUrl = (value: string): boolean => {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
 const push = (issues: ValidationIssue[], code: string, message: string, nodeId?: string) => {
   issues.push(nodeId ? { code, nodeId, message } : { code, message });
 };
@@ -38,6 +47,19 @@ function validateRule(rule: Rule, issues: ValidationIssue[]) {
   }
   if (!RULE_STATUSES.has(rule.status)) {
     push(issues, "rule.status", `У правила ${rule.id} неизвестный status`);
+  }
+  if (rule.reviewedAt !== undefined) {
+    if (!isDate(rule.reviewedAt)) push(issues, "rule.reviewed_at", `У правила ${rule.id} некорректный reviewedAt`);
+  } else if (rule.status === "legal_reviewed") {
+    push(issues, "rule.reviewed_at", `У юридически проверенного правила ${rule.id} нет reviewedAt`);
+  }
+  if (rule.edition !== undefined) {
+    if (!isNonEmpty(rule.edition)) push(issues, "rule.edition", `У правила ${rule.id} пустая edition`);
+  } else if (rule.status === "legal_reviewed") {
+    push(issues, "rule.edition", `У юридически проверенного правила ${rule.id} нет edition`);
+  }
+  if (rule.sourceUrl !== undefined && !isHttpUrl(rule.sourceUrl)) {
+    push(issues, "rule.source_url", `У правила ${rule.id} некорректный sourceUrl`);
   }
   if (rule.law !== "internal" && !isNonEmpty(rule.requiredDocument)) {
     push(issues, "rule.required_document", `У правового правила ${rule.id} не указан requiredDocument`);

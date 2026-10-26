@@ -125,6 +125,44 @@ test("golden: антидемпинг с обоснованием цены про
   assert.equal(result.outcome, "prepare_application");
 });
 
+test("golden: поставка позже требуемой даты — отчёт", () => {
+  const result = runFlow(
+    medicalModule,
+    medicalInput({ deliveryRequiredDate: "2026-12-01", deliveryOfferedDate: "2026-12-15" })
+  );
+
+  assert.equal(result.outcome, "report");
+});
+
+test("golden: срок поставки в днях больше допустимого — отчёт", () => {
+  const result = runFlow(medicalModule, medicalInput({ maxDeliveryDays: 30, deliveryDays: 45 }));
+
+  assert.equal(result.outcome, "report");
+});
+
+test("golden: нет предлагаемой даты поставки — не готовит заявку", () => {
+  const result = runFlow(medicalModule, medicalInput({ deliveryRequiredDate: "2026-12-01" }));
+
+  assert.equal(result.outcome, "needs_input");
+  assert.equal(missing(result, "deliveryOfferedDate"), true);
+});
+
+test("golden: нет срока поставки в днях — не готовит заявку", () => {
+  const result = runFlow(medicalModule, medicalInput({ maxDeliveryDays: 30 }));
+
+  assert.equal(result.outcome, "needs_input");
+  assert.equal(missing(result, "deliveryDays"), true);
+});
+
+test("golden: поставка в срок проходит", () => {
+  const result = runFlow(
+    medicalModule,
+    medicalInput({ deliveryRequiredDate: "2026-12-01", deliveryOfferedDate: "2026-11-01" })
+  );
+
+  assert.equal(result.outcome, "prepare_application");
+});
+
 test("golden: истёкший срок подачи блокирует участие", () => {
   const result = runFlow(medicalModule, medicalInput({ submissionDeadline: "2026-10-01", now: "2026-10-26" }));
 
