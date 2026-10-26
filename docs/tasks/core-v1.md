@@ -1,4 +1,4 @@
-# Core v1 — Phase 0: flow engine + первый модуль
+# Core v1 — flow engine + модули (Phase 0/1)
 
 Статус: Phase 0 и R1–R17 реализованы (медизделия 44-ФЗ, общий пакет участника,
 matcher характеристик, структурированные реестры, ветка лекарств, ценовые
@@ -179,7 +179,15 @@ type FlowResult = {
 - [x] Добавить фикстуры и тесты модуля.
 - [x] Прогнать полный `npm test`, lint, typecheck.
 - [x] Обновить `docs/core/STATE.md` и отметить чекбоксы.
-- [ ] Сделать отдельный git-коммит (только по явной просьбе).
+- [x] Сделать отдельные git-коммиты по явной просьбе.
+- [x] Phase 1: `CoreRun`, API, PostgreSQL, идемпотентность, rate limit.
+- [x] Второй модуль «Оргтехника».
+- [x] Третий модуль «Мебель» через `createGoodsModule`.
+- [ ] Юридический ревью 69 seed-правил.
+- [ ] Перечни ЖНВЛП/НДС и региональные надбавки.
+- [ ] Live-адаптеры реестров.
+- [ ] UI за флагом.
+- [ ] Четвёртый модуль или расширение существующих.
 
 ## 8.1. Результат Phase 0
 
@@ -618,3 +626,16 @@ node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
 - Узлы доски: `docs/core/figma-board-nodes.json`
 - Stage 11: `docs/stage-11/`
 - Состояние проекта: `docs/core/STATE.md`
+
+## 13. Handoff (2026-10-26)
+
+- Ветка: `stage-11-server-migration`, синхронизирована с `origin` до этого handoff.
+- Незакоммиченных изменений, кроме этого handoff, нет.
+- Реализовано: Phase 0, R1–R17, Phase 1 API+PostgreSQL, модули `medical`,
+  `office-equipment`, `furniture`.
+- 69 уникальных правил, 91 golden-сценарий.
+- Проверки: targeted модулей и core-run зелёные; `npm test` с `TEST_DATABASE_URL`
+  — 1145 тестов, 1144 pass, 0 fail, 0 skipped; `tsc` и `eslint` зелёные.
+- Осталось: юридический ревью 69 правил, ЖНВЛП/НДС, live-реестры, UI, API-ключи,
+  четвёртый модуль.
+- Продолжить с раздела «Открытые вопросы» и `docs/core/STATE.md` §6.1.
