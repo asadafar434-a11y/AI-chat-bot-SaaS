@@ -9,7 +9,8 @@
 сумме/форме/сроку, маржа учитывает дополнительные затраты, срок поставки
 проверяется по дате/дням; добавлены метаданные ревью, подсказки `needs_input`,
 pre-award и post-award чек-листы. Второй модуль — «Оргтехника» — использует
-общий `common/goods` и тот же API. Запуски core-модуля сохраняются в `CoreRun`.
+общий `common/goods` и тот же API. Третий модуль — «Мебель» — собирается тем же
+`createGoodsModule`. Запуски core-модуля сохраняются в `CoreRun`.
 Ждёт юридического ревью.
 Ветка: `stage-11-server-migration`
 Remote: `https://github.com/asadafar434-a11y/AI-chat-bot-SaaS.git`
@@ -174,6 +175,10 @@ evidence-подтверждения, scope-guard (44-ФЗ + device/medicine), с
 антидемпинг, риск), плюс характеристики и гарантию оргтехники. 12 уникальных
 правил, 19 в модуле с общими, 11 golden-сценариев.
 
+Третий модуль: «Мебель» (`furniture`), seed 44-ФЗ. Собирается через
+`common/goods-module.ts`; отличия — `productKind`, название и характеристики.
+12 уникальных правил, 10 golden-сценариев.
+
 ## 5. Решения (ADR-lite)
 
 - D1. Универсальное ядро + отраслевые модули. Не делаем отдельный продукт под каждую сферу.
@@ -229,15 +234,17 @@ evidence-подтверждения, scope-guard (44-ФЗ + device/medicine), с
   `POST /api/core/[module]/run`, `GET /api/core/[module]/runs` (медицинский
   алиас сохранён).
 - Реестр модулей: `web/src/lib/core/modules/index.ts`; зарегистрированы
-  `medical` и `office-equipment`.
+  `medical`, `office-equipment` и `furniture`.
 - Phase 1 проверен на живой PostgreSQL: миграции применены к `tender_lawyer_test`,
   интеграционные тесты `CoreRun` проходят, включая tenant isolation, откат аудита
   и повтор с тем же `Idempotency-Key`.
 - Для API добавлены отдельный rate limit `CORE_RUN_PER_IP` и идемпотентность.
-- Всего 57 уникальных правил (45 медицинских + 12 офисных) и 81 golden-сценарий.
-- Targeted-прогон: `146/146` медицинских + `11/11` офисных + `10/10` core-run service + `3/3` core-run integration + `2/2` module registry.
-- Полный `npm test` без БД: 1135 тестов, 1088 pass, 0 fail, 46 skipped, 1 todo.
-- Полный `npm test` с `TEST_DATABASE_URL`: 1135 тестов, 1134 pass, 0 fail, 0 skipped, 1 todo.
+- Всего 69 уникальных правил (45 медицинских + 12 офисных + 12 мебельных)
+  и 91 golden-сценарий.
+- Targeted-прогон: `146/146` медицинских + `11/11` офисных + `10/10` мебельных
+  + `10/10` core-run service + `3/3` core-run integration + `2/2` registry.
+- Полный `npm test` без БД: 1145 тестов, 1098 pass, 0 fail, 46 skipped, 1 todo.
+- Полный `npm test` с `TEST_DATABASE_URL`: 1145 тестов, 1144 pass, 0 fail, 0 skipped, 1 todo.
 - `npx tsc --noEmit`, `npx eslint src/lib/core --no-cache` и `npx eslint src` проходят.
 - `npx prisma validate`, `npx prisma generate` и `prisma migrate deploy` на тестовой БД проходят.
 - Существующая логика `web/src/lib` не изменялась: добавлен только новый каталог `core`.
@@ -256,7 +263,7 @@ evidence-подтверждения, scope-guard (44-ФЗ + device/medicine), с
 3. Подключить live-адаптеры реестров к `registryRecord` и
    `medicineRegistrationRecord` (контракты и проверки готовы).
 4. Подключить текущий UI к ядру за флагом (позже, отдельным этапом).
-5. Добавить третий модуль или расширить офисный после юридического ревью.
+5. Добавить четвёртый модуль или расширить офисный/мебельный после юрревью.
 6. Решить, нужны ли API-ключи для внешних клиентов.
 
 ## 8. Как продолжить в новом чате
@@ -383,3 +390,6 @@ web/src/lib и существующие тесты без явного разр�
 - 2026-10-26: добавлен второй модуль «Оргтехника» (`office-equipment`):
   общие `common/goods`, характеристики и гарантия, 11 golden-сценариев.
   Полный прогон с БД: 1134 pass / 0 fail / 0 skipped; tsc и eslint зелёные.
+- 2026-10-26: добавлен третий модуль «Мебель» (`furniture`) через
+  `createGoodsModule`; 10 golden-сценариев. Полный прогон с БД:
+  1144 pass / 0 fail / 0 skipped; tsc и eslint зелёные.

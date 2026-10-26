@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { validFurnitureInput } from "../../lib/core/modules/furniture/fixtures.ts";
 import { validMedicalInput } from "../../lib/core/modules/medical/fixtures.ts";
 import { validOfficeInput } from "../../lib/core/modules/office-equipment/fixtures.ts";
 import { withRunner } from "../auth/transaction.ts";
@@ -83,14 +84,20 @@ test("core run: неизвестный модуль отклоняется", asy
   await assert.rejects(() => createCoreRun(ctx, validMedicalInput, undefined, "unknown"), /неизвестный модуль/);
 });
 
-test("core run: офисный модуль запускается через тот же сервис", async () => {
+test("core run: офисный и мебельный модули запускаются через тот же сервис", async () => {
   const { ctx, memory } = makeCtx();
 
-  const created = await createCoreRun(ctx, validOfficeInput, undefined, "office-equipment");
+  const office = await createCoreRun(ctx, validOfficeInput, undefined, "office-equipment");
+  const furniture = await createCoreRun(ctx, validFurnitureInput, undefined, "furniture");
 
-  assert.equal(created.result.moduleKey, "office-equipment");
-  assert.equal(created.result.outcome, "prepare_application");
-  assert.equal((memory.table("coreRun")[0] as Record<string, unknown>).moduleKey, "office-equipment");
+  assert.equal(office.result.moduleKey, "office-equipment");
+  assert.equal(office.result.outcome, "prepare_application");
+  assert.equal(furniture.result.moduleKey, "furniture");
+  assert.equal(furniture.result.outcome, "prepare_application");
+  assert.deepEqual(
+    memory.table("coreRun").map((row) => (row as Record<string, unknown>).moduleKey),
+    ["office-equipment", "furniture"],
+  );
 });
 
 test("core run: список ограничен организацией", async () => {
