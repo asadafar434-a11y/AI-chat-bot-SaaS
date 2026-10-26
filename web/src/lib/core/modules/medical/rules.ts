@@ -1,6 +1,6 @@
+import { matchCharacteristics } from "../../common/characteristics.ts";
 import { participantRules } from "../../common/participant.ts";
 import type { EvidenceValue, FlowContext, Rule, RuleEvaluation } from "../../flow/types.ts";
-import { matchCharacteristics } from "./characteristics.ts";
 import { medicineRules } from "./medicine-rules.ts";
 import { checkRegistryRecord } from "./registry.ts";
 

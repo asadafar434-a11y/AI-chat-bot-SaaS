@@ -1,5 +1,5 @@
+import { matchCharacteristics } from "../../common/characteristics.ts";
 import type { EvidenceValue, FlowContext, Rule, RuleEvaluation } from "../../flow/types.ts";
-import { matchCharacteristics } from "./characteristics.ts";
 import { checkMedicineRegistrationRecord } from "./medicine-registration.ts";
 
 const LAW_44_ART_43 = "https://www.consultant.ru/document/cons_doc_LAW_144624/5a18b3d46fe0fd48f2482cd6ec7ce419763efccd/";

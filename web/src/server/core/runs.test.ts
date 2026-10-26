@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { validMedicalInput } from "../../lib/core/modules/medical/fixtures.ts";
+import { validOfficeInput } from "../../lib/core/modules/office-equipment/fixtures.ts";
 import { withRunner } from "../auth/transaction.ts";
 import { createMemoryDb } from "../auth/testing/memory-db.ts";
 import { orgScope } from "../db/org-scope.ts";
@@ -80,6 +81,16 @@ test("core run: неизвестный модуль отклоняется", asy
   const { ctx } = makeCtx();
 
   await assert.rejects(() => createCoreRun(ctx, validMedicalInput, undefined, "unknown"), /неизвестный модуль/);
+});
+
+test("core run: офисный модуль запускается через тот же сервис", async () => {
+  const { ctx, memory } = makeCtx();
+
+  const created = await createCoreRun(ctx, validOfficeInput, undefined, "office-equipment");
+
+  assert.equal(created.result.moduleKey, "office-equipment");
+  assert.equal(created.result.outcome, "prepare_application");
+  assert.equal((memory.table("coreRun")[0] as Record<string, unknown>).moduleKey, "office-equipment");
 });
 
 test("core run: список ограничен организацией", async () => {
