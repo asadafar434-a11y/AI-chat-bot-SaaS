@@ -1,29 +1,8 @@
-import { createCoreRun } from "@/server/core/runs";
-import { requireWriteScope, writeError, writeJson } from "@/server/write/route";
+import { runCoreRequest } from "@/server/core/http";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Запуск медицинского core-модуля.
- * Тело: `{ input: FlowInput }`. Организация и автор — только из серверной сессии.
- */
+/** Алиас медицинского модуля: POST /api/core/medical/run. */
 export async function POST(request: Request) {
-  const access = await requireWriteScope(request);
-  if (access instanceof Response) {
-    return access;
-  }
-  try {
-    const body = (await request.json().catch(() => null)) as { input?: unknown } | null;
-    if (!body || typeof body !== "object" || !("input" in body)) {
-      return new Response("Некорректное тело", { status: 400 });
-    }
-    const created = await createCoreRun(
-      access.ctx,
-      body.input,
-      request.headers.get("idempotency-key"),
-    );
-    return writeJson(created, created.replayed ? 200 : 201);
-  } catch (error) {
-    return writeError(error);
-  }
+  return runCoreRequest(request, "medical");
 }

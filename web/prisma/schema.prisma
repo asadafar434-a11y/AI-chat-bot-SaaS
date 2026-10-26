@@ -406,7 +406,7 @@ model CoreRun {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   createdBy    User?        @relation("CoreRunCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
-  @@unique([organizationId, idempotencyKey])
+  @@unique([organizationId, moduleKey, idempotencyKey])
   @@index([organizationId, createdAt])
   @@index([organizationId, moduleKey])
   @@index([createdByUserId])

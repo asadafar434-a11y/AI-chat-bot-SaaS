@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 import { runFlow } from "@/lib/core/flow/engine.ts";
-import type { FlowInput } from "@/lib/core/flow/types.ts";
-import { medicalModule } from "@/lib/core/modules/medical/flow.ts";
+import type { FlowInput, FlowModule } from "@/lib/core/flow/types.ts";
+import { findCoreModule } from "@/lib/core/modules/index.ts";
 
 import { auditEvent } from "../audit/service.ts";
 import type { WriteContext } from "../write/services.ts";
@@ -56,6 +56,12 @@ function parseInput(raw: unknown): FlowInput {
   return parsed.data;
 }
 
+function resolveModule(key: string): FlowModule {
+  const flowModule = findCoreModule(key);
+  if (!flowModule) throw new InvalidArgumentError(`core.run: неизвестный модуль ${JSON.stringify(key)}`);
+  return flowModule;
+}
+
 function normalizeIdempotencyKey(raw: unknown): string | null {
   if (raw === undefined || raw === null) return null;
   if (typeof raw !== "string") {
@@ -74,20 +80,22 @@ export async function createCoreRun(
   ctx: WriteContext,
   rawInput: unknown,
   rawIdempotencyKey?: unknown,
+  moduleKey = "medical",
 ): Promise<CoreRunCreated> {
   await requireOrganizationAccess(ctx.db, ctx.scope, ctx.userId);
+  const flowModule = resolveModule(moduleKey);
   const key = normalizeIdempotencyKey(rawIdempotencyKey);
   const repo = () => orgRepositories(ctx.db, ctx.scope).coreRun;
 
   if (key) {
-    const existing = await repo().list({ where: { idempotencyKey: key }, take: 1 });
+    const existing = await repo().list({ where: { idempotencyKey: key, moduleKey }, take: 1 });
     if (existing[0]) {
       return { id: existing[0].id, result: existing[0].result as ReturnType<typeof runFlow>, replayed: true };
     }
   }
 
   const input = parseInput(rawInput);
-  const result = runFlow(medicalModule, input);
+  const result = runFlow(flowModule, input);
   const riskScore = typeof result.outputs.riskScore === "number" ? result.outputs.riskScore : null;
 
   try {
@@ -118,7 +126,7 @@ export async function createCoreRun(
     return { id: row.id, result, replayed: false };
   } catch (error) {
     if (key) {
-      const existing = await repo().list({ where: { idempotencyKey: key }, take: 1 });
+      const existing = await repo().list({ where: { idempotencyKey: key, moduleKey }, take: 1 });
       if (existing[0]) {
         return { id: existing[0].id, result: existing[0].result as ReturnType<typeof runFlow>, replayed: true };
       }
@@ -131,10 +139,13 @@ export async function createCoreRun(
 export async function listCoreRuns(
   ctx: { db: WriteContext["db"]; scope: OrgScope; userId: string },
   limit = 50,
+  moduleKey?: string,
 ): Promise<CoreRunSummary[]> {
   await requireOrganizationAccess(ctx.db, ctx.scope, ctx.userId);
+  if (moduleKey) resolveModule(moduleKey);
   const take = Math.min(Math.max(Math.trunc(limit), 1), 100);
   const rows = await orgRepositories(ctx.db, ctx.scope).coreRun.list({
+    ...(moduleKey ? { where: { moduleKey } } : {}),
     orderBy: { createdAt: "desc" },
     take,
   });

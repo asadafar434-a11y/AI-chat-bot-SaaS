@@ -217,18 +217,22 @@ evidence-подтверждения, scope-guard (44-ФЗ + device/medicine), с
   findings, склеивает дубли и берёт максимальный риск.
 - R17 реализован: `buildPostAwardChecklist` собирает post-award документы
   для медизделий и лекарств с учётом требований.
-- Phase 1: добавлена модель `CoreRun`, миграции `s12_core_runs` и
-  `s12_core_run_idempotency`, scoped-репозиторий, аудит `core.run.created`,
-  сервис запуска и API: `POST /api/core/medical/run`, `GET /api/core/medical/runs`.
+- Phase 1: добавлена модель `CoreRun`, миграции `s12_core_runs`,
+  `s12_core_run_idempotency` и `s12_core_run_idempotency_module`,
+  scoped-репозиторий, аудит `core.run.created`, сервис запуска и API:
+  `POST /api/core/[module]/run`, `GET /api/core/[module]/runs` (медицинский
+  алиас сохранён).
+- Реестр модулей: `web/src/lib/core/modules/index.ts`; сейчас зарегистрирован
+  только `medical`.
 - Phase 1 проверен на живой PostgreSQL: миграции применены к `tender_lawyer_test`,
   интеграционные тесты `CoreRun` проходят, включая tenant isolation, откат аудита
   и повтор с тем же `Idempotency-Key`.
 - Для API добавлены отдельный rate limit `CORE_RUN_PER_IP` и идемпотентность.
 - Всего 45 правил; 70 golden-сценариев в `medical.golden.test.ts` и
   `medicine.golden.test.ts`.
-- Targeted-прогон core/server: `146/146` core + `9/9` core-run service + `3/3` core-run integration.
-- Полный `npm test` без БД: 1120 тестов, 1075 pass, 0 fail, 44 skipped, 1 todo.
-- Полный `npm test` с `TEST_DATABASE_URL`: 1120 тестов, 1119 pass, 0 fail, 0 skipped, 1 todo.
+- Targeted-прогон core/server: `146/146` core + `10/10` core-run service + `3/3` core-run integration + `2/2` module registry.
+- Полный `npm test` без БД: 1123 теста, 1078 pass, 0 fail, 44 skipped, 1 todo.
+- Полный `npm test` с `TEST_DATABASE_URL`: 1123 теста, 1122 pass, 0 fail, 0 skipped, 1 todo.
 - `npx tsc --noEmit`, `npx eslint src/lib/core --no-cache` и `npx eslint src` проходят.
 - `npx prisma validate`, `npx prisma generate` и `prisma migrate deploy` на тестовой БД проходят.
 - Существующая логика `web/src/lib` не изменялась: добавлен только новый каталог `core`.
@@ -363,6 +367,10 @@ web/src/lib и существующие тесты без явного разр�
   проходят. Полный прогон с БД: 1114 pass / 0 fail / 0 skipped.
   prisma validate/generate, tsc и eslint зелёные.
 - 2026-10-26: добавлены `Idempotency-Key` для core-run (уникальность внутри
-  организации) и отдельный `CORE_RUN_PER_IP` rate limit. Миграция
-  `s12_core_run_idempotency` применена к `tender_lawyer_test`.
+  организации и модуля) и отдельный `CORE_RUN_PER_IP` rate limit. Миграция
+  `s12_core_run_idempotency_module` применена к `tender_lawyer_test`.
   Полный прогон с БД: 1119 pass / 0 fail / 0 skipped; tsc и eslint зелёные.
+- 2026-10-26: добавлен реестр core-модулей и обобщённые API
+  `POST /api/core/[module]/run`, `GET /api/core/[module]/runs`.
+  Медицинские алиасы сохранены. Полный прогон с БД: 1122 pass / 0 fail /
+  0 skipped; tsc и eslint зелёные.

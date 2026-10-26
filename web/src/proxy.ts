@@ -23,6 +23,7 @@ const coreRunsPerIp = createLimiter(CORE_RUN_PER_IP);
 // Liveness/readiness probes должны отвечать без входа: их опрашивает балансировщик,
 // а не человек. Данные они не отдают — только состояние процесса/БД.
 const isHealthPath = (pathname: string) => pathname === "/api/health" || pathname.startsWith("/api/health/");
+const isCoreRunPath = (pathname: string) => /^\/api\/core\/[a-z0-9_-]+\/run$/.test(pathname);
 
 // Запросы, которые тратят бюджет ИИ или силы сервера, — не чаще лимита. Файл Word, PDF или ODT части заявки собирается без ИИ, вход — свой лимит.
 function tooMany(request: NextRequest): NextResponse | null {
@@ -31,7 +32,7 @@ function tooMany(request: NextRequest): NextResponse | null {
     return null;
   }
   const ip = clientIp(request.headers.get("x-forwarded-for"));
-  if (pathname === "/api/core/medical/run") {
+  if (isCoreRunPath(pathname)) {
     const wait = coreRunsPerIp(ip);
     return wait ? text(`Слишком много запусков core-модуля — продолжите ${waitText(wait)}.`, 429, wait) : null;
   }

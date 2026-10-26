@@ -76,6 +76,12 @@ test("core run: некорректный Idempotency-Key отклоняется"
   await assert.rejects(() => createCoreRun(ctx, validMedicalInput, "x".repeat(201)), /Idempotency-Key/);
 });
 
+test("core run: неизвестный модуль отклоняется", async () => {
+  const { ctx } = makeCtx();
+
+  await assert.rejects(() => createCoreRun(ctx, validMedicalInput, undefined, "unknown"), /неизвестный модуль/);
+});
+
 test("core run: список ограничен организацией", async () => {
   const a = makeCtx(ORG_A);
   const b = makeCtx(ORG_B);

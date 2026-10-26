@@ -517,23 +517,26 @@ Live-адаптер к реестру лекарственных средств 
 ## 8.20. Результат Phase 1 — API + PostgreSQL
 
 Добавлено:
-- Prisma-модель `CoreRun` и миграции `s12_core_runs`, `s12_core_run_idempotency`;
+- Prisma-модель `CoreRun` и миграции `s12_core_runs`,
+  `s12_core_run_idempotency`, `s12_core_run_idempotency_module`;
 - `coreRun` в structural `DbClient`, scoped-репозитории и тестовых фейках;
 - аудит `core.run.created` / `core_run`;
 - сервис `createCoreRun`/`listCoreRuns` с проверкой членства и скоупа;
-- API `POST /api/core/medical/run` (флаг `SERVER_WRITES=1`);
-- API `GET /api/core/medical/runs` (флаг `SERVER_READS=1`);
+- реестр модулей `coreModules` и `findCoreModule`;
+- API `POST /api/core/[module]/run` и `GET /api/core/[module]/runs`
+  (флаги `SERVER_WRITES=1` / `SERVER_READS=1`);
+- медицинские алиасы `/api/core/medical/*` сохранены;
 - zod-валидация `FlowInput`, лимит входа 512 КБ, запрет `organizationId` в теле;
-- `Idempotency-Key` с уникальностью внутри организации;
+- `Idempotency-Key` с уникальностью внутри организации и модуля;
 - отдельный `CORE_RUN_PER_IP` rate limit;
 - интеграционные тесты CoreRun на живой PostgreSQL.
 
 Проверка:
 - `npx prisma validate`, `npx prisma generate` и `prisma migrate deploy` на
   `tender_lawyer_test`: без ошибок;
-- targeted core-run: `9/9` unit + `3/3` integration;
-- полный `npm test` без БД: `1120` тестов, `1075 pass`, `0 fail`, `44 skipped`;
-- полный `npm test` с `TEST_DATABASE_URL`: `1120` тестов, `1119 pass`,
+- targeted: `10/10` core-run unit + `3/3` integration + `2/2` registry;
+- полный `npm test` без БД: `1123` теста, `1078 pass`, `0 fail`, `44 skipped`;
+- полный `npm test` с `TEST_DATABASE_URL`: `1123` теста, `1122 pass`,
   `0 fail`, `0 skipped`;
 - `npx tsc --noEmit` и `npx eslint src`: без ошибок.
 
