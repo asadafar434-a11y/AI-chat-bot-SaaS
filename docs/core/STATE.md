@@ -1,14 +1,15 @@
 # Core v1 — состояние проекта
 
 Обновлено: 2026-10-26
-Статус: Phase 0, R1–R16 реализованы (seed). Модуль медизделий 44-ФЗ расширен,
-добавлена ветка лекарств с ценовыми и надбавочными проверками, общий пакет
-участника вынесен в `common`, характеристики сверяются построчно, реестры
-медизделий и лекарств проверяются по структурированным записям, РУ медизделия
-сверяется с реестром, обеспечения проверяются по сумме/форме/сроку, маржа
-учитывает дополнительные затраты, срок поставки проверяется по дате/дням;
-добавлены метаданные ревью, подсказки `needs_input` и чек-лист документов.
-Ждёт юридического ревью.
+Статус: Phase 0, R1–R17 и Phase 1 (API + PostgreSQL) реализованы. Модуль
+медизделий 44-ФЗ расширен, добавлена ветка лекарств с ценовыми и надбавочными
+проверками, общий пакет участника вынесен в `common`, характеристики сверяются
+построчно, реестры медизделий и лекарств проверяются по структурированным
+записям, РУ медизделия сверяется с реестром, обеспечения проверяются по
+сумме/форме/сроку, маржа учитывает дополнительные затраты, срок поставки
+проверяется по дате/дням; добавлены метаданные ревью, подсказки `needs_input`,
+pre-award и post-award чек-листы. Запуски core-модуля сохраняются в `CoreRun`
+и доступны через API. Ждёт юридического ревью.
 Ветка: `stage-11-server-migration`
 Remote: `https://github.com/asadafar434-a11y/AI-chat-bot-SaaS.git`
 
@@ -77,8 +78,8 @@ Remote: `https://github.com/asadafar434-a11y/AI-chat-bot-SaaS.git`
 - `eis` (сборщик ЕИС и Document Intelligence);
 - `import`, `backup`, `read`, `write`.
 
-Prisma: 16 прикладных таблиц по контракту Stage 11. `Payment` и схема `pgboss`
-появляются на более поздних этапах.
+Prisma: 16 моделей — 15 по контракту Stage 11 и `CoreRun` Phase 1.
+`Payment` и схема `pgboss` появляются на более поздних этапах.
 
 Stage 11: production-ready по журналу процесса; S10 Payments заблокирован до выбора провайдера.
 
@@ -164,7 +165,8 @@ evidence-подтверждения, scope-guard (44-ФЗ + device/medicine), с
 Для `legal_reviewed` обязательны `reviewedAt` и `edition`, `sourceUrl`
 валидируется. `needs_input` показывает требуемый документ, если он задан
 у правила. `buildDocumentChecklist` собирает подтверждённые и требуемые
-документы из findings. Правила `status: "seed"` и требуют юридической проверки.
+документы из findings; `buildPostAwardChecklist` — документы после подписания
+контракта. Правила `status: "seed"` и требуют юридической проверки.
 
 ## 5. Решения (ADR-lite)
 
@@ -213,23 +215,23 @@ evidence-подтверждения, scope-guard (44-ФЗ + device/medicine), с
 - R15 реализован: срок поставки проверяется по требуемой дате или пределу дней.
 - R16 реализован: `buildDocumentChecklist` собирает чек-лист документов из
   findings, склеивает дубли и берёт максимальный риск.
+- R17 реализован: `buildPostAwardChecklist` собирает post-award документы
+  для медизделий и лекарств с учётом требований.
+- Phase 1: добавлена модель `CoreRun`, миграция `s12_core_runs`, scoped-репозиторий,
+  аудит `core.run.created`, сервис запуска и API:
+  `POST /api/core/medical/run`, `GET /api/core/medical/runs`.
 - Всего 45 правил; 70 golden-сценариев в `medical.golden.test.ts` и
   `medicine.golden.test.ts`.
-- Targeted-прогон: 141/141 pass (31 тест Phase 0 + 110 новых).
-- Полный `npm test`: 1102 теста, 1058 pass, 0 fail, 43 skipped, 1 todo.
+- Targeted-прогон core/server: `146/146` core + `6/6` core-run service.
+- Полный `npm test`: 1113 тестов, 1069 pass, 0 fail, 43 skipped, 1 todo.
 - `npx tsc --noEmit`, `npx eslint src/lib/core --no-cache` и `npx eslint src` проходят.
+- `npx prisma validate` и `npx prisma generate` проходят.
 - Существующая логика `web/src/lib` не изменялась: добавлен только новый каталог `core`.
-- Проведён инженерный ревью: `docs/core/medical-rules-review.md`; статусы R1–R16 отмечены.
+- Проведён инженерный ревью: `docs/core/medical-rules-review.md`; статусы R1–R17 отмечены.
 - Созданы документы `docs/core/STATE.md`, `docs/tasks/core-v1.md`.
 - Скопированы исходники доски: `docs/core/figma-board.txt`, `docs/core/figma-board-nodes.json`.
-- Наши незакоммиченные изменения: `web/src/lib/core/`, `docs/core/`, `docs/tasks/` (untracked).
-- В рабочем дереве есть прежние изменения пользователя:
-  - `D docs/stage-11/s10-payment-discovery.md`
-  - `?? docs/legal-rf/`
-  - `?? docs/stage-11/s10-payment-provider-discovery.md`
-- Ветка `stage-11-server-migration` основана на `origin/main` (`02cf81d`) и опережает
-  его на 11 коммитов. В `main` ничего не попадает без отдельного merge/PR.
-- Git-коммит не делался.
+- R17 и Phase 1 ещё не закоммичены; предыдущие коммиты запушены в
+  `origin/stage-11-server-migration`.
 
 ## 7. Следующий шаг
 
@@ -238,8 +240,8 @@ evidence-подтверждения, scope-guard (44-ФЗ + device/medicine), с
    актуальным актам (надбавки уже сверяются по evidence).
 3. Подключить live-адаптеры реестров к `registryRecord` и
    `medicineRegistrationRecord` (контракты и проверки готовы).
-4. Решить Phase 1: схема БД + API или второй модуль.
-5. Если API: определить API-ключи, org-scope, idempotency, audit, rate limits.
+4. Применить миграцию `s12_core_runs` и проверить API на PostgreSQL.
+5. Добавить rate limits/idempotency для API, если появятся внешние клиенты.
 6. Подключить текущий UI к ядру за флагом (позже, отдельным этапом).
 
 ## 8. Как продолжить в новом чате
@@ -345,3 +347,12 @@ web/src/lib и существующие тесты без явного разр�
   документов из findings, склеивает дубли и берёт максимальный риск.
   Targeted 141/141, полный прогон 1058 pass / 0 fail, tsc и eslint зелёные.
   Остаются перечни ЖНВЛП/НДС, live-реестры и юрревью.
+- 2026-10-26: реализован R17: `buildPostAwardChecklist` собирает документы
+  после подписания контракта для медизделий и лекарств. Targeted 146/146,
+  полный прогон 1063 pass / 0 fail, tsc и eslint зелёные. Остаются перечни
+  ЖНВЛП/НДС, live-реестры и юрревью.
+- 2026-10-26: Phase 1 (API + PostgreSQL): добавлены `CoreRun`, миграция
+  `s12_core_runs`, scoped-репозиторий, аудит `core.run.created`, сервис
+  запуска и API `POST /api/core/medical/run`, `GET /api/core/medical/runs`.
+  Полный прогон 1069 pass / 0 fail, prisma validate/generate, tsc и eslint
+  зелёные. Миграция в среде ещё не применялась.

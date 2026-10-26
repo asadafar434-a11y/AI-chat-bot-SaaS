@@ -76,6 +76,7 @@ model Organization {
   auditEvents         AuditEvent[]
   legacyImportBatches LegacyImportBatch[]
   invitations         Invitation[]
+  coreRuns            CoreRun[]
 
   @@index([deletedAt])
   @@map("Organization")
@@ -107,6 +108,7 @@ model User {
   accounts        Account[]
   sessions        Session[]
   invitationsSent Invitation[] @relation("InvitationInvitedBy")
+  coreRuns        CoreRun[]    @relation("CoreRunCreatedBy")
 
   @@index([deletedAt])
   @@map("User")
@@ -378,6 +380,35 @@ model LegacyImportBatch {
   @@index([organizationId, startedAt])
   @@index([organizationId, status])
   @@map("LegacyImportBatch")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 1: запуски core-модулей
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Снимок запуска core-модуля. `input` и `result` — JSONB, чтобы сохранить
+/// воспроизводимость решения без изменения доменной формы. Организация и автор
+/// ставятся сервером из сессии и скоупа, а не из тела запроса.
+model CoreRun {
+  id              String   @id @default(cuid())
+  organizationId  String   @db.VarChar(25)
+  createdByUserId String?  @db.VarChar(25)
+  moduleKey       String   @db.VarChar(60)
+  moduleVersion   String   @db.VarChar(20)
+  outcome         String   @db.VarChar(40)
+  riskScore       Int?
+  input           Json
+  result          Json
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy    User?        @relation("CoreRunCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, moduleKey])
+  @@index([createdByUserId])
+  @@map("CoreRun")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

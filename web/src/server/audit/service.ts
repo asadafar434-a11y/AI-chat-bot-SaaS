@@ -49,6 +49,7 @@ export const AUDIT_ACTIONS = [
   "member.role_changed",
   "member.removed",
   "auth.password_reset",
+  "core.run.created",
   // S8: события фоновых задач.
   "document.extracted",
   "storage.reconciled",
@@ -69,6 +70,7 @@ export const AUDIT_ENTITY_TYPES = [
   "invitation",
   "user",
   "organization",
+  "core_run",
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];

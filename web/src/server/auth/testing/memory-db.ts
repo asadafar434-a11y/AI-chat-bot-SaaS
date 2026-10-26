@@ -29,6 +29,7 @@ const TABLE_NAMES = [
   "sample",
   "auditEvent",
   "legacyImportBatch",
+  "coreRun",
   "account",
   "session",
   "verificationToken",

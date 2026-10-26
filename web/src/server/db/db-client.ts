@@ -42,6 +42,7 @@ export type DbClient = {
   sample: ModelDelegate;
   auditEvent: ModelDelegate;
   legacyImportBatch: ModelDelegate;
+  coreRun: ModelDelegate;
   // S2: аутентификация и приглашения. Делегаты входят в тот же структурный клиент,
   // чтобы сессии и приглашения проверялись теми же средствами, что и бизнес-таблицы.
   account: ModelDelegate;
@@ -63,6 +64,7 @@ export const DB_DELEGATES = [
   "sample",
   "auditEvent",
   "legacyImportBatch",
+  "coreRun",
   "account",
   "session",
   "verificationToken",

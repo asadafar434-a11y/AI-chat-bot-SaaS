@@ -36,6 +36,9 @@ const S1_MODELS = [
 const AUTH_MODELS = ["Account", "Session", "VerificationToken"] as const;
 const S2_MODELS = [...AUTH_MODELS, "Invitation"] as const;
 
+/** Phase 1: снимки запусков core-модулей. */
+const PHASE1_MODELS = ["CoreRun"] as const;
+
 /** Таблицы, которые заведены в более поздних этапах и не должны появляться сейчас. */
 const LATER_STAGE_MODELS = ["Payment", "pgboss"] as const;
 
@@ -51,8 +54,8 @@ function modelNames(): string[] {
   return [...schema.matchAll(/^model\s+(\w+)\s*\{/gm)].map((match) => match[1]);
 }
 
-test("в схеме ровно 15 моделей: 11 приложения (S1) и 4 аутентификации (S2)", () => {
-  assert.deepEqual(modelNames().sort(), [...S1_MODELS, ...S2_MODELS].sort());
+test("в схеме ровно 16 моделей: 11 S1, 4 S2 и CoreRun Phase 1", () => {
+  assert.deepEqual(modelNames().sort(), [...S1_MODELS, ...S2_MODELS, ...PHASE1_MODELS].sort());
 });
 
 test("моделей более поздних этапов в схеме нет", () => {

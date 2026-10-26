@@ -37,6 +37,19 @@ export type ImportBatchRow = {
   backupHash: string;
   status: string;
 };
+export type CoreRunRow = {
+  id: string;
+  organizationId: string;
+  createdByUserId: string | null;
+  moduleKey: string;
+  moduleVersion: string;
+  outcome: string;
+  riskScore: number | null;
+  input: unknown;
+  result: unknown;
+  createdAt: Date;
+  updatedAt: Date;
+};
 export type User = { id: string; email: string; name: string | null };
 export type Membership = { id: string; organizationId: string; userId: string; role: "owner" | "member" };
 export type InvitationRow = {
@@ -63,6 +76,7 @@ export type OrgRepos = {
   sample: ScopedRepo<Sample>;
   auditEvent: ScopedRepo<AuditEventRow>;
   legacyImportBatch: ScopedRepo<ImportBatchRow>;
+  coreRun: ScopedRepo<CoreRunRow>;
   invitation: ScopedRepo<InvitationRow>;
 };
 
@@ -79,6 +93,7 @@ export function orgRepositories(db: DbClient, scope: OrgScope): OrgRepos {
     sample: scopedRepository<Sample>(db, "sample", scope, "sample"),
     auditEvent: scopedRepository<AuditEventRow>(db, "auditEvent", scope, "auditEvent"),
     legacyImportBatch: scopedRepository<ImportBatchRow>(db, "legacyImportBatch", scope, "legacyImportBatch"),
+    coreRun: scopedRepository<CoreRunRow>(db, "coreRun", scope, "coreRun"),
     invitation: scopedRepository<InvitationRow>(db, "invitation", scope, "invitation"),
   };
 }
