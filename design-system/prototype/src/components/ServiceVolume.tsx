@@ -31,7 +31,7 @@ export function ServiceVolumeCard({ volume, nmck, costs }: { volume: ServiceVolu
         </span>
         <span className="text-[12px] text-muted-foreground">
           {volume.people !== null && `${num(volume.people)} чел. · `}
-          {volume.rows.length} {rowsWord(volume.rows.length, volume.people !== null)} · {volume.doc}
+          {volume.rows.length} {volume.rowsLabel ?? rowsWord(volume.rows.length, volume.people !== null)} · {volume.doc}
         </span>
       </p>
       {perUnit !== null && (

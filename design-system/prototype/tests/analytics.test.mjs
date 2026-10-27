@@ -1710,6 +1710,13 @@ test('объём услуги: детодни из ТЗ, цена заказчи
   assert.match(areaText, /3 позиции · Ведомость\.docx/);
   assert.doesNotMatch(areaText, /чел\./);
   assert.match(areaText, /Заказчик закладывает ≈ 200,00 ₽ за м²/);
+  // Таблица «месяц × год» с единицей в заголовке (3PL-оператор): строки названы периодами, а не позициями; цены заказчика нет — подсказка вписать себестоимость тонны.
+  const tonnes = { doc: 'Проектно-техническая документация.docx', unit: 'тонна', unitsLabel: 'тонн', unitOf: 'тонны', one: 'одной', rows: new Array(12).fill(null).map((_, i) => ({ category: 'М' + i, units: 1 })), people: null, total: 351121, rowsLabel: 'периодов' };
+  const tonnesText = text(renderToStaticMarkup(h(mod.ServiceVolumeCard, { volume: tonnes, nmck: null, costs: null })));
+  assert.match(tonnesText, /351[^\d]121 тонн/);
+  assert.match(tonnesText, /12 периодов · Проектно-техническая документация\.docx/);
+  assert.match(tonnesText, /Впишите себестоимость одной тонны на шаге «Цена»/);
+  assert.doesNotMatch(tonnesText, /Заказчик закладывает/, 'начальной цены нет — цены заказчика за тонну тоже нет, ничего не выдумываем');
   const shifts = { doc: 'ТЗ', unit: 'смена', unitsLabel: 'смен', unitOf: 'смены', one: 'одной', rows: [{ category: 'Охрана', units: 365 }], people: null, total: 365 };
   assert.match(text(renderToStaticMarkup(h(mod.ServiceVolumeCard, { volume: shifts, nmck: 730000, costs: null }))), /Впишите себестоимость одной смены на шаге «Цена»/);
   const screen = readFileSync(path.join(root, 'src/real/analytics.tsx'), 'utf8');

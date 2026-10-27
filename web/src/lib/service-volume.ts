@@ -1,7 +1,8 @@
 // Объём закупки из документов заказчика: сколько всего единиц услуги или работы (детодней, человеко-часов, м², рейсов…).
 // Заказчик считает цену за единицу объёма, и участнику нужна себестоимость той же единицы. Читает код по таблицам, без ИИ; чисел не выдумывает.
-// Два вида таблиц: «люди × период» (количество человек и количество дней, часов или месяцев) и «количество + единица измерения»
-// (одна и та же единица во всех строках: м², пог. м, час, смена, рейс…). Товары в штуках сюда не попадают — по ним блок «Товары и закупочные цены».
+// Три вида таблиц: «люди × период» (количество человек и количество дней, часов или месяцев), «количество + единица измерения»
+// (одна и та же единица во всех строках: м², пог. м, час, смена, рейс…) и «период × год» с единицей в заголовке («Планируемые объёмы (в тоннах)»).
+// Товары в штуках сюда не попадают — по ним блок «Товары и закупочные цены».
 
 import { cellsOf, numberOf } from "@/lib/spec-table";
 
@@ -30,6 +31,8 @@ export type ServiceVolume = {
   people: number | null;
   /** Всего единиц объёма. */
   total: number;
+  /** Чем названы строки, если это не категории и не позиции: «периодов» у таблицы «месяц × год». */
+  rowsLabel?: string;
 };
 
 type Unit = Pick<ServiceVolume, "unit" | "unitsLabel" | "unitOf" | "one">;
@@ -48,6 +51,8 @@ const U = {
   shift: unit("смена", "смен", "смены", "одной"),
   trip: unit("рейс", "рейсов", "рейса"),
   month: unit("месяц", "месяцев", "месяца"),
+  // Тонна как объём обработки груза («оказание услуг 3PL-оператора»: планируемые объёмы в тоннах); в таблицах «количество + единица» т по-прежнему товар.
+  tonne: unit("тонна", "тонн", "тонны", "одной"),
 };
 
 // Единица измерения в ячейке: пробелы, точки, дефисы и косые убраны («кв. м» → «квм», «чел.-час» → «челчас»).
@@ -153,11 +158,51 @@ function quantityWithMeasure(doc: Doc, lines: string[], i: number, head: string[
   return { doc: doc.name, ...found, rows, people: null, total: rows.reduce((s, r) => s + r.units, 0) };
 }
 
-/** Объём закупки: найдена таблица «люди × период» или «количество + единица измерения» с одной единицей во всех строках. Нет такой таблицы — null. */
+// Единица названа в заголовке над таблицей, а не в столбце: «1.2.4. Планируемые объёмы (в тоннах):» и ниже «Месяц | 2025 | 2026».
+const CAPTION = /объ[её]м[а-яё]*[^\n|]{0,60}\(\s*(?:в\s+)?([^)\n]{1,30}?)\s*\)\s*:?\s*$/i;
+const CAPTION_UNITS: [RegExp, Unit][] = [
+  [/^(?:тонн[а-яё]*|т\.?)$/, U.tonne],
+  [/^(?:кв(?:адратн[а-яё]*)?\.?\s*м(?:етр[а-яё]*)?\.?|м2|м²)$/, U.m2],
+  [/^(?:куб(?:ическ[а-яё]*)?\.?\s*м(?:етр[а-яё]*)?\.?|м3|м³)$/, U.m3],
+  [/^чел(?:овеко)?[-. ]?час[а-яё]*$/, U.manHour],
+  [/^час[а-яё]*$/, U.hour],
+  [/^рейс[а-яё]*$/, U.trip],
+  [/^смен[а-яё]*$/, U.shift],
+];
+
+/** Таблица «период × год» с единицей в заголовке: сумма всех чисел строк периодов; итоговая строка заказчика должна сходиться с нашей суммой (допуск 2 %), иначе таблице не верим. */
+function periodMatrix(doc: Doc, lines: string[], i: number): ServiceVolume | null {
+  const caption = CAPTION.exec(lines[i].trim());
+  if (!caption) return null;
+  const u = CAPTION_UNITS.find(([re]) => re.test(caption[1].trim().toLowerCase()))?.[1];
+  if (!u) return null;
+  let start = i + 1;
+  while (start < lines.length && !lines[start].trim() && start < i + 3) start++;
+  if (!lines[start]?.includes(" | ") || cellsOf(lines[start]).length < 2) return null;
+  const rows: VolumeRow[] = [];
+  let printedTotal: number | null = null;
+  for (const line of bodyLines(lines, start + 1)) {
+    const cells = cellsOf(line);
+    const label = cells[0] ?? "";
+    const numbers = cells.slice(1).map(quantityOf);
+    if (numbers.every((n) => n === null)) continue;
+    const sum = numbers.reduce<number>((s, n) => s + (n ?? 0), 0);
+    if (TOTAL.test(label)) printedTotal = sum;
+    else if (/\p{L}{3}/u.test(label)) rows.push({ category: label.replace(/[\s:]+$/, ""), units: sum });
+  }
+  if (rows.length < 2) return null;
+  const total = Math.round(rows.reduce((s, r) => s + r.units, 0) * 1000) / 1000;
+  if (printedTotal !== null && Math.abs(printedTotal - total) > Math.max(1, total * 0.02)) return null;
+  return { doc: doc.name, ...u, rows, people: null, total, rowsLabel: "периодов" };
+}
+
+/** Объём закупки: найдена таблица «люди × период», «количество + единица измерения» с одной единицей во всех строках или «период × год» с единицей в заголовке. Нет такой таблицы — null. */
 export function findServiceVolume(documents: Doc[]): ServiceVolume | null {
   for (const doc of documents) {
     const lines = doc.text.split("\n");
     for (let i = 0; i < lines.length; i++) {
+      const matrix = periodMatrix(doc, lines, i);
+      if (matrix) return matrix;
       const head = cellsOf(lines[i]);
       if (head.length < 3) continue;
       const found = peopleTimesPeriod(doc, lines, i, head) ?? quantityWithMeasure(doc, lines, i, head);

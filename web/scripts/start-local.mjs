@@ -7,6 +7,7 @@ import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { waitForDatabase } from "./wait-for-db.mjs";
 
 const web = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 if (!existsSync(path.join(web, "public", "product", "index.html")) || !existsSync(path.join(web, ".next", "BUILD_ID"))) {
@@ -16,6 +17,14 @@ if (!existsSync(path.join(web, "public", "product", "index.html")) || !existsSyn
 
 process.env.OPEN_ACCESS = "1";
 const require = createRequire(import.meta.url);
+
+// База данных (Docker) после включения компьютера поднимается дольше продукта: ждём её, а не падаем на первом входе. Файлы окружения читаем теми же правилами, что и сам Next.
+try {
+  require("@next/env").loadEnvConfig(web);
+} catch {
+  // Не прочитались — берём то, что уже есть в окружении.
+}
+await waitForDatabase(process.env.DATABASE_URL);
 process.argv.length = 2;
 process.argv.push("start", "-p", process.env.PORT ?? "3000", "-H", "127.0.0.1");
 require(require.resolve("next/dist/bin/next"));
