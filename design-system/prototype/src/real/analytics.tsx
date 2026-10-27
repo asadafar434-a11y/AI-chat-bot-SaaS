@@ -37,6 +37,7 @@ import { AnalyticsChart } from '../components/AnalyticsChart';
 import { AnalyticsFindings } from '../components/AnalyticsFindings';
 import { AnalyticsSummary, type ReportBusy } from '../components/AnalyticsSummary';
 import { Collapsible } from '../components/Collapsible';
+import { CrewCostCard } from '../components/CrewCost';
 import { CustomerQuotesCard } from '../components/CustomerQuotes';
 import { PositionPricesCard } from '../components/PositionPrices';
 import { ServiceVolumeCard } from '../components/ServiceVolume';
@@ -47,6 +48,7 @@ import { useProfile } from './analysis';
 import { useMarketBase } from './market';
 import { AnalyticsIntake } from './analytics-intake';
 import { CounterpartyBlock } from './counterparty';
+import { useCrewCost } from './rates';
 import { useFacts } from './hooks';
 import { usePurchase } from './purchase-provider';
 
@@ -163,6 +165,8 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
   const stepCalc = useMemo(() => calcFor(purchase), [purchase]);
   // Объём закупки из таблицы документов (детодни, человеко-часы, м², рейсы…): показывается, когда найден; себестоимость единицы вписывают на шаге «Цена».
   const volume = useMemo(() => findServiceVolume(plain), [plain]);
+  // Состав исполнения из документов (должности, техника, срок) и найденные в интернете зарплаты и аренда → себестоимость за месяц, за срок и за единицу объёма (real/rates.ts, lib/crew-cost.ts); нет состава — блока нет.
+  const crew = useCrewCost(purchase.id, plain, place?.region.name ?? null, volume?.total ?? null);
   // Предложения поставщиков из обоснования начальной цены у заказчика (ТКП №1…№3) и шаг аукциона: читает код из документов, без ИИ; показываются, когда найдены.
   const quotes = useMemo(() => findCustomerQuotes(plain), [plain]);
   const auctionStep = useMemo(() => auctionStepNote(plain, nmck), [plain, nmck]);
@@ -171,12 +175,14 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
     () => (market.prices ? purchaseCost(market.prices, { withVat: !/без\s+НДС/i.test(purchase.price ?? ''), vatRate: data?.settings.vatRate ?? 22 }) : null),
     [market.prices, purchase.price, data],
   );
+  const crewTotal = crew.cost?.complete ? crew.cost.termTotal : null;
   const calc = useMemo(() => {
     const e = (register.data ?? EMPTY_REGISTER).econ;
     // Себестоимость: вписанная участником важнее всего; нет её — из шага «Цена»; нет и там — по найденным закупочным ценам и количествам (владелец, 23.10.2026: «чтобы ты сразу считал, когда есть цена и количество»).
-    return { ...stepCalc, costs: parseAmount(e.costs) ?? stepCalc.costs ?? autoCost?.total ?? null, extra: parseAmount(e.extra) ?? stepCalc.extra, taxPct: parseAmount(e.taxPct) ?? stepCalc.taxPct };
-  }, [stepCalc, register.data, autoCost]);
-  const costsAuto = Boolean(autoCost?.total) && !parseAmount((register.data ?? EMPTY_REGISTER).econ.costs) && !stepCalc.costs;
+    // Себестоимость по составу работ считается для расчёта, только когда ставки найдены по всем должностям и технике: неполная сумма цену не определяет.
+    return { ...stepCalc, costs: parseAmount(e.costs) ?? stepCalc.costs ?? autoCost?.total ?? crewTotal ?? null, extra: parseAmount(e.extra) ?? stepCalc.extra, taxPct: parseAmount(e.taxPct) ?? stepCalc.taxPct };
+  }, [stepCalc, register.data, autoCost, crewTotal]);
+  const costsAuto = Boolean(autoCost?.total ?? crewTotal) && !parseAmount((register.data ?? EMPTY_REGISTER).econ.costs) && !stepCalc.costs;
   const econ = useMemo(() => economics({ calc, estimate, settings: econSettings(assumptions), price }), [calc, estimate, assumptions, price]);
 
   // Проверка гипотез обычным поиском: в запрос идут только ключевые слова темы, год и регион места поставки из документов (lib/search-queries.ts). Результат сохраняется у закупки.
@@ -381,6 +387,7 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
       </div>
       {/* Товары и найденные закупочные цены — сразу под названием закупки: это то, что участник ищет первым (владелец, 23.10.2026: «где товар, цена его?»). Цен нет — блока нет. */}
       {volume && <ServiceVolumeCard volume={volume} nmck={nmck} costs={stepCalc.costs ?? null} />}
+      {crew.need && crew.cost && crew.state !== 'none' && <CrewCostCard need={crew.need} cost={crew.cost} state={crew.state} saved={crew.saved} error={crew.error} perUnitLabel={volume ? volume.unitOf : undefined} />}
       {market.prices && <PositionPricesCard prices={market.prices} total={market.positionsTotal} />}
       {quotes && <CustomerQuotesCard quotes={quotes} nmck={nmck} step={auctionStep} />}
       <TenderRating rating={rating} />
@@ -391,7 +398,13 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
         onWord={() => void downloadWord()}
         onPdf={downloadPdf}
         action={(needCosts || costsAuto) && onCosts ? { label: costsAuto ? 'Уточнить себестоимость на шаге «Цена» →' : 'Ввести себестоимость на шаге «Цена» →', onClick: onCosts } : undefined}
-        costNote={costsAuto && autoCost?.total ? `Себестоимость посчитана сама по найденным закупочным ценам: ${rubles(autoCost.total)} (${autoCost.lines.length} ${autoCost.lines.length === 1 ? 'позиция' : 'позиций'}, ${/без\s+НДС/i.test(purchase.price ?? '') ? 'без НДС' : 'с НДС'}; при нескольких ценах — медиана, при двух — большая). Доставка, работа и ваши расходы сюда не входят: впишите свои на шаге «Цена».` : undefined}
+        costNote={
+          costsAuto && autoCost?.total
+            ? `Себестоимость посчитана сама по найденным закупочным ценам: ${rubles(autoCost.total)} (${autoCost.lines.length} ${autoCost.lines.length === 1 ? 'позиция' : 'позиций'}, ${/без\s+НДС/i.test(purchase.price ?? '') ? 'без НДС' : 'с НДС'}; при нескольких ценах — медиана, при двух — большая). Доставка, работа и ваши расходы сюда не входят: впишите свои на шаге «Цена».`
+            : costsAuto && crewTotal
+              ? `Себестоимость посчитана сама по составу работ: зарплаты и аренда техники из интернета с взносами за ${crew.cost?.months} мес. — ${rubles(crewTotal)}. Накладные расходы, прибыль и расходные материалы сюда не входят: впишите свои на шаге «Цена».`
+              : undefined
+        }
         analyze={onAnalyze ? { label: analyzed ? 'Перейти к анализу →' : 'Анализировать документы →', onClick: onAnalyze } : undefined}
       />
       {saveError && (

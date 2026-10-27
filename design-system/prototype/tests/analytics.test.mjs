@@ -1587,6 +1587,47 @@ test('повтор поиска по позициям, где он ничего 
   assert.match(hook, /setTimeout\(\(\) => setTick/, 'срок ждётся таймером, а не опросом');
 });
 
+test('себестоимость по составу работ: состав из документов, найденные зарплаты и аренда с источниками, цена за единицу, красный бейдж про ненайденное, честные состояния; блок стоит на экране закупки и кормит расчёт, только когда найдено всё', async () => {
+  const mod = await server.ssrLoadModule('/src/components/CrewCost.tsx');
+  const obs = (host, monthly) => ({ kind: 'salary', subject: 'x', monthly, min: null, max: null, region: 'Тверская область', regionMatch: 'same', host, url: `https://${host}/1`, date: '2026-10-27', quote: 'цитата с ценой', notes: [] });
+  const line = (key, kind, name, count, monthly, sources = []) => ({ key, kind, name, count, monthly, basis: monthly === null ? 'none' : 'region', sources, total: monthly === null ? null : monthly * count });
+  const need = { doc: 'Проектно-техническая документация.docx', staff: [{ role: 'Кладовщик', count: 6, requirement: null }, { role: 'Водитель штабелера', count: 20, requirement: null }], equipment: [{ name: 'Ричтрак', count: 10 }], months: 24 };
+  const cost = {
+    staff: [line('s:Кладовщик', 'salary', 'Кладовщик', 6, 65000, [obs('gorodrabot.ru', 65000)]), line('s:Водитель штабелера', 'salary', 'Водитель штабелера', 20, null)],
+    equipment: [line('e:Ричтрак', 'rent', 'Ричтрак', 10, 100000, [obs('arenda.ru', 100000)])],
+    months: 24, contributionsPct: 30.2, covered: { staff: [1, 2], equipment: [1, 1] }, complete: false,
+    staffMonth: 390000, contributionsMonth: 117780, equipmentMonth: 1000000, monthTotal: 1507780, termTotal: 36186720, perUnit: 103.06,
+  };
+  const saved = { at: '2026-10-27T09:00:00.000Z', signature: 's', results: [], spentRub: 3.2 };
+  const html = renderToStaticMarkup(h(mod.CrewCostCard, { need, cost, state: 'done', saved, error: null, perUnitLabel: 'тонну' }));
+  const t = text(html);
+  assert.match(t, /Себестоимость по составу работ/);
+  assert.match(t, /≈ 103 ₽ за тонну/, 'главное число — за единицу объёма');
+  assert.match(t, /1[^\d]507[^\d]780 ₽ в месяц · 36[^\d]186[^\d]720 ₽ за 24 месяца · из них взносы 30,2 % — 117[^\d]780 ₽/);
+  assert.match(html, /bg-danger\/10[^>]*>Ставки найдены по 1 из 2 должностей и по 1 из 1 видов техники: сумма неполная, ненайденное в неё не входит</, 'ненайденное — красным бейджем');
+  assert.match(t, /Кладовщик[\s\S]*65[^\d]000 ₽[\s\S]*390[^\d]000 ₽/);
+  assert.match(html, /<a href="https:\/\/gorodrabot\.ru\/1"[^>]*rel="noopener noreferrer"[^>]*title="цитата с ценой"/, 'источник — ссылкой, цитата в подсказке');
+  assert.match(html, /class="text-danger">не найдено</, 'у должности без ставки — «не найдено» красным');
+  assert.match(t, /Не включено: накладные расходы, прибыль, обучение, форма, расходные материалы · цифры из интернета на 27\.10\.2026/);
+  assert.match(t, /Персонал \(зарплата до налогов\)/);
+  assert.match(t, /Техника \(аренда как оценка стоимости владения\)/);
+  // Поиск идёт, ИИ выключен, неудача — состав виден, денег не обещано.
+  const empty = { ...cost, staff: cost.staff.map((l) => ({ ...l, monthly: null, total: null, sources: [] })), equipment: cost.equipment.map((l) => ({ ...l, monthly: null, total: null, sources: [] })), covered: { staff: [0, 2], equipment: [0, 1] }, staffMonth: 0, contributionsMonth: 0, equipmentMonth: 0, monthTotal: 0, termTotal: null, perUnit: null };
+  assert.match(text(renderToStaticMarkup(h(mod.CrewCostCard, { need, cost: empty, state: 'searching', saved: null, error: null }))), /Ищу зарплаты и аренду техники в интернете: 26 человек, 2 должности, 1 вид техники/);
+  assert.match(text(renderToStaticMarkup(h(mod.CrewCostCard, { need, cost: empty, state: 'off', saved: null, error: null }))), /ИИ выключен — зарплаты и аренда в интернете не искались\. Состав из документов виден ниже\./);
+  assert.match(renderToStaticMarkup(h(mod.CrewCostCard, { need, cost: empty, state: 'failed', saved: null, error: 'поиск не ответил' })), /role="alert"[^>]*>Не удалось найти зарплаты: поиск не ответил\. Повторю через десять минут\./);
+  assert.doesNotMatch(text(renderToStaticMarkup(h(mod.CrewCostCard, { need, cost: empty, state: 'off', saved: null, error: null }))), /≈/, 'нет ставок — нет и «≈ ₽»');
+  const screen = readFileSync(path.join(root, 'src/real/analytics.tsx'), 'utf8');
+  assert.match(screen, /useCrewCost\(purchase\.id, plain,/);
+  assert.match(screen, /<CrewCostCard need=\{crew\.need\}/);
+  assert.match(screen, /const crewTotal = crew\.cost\?\.complete \? crew\.cost\.termTotal : null;/, 'в расчёт цены идёт только полная сумма');
+  assert.ok(screen.indexOf('<CrewCostCard') > screen.indexOf('<ServiceVolumeCard') && screen.indexOf('<CrewCostCard') < screen.indexOf('<TenderRating'), 'под объёмом, над рейтингом');
+  const hook = readFileSync(path.join(root, 'src/real/rates.ts'), 'utf8');
+  assert.match(hook, /fetch\('\/api\/rates'/);
+  assert.match(hook, /aiHeaders\(purchaseId\)/, 'запрос по правилам ИИ: выключенный переключатель его не пускает');
+  assert.match(hook, /!aiOn/, 'ИИ выключен — не ищем');
+});
+
 test('проверка контрагента по ИНН: форма, ошибка словами, отчёт с фактами и отчётностью по годам, красный статус банкротства, ссылки на ручную проверку; блок стоит на главной «Аналитики»', async () => {
   const mod = await server.ssrLoadModule('/src/components/Counterparty.tsx');
   const props = { inn: '', onInn() {}, onCheck() {}, busy: false, error: null, report: null };
