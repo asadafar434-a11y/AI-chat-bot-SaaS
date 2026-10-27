@@ -181,3 +181,18 @@ test('«Пакет»: заголовки блоков — крупно и жир
   const half = html(h(pkg.StepPackage, props({ items: [{ ...items[0], ready: false }] })));
   assert.doesNotMatch(half, /text-success[^>]*>готово 0 из 1/);
 });
+
+test('«Пакет»: «Шаблоны заказчика» — список файлов-образцов над составом пакета; без шаблонов блока нет', () => {
+  const templates = [
+    { name: 'Приложение № 3 Форма заявки.docx', kind: 'customer_form', label: 'Форма заказчика', blanks: 5, excel: false },
+    { name: 'Приложение № 5 Спецификация.xlsx', kind: 'customer_form', label: 'Форма заказчика', blanks: 0, excel: true },
+  ];
+  const out = html(h(pkg.StepPackage, props({ templates })));
+  assert.match(out, /Шаблоны заказчика · 2/);
+  assert.match(out, /Приложение № 3 Форма заявки\.docx/);
+  assert.match(out, /5 пустых мест/);
+  assert.match(out, />Excel</);
+  assert.ok(out.indexOf('Шаблоны заказчика') < out.indexOf('Состав пакета'), 'список — над составом пакета');
+  assert.doesNotMatch(html(h(pkg.StepPackage, props({ templates: [] }))), /Шаблоны заказчика/);
+  assert.doesNotMatch(html(h(pkg.StepPackage, props())), /Шаблоны заказчика/);
+});

@@ -12,6 +12,7 @@ import { specificationForms } from '@/lib/spec-form';
 import type { PartKey } from '@/lib/my-docs';
 import { hasApplication } from '@/lib/law-kind';
 import { PART_TITLES, partsOf, type TpPart } from '@/lib/tp-parts';
+import { customerTemplates } from '@/lib/customer-templates';
 import type { DetectedForm } from '@/lib/tp';
 import { formPages } from '@/lib/form-pages';
 import { fillBlank } from '@/lib/blank-fill';
@@ -122,6 +123,8 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
     [purchase.sample, purchase.price, purchase.tpPrice, source.documents, profile],
   );
   const blanks = useMemo(() => [...detectedForms, ...specForms], [detectedForms, specForms]);
+  // Какие файлы документации заказчик дал как образцы для заполнения (без ИИ, сразу после загрузки).
+  const templates = useMemo(() => customerTemplates(source.documents), [source.documents]);
   const whereOf = (quote: string) => {
     const place = quote ? locator.locate(quote) : null;
     return place ? describeSource(place) : undefined;
@@ -236,6 +239,7 @@ export function PurchasePackage({ onBack, onFix, onTariffs }: { onBack: () => vo
       onBack={onBack}
       auditReport={noApplication ? undefined : appAuditReport}
       scoringReport={noApplication ? undefined : appScoringReport}
+      templates={templates}
       detectedForms={blanks}
       onDownloadForm={downloadDetectedForm}
       registry={tp ? <RegistryBlock /> : undefined}

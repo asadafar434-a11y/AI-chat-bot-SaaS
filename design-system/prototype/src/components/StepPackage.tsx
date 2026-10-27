@@ -6,6 +6,8 @@ import { type ScoringReport } from '@/lib/scoring-engine';
 import { pointsText } from '@/lib/criteria';
 import { plural } from '@/lib/plural';
 import { FinalCheck } from './StepReview';
+import { CustomerTemplates } from './CustomerTemplates';
+import type { CustomerTemplate } from '@/lib/customer-templates';
 import type { SubmitItem } from '@/lib/application-files';
 import type { Completeness } from '@/lib/fields';
 import type { FileFormat } from '@/lib/file-format';
@@ -411,6 +413,7 @@ export function StepPackage({
   auditReport: auditRep,
   scoringReport: scoringRep,
   detectedForms,
+  templates,
   onDownloadForm,
   registry,
   excelForms,
@@ -449,6 +452,8 @@ export function StepPackage({
   scoringReport?: ScoringReport;
   // Бланки заказчика — строками в «Составе пакета».
   detectedForms?: DetectedForm[];
+  // Шаблоны заказчика: файлы документации, которые он дал как образцы (lib/customer-templates.ts); список — над «Составом пакета».
+  templates?: CustomerTemplate[];
   // Скачать один бланк отдельным файлом.
   onDownloadForm?: (df: DetectedForm) => void;
   // Блок «Реестровые номера товаров» (real/registry.tsx); на макете без закупки не задаётся.
@@ -580,6 +585,9 @@ export function StepPackage({
 
       <div className="grid grid-cols-1 gap-4">
         <div className="min-w-0 space-y-4">
+          {/* Шаблоны заказчика: что он прислал как образцы */}
+          {templates && templates.length > 0 && <CustomerTemplates templates={templates} />}
+
           {/* Состав пакета: без заявки файлов нет, остаются только бланки заказчика, если они есть */}
           {(!noApplication || (detectedForms?.length ?? 0) > 0) && (
           <Card className="p-0">
