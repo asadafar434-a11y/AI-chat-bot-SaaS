@@ -82,18 +82,57 @@ test('причины риска: что сделать и источник у к
   assert.match(none, /Замечаний нет/);
 });
 
-test('«Поиск закупок» — заглушка: честно «в разработке», кнопка «Новая закупка», никаких выдуманных закупок', () => {
-  const out = html(h(search.TenderSearch, { onNew: () => {} }));
+const noop = () => {};
+const searchProps = (over = {}) => ({
+  filters: { query: '', law: 'any', priceFrom: null, priceTo: null, publishedFrom: null, publishedTo: null, activeOnly: true, customer: '', region: '', method: '' },
+  onFilters: noop,
+  sort: 'deadline',
+  onSort: noop,
+  result: { items: [], total: 0, hiddenNoPrice: 0, hiddenNoDate: 0 },
+  loadedAt: '',
+  today: '2026-10-27',
+  eisUrl: 'https://zakupki.gov.ru/epz/order/extendedsearch/results.html?searchString=x',
+  bookmarklet: 'javascript:void(0)',
+  onImport: noop,
+  importNote: null,
+  onClear: noop,
+  onNew: noop,
+  ...over,
+});
+
+test('«Поиск закупок»: без выгрузки — фильтры, «Найти в ЕИС» и три шага; закупок не выдумываем; «живая лента» — скоро', () => {
+  const out = html(h(search.TenderSearch, searchProps()));
   const plain = text(out);
   assert.match(plain, /Поиск закупок/);
-  assert.match(out, /скоро/i);
-  assert.match(plain, /Поиск по площадкам — в разработке/);
-  assert.match(plain, /Новая закупка/);
-  for (const fake of ['Почта России', 'РЖД', 'Сбербанк', 'Аэрофлот', 'Газпром', 'ГБОУ', 'совпадение', 'В работу']) {
-    assert.equal(plain.includes(fake), false, `в заглушке не должно быть «${fake}»`);
-  }
+  assert.match(plain, /44-ФЗ и 223-ФЗ/);
+  assert.match(plain, /Только приём заявок идёт/);
+  assert.match(plain, /Найти в ЕИС/);
+  assert.match(plain, /Скопировать закупки/);
+  assert.match(plain, /Живая лента без выгрузки — скоро/);
+  assert.match(out, /href="https:\/\/zakupki\.gov\.ru\/epz\/order\/extendedsearch\/results\.html/);
+  assert.doesNotMatch(plain, /Найдено:/);
   assert.equal(/\d{11,}/.test(plain), false, 'номеров закупок нет');
 });
+
+test('«Поиск закупок»: список — название, заказчик, цена, срок с остатком дней, номер, ссылка в ЕИС; скрытое без цены названо', () => {
+  const l = (over) => ({ id: '32616515024', law: '223-ФЗ', title: 'Разработка проектной документации', customer: 'ПАО «Россети»', price: 3304140, publishedAt: '2026-10-27', deadline: '2026-10-29', region: null, method: 'Иной способ', url: null, ...over });
+  const items = [l({}), l({ id: '0194200000526005766', law: '44-ФЗ', price: null, deadline: '2026-11-20', title: 'Поставка препаратов', url: 'https://zakupki.gov.ru/epz/order/x' })];
+  const out = html(h(search.TenderSearch, searchProps({ result: { items, total: 5, hiddenNoPrice: 3, hiddenNoDate: 0 }, loadedAt: '2026-10-27T10:00:00Z' })));
+  const plain = text(out);
+  assert.match(plain, /В выгрузке 5 закупок/);
+  assert.match(plain, /Найдено: 2/);
+  assert.match(plain, /Разработка проектной документации/);
+  assert.match(plain, /ПАО «Россети»/);
+  assert.match(plain, /3\s?304\s?140 ₽/);
+  assert.match(plain, /заявки до 29\.10\.2026 · осталось 2 дня/);
+  assert.match(plain, /цена не указана/);
+  assert.match(plain, /№ 32616515024/);
+  assert.match(out, /href="https:\/\/zakupki\.gov\.ru\/epz\/order\/x"/, 'своя ссылка закупки');
+  assert.match(out, /regNumber|searchString=32616515024/, 'без своей ссылки — поиск по номеру');
+  assert.match(plain, /Скрыто без цены в выгрузке: 3/);
+  assert.match(plain, /Очистить выгрузку/);
+});
+
 
 // ——— Шаг «Проверка»: уровни важности ———
 test('риск: уровень — самым крупным и цветом (красный, янтарный, зелёный), плашка подкрашена; причина — жирным рядом', () => {

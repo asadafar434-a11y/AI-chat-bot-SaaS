@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { Check, Upload, ScanSearch, Calculator, ShieldAlert, PackageCheck, ArrowLeft } from './lib/icons';
 import { Sidebar, type View } from './components/Sidebar';
 import { TendersDashboard } from './components/TendersDashboard';
-import { TenderSearch } from './components/TenderSearch';
+import { RealTenderSearch } from './real/tender-search';
 import { BidHistory } from './components/BidHistory';
 import { Profile } from './components/Profile';
 import { Settings } from './components/Settings';
@@ -211,7 +211,7 @@ function Product() {
               ) : (
                 <AnalyticsList onOpen={setAnalyticsId} />
               ))}
-            {view === 'search' && <TenderSearch onNew={newTender} />}
+            {view === 'search' && <RealTenderSearch onNew={newTender} />}
             {view === 'history' && <BidHistory purchases={purchases} />}
             {view === 'profile' && <Profile />}
             {view === 'settings' && <Settings dark={dark} setDark={setDark} />}
