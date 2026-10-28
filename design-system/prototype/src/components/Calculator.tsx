@@ -36,6 +36,21 @@ function splitKey(key: string): { section: string; rest: string } {
 }
 const formatNumber = (value: number) => value.toLocaleString('ru-RU', { maximumFractionDigits: 2 });
 
+// Группирует по разделу расчёта (для подзаголовков вроде «Обеспечение заявки» / «Обеспечение контракта»), порядок — по первому появлению.
+function groupBySection<T>(items: T[], sectionOf: (item: T) => string): { section: string; items: T[] }[] {
+  const groups = new Map<string, T[]>();
+  const order: string[] = [];
+  for (const item of items) {
+    const section = sectionOf(item);
+    if (!groups.has(section)) {
+      groups.set(section, []);
+      order.push(section);
+    }
+    groups.get(section)!.push(item);
+  }
+  return order.map((section) => ({ section, items: groups.get(section)! }));
+}
+
 const sphereKeys = Object.keys(calculatorsBySphere);
 
 function BoolToggle({ value, onChange }: { value: boolean | undefined; onChange: (v: boolean) => void }) {
@@ -81,16 +96,7 @@ function ValueRow({ item }: { item: CalculatorValue }) {
 }
 
 function ResultView({ result }: { result: CalculatorResult }) {
-  const groups = new Map<string, CalculatorValue[]>();
-  const order: string[] = [];
-  for (const item of result.values) {
-    const { section } = splitKey(item.key);
-    if (!groups.has(section)) {
-      groups.set(section, []);
-      order.push(section);
-    }
-    groups.get(section)!.push(item);
-  }
+  const groups = groupBySection(result.values, (item) => splitKey(item.key).section);
   return (
     <div className="space-y-3">
       {result.needsInput.length > 0 && (
@@ -99,13 +105,13 @@ function ResultView({ result }: { result: CalculatorResult }) {
           <span>Не хватает данных: {result.needsInput.map((f) => f.label).join(', ')}</span>
         </div>
       )}
-      {order.length > 0 && (
+      {groups.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2">
-          {order.map((section) => (
+          {groups.map(({ section, items }) => (
             <div key={section} className="space-y-2 rounded-md border border-border p-3">
               <h4 className="text-[13px] font-semibold">{sectionLabel(section)}</h4>
               <div className="space-y-1 text-[13px]">
-                {groups.get(section)!.map((item) => (
+                {items.map((item) => (
                   <ValueRow key={item.key} item={item} />
                 ))}
               </div>
@@ -332,32 +338,41 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
 
         {descriptor && (
           <>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {descriptor.inputSchema.map((field) => (
-                <label key={field.key} className="space-y-1.5">
-                  <span className="text-[13px] font-medium">
-                    {field.label}
-                    {field.required && <span className="text-danger"> *</span>}
-                  </span>
-                  {field.kind === 'boolean' ? (
-                    <BoolToggle value={values[field.key] as boolean | undefined} onChange={(v) => setField(field.key, v)} />
-                  ) : (
-                    <div className="relative">
-                      <input
-                        type={field.kind === 'number' ? 'number' : field.kind === 'date' ? 'date' : 'text'}
-                        value={values[field.key] === undefined ? '' : String(values[field.key])}
-                        onChange={(e) => {
-                          const raw = e.target.value;
-                          setField(field.key, field.kind === 'number' ? (raw === '' ? undefined : Number(raw)) : raw);
-                        }}
-                        className={fieldClass()}
-                      />
-                      {field.unit && (
-                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-muted-foreground">{field.unit}</span>
-                      )}
-                    </div>
-                  )}
-                </label>
+            <div className="space-y-4">
+              {groupBySection(descriptor.inputSchema, (field) => field.section ?? '').map(({ section, items }) => (
+                <div key={section || '_'} className="space-y-2">
+                  {section && <h4 className="text-[13px] font-semibold text-muted-foreground">{sectionLabel(section)}</h4>}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {items.map((field) => (
+                      <label key={field.key} className="space-y-1.5">
+                        <span className="text-[13px] font-medium">
+                          {field.label}
+                          {field.required && <span className="text-danger"> *</span>}
+                        </span>
+                        {field.kind === 'boolean' ? (
+                          <BoolToggle value={values[field.key] as boolean | undefined} onChange={(v) => setField(field.key, v)} />
+                        ) : (
+                          <div className="relative">
+                            <input
+                              type={field.kind === 'number' ? 'number' : field.kind === 'date' ? 'date' : 'text'}
+                              value={values[field.key] === undefined ? '' : String(values[field.key])}
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                setField(field.key, field.kind === 'number' ? (raw === '' ? undefined : Number(raw)) : raw);
+                              }}
+                              className={fieldClass()}
+                            />
+                            {field.unit && (
+                              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-muted-foreground">
+                                {field.unit}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
 

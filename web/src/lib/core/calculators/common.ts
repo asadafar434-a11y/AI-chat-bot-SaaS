@@ -403,7 +403,9 @@ export function combineCalculators(
     return result;
   };
 
-  const inputSchema = dedupeByKey(parts.flatMap(({ descriptor }) => descriptor.inputSchema));
+  const inputSchema = dedupeByKey(
+    parts.flatMap(({ section, descriptor }) => descriptor.inputSchema.map((item) => ({ ...item, section }))),
+  );
   const outputSchema = dedupeByKey(
     parts.flatMap(({ section, descriptor }) => descriptor.outputSchema.map((item) => ({ ...item, key: `${section}.${item.key}` }))),
   );

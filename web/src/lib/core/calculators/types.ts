@@ -6,6 +6,8 @@ export type CalculatorFieldSchema = {
   kind: CalculatorFieldKind;
   required: boolean;
   unit?: string;
+  /** Часть расчёта, которой принадлежит поле (ставится combineCalculators) — для подзаголовков в форме ввода. */
+  section?: string;
 };
 
 /** Flat bag of named values a calculator reads from; same shape as FlowInput.data. */
