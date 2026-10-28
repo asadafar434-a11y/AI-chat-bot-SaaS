@@ -4,9 +4,10 @@ import { findCustomers } from '@/lib/customers-table';
 import { onDataChanged } from '@/lib/data-events';
 import { afterWinDuties } from '@/lib/after-win';
 import { contradictionsStale } from '@/lib/contradictions';
+import { hiddenRequirementsStale } from '@/lib/hidden-requirements';
 import { createLocator, describeSource, type Located } from '@/lib/doc-locate';
 import { errorMessage } from '@/lib/http-error';
-import { extractRequirements, findContradictions, fromRequirements } from '@/lib/purchase';
+import { extractRequirements, findContradictions, findHiddenRequirements, fromRequirements } from '@/lib/purchase';
 import { priceDiscrepancies } from '@/lib/doc-discrepancies';
 import { fieldsOf } from '@/lib/fields';
 import { fulfillmentOf, type PlanStatus } from '@/lib/fulfillment';
@@ -94,6 +95,20 @@ export function PurchaseAnalysis({ onNext, onBack, onFix }: { onNext: () => void
       setContradictionsError(errorMessage(e));
     } finally {
       setContradicting(false);
+    }
+  };
+  // Скрытые требования и неоднозначности — отдельная платная проверка по кнопке; результат хранится в закупке.
+  const [findingHidden, setFindingHidden] = useState(false);
+  const [hiddenRequirementsError, setHiddenRequirementsError] = useState('');
+  const runHiddenRequirements = async () => {
+    setFindingHidden(true);
+    setHiddenRequirementsError('');
+    try {
+      update({ hiddenRequirements: await findHiddenRequirements(documents, purchase.id) });
+    } catch (e) {
+      setHiddenRequirementsError(errorMessage(e));
+    } finally {
+      setFindingHidden(false);
     }
   };
   // Закупка, загруженная без ИИ (из «Аналитики»): требований нет. Разбор — платный запрос к ИИ, только по кнопке; название, цену и способ, которые уже есть, он не затирает пустым.
@@ -189,6 +204,18 @@ export function PurchaseAnalysis({ onNext, onBack, onFix }: { onNext: () => void
               running: contradicting,
               error: contradictionsError,
               onRun: () => void runContradictions(),
+            }
+      }
+      hiddenRequirements={
+        // В примере запроса к ИИ нет — и кнопки тоже.
+        purchase.sample
+          ? undefined
+          : {
+              result: purchase.hiddenRequirements ?? null,
+              stale: purchase.hiddenRequirements ? hiddenRequirementsStale(purchase.hiddenRequirements, documents) : false,
+              running: findingHidden,
+              error: hiddenRequirementsError,
+              onRun: () => void runHiddenRequirements(),
             }
       }
       discrepancies={docNotes.discrepancies}
