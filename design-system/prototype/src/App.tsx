@@ -18,6 +18,7 @@ import { openSamplePurchase } from '@/lib/sample-purchase';
 import { stepsOf } from '@/lib/steps';
 import { usePurchases } from '@/lib/use-purchases';
 import { AnalyticsList, PurchaseAnalytics } from './real/analytics';
+import { CalculatorScreen } from './components/Calculator';
 import { PurchaseAnalysis, useProfile } from './real/analysis';
 import { PurchaseProvider, usePurchase } from './real/purchase-provider';
 import { toTender } from './real/tenders';
@@ -50,7 +51,7 @@ function parseHash(): { view: View; activeId: string | null; step: number; analy
   }
   if (first === 'new') return { view: 'workflow', activeId: null, step: 0, analyticsId: null };
   if (first === 'analytics') return { view: 'analytics', activeId: null, step: 0, analyticsId: second ?? null };
-  if (first === 'search' || first === 'history' || first === 'profile' || first === 'settings' || first === 'tariffs') {
+  if (first === 'calculator' || first === 'search' || first === 'history' || first === 'profile' || first === 'settings' || first === 'tariffs') {
     return { view: first, activeId: null, step: 0, analyticsId: null };
   }
   return { view: 'tenders', activeId: null, step: 0, analyticsId: null };
@@ -211,6 +212,7 @@ function Product() {
               ) : (
                 <AnalyticsList onOpen={setAnalyticsId} />
               ))}
+            {view === 'calculator' && <CalculatorScreen purchases={purchases} />}
             {view === 'search' && <RealTenderSearch onNew={newTender} />}
             {view === 'history' && <BidHistory purchases={purchases} />}
             {view === 'profile' && <Profile />}

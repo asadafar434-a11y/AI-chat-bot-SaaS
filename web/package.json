@@ -29,7 +29,20 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:up": "docker compose -f docker-compose.postgres.yml up -d",
-    "db:down": "docker compose -f docker-compose.postgres.yml down"
+    "db:down": "docker compose -f docker-compose.postgres.yml down",
+    "core:test": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs --test \"src/lib/core/**/*.test.ts\" \"src/server/core/registry/**/*.test.ts\" \"src/server/core/reference/**/*.test.ts\"",
+    "core:run": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/core-run.ts",
+    "core:calc": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/core-calc.ts",
+    "core:calculators:check": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/core-calculators-check.ts",
+    "core:verify": "npm run core:test && npm run core:check && npm run core:rules:inventory -- --check && npm run core:legal-review:check && npm run core:calculators:check",
+    "core:rules:inventory": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/core-rules-inventory.ts",
+    "core:registry:validate": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/core-registry-validate.ts",
+    "core:medicine-reference:validate": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/core-medicine-reference-validate.ts",
+    "core:medicine-reference:import": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/core-medicine-reference-import.ts",
+    "core:check": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/core-check.ts",
+    "core:legal-review": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/core-legal-review.ts",
+    "core:legal-review:check": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/core-legal-review.ts --check",
+    "core:legal-review:urls": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/core-legal-review.ts --urls"
   },
   "dependencies": {
     "@ai-sdk/react": "^4.0.115",

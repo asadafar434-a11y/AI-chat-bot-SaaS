@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { BarChart2, Briefcase, Cog, Plus, Sun, Moon, Search, History, Bell, Clock, ChevronRight, Menu, X, Wallet } from '../lib/icons';
+import { BarChart2, Briefcase, Calculator, Cog, Plus, Sun, Moon, Search, History, Bell, Clock, ChevronRight, Menu, X, Wallet } from '../lib/icons';
 import { useAccount } from '../lib/account';
 import { Button, Soon, Tooltip, IconButton, cx, useDialogFocus } from './ui';
 import { BrandMark } from './BrandMark';
 import { BotMark } from './BotMark';
 import { AiSwitch } from './AiSwitch';
 
-export type View = 'tenders' | 'analytics' | 'search' | 'history' | 'profile' | 'settings' | 'tariffs' | 'workflow';
+export type View = 'tenders' | 'analytics' | 'calculator' | 'search' | 'history' | 'profile' | 'settings' | 'tariffs' | 'workflow';
 
 // Уведомление о проверке специалистом по одной заявке.
 export type Notice = { id: string; title: string; status: 'sent' | 'replied'; read: boolean };
@@ -15,6 +15,7 @@ export type Notice = { id: string; title: string; status: 'sent' | 'replied'; re
 const nav: { id: View; label: string; icon: typeof Briefcase; soon?: string }[] = [
   { id: 'tenders', label: 'Мои закупки', icon: Briefcase },
   { id: 'analytics', label: 'Аналитика', icon: BarChart2 },
+  { id: 'calculator', label: 'Калькулятор', icon: Calculator },
   { id: 'search', label: 'Поиск закупок', icon: Search },
   { id: 'history', label: 'История заявок', icon: History },
   { id: 'tariffs', label: 'Тарифы', icon: Wallet },
