@@ -637,7 +637,10 @@ function Control({
   }
   if (f.key.startsWith('cast:')) {
     return (
-      <Button size="sm" variant="secondary" onClick={() => document.getElementById('cast-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+      <Button size="sm" variant="secondary" onClick={() => {
+          window.dispatchEvent(new Event('tl:open-cast'));
+          document.getElementById('cast-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }}>
         Вписать исполнителей выше ↑
       </Button>
     );

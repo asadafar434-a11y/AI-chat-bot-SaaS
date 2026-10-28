@@ -55,3 +55,13 @@ test('поля ввода: стиль берётся из общего fieldClas
   assert.match(ui, /'h-9 w-full px-3 text-sm'/);
   assert.match(ui, /'h-8 w-full px-2\.5 text-\[13px\]'/);
 });
+
+test('«Состав исполнителей» свёрнут по умолчанию; в заголовке — что осталось; кнопка на «Проверке» раскрывает его', () => {
+  const cast = src('components/CastCard.tsx');
+  assert.match(cast, /useState\(false\)/, 'карточка свёрнута до нажатия');
+  assert.match(cast, /осталось: \$\{pending\.length\}/);
+  assert.match(cast, /addEventListener\(CAST_OPEN_EVENT/);
+  const review = src('components/StepReview.tsx');
+  assert.match(review, /dispatchEvent\(new Event\('tl:open-cast'\)\)/);
+  assert.match(cast, /CAST_OPEN_EVENT = 'tl:open-cast'/);
+});

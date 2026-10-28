@@ -207,3 +207,28 @@ test('«Пакет»: «Финальная проверка» показывае
   const few = html(h(pkg.StepPackage, props({ auditReport: { ...report, findings: report.findings.slice(0, 5), critical: 5 } })));
   assert.doesNotMatch(few, /Показать ещё/);
 });
+
+test('«Пакет»: блоки — вкладками «Файлы», «Реестровые номера», «Что требует заказчик», «Финальная проверка»; видна одна, остальные скрыты, но в странице; счётчики на вкладках', () => {
+  const finding = (i) => ({ id: `f${i}`, severity: 'CRITICAL', what: `Замечание ${i}`, requirement: 'Т', source: 'И', fix: 'И' });
+  const items = [
+    { text: 'Выписка из ЕГРЮЛ', source: 'Извещение', quote: 'Выписка', verified: true, ready: true, required: true },
+    { text: 'Справка о задолженности', source: 'Извещение', quote: 'Справка', verified: true, ready: false, required: true },
+  ];
+  const out = html(h(pkg.StepPackage, props({ items, auditReport: { findings: [finding(1), finding(2)], critical: 2, warnings: 0, info: 0, risk: 'high' } })));
+  assert.match(out, /role="tablist"/);
+  const tabs = [...out.matchAll(/role="tab"[^>]*aria-selected="(true|false)"[^>]*>(.*?)<\/button>/g)].map((m) => [m[1], m[2].replace(/<[^>]+>/g, '')]);
+  assert.deepEqual(tabs.map((t) => t[1]), ['Файлы', 'Реестровые номера', 'Что требует заказчик1/2', 'Финальная проверка2']);
+  assert.deepEqual(tabs.map((t) => t[0]), ['true', 'false', 'false', 'false']);
+  const panels = [...out.matchAll(/<div role="tabpanel" id="pkg-panel-(\w+)"[^>]*>/g)].map((m) => [m[1], /\bhidden=""/.test(m[0])]);
+  assert.deepEqual(panels, [['files', false], ['registry', true], ['needs', true], ['audit', true]]);
+  assert.match(out, /Состав пакета/, 'скрытые вкладки остаются в странице: введённое не теряется');
+  assert.match(out, /Что требует заказчик/);
+  assert.match(out, /Замечание 1</);
+});
+
+test('«Пакет» без заявки и без бланков: одна вкладка «Что требует заказчик» — ряда вкладок нет', () => {
+  const items = [{ text: 'Документ о полномочиях', source: 'Извещение', quote: 'Документ', verified: true, ready: false, required: true }];
+  const out = html(h(pkg.StepPackage, props({ hasTp: false, noApplication: true, rows: [], count: 0, items, registry: undefined })));
+  assert.doesNotMatch(out, /role="tablist"/);
+  assert.match(out, /Что требует заказчик/);
+});

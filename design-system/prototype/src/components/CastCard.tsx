@@ -13,6 +13,9 @@ const INPUT =
 
 type Status = { ok: boolean; text: string } | null;
 
+/** Событие «раскрой состав исполнителей»: его посылает кнопка на «Проверке» перед прокруткой к карточке. */
+export const CAST_OPEN_EVENT = 'tl:open-cast';
+
 export function CastCard({
   cast,
   history,
@@ -30,8 +33,14 @@ export function CastCard({
 }) {
   const checks = castCheck(cast);
   const todo = checks.some((c) => !c.ok);
-  // Раскрыт, пока есть что вписать.
-  const [open, setOpen] = useState(todo);
+  // Свёрнут: длинный список из десятка полей не должен занимать экран. В заголовке видно, сколько осталось и что именно; «Перейти к составу» раскрывает карточку.
+  const [open, setOpen] = useState(false);
+  const pending = checks.filter((c) => !c.ok);
+  useEffect(() => {
+    const show = () => setOpen(true);
+    window.addEventListener(CAST_OPEN_EVENT, show);
+    return () => window.removeEventListener(CAST_OPEN_EVENT, show);
+  }, []);
   const [quote, setQuote] = useState<'cast' | 'replace' | null>(null);
   // null — поле списка закрыто.
   const [paste, setPaste] = useState<string | null>(null);
@@ -109,14 +118,15 @@ export function CastCard({
           {todo ? <AlertTriangle className="size-4 shrink-0 text-warn" /> : <CheckCircle2 className="size-4 shrink-0 text-success" />}
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium">Состав исполнителей</p>
-            <p className="text-[12px] text-muted-foreground">Кто выступит в этот раз, знаете только вы. ИИ фамилий не видит и не придумывает.</p>
+            <p className="break-words text-[12px] text-muted-foreground">{todo ? pending[0]?.text : 'Состав указан и совпадает с ТЗ'}</p>
           </div>
-          <Badge tone={todo ? 'warn' : 'success'}>{todo ? 'впишите исполнителей' : 'готово'}</Badge>
+          <Badge tone={todo ? 'warn' : 'success'}>{todo ? `осталось: ${pending.length}` : 'готово'}</Badge>
           <ChevronDown className={cx('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
         </button>
 
         {open && (
           <div className="animate-fade-up space-y-3 border-t border-border px-4 pb-4 pt-3">
+            <p className="text-[12px] text-muted-foreground">Кто выступит в этот раз, знаете только вы. ИИ фамилий не видит и не придумывает.</p>
             <div className="space-y-1.5">
               <p className="text-[13px] text-muted-foreground">
                 В ТЗ{cast.clause ? `, п. ${cast.clause}` : ''}: {cast.requirement}

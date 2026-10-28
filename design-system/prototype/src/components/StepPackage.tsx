@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { AlertTriangle, Archive, Check, CheckCircle2, Clock, CreditCard, Download, Eye, FileText, Info, Loader2, PenLine, RefreshCw, ShieldCheck, UserCheck, XCircle } from '../lib/icons';
-import { AIDisclaimer, Badge, Button, Card, Checkbox, HelpTip, IconButton, Modal, Soon, Tooltip, cx, type Tone } from './ui';
+import { AIDisclaimer, Badge, Button, Card, Checkbox, HelpTip, IconButton, Modal, Soon, TabPanel, Tabs, Tooltip, cx, type Tone } from './ui';
 import { type AuditReport, type AuditSeverity } from '@/lib/submission-audit';
 import { type ScoringReport } from '@/lib/scoring-engine';
 import { pointsText } from '@/lib/criteria';
@@ -471,12 +471,28 @@ export function StepPackage({
   excelForms?: ReactNode;
 }) {
   const [openPart, setOpenPart] = useState<TpPart | null>(null);
+  const [tab, setTab] = useState<string | null>(null);
   const [redo, setRedo] = useState(false);
   const open = rows.find((r) => r.part === openPart && r.preview) ?? null;
   const preview = open?.preview ?? null;
   // Отметки ждут только пункты, которые держат подачу; остальные — площадка передаст, «не требуется», «по желанию».
   const needed = items.filter((i) => i.required);
   const ready = needed.filter((i) => i.ready).length;
+  // Вкладки «Пакета»: «Файлы» — шаблоны, состав пакета и Excel-бланки (нет ни одного — вкладки нет); «Реестровые номера» и «Финальная проверка» — если блок есть; «Что требует заказчик» — всегда.
+  const hasFilesTab = !noApplication || (detectedForms?.length ?? 0) > 0 || (templates?.length ?? 0) > 0 || Boolean(excelForms);
+  const tabItems: { key: string; label: string; badge?: ReactNode }[] = [
+    ...(hasFilesTab ? [{ key: 'files', label: 'Файлы' }] : []),
+    ...(registry ? [{ key: 'registry', label: 'Реестровые номера' }] : []),
+    {
+      key: 'needs',
+      label: 'Что требует заказчик',
+      badge: needed.length > 0 ? <Badge tone={ready === needed.length ? 'success' : 'neutral'}>{ready}/{needed.length}</Badge> : undefined,
+    },
+    ...(auditRep || scoringRep
+      ? [{ key: 'audit', label: 'Финальная проверка', badge: auditRep && auditRep.critical > 0 ? <Badge tone="danger">{auditRep.critical}</Badge> : undefined }]
+      : []),
+  ];
+  const activeTab = tabItems.some((t) => t.key === tab) ? (tab as string) : tabItems[0].key;
   // Сколько пунктов ещё не закрыто: пустые и неверные поля, неподтверждённое и документы заказчика.
   const openCount =
     final.fields.empty +
@@ -592,101 +608,117 @@ export function StepPackage({
         </>
       )}
 
+      {/* Блоки «Пакета» — вкладками: на экране один, а не все сразу. Содержимое остальных остаётся в странице скрытым, поэтому введённое и открытое не теряется. */}
+      {tabItems.length > 1 && <Tabs idPrefix="pkg" items={tabItems} active={activeTab} onChange={setTab} />}
       <div className="grid grid-cols-1 gap-4">
         <div className="min-w-0 space-y-4">
-          {/* Шаблоны заказчика: что он прислал как образцы */}
-          {templates && templates.length > 0 && <CustomerTemplates templates={templates} />}
+          {hasFilesTab && (
+            <TabPanel idPrefix="pkg" tabKey="files" active={activeTab} className="space-y-4">
+              {/* Шаблоны заказчика: что он прислал как образцы */}
+              {templates && templates.length > 0 && <CustomerTemplates templates={templates} />}
 
-          {/* Состав пакета: без заявки файлов нет, остаются только бланки заказчика, если они есть */}
-          {(!noApplication || (detectedForms?.length ?? 0) > 0) && (
-          <Card className="p-0">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-              <span className="text-[15px] font-bold">Состав пакета · {count} док.</span>
-              <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Формат файлов">
-                {FORMATS.map((f) => (
-                  <Tooltip key={f.ext} content={f.label} side="bottom" align="end">
-                    <button
-                      type="button"
-                      disabled={busy}
-                      aria-pressed={f.id === format}
-                      onClick={() => onFormat(f.id)}
-                      className={cx(
-                        'inline-flex h-8 items-center rounded-md border px-3 text-xs font-medium transition-colors',
-                        f.id === format
-                          ? 'border-foreground bg-primary text-primary-foreground'
-                          : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-60',
-                      )}
-                    >
-                      {f.ext}
-                    </button>
-                  </Tooltip>
-                ))}
-              </div>
-            </div>
-            <div>
-              {rows.map((row) => (
-                <FileRow
-                  key={row.part}
-                  row={row}
-                  format={format}
-                  downloading={downloading}
-                  busy={busy || !hasTp}
-                  onOpen={() => setOpenPart(row.part)}
-                  onDownload={() => onDownload(row.part)}
-                  onCompose={onFix}
-                />
-              ))}
-              {(detectedForms ?? []).map((df, i) => (
-                <BlankRow key={`blank:${i}`} form={df} onDownload={() => onDownloadForm?.(df)} />
-              ))}
-            </div>
-          </Card>
-          )}
-
-          {/* Реестровые номера товаров */}
-          {registry}
-
-          {/* Excel-бланки заказчика */}
-          {excelForms}
-
-          {/* Что требует заказчик */}
-          <Card className="p-0">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-              <span className="flex items-center gap-1.5 text-[15px] font-bold">
-                Что требует заказчик
-                <HelpTip
-                  align="start"
-                  content={
-                    noApplication
-                      ? 'Всё, что заказчик просит от участника. Отметьте, что уже готово.'
-                      : 'Всё, что заказчик просит приложить. Часть закрывают файлы выше — отметьте, что уже готово.'
-                  }
-                />
-              </span>
-              {items.length > 0 && (
-                <span className={cx('font-mono text-[13px] font-bold tabular-nums', needed.length > 0 && ready === needed.length ? 'text-success' : 'text-foreground')}>
-                  {needed.length ? `готово ${ready} из ${needed.length}` : 'отмечать нечего'}
-                </span>
+              {/* Состав пакета: без заявки файлов нет, остаются только бланки заказчика, если они есть */}
+              {(!noApplication || (detectedForms?.length ?? 0) > 0) && (
+              <Card className="p-0">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+                  <span className="text-[15px] font-bold">Состав пакета · {count} док.</span>
+                  <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Формат файлов">
+                    {FORMATS.map((f) => (
+                      <Tooltip key={f.ext} content={f.label} side="bottom" align="end">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          aria-pressed={f.id === format}
+                          onClick={() => onFormat(f.id)}
+                          className={cx(
+                            'inline-flex h-8 items-center rounded-md border px-3 text-xs font-medium transition-colors',
+                            f.id === format
+                              ? 'border-foreground bg-primary text-primary-foreground'
+                              : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-60',
+                          )}
+                        >
+                          {f.ext}
+                        </button>
+                      </Tooltip>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  {rows.map((row) => (
+                    <FileRow
+                      key={row.part}
+                      row={row}
+                      format={format}
+                      downloading={downloading}
+                      busy={busy || !hasTp}
+                      onOpen={() => setOpenPart(row.part)}
+                      onDownload={() => onDownload(row.part)}
+                      onCompose={onFix}
+                    />
+                  ))}
+                  {(detectedForms ?? []).map((df, i) => (
+                    <BlankRow key={`blank:${i}`} form={df} onDownload={() => onDownloadForm?.(df)} />
+                  ))}
+                </div>
+              </Card>
               )}
-            </div>
-            {items.length === 0 ? (
-              <p className="px-4 py-3 text-[13px] text-muted-foreground">
-                Перечня документов в документах закупки не нашлось — сверьтесь с извещением: что подать, обычно сказано в требованиях
-                к заявке.
-              </p>
-            ) : (
-              <ul>
-                {items.map((item, i) => (
-                  <ChecklistItem key={`${i}:${item.text}`} item={item} onToggle={() => onToggleReady(item.text)} whereOf={whereOf} />
-                ))}
-              </ul>
-            )}
-          </Card>
-          {/* Финальная проверка перед подачей */}
-          {auditRep && <AuditPanel report={auditRep} />}
 
-          {/* Оценка по критериям */}
-          {scoringRep && <ScoringPanel report={scoringRep} />}
+              {/* Excel-бланки заказчика */}
+              {excelForms}
+
+            </TabPanel>
+          )}
+          {registry && (
+            <TabPanel idPrefix="pkg" tabKey="registry" active={activeTab} className="space-y-4">
+              {/* Реестровые номера товаров */}
+              {registry}
+
+            </TabPanel>
+          )}
+          <TabPanel idPrefix="pkg" tabKey="needs" active={activeTab} className="space-y-4">
+              {/* Что требует заказчик */}
+              <Card className="p-0">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+                  <span className="flex items-center gap-1.5 text-[15px] font-bold">
+                    Что требует заказчик
+                    <HelpTip
+                      align="start"
+                      content={
+                        noApplication
+                          ? 'Всё, что заказчик просит от участника. Отметьте, что уже готово.'
+                          : 'Всё, что заказчик просит приложить. Часть закрывают файлы выше — отметьте, что уже готово.'
+                      }
+                    />
+                  </span>
+                  {items.length > 0 && (
+                    <span className={cx('font-mono text-[13px] font-bold tabular-nums', needed.length > 0 && ready === needed.length ? 'text-success' : 'text-foreground')}>
+                      {needed.length ? `готово ${ready} из ${needed.length}` : 'отмечать нечего'}
+                    </span>
+                  )}
+                </div>
+                {items.length === 0 ? (
+                  <p className="px-4 py-3 text-[13px] text-muted-foreground">
+                    Перечня документов в документах закупки не нашлось — сверьтесь с извещением: что подать, обычно сказано в требованиях
+                    к заявке.
+                  </p>
+                ) : (
+                  <ul>
+                    {items.map((item, i) => (
+                      <ChecklistItem key={`${i}:${item.text}`} item={item} onToggle={() => onToggleReady(item.text)} whereOf={whereOf} />
+                    ))}
+                  </ul>
+                )}
+              </Card>
+          </TabPanel>
+          {(auditRep || scoringRep) && (
+            <TabPanel idPrefix="pkg" tabKey="audit" active={activeTab} className="space-y-4">
+              {/* Финальная проверка перед подачей */}
+              {auditRep && <AuditPanel report={auditRep} />}
+
+              {/* Оценка по критериям */}
+              {scoringRep && <ScoringPanel report={scoringRep} />}
+            </TabPanel>
+          )}
         </div>
       </div>
 
