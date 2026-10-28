@@ -34,9 +34,8 @@ export function searchViaExtension(
   const id = (opts.newId ?? newRequestId)();
   const timeoutMs = opts.timeoutMs ?? 150_000;
   return new Promise<ExtensionResult>((resolve, reject) => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
     const done = (fn: () => void) => {
-      if (timer) clearTimeout(timer);
+      clearTimeout(timer);
       win.removeEventListener("message", listener);
       fn();
     };
@@ -47,7 +46,7 @@ export function searchViaExtension(
       if (typeof d.tsv !== "string") return done(() => reject(new Error("Расширение вернуло пустой ответ.")));
       done(() => resolve({ tsv: d.tsv as string, pages: Number(d.pages) || 1, count: Number(d.count) || 0 }));
     };
-    timer = setTimeout(() => done(() => reject(new Error("Расширение не ответило за 2,5 минуты. Проверьте, что Chrome открыт и ЕИС доступен."))), timeoutMs);
+    const timer = setTimeout(() => done(() => reject(new Error("Расширение не ответило за 2,5 минуты. Проверьте, что Chrome открыт и ЕИС доступен."))), timeoutMs);
     win.addEventListener("message", listener);
     win.postMessage({ type: "TL_EIS_SEARCH", requestId: id, url, pages }, win.location.origin);
   });
