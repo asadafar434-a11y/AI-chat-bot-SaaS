@@ -13,6 +13,7 @@ import { POST as chat } from "./chat/route.ts";
 import { POST as check } from "./check/route.ts";
 import { POST as contradictions } from "./contradictions/route.ts";
 import { POST as documents } from "./documents/route.ts";
+import { POST as hiddenRequirements } from "./hidden-requirements/route.ts";
 import { POST as facts } from "./my-docs/facts/route.ts";
 import { POST as requirements } from "./requirements/route.ts";
 import { POST as tp } from "./tp/route.ts";
@@ -438,5 +439,52 @@ test("противоречия: без документов — 400, докум�
   assert.equal((await contradictions(json({ documents: [{ name: "Огромный.docx", text: "а".repeat(MAX_CONTEXT_CHARS + 1) }] }))).status, 413);
   reply = JSON.stringify({ findings: [] });
   const res = await contradictions(json({ documents: [{ name: "Договор.docx", text: "Договор без проблем." }] }));
+  assert.deepEqual(await res.json(), { findings: [] });
+});
+
+test("скрытые требования: критические раньше высоких, цитаты проверены, выдуманная помечена, места цитат привязаны", async () => {
+  const docs = [
+    {
+      name: "ТЗ.docx",
+      text: "5.2. Участник должен иметь специальную технику. 5.3. Опыт исполнения не менее пяти контрактов за последние три года.",
+    },
+    { name: "Договор.docx", text: "3.1. Поставщик обеспечивает монтаж и пусконаладку оборудования." },
+  ];
+  const base = {
+    title: "Проблема",
+    what: "Что обнаружено",
+    source: "ТЗ, п. 5.2",
+    why: "Почему это важно",
+    interpretations: "",
+    risk: "Потенциальный риск",
+    check: "Что проверить",
+    action: "Что сделать",
+    ask: "",
+  };
+  reply = JSON.stringify({
+    findings: [
+      { ...base, kind: "financial", criticality: "low", title: "Монтаж за счёт поставщика", quote: "Поставщик обеспечивает монтаж и пусконаладку оборудования." },
+      { ...base, kind: "ambiguity", criticality: "critical", title: "Собственность или аренда техники", quote: "Участник должен иметь специальную технику", ask: "Допускается ли арендованная техника?" },
+      { ...base, kind: "hidden", criticality: "high", title: "Пять контрактов", quote: "Опыт исполнения не менее пяти контрактов" },
+      { ...base, kind: "legal", criticality: "medium", title: "Выдуманное требование", quote: "Требуется лицензия на монтаж", source: "Договор" },
+    ],
+  });
+  seen.length = 0;
+  const res = await hiddenRequirements(json({ documents: docs }));
+  assert.equal(res.status, 200);
+  const out = await res.json();
+  assert.deepEqual(out.findings.map((f: { criticality: string }) => f.criticality), ["critical", "high", "medium", "low"]);
+  assert.deepEqual(out.findings.map((f: { verified: boolean }) => f.verified), [true, true, false, true]);
+  assert.match(out.findings[0].at, /5\.2|ТЗ/);
+  assert.equal(out.findings[2].at, undefined, "выдуманная цитата места не получает");
+  assert.match(seen[0].blocks.at(-1)!.text, /скрытые требования/i);
+  assert.ok(seen[0].blocks.every((b) => !/Заявка участника/.test(b.title ?? "")));
+});
+
+test("скрытые требования: без документов — 400, документы больше лимита — 413, пустой ответ модели — пустой список", async () => {
+  assert.equal((await hiddenRequirements(json({ documents: [] }))).status, 400);
+  assert.equal((await hiddenRequirements(json({ documents: [{ name: "Огромный.docx", text: "а".repeat(MAX_CONTEXT_CHARS + 1) }] }))).status, 413);
+  reply = JSON.stringify({ findings: [] });
+  const res = await hiddenRequirements(json({ documents: [{ name: "ТЗ.docx", text: "Требований нет." }] }));
   assert.deepEqual(await res.json(), { findings: [] });
 });
