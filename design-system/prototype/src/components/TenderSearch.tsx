@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { eisNumberUrl, SORT_LABELS, type SearchResult, type TenderFilters, type TenderListing, type TenderSort } from '@/lib/tender-search';
 import { plural } from '@/lib/plural';
-import { ArrowUpRight, Plus, Search, Trash2, Upload } from '../lib/icons';
-import { Badge, Button, Card, HelpTip } from './ui';
+import { ArrowUpRight, Copy, Plus, Search, Trash2, Upload } from '../lib/icons';
+import { Badge, Button, Card, Checkbox, HelpTip } from './ui';
 
 // «Поиск закупок»: фильтры (слова и исключения, закон, цена, даты, «приём заявок идёт»), список закупок из выгрузки ЕИС и три шага, как её получить: «Найти в ЕИС» → закладка «Скопировать закупки» → вставить сюда.
 // Закупки — только из выгрузки участника; чего в выгрузке нет, то не показываем (lib/tender-import.ts). Живая лента без выгрузки — «скоро»: нужен доступ к данным ЕИС с нашего сервера.
@@ -108,6 +108,7 @@ export function TenderSearch({
   onNew: () => void;
 }) {
   const [paste, setPaste] = useState('');
+  const [copied, setCopied] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   const link = useRef<HTMLAnchorElement>(null);
   // React не пускает «javascript:» в href: закладку ставим на ссылку напрямую.
@@ -120,7 +121,7 @@ export function TenderSearch({
     <div className="animate-fade-up space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Поиск закупок</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Поиск закупок</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {has ? `В выгрузке ${result.total} ${plural(result.total, 'закупка', 'закупки', 'закупок')}${loadedAt ? ` · загружена ${new Date(loadedAt).toLocaleDateString('ru-RU')}` : ''}` : 'Задайте фильтры, найдите закупки в ЕИС и загрузите их сюда.'}
           </p>
@@ -134,7 +135,7 @@ export function TenderSearch({
 
       <Card className="space-y-3 p-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr]">
-          <Field label="Слова в названии закупки (минус исключает, фраза — в кавычках)">
+          <Field label="Слова — товар или услуга (минус исключает, фраза — в кавычках)">
             <input type="text" value={filters.query} onChange={(e) => onFilters({ query: e.target.value })} placeholder="уголь поставка -ремонт" className={inputClass} />
           </Field>
           <Field label="Заказчик (часть названия)">
@@ -145,10 +146,17 @@ export function TenderSearch({
           <Choice active={filters.law === 'any'} onClick={() => onFilters({ law: 'any' })}>44-ФЗ и 223-ФЗ</Choice>
           <Choice active={filters.law === '44'} onClick={() => onFilters({ law: '44' })}>44-ФЗ</Choice>
           <Choice active={filters.law === '223'} onClick={() => onFilters({ law: '223' })}>223-ФЗ</Choice>
-          <label className="ml-auto flex cursor-pointer items-center gap-2 text-[12px]">
-            <input type="checkbox" checked={filters.activeOnly} onChange={(e) => onFilters({ activeOnly: e.target.checked })} />
+        </div>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px]">
+          <Checkbox checked={filters.activeOnly} onChange={(v) => onFilters({ activeOnly: v })}>
             Только приём заявок идёт
-          </label>
+          </Checkbox>
+          <span className="inline-flex items-center gap-1.5">
+            <Checkbox checked={filters.titleOnly} onChange={(v) => onFilters({ titleOnly: v })}>
+              Слова — в названии закупки
+            </Checkbox>
+            <HelpTip align="start" content="ЕИС ищет слова и в названии, и в позициях внутри закупки. Галочка оставляет в списке только закупки, где слово есть в самом названии." />
+          </span>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Field label="Цена от, ₽">
@@ -165,14 +173,29 @@ export function TenderSearch({
           </Field>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <a href={eisUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90">
+          <a href={eisUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 sm:w-auto">
             <Search className="size-4" /> Найти в ЕИС <ArrowUpRight className="size-3.5" />
           </a>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="w-full sm:w-auto"
+            onClick={() => {
+              const done = () => {
+                setCopied(true);
+                window.setTimeout(() => setCopied(false), 2500);
+              };
+              if (navigator.clipboard?.writeText) void navigator.clipboard.writeText(eisUrl).then(done, () => {});
+            }}
+          >
+            <Copy className="size-3.5" /> {copied ? 'Скопировано' : 'Скопировать ссылку'}
+          </Button>
           <HelpTip
             align="start"
             content="Откроется zakupki.gov.ru с теми же словами, законом, ценой и датами — в вашем браузере. Исключения слов («-слово») ЕИС не понимает: они сработают здесь, в списке после загрузки."
           />
         </div>
+        <p className="text-[11px] text-muted-foreground">ЕИС открывается не в каждом окне (во встроенном окне приложения — нет). Не открылся — скопируйте ссылку и вставьте её в Chrome.</p>
       </Card>
 
       <Card className="space-y-3 p-4">
@@ -187,7 +210,7 @@ export function TenderSearch({
           <li>1. «Найти в ЕИС» выше — откроются результаты.</li>
           <li>
             2. Нажмите закладку{' '}
-            <a ref={link} onClick={(e) => e.preventDefault()} draggable className="inline-flex cursor-grab items-center rounded-md border border-dashed border-foreground px-2 py-0.5 text-[12px] font-medium text-foreground">
+            <a ref={link} onClick={(e) => e.preventDefault()} draggable className="inline-flex h-8 cursor-grab items-center rounded-md border border-dashed border-foreground px-3 text-[12px] font-medium text-foreground">
               Скопировать закупки
             </a>{' '}
             <span className="text-[12px]">(перетащите её на панель закладок один раз)</span>.

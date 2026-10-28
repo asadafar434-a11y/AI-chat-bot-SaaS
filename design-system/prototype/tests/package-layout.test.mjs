@@ -196,3 +196,14 @@ test('«Пакет»: «Шаблоны заказчика» — список ф�
   assert.doesNotMatch(html(h(pkg.StepPackage, props({ templates: [] }))), /Шаблоны заказчика/);
   assert.doesNotMatch(html(h(pkg.StepPackage, props())), /Шаблоны заказчика/);
 });
+
+test('«Пакет»: «Финальная проверка» показывает первые шесть замечаний, остальные — по кнопке «Показать ещё N»', () => {
+  const finding = (i) => ({ id: `f${i}`, severity: 'CRITICAL', what: `Замечание номер ${i}`, requirement: 'Требование', source: 'Извещение', fix: 'Исправить' });
+  const report = { findings: Array.from({ length: 10 }, (_, i) => finding(i + 1)), critical: 10, warnings: 0, info: 0, risk: 'high' };
+  const out = html(h(pkg.StepPackage, props({ auditReport: report })));
+  assert.match(out, /Замечание номер 6</);
+  assert.doesNotMatch(out, /Замечание номер 7</);
+  assert.match(out, /Показать ещё 4/);
+  const few = html(h(pkg.StepPackage, props({ auditReport: { ...report, findings: report.findings.slice(0, 5), critical: 5 } })));
+  assert.doesNotMatch(few, /Показать ещё/);
+});

@@ -239,10 +239,7 @@ export function ExcelForms({ forms, error, note, onAdd, onDownload, onRemove, on
       </div>
       <div className="space-y-3 px-4 py-3 text-[13px]">
         {forms.length === 0 ? (
-          <p className="text-muted-foreground">
-            Если заказчик требует бланк в Excel (письмо оферты, коммерческое предложение, анкета), добавьте его файл: реквизиты и сведения о товарах впишутся в него, а формулы и оформление
-            останутся как у заказчика.
-          </p>
+          <p className="text-muted-foreground">Бланка в Excel нет. Если заказчик его требует, добавьте файл.</p>
         ) : (
           <ul className="space-y-2">
             {forms.map((form) => (

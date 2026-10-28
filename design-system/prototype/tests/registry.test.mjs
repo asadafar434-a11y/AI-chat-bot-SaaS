@@ -269,9 +269,9 @@ test('записи с одинаковым названием у одного п
 test('реестра два: ищем сразу в обоих без выбора; у записи видно, в каких реестрах она есть, её уровень и выписка на gisp.gov.ru', () => {
   const none = render({ demand: demandNone, required: null, datasets: [brief('gisp_rpp_719'), brief('gisp_rep_878', { exportedAt: '2026-10-11T22:00:10.000Z' })], positions: [position({ status: 'no_requirement' })] });
   assert.equal(/type="radio"/.test(none), false, 'выбирать реестр не нужно');
-  assert.match(none, /Ищем сразу в обоих реестрах/);
-  assert.match(none, /РПП \(ПП 719\): выгрузка от <b[^>]*>11\.10\.2026/);
-  assert.match(none, /РЭП \(ПП 878\): выгрузка от <b[^>]*>12\.10\.2026/);
+  assert.match(none, /Ищем в обоих реестрах/);
+  assert.match(none, /РПП \(ПП 719\) — выгрузка от <b[^>]*>11\.10\.2026/);
+  assert.match(none, /РЭП \(ПП 878\) — выгрузка от <b[^>]*>12\.10\.2026/);
 
   const radio = view({
     registryNumber: '00000030',
@@ -377,4 +377,15 @@ test('запрет есть, а товара в реестре нет: сказ�
   const skipped = render({ demand: demandNone, positions: [position({ status: 'need_data', decision: decision('need_data', { candidates: [view()] }), skipped: true })] });
   assert.match(skipped, note);
   assert.match(skipped, /Вы отметили, что товара нет в реестрах/);
+});
+
+test('карточка товара: на виду три главных поля, остальные пять — под «Ещё поля»; введённое раскрывает блок', () => {
+  const out = render({ demand: demandNone, required: null, positions: [position({ status: 'no_requirement' })] });
+  const main = out.slice(out.indexOf('Как называется ваш товар')).split('<details')[0];
+  assert.match(out, /Как называется ваш товар/);
+  assert.match(main, /Производитель/);
+  assert.match(main, /Модель/);
+  assert.doesNotMatch(main, /ИНН производителя/);
+  assert.match(out, /<summary[^>]*>Ещё поля: ИНН, артикул, ТУ или ГОСТ, реестровый номер, характеристики/);
+  assert.match(out, /Реестровый номер, если уже знаете/);
 });

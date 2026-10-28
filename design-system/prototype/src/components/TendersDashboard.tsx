@@ -89,7 +89,7 @@ export function TendersDashboard({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Поиск по названию, заказчику или № закупки"
+            placeholder="Название, заказчик или №"
             aria-label="Поиск по моим закупкам"
             className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
@@ -100,7 +100,7 @@ export function TendersDashboard({
               key={f.id}
               onClick={() => setFilter(f.id)}
               aria-pressed={filter === f.id}
-              className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs font-medium transition-colors ${
                 filter === f.id
                   ? 'border-foreground bg-primary text-primary-foreground'
                   : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground'
@@ -192,7 +192,7 @@ export function TendersDashboard({
                     e.stopPropagation();
                     onToggleSubmitted(t.id);
                   }}
-                  className="hidden shrink-0 text-[12px] text-muted-foreground underline underline-offset-4 hover:text-foreground sm:block"
+                  className="hidden min-h-7 shrink-0 items-center text-[12px] text-muted-foreground underline underline-offset-4 hover:text-foreground sm:inline-flex"
                 >
                   {t.status === 'submitted' ? 'Снять отметку «Подана»' : 'Отметить поданной'}
                 </button>

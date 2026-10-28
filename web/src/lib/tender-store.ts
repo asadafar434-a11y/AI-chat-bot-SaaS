@@ -34,6 +34,7 @@ export function normalizeTenders(raw: Partial<SavedTenders> | null | undefined):
       publishedFrom: str(f.publishedFrom),
       publishedTo: str(f.publishedTo),
       activeOnly: typeof f.activeOnly === "boolean" ? f.activeOnly : EMPTY_FILTERS.activeOnly,
+      titleOnly: typeof f.titleOnly === "boolean" ? f.titleOnly : false,
       customer: typeof f.customer === "string" ? f.customer : "",
       region: typeof f.region === "string" ? f.region : "",
       method: typeof f.method === "string" ? f.method : "",

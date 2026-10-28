@@ -36,7 +36,7 @@ export function Settings({ dark, setDark }: { dark: boolean; setDark: (v: boolea
   return (
     <div className="animate-fade-up space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Настройки</h1>
+        <h1 className="text-xl font-semibold tracking-tight">Настройки</h1>
         <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">Аккаунт, внешний вид и ваши данные. Реквизиты компании — в «Профиле компании» (карточка внизу меню).</p>
       </div>
       <AccountCard />

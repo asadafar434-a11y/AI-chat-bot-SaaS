@@ -92,8 +92,12 @@ const RISK_TEXT: Record<AuditReport['risk'], string> = {
   low: 'text-success',
 };
 
+// Замечаний бывает несколько десятков (все они уже перечислены на «Проверке»): на «Пакете» видны первые, остальные — по кнопке.
+const AUDIT_SHOWN = 6;
+
 function AuditPanel({ report }: { report: AuditReport }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [all, setAll] = useState(false);
 
   if (report.findings.length === 0) {
     return (
@@ -126,7 +130,7 @@ function AuditPanel({ report }: { report: AuditReport }) {
         </div>
       </div>
       <ul className="divide-y divide-border">
-        {report.findings.map((f) => {
+        {(all ? report.findings : report.findings.slice(0, AUDIT_SHOWN)).map((f) => {
           const isOpen = expanded === f.id;
           return (
             <li key={f.id}>
@@ -166,6 +170,11 @@ function AuditPanel({ report }: { report: AuditReport }) {
           );
         })}
       </ul>
+      {report.findings.length > AUDIT_SHOWN && (
+        <button type="button" onClick={() => setAll(!all)} className="w-full border-t border-border px-4 py-2.5 text-center text-[13px] font-medium text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground">
+          {all ? 'Свернуть' : `Показать ещё ${report.findings.length - AUDIT_SHOWN}`}
+        </button>
+      )}
     </Card>
   );
 }
@@ -539,7 +548,7 @@ export function StepPackage({
 
       {notice}
 
-      {hasTp && !noApplication && <FinalCheck final={final} />}
+      {hasTp && !noApplication && <FinalCheck final={final} compact />}
 
       {error && (
         <p role="alert" className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
@@ -602,7 +611,7 @@ export function StepPackage({
                       aria-pressed={f.id === format}
                       onClick={() => onFormat(f.id)}
                       className={cx(
-                        'inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
+                        'inline-flex h-8 items-center rounded-md border px-3 text-xs font-medium transition-colors',
                         f.id === format
                           ? 'border-foreground bg-primary text-primary-foreground'
                           : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-60',

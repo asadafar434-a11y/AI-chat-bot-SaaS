@@ -13,11 +13,11 @@ const ids = (listings: TenderListing[], filters: TenderFilters, sort: Parameters
 test("слова запроса: исключения со знаком «-», фраза в кавычках; поиск по основе слова (поставка → поставке)", () => {
   assert.deepEqual(parseQuery('уголь -ремонт "каменный уголь"'), { include: ["уголь", "каменный уголь"], exclude: ["ремонт"] });
   const list = [L({ id: "a", title: "Поставка каменного угля" }), L({ id: "b", title: "Ремонт котельной, поставка угля" }), L({ id: "c", title: "Услуги по уборке" })];
-  assert.deepEqual(ids(list, F({ query: "поставке" })), ["a", "b"], "основа слова");
-  assert.deepEqual(ids(list, F({ query: "поставка -ремонт" })), ["a"], "исключение");
-  assert.deepEqual(ids(list, F({ query: '"каменного угля"' })), ["a"], "фраза");
-  assert.deepEqual(ids(list, F({ query: "уборка уголь" })), [], "все слова обязательны");
-  assert.deepEqual(ids(list, F({ query: "" })).length, 3, "пустой запрос — все");
+  assert.deepEqual(ids(list, F({ query: "поставке", titleOnly: true })), ["a", "b"], "основа слова");
+  assert.deepEqual(ids(list, F({ query: "поставка -ремонт", titleOnly: true })), ["a"], "исключение");
+  assert.deepEqual(ids(list, F({ query: '"каменного угля"', titleOnly: true })), ["a"], "фраза");
+  assert.deepEqual(ids(list, F({ query: "уборка уголь", titleOnly: true })), [], "все слова обязательны");
+  assert.deepEqual(ids(list, F({ query: "", titleOnly: true })).length, 3, "пустой запрос — все");
 });
 
 test("закон и цена: «оба» — все; закупка без цены при фильтре по цене скрывается и считается", () => {
@@ -144,9 +144,9 @@ test("слова ищутся только в названии: «уголь» �
     L({ id: "a", title: "Поставка угля для котельной", customer: "МУП Тепло" }),
     L({ id: "b", title: "Оказание услуг по нанесению символики", customer: 'ФКУ "УГОЛОВНО-ИСПОЛНИТЕЛЬНАЯ ИНСПЕКЦИЯ"' }),
   ];
-  assert.deepEqual(ids(list, F({ query: "уголь" })), ["a"]);
+  assert.deepEqual(ids(list, F({ query: "уголь", titleOnly: true })), ["a"]);
   assert.deepEqual(ids(list, F({ customer: "инспекция" })), ["b"]);
-  assert.deepEqual(ids(list, F({ query: "поставка", customer: "тепло" })), ["a"]);
+  assert.deepEqual(ids(list, F({ query: "поставка", titleOnly: true, customer: "тепло" })), ["a"]);
 });
 
 test("сохранённая выгрузка: испорченные поля не ломают экран, закон и сортировка приводятся к допустимым", async () => {
@@ -167,4 +167,16 @@ test("таблица через табуляцию: кавычки внутри 
   const r = importTenders('Реестровый номер\tНаименование\tЗаказчик\n111\tПоставка "Уголь-М" для котельной\tПАО "Россети"');
   assert.equal(r.listings[0].title, 'Поставка "Уголь-М" для котельной');
   assert.equal(r.listings[0].customer, 'ПАО "Россети"');
+});
+
+test("по умолчанию слова ищет ЕИС, а список их не режет: закупки без слова в названии остаются (шапка внутри «спецодежды»); исключения «-слово» и заказчик действуют всегда", () => {
+  const list = [
+    L({ id: "a", title: "Поставка изделий медицинского назначения (шапка хирургическая)", customer: "Больница" }),
+    L({ id: "b", title: "Поставка спецодежды и спецобуви", customer: "Школа" }),
+    L({ id: "c", title: "Ремонт крыши, шапка кровли", customer: "МУП Тепло" }),
+  ];
+  assert.deepEqual(ids(list, F({ query: "шапка" })).sort(), ["a", "b", "c"], "включающие слова не режут");
+  assert.deepEqual(ids(list, F({ query: "шапка", titleOnly: true })).sort(), ["a", "c"], "галочка: слово должно быть в названии");
+  assert.deepEqual(ids(list, F({ query: "шапка -ремонт" })).sort(), ["a", "b"], "исключение действует без галочки");
+  assert.deepEqual(ids(list, F({ query: "шапка", customer: "тепло" })), ["c"]);
 });

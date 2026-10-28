@@ -100,6 +100,10 @@ const FIELDS: { key: keyof CardEdits; label: string; hint?: string; wide?: boole
   { key: 'characteristics', label: 'Важные характеристики', hint: 'Объём, размеры — по ним сверяются отличия', wide: true },
 ];
 
+// Главные поля карточки товара видны сразу; остальные — под «Ещё поля».
+const MAIN_FIELDS: (keyof CardEdits)[] = ['offeredName', 'manufacturer', 'model'];
+const MORE_FIELDS: (keyof CardEdits)[] = FIELDS.map((f) => f.key).filter((k) => !MAIN_FIELDS.includes(k));
+
 const inputClass =
   'h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground';
 
@@ -317,32 +321,36 @@ function CardForm({ card, onSave, busy }: { card: ProductCard; onSave: (edits: C
     onSave(edits);
   };
 
+  const fieldInput = (f: (typeof FIELDS)[number]) => {
+    const id = `rg-${card.key}-${f.key}`;
+    return (
+      <div key={f.key} className={f.wide ? 'sm:col-span-2' : undefined}>
+        <label htmlFor={id} className="mb-1 block text-[12px] font-medium">
+          {f.label}
+        </label>
+        <input
+          id={id}
+          value={draft[f.key] ?? ''}
+          onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })}
+          placeholder={f.hint}
+          autoComplete="off"
+          className={inputClass}
+        />
+      </div>
+    );
+  };
   return (
     <div className="space-y-3">
       <p className="text-[12px] text-muted-foreground">
         Наименование «{card.name}» взято из ТЗ — это то, что хочет заказчик, а не доказательство, какой товар поставите вы. Чтобы запись реестра можно было
         подтвердить, укажите производителя и модель вашего товара.
       </p>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {FIELDS.map((f) => {
-          const id = `rg-${card.key}-${f.key}`;
-          return (
-            <div key={f.key} className={f.wide ? 'sm:col-span-2' : undefined}>
-              <label htmlFor={id} className="mb-1 block text-[12px] font-medium">
-                {f.label}
-              </label>
-              <input
-                id={id}
-                value={draft[f.key] ?? ''}
-                onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })}
-                placeholder={f.hint}
-                autoComplete="off"
-                className={inputClass}
-              />
-            </div>
-          );
-        })}
-      </div>
+      <div className="grid gap-3 sm:grid-cols-2">{FIELDS.filter((f) => MAIN_FIELDS.includes(f.key)).map(fieldInput)}</div>
+      {/* Остальные поля нужны не всем: сверяют запись точнее, но без них поиск идёт. Заполнено хоть одно — блок раскрыт, чтобы введённое не пряталось. */}
+      <details className="text-[12px]" open={MORE_FIELDS.some((k) => (draft[k] ?? '').trim() !== '')}>
+        <summary className="cursor-pointer text-muted-foreground">Ещё поля: ИНН, артикул, ТУ или ГОСТ, реестровый номер, характеристики</summary>
+        <div className="mt-2 grid gap-3 sm:grid-cols-2">{FIELDS.filter((f) => !MAIN_FIELDS.includes(f.key)).map(fieldInput)}</div>
+      </details>
       <Button size="sm" onClick={save} disabled={busy}>
         {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Search className="size-3.5" />}
         Найти в реестре
@@ -732,24 +740,24 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
               Выгрузки реестров ещё не загружены на сервер, поэтому поиск невозможен. Загрузку выполняет администратор.
             </p>
           ) : (
-            <div className="space-y-1">
-              <p className="text-muted-foreground">Ищем сразу в {datasets.length === 1 ? 'загруженном реестре' : 'обоих реестрах'}: выбирать реестр не нужно.</p>
+            <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="text-muted-foreground">Ищем в {datasets.length === 1 ? 'загруженном реестре' : 'обоих реестрах'}:</span>
               {datasets.map((d) => (
-                <p key={d.registry}>
-                  {REGISTRY_SHORT[d.registry]}: выгрузка от <b className="font-medium">{instantRu(d.exportedAt)}</b>, загружена {instantRu(d.importedAt)}.
-                </p>
+                <span key={d.registry}>
+                  {REGISTRY_SHORT[d.registry]} — выгрузка от <b className="font-medium">{instantRu(d.exportedAt)}</b>
+                </span>
               ))}
-              <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                {stale ? (
-                  <Badge tone="warn">
-                    <RefreshCw className="size-3" />
-                    Данные требуют обновления ({age} дн.)
-                  </Badge>
-                ) : (
-                  <span className="text-muted-foreground">Реестр меняется каждый день: данные верны на дату выгрузки.</span>
-                )}
-              </p>
-            </div>
+              {stale && (
+                <Badge tone="warn">
+                  <RefreshCw className="size-3" />
+                  Данные требуют обновления ({age} дн.)
+                </Badge>
+              )}
+              <HelpTip
+                align="start"
+                content={`Реестр выбирать не нужно: ищем сразу в обоих. Реестр меняется каждый день, данные верны на дату выгрузки. Загружено на сервер: ${datasets.map((d) => `${REGISTRY_SHORT[d.registry]} ${instantRu(d.importedAt)}`).join(', ')}.`}
+              />
+            </p>
           )}
         </section>
 
@@ -759,9 +767,14 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
               {props.searching ? <Loader2 className="size-3.5 animate-spin" /> : <Search className="size-3.5" />}
               Найти для всех позиций
             </Button>
-            <span className="text-[12px] text-muted-foreground">{demand.status === 'none'
-                ? 'Если программа уверена в записи, номер подставится сам и будет помечен «проверьте обязательно»; иначе выберите из списка.'
-                : 'Если вариантов несколько, лучший номер подставится сам и будет помечен «проверьте обязательно».'}</span>
+            <HelpTip
+              align="start"
+              content={
+                demand.status === 'none'
+                  ? 'Если программа уверена в записи, номер подставится сам и будет помечен «проверьте обязательно»; иначе выберите из списка.'
+                  : 'Если вариантов несколько, лучший номер подставится сам и будет помечен «проверьте обязательно».'
+              }
+            />
           </div>
         )}
 

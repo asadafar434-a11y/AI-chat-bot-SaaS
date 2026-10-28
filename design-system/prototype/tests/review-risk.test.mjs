@@ -84,7 +84,7 @@ test('причины риска: что сделать и источник у к
 
 const noop = () => {};
 const searchProps = (over = {}) => ({
-  filters: { query: '', law: 'any', priceFrom: null, priceTo: null, publishedFrom: null, publishedTo: null, activeOnly: true, customer: '', region: '', method: '' },
+  filters: { query: '', law: 'any', priceFrom: null, priceTo: null, publishedFrom: null, publishedTo: null, activeOnly: true, titleOnly: false, customer: '', region: '', method: '' },
   onFilters: noop,
   sort: 'deadline',
   onSort: noop,
@@ -109,6 +109,8 @@ test('«Поиск закупок»: без выгрузки — фильтры,
   assert.match(plain, /Найти в ЕИС/);
   assert.match(plain, /Скопировать закупки/);
   assert.match(plain, /Живая лента без выгрузки — скоро/);
+  assert.match(plain, /Скопировать ссылку/);
+  assert.match(plain, /ЕИС открывается не в каждом окне/);
   assert.match(out, /href="https:\/\/zakupki\.gov\.ru\/epz\/order\/extendedsearch\/results\.html/);
   assert.doesNotMatch(plain, /Найдено:/);
   assert.equal(/\d{11,}/.test(plain), false, 'номеров закупок нет');
@@ -161,4 +163,13 @@ test('итоговая проверка: сверху вывод словами 
   const bad = html(h(review.FinalCheck, { final: final(false, 'Не хватает двух пунктов.') }));
   assert.match(bad, /bg-warn-surface\/50 text-warn-foreground/);
   assert.match(bad, /border-warn\/40/);
+});
+
+test('итоговая проверка на «Пакете» (compact): фразы-итога нет — её говорит заголовок «Пакет почти готов»; остаются цифры по видам', () => {
+  const final = { ready: false, text: 'Заявка ещё не готова к подаче.', fields: { required: 24, filled: 2, empty: 22, invalid: 0 }, documents: { required: 6, ready: 0 }, confirmations: { required: 1, done: 1 }, signatures: { required: 1, done: 0 } };
+  const out = html(h(review.FinalCheck, { final, compact: true }));
+  assert.doesNotMatch(text(out), /Заявка ещё не готова к подаче/);
+  assert.match(text(out), /Итоговая проверка/);
+  assert.match(text(out), /Обязательные поля.*2 из 24 · пустых 22/);
+  assert.match(text(out), /Документы.*0 из 6/);
 });

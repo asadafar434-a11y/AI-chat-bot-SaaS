@@ -31,13 +31,18 @@ export type TenderFilters = {
   publishedTo: string | null;
   /** Только закупки, в которых приём заявок ещё идёт (дата окончания не раньше сегодняшнего дня). */
   activeOnly: boolean;
-  /** Заказчик: часть названия («Россети», «ГУФСИН»). Слова запроса ищутся только в названии закупки, поэтому «уголь» не находит «УГОЛОВНО-ИСПОЛНИТЕЛЬНАЯ ИНСПЕКЦИЯ». */
+  /**
+   * Слова запроса ищет сам ЕИС (по названию и по позициям закупки: «шапка» находит «спецодежду»), поэтому в загруженном списке они по умолчанию не режут: действуют только исключения «-слово».
+   * Включено — в списке остаются только закупки, у которых слова есть в названии (по основе слова; «уголь» не находит заказчика «УГОЛОВНО-ИСПОЛНИТЕЛЬНАЯ ИНСПЕКЦИЯ»).
+   */
+  titleOnly: boolean;
+  /** Заказчик: часть названия («Россети», «ГУФСИН»). */
   customer: string;
   region: string;
   method: string;
 };
 
-export const EMPTY_FILTERS: TenderFilters = { query: "", law: "any", priceFrom: null, priceTo: null, publishedFrom: null, publishedTo: null, activeOnly: true, customer: "", region: "", method: "" };
+export const EMPTY_FILTERS: TenderFilters = { query: "", law: "any", priceFrom: null, priceTo: null, publishedFrom: null, publishedTo: null, activeOnly: true, titleOnly: false, customer: "", region: "", method: "" };
 
 export type TenderSort = "deadline" | "newest" | "priceDesc" | "priceAsc";
 export const SORT_LABELS: Record<TenderSort, string> = { deadline: "Скоро заканчивается", newest: "Новые", priceDesc: "Дороже", priceAsc: "Дешевле" };
@@ -115,7 +120,7 @@ export function searchTenders(listings: TenderListing[], filters: TenderFilters,
     if (q.include.length > 0 || q.exclude.length > 0) {
       const haystack = wordsOf(l.title);
       const joined = haystack.join(" ");
-      if (!q.include.every((t) => matchesTerm(haystack, joined, t))) continue;
+      if (filters.titleOnly && !q.include.every((t) => matchesTerm(haystack, joined, t))) continue;
       if (q.exclude.some((t) => matchesTerm(haystack, joined, t))) continue;
     }
     if (hasPrice) {

@@ -249,7 +249,7 @@ export function CastCard({
                     id={`cast-add-${g.key}`}
                     type="button"
                     onClick={() => addRow(g.key)}
-                    className="ml-6 inline-flex items-center gap-1 text-[13px] font-medium text-foreground underline-offset-4 hover:underline"
+                    className="ml-6 inline-flex min-h-8 items-center gap-1 text-[13px] font-medium text-foreground underline-offset-4 hover:underline"
                   >
                     <Plus className="size-4" />
                     Добавить {g.acc}

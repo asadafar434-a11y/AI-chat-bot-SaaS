@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Check, Upload, ScanSearch, Calculator, ShieldAlert, PackageCheck, ArrowLeft } from './lib/icons';
 import { Sidebar, type View } from './components/Sidebar';
 import { TendersDashboard } from './components/TendersDashboard';
@@ -176,7 +176,7 @@ function Product() {
         />
 
         <main tabIndex={-1} className="min-w-0 flex-1 outline-none lg:overflow-y-auto">
-          <div className="mx-auto max-w-6xl py-2 lg:py-4">
+          <div className="mx-auto max-w-6xl py-2 pb-24 lg:py-4">
             {view === 'tenders' && (
               <TendersDashboard
                 tenders={tenders}
@@ -272,6 +272,16 @@ function Shell({
   done?: boolean[];
   children: ReactNode;
 }) {
+  // На телефоне шаги не помещаются в строку: при смене шага прокручиваем строку так, чтобы текущий был по центру.
+  const stepsRef = useRef<HTMLOListElement>(null);
+  useEffect(() => {
+    const list = stepsRef.current;
+    const current = list?.querySelector<HTMLElement>('[data-step-active="true"]');
+    if (!list || !current) return;
+    const l = list.getBoundingClientRect();
+    const c = current.getBoundingClientRect();
+    list.scrollLeft += c.left - l.left - (l.width - c.width) / 2;
+  }, [step]);
   return (
     <div className="space-y-6">
       <div className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
@@ -289,7 +299,7 @@ function Shell({
         </div>
 
         {/* Край размыт всегда — честный намёк, что шаги можно прокрутить: на телефоне их не все видно за кадром. */}
-        <ol className="flex items-center gap-1.5 overflow-x-auto pb-1 [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)]">
+        <ol ref={stepsRef} className="flex items-center gap-1.5 overflow-x-auto pb-1 [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)]">
           {steps.map((s, i) => {
             const state = i === step ? 'active' : done[i] ? 'done' : 'todo';
             const Icon = s.icon;
@@ -304,6 +314,7 @@ function Shell({
                   <button
                     onClick={() => !locked && setStep(i)}
                     disabled={locked}
+                    data-step-active={state === 'active'}
                     className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors disabled:cursor-not-allowed ${
                       state === 'active'
                         ? 'bg-secondary text-foreground'

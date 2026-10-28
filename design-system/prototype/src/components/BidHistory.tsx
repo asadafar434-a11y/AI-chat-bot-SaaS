@@ -75,7 +75,7 @@ export function BidHistory({ purchases }: { purchases: Purchase[] | null }) {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Поиск по названию, заказчику или способу закупки"
+              placeholder="Название, заказчик или способ"
               aria-label="Поиск по истории заявок"
               className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />

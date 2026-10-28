@@ -72,7 +72,7 @@ export function DocSnippetToggle({ snippet, where }: { snippet?: DocSnippet; whe
           <button
             type="button"
             onClick={() => setOpen(!open)}
-            className="shrink-0 whitespace-nowrap text-[11px] text-info underline-offset-2 hover:underline"
+            className="inline-flex min-h-7 shrink-0 items-center whitespace-nowrap text-[11px] text-info underline-offset-2 hover:underline"
           >
             {open ? 'Скрыть ↑' : 'Показать в тексте ↓'}
           </button>
@@ -175,7 +175,7 @@ export function RiskBlock({ audit }: { audit: AuditReport }) {
         <button
           onClick={() => setWhy(!why)}
           aria-expanded={why}
-          className="inline-flex items-center gap-1 text-[12px] font-medium text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground"
+          className="inline-flex min-h-7 items-center gap-1 text-[12px] font-medium text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground"
         >
           <HelpCircle className="size-3.5" /> Почему такой риск?
         </button>
@@ -279,13 +279,10 @@ export function StepReview({
   return (
     <div className="animate-fade-up space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Проверка перед подачей</h1>
-        <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-          <span>
-            <mark className="highlight">Жёлтым</mark> — что дописать или подтвердить.
-          </span>
-          <HelpTip align="start" content="ИИ сверил заявку с извещением и ТЗ. У каждого пункта видно, откуда взято значение или почему его нет." />
-        </p>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+          Проверка перед подачей
+          <HelpTip align="start" content="Жёлтым в документах — что дописать или подтвердить. ИИ сверил заявку с извещением и ТЗ; у каждого пункта видно, откуда взято значение или почему его нет." />
+        </h1>
       </div>
 
       {notice}
@@ -379,7 +376,7 @@ export function StepReview({
                         {profileLeft.slice(0, 4).map((f) => f.label).join(', ')}
                         {profileLeft.length > 4 ? ` и ещё ${profileLeft.length - 4}` : ''} · подставятся в документы
                       </p>
-                      <button onClick={onOpenProfile} className="mt-1.5 text-[12px] font-medium underline underline-offset-4 hover:text-foreground">
+                      <button onClick={onOpenProfile} className="mt-1 inline-flex min-h-7 items-center text-[12px] font-medium underline underline-offset-4 hover:text-foreground">
                         Вписать в «Профиле компании»
                       </button>
                     </div>
@@ -403,9 +400,6 @@ export function StepReview({
       </div>
 
       {after}
-
-      {/* Итоговая проверка: ни одного пустого обязательного поля */}
-      <FinalCheck final={final} />
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Button variant="ghost" onClick={onBack}>
@@ -490,11 +484,11 @@ function FieldRow({
         {stateIcon(field)}
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
-            {where && <span className="max-w-[45%] shrink-0 truncate font-mono text-[11px] text-muted-foreground">{where}</span>}
-            <span className="min-w-0 truncate text-[13px] font-medium">{field.label}</span>
+            {where && <span className="max-w-[45%] shrink-0 break-words font-mono text-[11px] text-muted-foreground">{where}</span>}
+            <span className="min-w-0 break-words text-[13px] font-medium">{field.label}</span>
           </div>
-          {field.status === 'filled' && field.value && <p className="mt-0.5 truncate text-[12px] text-success">{field.value}</p>}
-          {field.problem && <p className={cx('mt-0.5 truncate text-[12px]', field.status === 'invalid' ? 'text-danger' : 'text-warn-foreground')}>{field.problem}</p>}
+          {field.status === 'filled' && field.value && <p className="mt-0.5 break-words text-[12px] text-success">{field.value}</p>}
+          {field.problem && <p className={cx('mt-0.5 break-words text-[12px]', field.status === 'invalid' ? 'text-danger' : 'text-warn-foreground')}>{field.problem}</p>}
         </div>
         <span className="hidden sm:inline-flex">
           <Badge tone={badge.tone}>{badge.text}</Badge>
@@ -668,7 +662,7 @@ function AutoList({ fields, collapsed, whereOf, snippetOf }: { fields: Applicati
             <div key={f.key} className="px-3 py-2">
               <div className="flex items-baseline justify-between gap-3">
                 <span className="text-[12px] text-muted-foreground">{f.label}</span>
-                <span className="max-w-[55%] truncate text-right font-mono text-[12px]">{f.value}</span>
+                <span className="max-w-[55%] break-words text-right font-mono text-[12px]">{f.value}</span>
               </div>
               {f.source && <p className="mt-0.5 text-[11px] text-muted-foreground">Источник: {f.source}</p>}
               {f.quote && <DocSnippetToggle where={whereOf?.(f.quote)} snippet={snippetOf?.(f.quote)} />}
@@ -693,7 +687,7 @@ function SignRow() {
   );
 }
 
-export function FinalCheck({ final }: { final: Completeness }) {
+export function FinalCheck({ final, compact }: { final: Completeness; compact?: boolean }) {
   const rows: [string, ReactNode, string][] = [
     ['Обязательные поля', `${final.fields.filled} из ${final.fields.required}${final.fields.empty ? ` · пустых ${final.fields.empty}` : ' · пустых 0'}${final.fields.invalid ? ` · с ошибкой ${final.fields.invalid}` : ''}`, 'Всё, без чего заявку отклонят: реквизиты, характеристики, документы.'],
     ['Документы', `${final.documents.ready} из ${final.documents.required}`, 'Документы заказчика из списка «Что подать», отмеченные готовыми.'],
@@ -703,16 +697,18 @@ export function FinalCheck({ final }: { final: Completeness }) {
   return (
     <Card className={cx('p-4', final.ready ? 'border-success/40' : 'border-warn/40')}>
       {/* Уровень 1: итог словами и цветом; цифры по видам — ниже и тише. */}
-      <p
-        className={cx(
-          'flex items-start gap-2 rounded-md px-3 py-2.5 text-[15px] font-bold',
-          final.ready ? 'bg-success/10 text-success' : 'bg-warn-surface/50 text-warn-foreground',
-        )}
-      >
-        {final.ready ? <ShieldCheck className="mt-0.5 size-5 shrink-0" /> : <AlertTriangle className="mt-0.5 size-5 shrink-0" />}
-        {final.text}
-      </p>
-      <div className="mt-3 flex items-center gap-2">
+      {!compact && (
+        <p
+          className={cx(
+            'flex items-start gap-2 rounded-md px-3 py-2.5 text-[15px] font-bold',
+            final.ready ? 'bg-success/10 text-success' : 'bg-warn-surface/50 text-warn-foreground',
+          )}
+        >
+          {final.ready ? <ShieldCheck className="mt-0.5 size-5 shrink-0" /> : <AlertTriangle className="mt-0.5 size-5 shrink-0" />}
+          {final.text}
+        </p>
+      )}
+      <div className={cx('flex items-center gap-2', !compact && 'mt-3')}>
         <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">Итоговая проверка</span>
         <HelpTip content="Перед скачиванием система проходит по всей заявке: ни одного пустого обязательного поля." />
       </div>

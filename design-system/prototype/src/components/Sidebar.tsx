@@ -15,7 +15,7 @@ export type Notice = { id: string; title: string; status: 'sent' | 'replied'; re
 const nav: { id: View; label: string; icon: typeof Briefcase; soon?: string }[] = [
   { id: 'tenders', label: 'Мои закупки', icon: Briefcase },
   { id: 'analytics', label: 'Аналитика', icon: BarChart2 },
-  { id: 'search', label: 'Поиск закупок', icon: Search, soon: 'Поиск по площадкам — в разработке.' },
+  { id: 'search', label: 'Поиск закупок', icon: Search },
   { id: 'history', label: 'История заявок', icon: History },
   { id: 'tariffs', label: 'Тарифы', icon: Wallet },
   { id: 'settings', label: 'Настройки', icon: Cog },
@@ -95,7 +95,7 @@ export function Sidebar(props: Props) {
         createPortal(
           <div ref={menuBox} tabIndex={-1} className="fixed inset-0 z-50 outline-none lg:hidden" role="dialog" aria-modal="true" aria-label="Меню">
             <div className="animate-tip absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setMenuOpen(false)} />
-            <div className="animate-slide-in absolute inset-y-0 left-0 flex w-[min(320px,86vw)] flex-col gap-5 overflow-y-auto border-r border-border bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] shadow-2xl">
+            <div className="animate-slide-in absolute inset-y-0 left-0 flex w-[min(320px,86vw)] flex-col gap-5 overflow-y-auto [&>*]:shrink-0 border-r border-border bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] shadow-2xl">
               <div className="flex items-center justify-between gap-2">
                 <Logo />
                 <div className="flex shrink-0 items-center gap-1">
@@ -113,7 +113,7 @@ export function Sidebar(props: Props) {
         )}
 
       {/* Компьютер: боковая панель */}
-      <aside className="hidden shrink-0 flex-col gap-5 rounded-2xl border border-border bg-card p-4 shadow-sm lg:flex lg:h-full lg:w-[248px] lg:overflow-y-auto">
+      <aside className="hidden shrink-0 flex-col gap-5 rounded-2xl border border-border bg-card p-4 shadow-sm lg:flex lg:h-full lg:w-[248px] lg:overflow-y-auto [&>*]:shrink-0">
         <div className="flex items-start justify-between gap-2">
           <Logo />
           <div className="flex shrink-0 items-center gap-1">
