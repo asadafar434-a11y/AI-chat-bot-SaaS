@@ -7,6 +7,7 @@ import { Button, Card, Badge, Dot, Tooltip } from './ui';
 import type { CheckStatus } from '../lib/data';
 import { RequirementsList, type RequirementRowView } from './RequirementsList';
 import { DocSnippetToggle, type DocSnippet } from './StepReview';
+import { HiddenRequirementsBlock, type HiddenRequirementsCard } from './HiddenRequirements';
 
 const statusMeta: Record<
   CheckStatus,
@@ -152,6 +153,7 @@ export type ContradictionsCard = {
 
 export function StepAnalysis({
   contradictions,
+  hiddenRequirements,
   discrepancies = [],
   afterWin = null,
   rows,
@@ -166,6 +168,8 @@ export function StepAnalysis({
 }: {
   // Проверка документов на противоречия; не задана — карточки нет (например, в примере закупки).
   contradictions?: ContradictionsCard;
+  // Скрытые требования, неоднозначности и условия допуска; не задана — карточки нет.
+  hiddenRequirements?: HiddenRequirementsCard;
   // Расхождения в цене внутри документов заказчика (web/src/lib/doc-discrepancies.ts): повод для запроса разъяснений.
   discrepancies?: string[];
   // Обязанности после заключения договора из его проекта (web/src/lib/after-win.ts); null — в договоре их не нашлось.
@@ -354,6 +358,8 @@ export function StepAnalysis({
       )}
 
       {contradictions && <ContradictionsBlock card={contradictions} />}
+
+      {hiddenRequirements && <HiddenRequirementsBlock card={hiddenRequirements} />}
 
       {afterWin && (
         <Card className="space-y-2 p-4">
