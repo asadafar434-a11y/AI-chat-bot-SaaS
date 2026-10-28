@@ -20,7 +20,7 @@ import {
   Search,
   XCircle,
 } from '../lib/icons';
-import { Badge, Button, Card, HelpTip, cx, type Tone } from './ui';
+import { Badge, Button, Card, HelpTip, cx, type Tone, fieldClass } from './ui';
 
 // Блок «Реестровые номера товаров» на шаге «Пакет». Показывает, нужен ли номер, что нашлось по каждой позиции, чем найденное
 // совпало и чем нет, и даёт выбрать запись. Сам к серверу не обращается: поиск и сохранение делает обёртка (real/registry.tsx).
@@ -104,8 +104,7 @@ const FIELDS: { key: keyof CardEdits; label: string; hint?: string; wide?: boole
 const MAIN_FIELDS: (keyof CardEdits)[] = ['offeredName', 'manufacturer', 'model'];
 const MORE_FIELDS: (keyof CardEdits)[] = FIELDS.map((f) => f.key).filter((k) => !MAIN_FIELDS.includes(k));
 
-const inputClass =
-  'h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground';
+const inputClass = fieldClass();
 
 function StatusBadge({ status }: { status: DecisionStatus | 'searching' }) {
   const style = STATUS_STYLE[status];

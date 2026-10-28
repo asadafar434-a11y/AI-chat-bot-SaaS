@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { BrandMark } from './BrandMark';
-import { Button, Card } from './ui';
+import { Button, Card, fieldClass } from './ui';
 import { Notice } from './Notice';
 import { PasswordInput } from './PasswordInput';
 import { Loader2 } from '../lib/icons';
@@ -9,8 +9,7 @@ import { Loader2 } from '../lib/icons';
 // ссылке сброса. Только вид — запросы к серверу делает обёртка (real/auth.tsx). Пароль вводится в поле с глазиком (PasswordInput): по умолчанию
 // скрыт, показывается по нажатию; сообщения об ошибках приходят от сервера понятным текстом (неверный пароль, слишком короткий пароль, ссылка устарела).
 
-const inputClass =
-  'h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground';
+const inputClass = fieldClass();
 
 function Shell({ title, lead, children }: { title: string; lead: string; children: ReactNode }) {
   return (

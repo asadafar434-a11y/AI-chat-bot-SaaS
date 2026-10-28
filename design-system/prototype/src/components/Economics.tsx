@@ -3,7 +3,7 @@ import type { RegisterData } from '@/lib/hidden-costs';
 import { AlertTriangle, CheckCircle2 } from '../lib/icons';
 import { CertaintyBadge } from './Certainty';
 import { Frame, frameBody, frameHead } from './Frame';
-import { HelpTip } from './ui';
+import { HelpTip, fieldClass } from './ui';
 
 // «Какую цену ставить»: три сценария и три цены — не ниже, безопасная, целевая (lib/economics.ts). Налог и обеспечение — из расчёта шага «Цена», сверху риски по договору.
 // Затраты вводит участник (здесь или на шаге «Цена»): своих цифр у программы нет. Метка «Оценка»: результат зависит от допущений, которые видно и можно поменять.
@@ -23,8 +23,7 @@ export type EconomicsProps = {
   hideInputs?: boolean;
 };
 
-const inputClass =
-  'h-8 w-full rounded-md border border-border bg-background px-2 text-[12px] outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground';
+const inputClass = fieldClass('sm');
 const numClass = `${inputClass} text-right font-mono`;
 const clean = (s: string) => s.replace(/[  ]/g, ' ');
 const rub = (n: number) => clean(`${n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽`).replace('-', '−');

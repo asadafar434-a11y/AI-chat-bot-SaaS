@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EIS_BOOKMARKLET } from '@/lib/eis-copy-script';
+import { extensionVersion, searchViaExtension } from '@/lib/eis-extension';
 import { importTenders } from '@/lib/tender-import';
 import { EMPTY_FILTERS, eisOrdersUrl, searchTenders, type TenderFilters, type TenderListing, type TenderSort } from '@/lib/tender-search';
 import { clearTenders, getTenders, saveTenders } from '@/lib/tender-store';
@@ -20,6 +21,14 @@ export function RealTenderSearch({ onNew }: { onNew: () => void }) {
   const [sort, setSort] = useState<TenderSort>('deadline');
   const [note, setNote] = useState<{ tone: 'info' | 'danger'; text: string } | null>(null);
   const [ready, setReady] = useState(false);
+  // Расширение Chrome ставит атрибут на <html> при загрузке страницы; проверяем сразу и ещё раз чуть позже (скрипт расширения мог отстать от первой отрисовки).
+  const [extension, setExtension] = useState<string | null>(() => extensionVersion());
+  const [searching, setSearching] = useState(false);
+  useEffect(() => {
+    if (extension) return;
+    const t = window.setTimeout(() => setExtension(extensionVersion()), 1500);
+    return () => window.clearTimeout(t);
+  }, [extension]);
   const today = useMemo(todayIso, []);
 
   useEffect(() => {
@@ -50,7 +59,7 @@ export function RealTenderSearch({ onNew }: { onNew: () => void }) {
     void saveTenders({ listings, loadedAt, filters, sort }).catch(() => {});
   }, [ready, listings, loadedAt, filters, sort]);
 
-  const onImport = useCallback((text: string) => {
+  const onImport = useCallback((text: string, replace = false) => {
     const r = importTenders(text);
     if (r.error) {
       setNote({ tone: 'danger', text: r.error });
@@ -60,9 +69,9 @@ export function RealTenderSearch({ onNew }: { onNew: () => void }) {
       setNote({ tone: 'danger', text: 'Закупок в таблице не нашёл.' });
       return;
     }
-    // Новая выгрузка дополняет прежнюю: та же закупка обновляется, новые добавляются.
+    // Вставка из закладки дополняет прежнюю выгрузку: та же закупка обновляется, новые добавляются. Поиск через расширение заменяет её результатом этого поиска.
     setListings((prev) => {
-      const map = new Map(prev.map((l) => [l.id, l]));
+      const map = new Map((replace ? [] : prev).map((l) => [l.id, l]));
       for (const l of r.listings) map.set(l.id, l);
       return Array.from(map.values());
     });
@@ -72,6 +81,26 @@ export function RealTenderSearch({ onNew }: { onNew: () => void }) {
     if (r.truncated > 0) bits.push(`Лишние ${r.truncated} не взяты: предел выгрузки.`);
     setNote({ tone: 'info', text: bits.join(' ') });
   }, []);
+
+  const eisUrl = eisOrdersUrl(filters, today);
+  const runExtensionSearch = useCallback(async () => {
+    setSearching(true);
+    setNote(null);
+    try {
+      const r = await searchViaExtension(eisUrl, 3);
+      if (r.count === 0) {
+        setListings([]);
+        setLoadedAt(new Date().toISOString());
+        setNote({ tone: 'info', text: 'В ЕИС по этим фильтрам ничего не найдено.' });
+      } else {
+        onImport(r.tsv, true);
+      }
+    } catch (e) {
+      setNote({ tone: 'danger', text: e instanceof Error ? e.message : 'Поиск через расширение не удался.' });
+    } finally {
+      setSearching(false);
+    }
+  }, [eisUrl, onImport]);
 
   const result = useMemo(() => searchTenders(listings, filters, sort, today), [listings, filters, sort, today]);
 
@@ -84,7 +113,8 @@ export function RealTenderSearch({ onNew }: { onNew: () => void }) {
       result={result}
       loadedAt={loadedAt}
       today={today}
-      eisUrl={eisOrdersUrl(filters, today)}
+      eisUrl={eisUrl}
+      extension={{ available: extension !== null, busy: searching, onSearch: () => void runExtensionSearch() }}
       bookmarklet={EIS_BOOKMARKLET}
       onImport={onImport}
       importNote={note}

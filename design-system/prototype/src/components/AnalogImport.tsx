@@ -3,14 +3,13 @@ import { buildRows, decodeText, eisSearchUrl, guessRoles, parseTable, ROLE_LABEL
 import { eisCardUrl, eisKind, eisRows, parseEisCards, parseEisList } from '@/lib/eis-contracts';
 import type { Analog, Vat } from '@/lib/indicative-price';
 import { AlertTriangle, ExternalLink } from '../lib/icons';
-import { Button, HelpTip, Modal } from './ui';
+import { Button, HelpTip, Modal, fieldClass } from './ui';
 
 // «Загрузить цены из таблицы» у позиции РИЦ: вставили таблицу из реестра контрактов ЕИС, Excel или сайта поставщика (или выбрали файл CSV/TXT) — программа находит столбцы, вы проверяете предпросмотр,
 // и отмеченные цены становятся аналогами позиции с источником и датой (lib/analog-import.ts). Карточка контракта ЕИС («Платежи и объекты закупки») читается целиком — цена за единицу, количество, НДС, дата заключения (lib/eis-contracts.ts);
 // список результатов ЕИС даёт только общую цену контракта, поэтому показываются ссылки на карточки. Всё в браузере. Дату и источник программа не придумывает: нет даты — цена в расчёт не пойдёт, пока вы её не впишете.
 
-const inputClass =
-  'h-8 w-full rounded-md border border-border bg-background px-2 text-[12px] outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground';
+const inputClass = fieldClass('sm');
 const rub = (price: string) => `${price} ₽`;
 const dateRu = (iso: string) => iso.split('-').reverse().join('.');
 const ROLES = Object.keys(ROLE_LABELS) as ColumnRole[];

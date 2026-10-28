@@ -11,7 +11,7 @@ import { useAccount } from '../lib/account';
 import { Download, Loader2, LogOut, Moon, Sun, Trash2, Upload } from '../lib/icons';
 import { Notice, type Tone } from './Notice';
 import { PasswordInput } from './PasswordInput';
-import { Button, Card, cx } from './ui';
+import { Button, Card, cx, fieldClass } from './ui';
 
 // «Настройки»: аккаунт (почта, смена пароля, выход), внешний вид (тема) и данные (копия файлом, удаление). Всё, что относится к человеку и его
 // данным, а не к реквизитам компании: реквизиты, база доказательств и образцы остаются в «Профиле компании».
@@ -29,8 +29,7 @@ function contents({ purchases, samples, facts, profile }: { purchases: number; s
   return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} и ${parts.at(-1)}` : (parts[0] ?? '');
 }
 
-const inputClass =
-  'h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground';
+const inputClass = fieldClass();
 
 export function Settings({ dark, setDark }: { dark: boolean; setDark: (v: boolean) => void }) {
   return (

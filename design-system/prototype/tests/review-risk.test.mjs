@@ -173,3 +173,25 @@ test('итоговая проверка на «Пакете» (compact): фра�
   assert.match(text(out), /Обязательные поля.*2 из 24 · пустых 22/);
   assert.match(text(out), /Документы.*0 из 6/);
 });
+
+test('«Поиск закупок»: с расширением Chrome — кнопка «Найти» ищет здесь, «Открыть в ЕИС» — запасная, закладка в раскрывающемся блоке; без него — подсказка про установку', () => {
+  const without = text(html(h(search.TenderSearch, searchProps())));
+  assert.match(without, /Расширение для Chrome «Тендерный юрист — поиск закупок в ЕИС»/);
+  assert.match(without, /extension\/eis-bridge/);
+  assert.match(without, /Найти в ЕИС/);
+  assert.doesNotMatch(without, /Загрузка без расширения/);
+
+  const withExt = html(h(search.TenderSearch, searchProps({ extension: { available: true, busy: false, onSearch: () => {} } })));
+  const plain = text(withExt);
+  assert.match(plain, /Найти\s*Открыть в ЕИС/);
+  assert.match(plain, /Расширение ищет в фоне: до трёх страниц ЕИС, до 150 закупок за раз/);
+  assert.match(withExt, /<details><summary[^>]*>Загрузка без расширения: закладка или вставка таблицы/);
+  assert.doesNotMatch(plain, /Расширение для Chrome «Тендерный юрист/);
+
+  const busy = html(h(search.TenderSearch, searchProps({ extension: { available: true, busy: true, onSearch: () => {} } })));
+  assert.match(text(busy), /Ищу в ЕИС…/);
+  assert.match(busy, /<button[^>]*disabled[^>]*>.*Ищу в ЕИС…/s);
+
+  const note = text(html(h(search.TenderSearch, searchProps({ extension: { available: true, busy: false, onSearch: () => {} }, importNote: { tone: 'danger', text: 'ЕИС не открылся за 30 секунд.' } }))));
+  assert.match(note, /ЕИС не открылся за 30 секунд\./);
+});

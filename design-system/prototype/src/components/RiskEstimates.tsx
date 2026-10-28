@@ -12,7 +12,7 @@ import { Frame, frameBody, frameHead } from './Frame';
 import { HypothesisSearch } from './HypothesisSearch';
 import { RiskFactForm } from './RiskFactForm';
 import { factFromHit, FACT_HYPOTHESES } from '@/lib/risk-facts';
-import { Badge, Button, HelpTip, IconButton } from './ui';
+import { Badge, Button, HelpTip, IconButton, fieldClass } from './ui';
 
 // «Сколько это может стоить по этому контракту»: программа сама считает риски в рублях по условиям договора и типовым допущениям (lib/risk-estimate.ts) — участнику не нужно ничего отмечать.
 // Метка «Оценка»: сумма зависит от допущений, которые видно и можно поменять. Чего без данных не посчитать (ремонт, тариф перевозчика), так и сказано — число не выдумывается.
@@ -39,8 +39,7 @@ export type RiskEstimatesProps = {
   embedded?: boolean;
 };
 
-const inputClass =
-  'h-8 w-full rounded-md border border-border bg-background px-2 text-[12px] outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground';
+const inputClass = fieldClass('sm');
 const numClass = `${inputClass} text-right font-mono`;
 const rub = (n: number) => `${n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽`.replace(/[  ]/g, ' ');
 const pct = (n: number) => `${n.toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`.replace(/[  ]/g, ' ');

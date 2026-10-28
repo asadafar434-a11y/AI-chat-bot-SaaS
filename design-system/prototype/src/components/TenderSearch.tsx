@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { eisNumberUrl, SORT_LABELS, type SearchResult, type TenderFilters, type TenderListing, type TenderSort } from '@/lib/tender-search';
 import { plural } from '@/lib/plural';
-import { ArrowUpRight, Copy, Plus, Search, Trash2, Upload } from '../lib/icons';
-import { Badge, Button, Card, Checkbox, HelpTip } from './ui';
+import { ArrowUpRight, Copy, Loader2, Plus, Search, Trash2, Upload } from '../lib/icons';
+import { Badge, Button, Card, Checkbox, HelpTip, fieldClass } from './ui';
 
 // «Поиск закупок»: фильтры (слова и исключения, закон, цена, даты, «приём заявок идёт»), список закупок из выгрузки ЕИС и три шага, как её получить: «Найти в ЕИС» → закладка «Скопировать закупки» → вставить сюда.
 // Закупки — только из выгрузки участника; чего в выгрузке нет, то не показываем (lib/tender-import.ts). Живая лента без выгрузки — «скоро»: нужен доступ к данным ЕИС с нашего сервера.
 
-const inputClass =
-  'h-8 w-full rounded-md border border-border bg-background px-2 text-[12px] outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground';
+const inputClass = fieldClass('sm');
 
 const rub = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n).replace(/ /g, ' ') + ' ₽';
 const ruDate = (iso: string) => iso.split('-').reverse().join('.');
@@ -89,6 +88,7 @@ export function TenderSearch({
   importNote,
   onClear,
   onNew,
+  extension,
 }: {
   filters: TenderFilters;
   onFilters: (patch: Partial<TenderFilters>) => void;
@@ -106,6 +106,8 @@ export function TenderSearch({
   importNote: { tone: 'info' | 'danger'; text: string } | null;
   onClear: () => void;
   onNew: () => void;
+  /** Расширение Chrome «поиск закупок в ЕИС»: стоит ли оно, идёт ли поиск, запуск. Нет — прежний путь через закладку. */
+  extension?: { available: boolean; busy: boolean; onSearch: () => void };
 }) {
   const [paste, setPaste] = useState('');
   const [copied, setCopied] = useState(false);
@@ -116,6 +118,65 @@ export function TenderSearch({
     link.current?.setAttribute('href', bookmarklet);
   }, [bookmarklet]);
   const has = result.total > 0;
+
+  const loadBody = (
+    <>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[15px] font-bold">Загрузить закупки из ЕИС</span>
+            <HelpTip
+              align="start"
+              content="1) Нажмите «Найти в ЕИС». 2) Перетащите кнопку «Скопировать закупки» на панель закладок браузера (один раз). 3) Когда в ЕИС открыты результаты, нажмите эту закладку — таблица на странице (до 50 закупок) скопируется. 4) Вставьте её сюда. Закупки читаются на вашей стороне: наш сервер в ЕИС не ходит. Для следующих страниц ЕИС повторите."
+            />
+          </div>
+          <ol className="space-y-1 text-[13px] text-muted-foreground">
+            <li>1. «Найти в ЕИС» выше — откроются результаты.</li>
+            <li>
+              2. Нажмите закладку{' '}
+              <a ref={link} onClick={(e) => e.preventDefault()} draggable className="inline-flex h-8 cursor-grab items-center rounded-md border border-dashed border-foreground px-3 text-[12px] font-medium text-foreground">
+                Скопировать закупки
+              </a>{' '}
+              <span className="text-[12px]">(перетащите её на панель закладок один раз)</span>.
+            </li>
+            <li>3. Вставьте скопированное:</li>
+          </ol>
+          <textarea
+            value={paste}
+            onChange={(e) => setPaste(e.target.value)}
+            rows={3}
+            aria-label="Таблица закупок из ЕИС"
+            placeholder="Вставьте таблицу (Ctrl+V)"
+            className="w-full rounded-md border border-border bg-background px-2 py-1.5 font-mono text-[11px] outline-none placeholder:text-muted-foreground/60 focus:border-foreground"
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              disabled={paste.trim() === ''}
+              onClick={() => {
+                onImport(paste);
+                setPaste('');
+              }}
+            >
+              Загрузить
+            </Button>
+            <input
+              ref={file}
+              type="file"
+              accept=".csv,.tsv,.txt"
+              aria-label="Файл выгрузки закупок"
+              className="sr-only"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = '';
+                if (f) void f.text().then(onImport);
+              }}
+            />
+            <Button size="sm" variant="secondary" onClick={() => file.current?.click()}>
+              <Upload className="size-3.5" /> Файл CSV
+            </Button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">Живая лента без выгрузки — скоро: нужен доступ к данным ЕИС с нашего сервера.</p>
+    </>
+  );
 
   return (
     <div className="animate-fade-up space-y-4">
@@ -173,8 +234,23 @@ export function TenderSearch({
           </Field>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <a href={eisUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 sm:w-auto">
-            <Search className="size-4" /> Найти в ЕИС <ArrowUpRight className="size-3.5" />
+          {extension?.available && (
+            <Button disabled={extension.busy} onClick={extension.onSearch} className="w-full sm:w-auto">
+              {extension.busy ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+              {extension.busy ? 'Ищу в ЕИС…' : 'Найти'}
+            </Button>
+          )}
+          <a
+            href={eisUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={
+              extension?.available
+                ? 'inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium hover:bg-secondary sm:w-auto'
+                : 'inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 sm:w-auto'
+            }
+          >
+            {!extension?.available && <Search className="size-4" />} {extension?.available ? 'Открыть в ЕИС' : 'Найти в ЕИС'} <ArrowUpRight className="size-3.5" />
           </a>
           <Button
             size="sm"
@@ -195,70 +271,30 @@ export function TenderSearch({
             content="Откроется zakupki.gov.ru с теми же словами, законом, ценой и датами — в вашем браузере. Исключения слов («-слово») ЕИС не понимает: они сработают здесь, в списке после загрузки."
           />
         </div>
-        <p className="text-[11px] text-muted-foreground">ЕИС открывается не в каждом окне (во встроенном окне приложения — нет). Не открылся — скопируйте ссылку и вставьте её в Chrome.</p>
-      </Card>
-
-      <Card className="space-y-3 p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[15px] font-bold">Загрузить закупки из ЕИС</span>
-          <HelpTip
-            align="start"
-            content="1) Нажмите «Найти в ЕИС». 2) Перетащите кнопку «Скопировать закупки» на панель закладок браузера (один раз). 3) Когда в ЕИС открыты результаты, нажмите эту закладку — таблица на странице (до 50 закупок) скопируется. 4) Вставьте её сюда. Закупки читаются на вашей стороне: наш сервер в ЕИС не ходит. Для следующих страниц ЕИС повторите."
-          />
-        </div>
-        <ol className="space-y-1 text-[13px] text-muted-foreground">
-          <li>1. «Найти в ЕИС» выше — откроются результаты.</li>
-          <li>
-            2. Нажмите закладку{' '}
-            <a ref={link} onClick={(e) => e.preventDefault()} draggable className="inline-flex h-8 cursor-grab items-center rounded-md border border-dashed border-foreground px-3 text-[12px] font-medium text-foreground">
-              Скопировать закупки
-            </a>{' '}
-            <span className="text-[12px]">(перетащите её на панель закладок один раз)</span>.
-          </li>
-          <li>3. Вставьте скопированное:</li>
-        </ol>
-        <textarea
-          value={paste}
-          onChange={(e) => setPaste(e.target.value)}
-          rows={3}
-          aria-label="Таблица закупок из ЕИС"
-          placeholder="Вставьте таблицу (Ctrl+V)"
-          className="w-full rounded-md border border-border bg-background px-2 py-1.5 font-mono text-[11px] outline-none placeholder:text-muted-foreground/60 focus:border-foreground"
-        />
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            size="sm"
-            disabled={paste.trim() === ''}
-            onClick={() => {
-              onImport(paste);
-              setPaste('');
-            }}
-          >
-            Загрузить
-          </Button>
-          <input
-            ref={file}
-            type="file"
-            accept=".csv,.tsv,.txt"
-            aria-label="Файл выгрузки закупок"
-            className="sr-only"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              e.target.value = '';
-              if (f) void f.text().then(onImport);
-            }}
-          />
-          <Button size="sm" variant="secondary" onClick={() => file.current?.click()}>
-            <Upload className="size-3.5" /> Файл CSV
-          </Button>
-        </div>
+        {extension?.available ? (
+          <p className="text-[11px] text-muted-foreground">Расширение ищет в фоне: до трёх страниц ЕИС, до 150 закупок за раз. Список заменяется результатом поиска.</p>
+        ) : (
+          <p className="text-[11px] text-muted-foreground">
+            Расширение для Chrome «Тендерный юрист — поиск закупок в ЕИС» ищет прямо здесь, без закладки и вставки. Папка <span className="font-mono">extension/eis-bridge</span>: chrome://extensions → «Режим разработчика» → «Загрузить распакованное». ЕИС открывается не в каждом окне (во встроенном окне приложения — нет).
+          </p>
+        )}
         {importNote && (
           <p role={importNote.tone === 'danger' ? 'alert' : 'status'} className={`rounded-md px-3 py-2 text-[12px] ${importNote.tone === 'danger' ? 'bg-danger/10 text-danger' : 'bg-info/10 text-info'}`}>
             {importNote.text}
           </p>
         )}
-        <p className="text-[11px] text-muted-foreground">Живая лента без выгрузки — скоро: нужен доступ к данным ЕИС с нашего сервера.</p>
       </Card>
+
+      {extension?.available ? (
+        <Card className="p-4">
+          <details>
+            <summary className="cursor-pointer text-[13px] font-medium text-muted-foreground">Загрузка без расширения: закладка или вставка таблицы</summary>
+            <div className="mt-3 space-y-3">{loadBody}</div>
+          </details>
+        </Card>
+      ) : (
+        <Card className="space-y-3 p-4">{loadBody}</Card>
+      )}
 
       {has && (
         <Card className="p-0">

@@ -3,7 +3,7 @@ import type { MatrixData } from '@/lib/hidden-costs';
 import { DEFAULT_WEIGHTS, GROUPS, LEVEL_TEXT, type CheckRow, type Level, type ManualResult, type MatrixSummary } from '@/lib/check-matrix';
 import { percent } from '@/lib/analytics-summary';
 import { AlertTriangle, CheckCircle2, HelpCircle, XCircle } from '../lib/icons';
-import { Badge, Button, HelpTip, type Tone } from './ui';
+import { Badge, Button, HelpTip, type Tone, fieldClass } from './ui';
 
 // «Матрица проверок (27)» (lib/check-matrix.ts). По правилу «мало текста, много фактов, больше кнопок»: сверху итог и кнопки-фильтры со счётчиками, карта из 27 клеток, у строки — название, значок и факт по этой закупке;
 // как проверяется, чего не хватает и запись своего результата — за кнопками. Пояснения — в ⓘ. Это не вероятность победы и не оценка заказчика.
@@ -18,8 +18,7 @@ export type CheckMatrixProps = {
 type Filter = 'all' | Level | 'insufficient' | 'not_checked';
 type Shown = { tone: Tone; text: string; cell: string; key: Filter };
 
-const inputClass =
-  'h-8 w-full rounded-md border border-border bg-background px-2 text-[12px] outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground';
+const inputClass = fieldClass('sm');
 const LEVEL_TONE: Record<Level, Tone> = { ok: 'success', attention: 'warn', risk: 'danger' };
 const CELL = {
   ok: 'border-success bg-success/15 text-success',

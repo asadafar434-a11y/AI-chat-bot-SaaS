@@ -142,6 +142,13 @@ export function Button({ variant = 'primary', size = 'md', className, children, 
   );
 }
 
+// Поля ввода (гайдлайн): обычное — 36 пикселей и шрифт 14, компактное (плотные панели) — 32 и 13. Свои копии стиля в экранах не заводим.
+export const fieldBase = 'rounded-md border border-border bg-background outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground';
+export function fieldClass(size: 'md' | 'sm' = 'md', extra = ''): string {
+  const own = size === 'md' ? 'h-9 w-full px-3 text-sm' : 'h-8 w-full px-2.5 text-[13px]';
+  return [own, fieldBase, extra].filter(Boolean).join(' ');
+}
+
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
   return (
     <div className={cx('bg-card border border-border rounded-xl shadow-sm', className)}>

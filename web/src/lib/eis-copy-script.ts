@@ -9,10 +9,16 @@ export const EIS_COPY_HEADERS = ["Реестровый номер", "Закон"
 /** Функция (в виде текста): принимает document страницы ЕИС, возвращает таблицу через табуляцию или строку-пояснение, начинающуюся с «!». Только то, что есть на странице. */
 export const EIS_EXTRACT = String.raw`function (doc) {
   var blocks = doc.querySelectorAll('.search-registry-entry-block');
-  if (!blocks.length) return '!На странице нет списка закупок. Откройте результаты поиска на zakupki.gov.ru и нажмите закладку ещё раз.';
   var clean = function (e) { return e ? String(e.innerText || e.textContent || '').replace(/\s+/g, ' ').trim() : ''; };
   var cell = function (s) { return String(s).replace(/[\t\r\n]+/g, ' ').trim(); };
   var rows = [${JSON.stringify(EIS_COPY_HEADERS)}.join('\t')];
+  if (!blocks.length) {
+    // Пустой результат («0 записей», «ничего не найдено») — это ответ, а не ошибка: только заголовок. Страницу, которую не поняли, называем словами.
+    var total = clean(doc.querySelector('.search-results__total'));
+    var text = clean(doc.body);
+    if (/^0\s+запис/i.test(total) || /ничего\s+не\s+найден|не\s+найден[оы]\s|нет\s+результатов/i.test(text)) return rows.join('\n');
+    return '!На странице нет списка закупок. Откройте результаты поиска на zakupki.gov.ru и нажмите закладку ещё раз.';
+  }
   var skipped = 0;
   for (var i = 0; i < blocks.length; i++) {
     var b = blocks[i];

@@ -1,6 +1,6 @@
 import { ExternalLink, Trash2 } from '../lib/icons';
 import { EMPTY_FACT, FACT_HYPOTHESES, riskFactAmount, type RiskFact } from '@/lib/risk-facts';
-import { IconButton } from './ui';
+import { IconButton, fieldClass } from './ui';
 
 // Отраслевой риск по найденному факту: затраты по статье × рост цен. Процент — из выдержки поиска (кнопка «взять» у числа) или свой; затраты вписывает участник.
 // Источник, ссылка и выдержка остаются рядом с суммой (lib/risk-facts.ts): число не выдумано и не выбрано программой за вас. Метка «Не проверено» — выдержку из поиска никто не перепроверял.
@@ -13,8 +13,7 @@ export type RiskFactFormProps = {
   onChange: (next: RiskFact | null) => void;
 };
 
-const inputClass =
-  'h-8 w-full rounded-md border border-border bg-background px-2 text-right font-mono text-[12px] outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground';
+const inputClass = `${fieldClass('sm')} text-right font-mono`;
 const ru = (n: number) => n.toLocaleString('ru-RU', { maximumFractionDigits: 2 }).replace(/[  ]/g, ' ');
 
 export function RiskFactForm({ hypothesisId, fact, price, onChange }: RiskFactFormProps) {

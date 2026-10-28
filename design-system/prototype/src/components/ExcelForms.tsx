@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import type { CheckedTotal, FillItem, ManualPriceRow } from '@/lib/xlsx-plan';
 import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, Info, Plus, Trash2 } from '../lib/icons';
-import { Badge, Button, Card, HelpTip, IconButton } from './ui';
+import { Badge, Button, Card, HelpTip, IconButton, fieldBase } from './ui';
 
 // Блок «Excel-бланки заказчика» на шаге «Пакет»: файл заказчика остаётся его файлом, в него вписываются реквизиты и сведения о товарах, которые участник сам указал.
 // Сам ничего не читает и не пишет: файлы и вписывание — в обёртке (real/excel-forms.tsx).
@@ -33,8 +33,7 @@ export type ExcelFormsProps = {
 };
 
 const SHOWN = 40;
-const inputClass =
-  'h-8 w-28 rounded-md border border-border bg-background px-2 text-right font-mono text-[12px] outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground';
+const inputClass = `h-8 w-28 px-2.5 text-right font-mono text-[13px] ${fieldBase}`;
 
 const rub = (n: number) => `${n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽`;
 

@@ -43,3 +43,15 @@ test('меню: блоки не сжимаются при низком окне 
   assert.equal(panels.length, 2, 'две панели: телефонное меню и боковое на компьютере');
   for (const l of panels) assert.match(l, /\[&>\*\]:shrink-0/, 'у панели меню нет запрета на сжатие блоков');
 });
+
+test('поля ввода: стиль берётся из общего fieldClass (36/14 и компактное 32/13), своих копий в экранах нет', async () => {
+  const { readdirSync } = await import('node:fs');
+  const dir = path.resolve(import.meta.dirname, '..', 'src', 'components');
+  const copies = readdirSync(dir)
+    .filter((f) => f.endsWith('.tsx') && f !== 'ui.tsx')
+    .filter((f) => /const inputClass =\s*'/.test(readFileSync(path.join(dir, f), 'utf8')));
+  assert.deepEqual(copies, [], `свои копии стиля поля: ${copies.join(', ')} — используйте fieldClass из ui.tsx`);
+  const ui = src('components/ui.tsx');
+  assert.match(ui, /'h-9 w-full px-3 text-sm'/);
+  assert.match(ui, /'h-8 w-full px-2\.5 text-\[13px\]'/);
+});

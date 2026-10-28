@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import type { IntakeFields, Law } from '@/lib/analytics-intake';
 import { AlertTriangle, FileText, Loader2, UploadCloud, X } from '../lib/icons';
-import { Badge, Button, HelpTip, IconButton, Modal } from './ui';
+import { Badge, Button, HelpTip, IconButton, Modal, fieldClass } from './ui';
 
 // «Загрузить закупку» в разделе «Аналитика»: файлы → название, цена и закон, найденные программой, → открыть расчёт. Чтение файлов без ИИ (lib/analytics-intake.ts): файлы читает сервер как текст,
 // а найденное участник видит и может поправить до сохранения. По «Открыть аналитику» при включённом «ИИ» сразу идут разбор документов (≈55 ₽) и поиск закупочных цен (до 30 ₽) — пока они идут, окно это показывает.
@@ -26,8 +26,7 @@ export type AnalyticsIntakeFormProps = {
 };
 
 const ACCEPT = '.pdf,.docx,.doc,.rtf,.xls,.xlsx,.xlsm,.zip,.txt,.md';
-const inputClass =
-  'h-8 w-full rounded-md border border-border bg-background px-2 text-[12px] outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground';
+const inputClass = fieldClass('sm');
 
 function Choice({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (

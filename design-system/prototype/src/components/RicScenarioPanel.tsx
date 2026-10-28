@@ -2,7 +2,7 @@ import type { RicAdjustment, RicData, RicResult } from '@/lib/indicative-price';
 import { METHOD_LABELS, readiness, SCENARIO_OPTIONS, SOURCE_LABELS, scenarioRic, type Applied, type Unit } from '@/lib/ric-scenarios';
 import { AlertTriangle, CheckCircle2, Info, Plus, Trash2 } from '../lib/icons';
 import { CertaintyBadge } from './Certainty';
-import { Badge, Button, HelpTip, IconButton } from './ui';
+import { Badge, Button, HelpTip, IconButton, fieldClass } from './ui';
 
 // «Как считается РИЦ для вашей сферы»: у ИТ, логистики, стройки и других сфер свои метод, опора, поправки и отраслевые риски (lib/ric-scenarios.ts).
 // Программа не придумывает числа сфер: поправку или резерв на риск вводит участник с основанием (откуда число), без основания они в расчёт не идут. Методика — на проверку юристу.
@@ -16,8 +16,7 @@ export type RicScenarioPanelProps = {
   onChange: (next: RicData) => void;
 };
 
-const inputClass =
-  'h-8 w-full rounded-md border border-border bg-background px-2 text-[12px] outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground';
+const inputClass = fieldClass('sm');
 const numClass = `${inputClass} text-right font-mono`;
 const rub = (n: number) => `${n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽`.replace(/[  ]/g, ' ');
 const pct = (n: number) => `${n.toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`.replace(/[  ]/g, ' ');

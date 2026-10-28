@@ -1,14 +1,13 @@
 import { notFound, SOURCE_NAMES, thousandsText, type CounterpartyReport, type Tone as ReportTone } from '@/lib/counterparty';
 import { Search } from '../lib/icons';
 import { CertaintyBadge } from './Certainty';
-import { Badge, Button, Card, cx, Dot, HelpTip, type Tone } from './ui';
+import { Badge, Button, Card, cx, Dot, HelpTip, type Tone, fieldBase } from './ui';
 
 // «Проверка контрагента по ИНН» в «Аналитике» (23–25.10.2026, владелец: «начни с проверки по ИНН»): организация, статус и отчётность из открытых реестров — ЕГРЮЛ, Федресурс, ГИР БО ФНС (lib/counterparty.ts).
 // Показываем то, что написал реестр, с датой; вывода «надёжен» нет. Чего без капчи не взять (суды, приставы, реестр недобросовестных) — ссылки на ручную проверку.
 
 const TONE: Record<ReportTone, Tone> = { good: 'success', warn: 'warn', danger: 'danger', muted: 'neutral' };
-const inputClass =
-  'h-9 w-full rounded-md border border-border bg-background px-3 text-[13px] font-mono outline-none transition-colors placeholder:font-sans placeholder:text-muted-foreground/60 focus:border-foreground';
+const inputClass = `h-9 w-full px-3 font-mono text-[13px] placeholder:font-sans ${fieldBase}`;
 
 const when = (iso: string) => {
   const d = new Date(iso);

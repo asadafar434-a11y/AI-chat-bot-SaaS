@@ -116,7 +116,7 @@ function block(o: { head: string; num: string; href: string; body: [string, stri
   };
   return el("", { querySelector: (s) => map[s]?.[0] ?? null, querySelectorAll: (s) => map[s] ?? [] });
 }
-const fakeDoc = (blocks: FakeEl[]) => ({ querySelectorAll: (s: string) => (s === ".search-registry-entry-block" ? blocks : []) });
+const fakeDoc = (blocks: FakeEl[], total = "", body = "") => ({ querySelectorAll: (q: string) => (q === ".search-registry-entry-block" ? blocks : []), querySelector: (q: string) => (q === ".search-results__total" && total ? el(total) : null), body: body ? el(body) : null });
 const run = (doc: unknown): string => new Function("doc", `return (${EIS_EXTRACT})(doc)`)(doc);
 
 test("закладка: страница ЕИС → таблица, которую читает выгрузка; пустая страница и чужая разметка — словами, без выдумок", () => {
@@ -134,6 +134,8 @@ test("закладка: страница ЕИС → таблица, котору
   ]);
   assert.equal(imported.listings[1].title, "Поставка препаратов", "табуляция внутри названия не ломает столбцы");
   assert.match(run(fakeDoc([])), /^!На странице нет списка закупок/);
+  assert.equal(run(fakeDoc([], "0 записей")), EIS_COPY_HEADERS.join("	"), "пустой результат — только заголовок, не ошибка");
+  assert.equal(run(fakeDoc([], "", "По вашему запросу ничего не найдено")), EIS_COPY_HEADERS.join("	"));
   assert.match(run(fakeDoc([el("")])), /^!Закупки на странице есть, но прочитать их не вышло/);
   assert.ok(EIS_BOOKMARKLET.startsWith("javascript:(function(){"), "закладка собрана");
   assert.ok(!/\n/.test(EIS_BOOKMARKLET.replace(/\\n/g, "")), "в закладке нет настоящих переводов строк: адрес закладки должен быть в одну строку");

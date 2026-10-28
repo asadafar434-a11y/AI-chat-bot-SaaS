@@ -5,7 +5,7 @@ import { AlertTriangle, BarChart2, CheckCircle2, Download, Info, Plus, Trash2, T
 import { CertaintyBadge } from './Certainty';
 import { AnalogImportModal } from './AnalogImport';
 import { Frame, frameBody, frameHead } from './Frame';
-import { Badge, Button, Card, HelpTip, IconButton } from './ui';
+import { Badge, Button, Card, HelpTip, IconButton, fieldClass } from './ui';
 
 // «РИЦ — расчёт индикативной цены»: ориентир рыночной цены закупки из цен-аналогов; с ним сравнивают начальную цену заказчика. Это не цена заявки.
 // Сам ничего не считает и не хранит: расчёт — lib/indicative-price.ts, хранение — в обёртке (real/analytics.tsx).
@@ -24,8 +24,7 @@ export type RicPanelProps = {
   embedded?: boolean;
 };
 
-const inputClass =
-  'h-8 w-full rounded-md border border-border bg-background px-2 text-[12px] outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground';
+const inputClass = fieldClass('sm');
 const numClass = `${inputClass} text-right font-mono`;
 
 const rub = (n: number) => `${n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽`;

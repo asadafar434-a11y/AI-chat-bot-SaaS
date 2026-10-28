@@ -3,7 +3,7 @@ import { EMPTY_DELIVERY, type DeliveryInputs, type DeliveryResult } from '@/lib/
 import { EMPTY_FX, FX_CURRENCIES, type FxCode, type FxResult } from '@/lib/fx-risk';
 import type { RegisterData } from '@/lib/hidden-costs';
 import { AlertTriangle } from '../lib/icons';
-import { Button } from './ui';
+import { Button, fieldClass } from './ui';
 
 // Цифры участника для сумм по фактам: доставка (расстояние найдено по документам и профилю, вписываются тариф и рейсы) и курс валюты (курс ЦБ загружается кнопкой, вписывается сумма в валюте).
 // Сами суммы стоят в списке «Сколько это может стоить» выше; здесь — только то, что вводит человек, и факты, на которых держится число (lib/delivery-cost.ts, lib/fx-risk.ts).
@@ -17,8 +17,7 @@ export type FactCostsProps = {
   onLoadFx: (code: FxCode) => Promise<string | null>;
 };
 
-const inputClass =
-  'h-8 w-full rounded-md border border-border bg-background px-2 text-[12px] outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground';
+const inputClass = fieldClass('sm');
 const numClass = `${inputClass} text-right font-mono`;
 const flat = (s: string) => s.replace(/[  ]/g, ' ');
 const ru = (n: number, digits = 2) => flat(n.toLocaleString('ru-RU', { maximumFractionDigits: digits }));

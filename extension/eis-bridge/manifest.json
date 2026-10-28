@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Тендерный юрист — поиск закупок в ЕИС",
+  "version": "1.0.0",
+  "description": "Ищет закупки на zakupki.gov.ru по вашим фильтрам из «Тендерного юриста» и возвращает результат в приложение. Работает в вашем браузере, данные никуда больше не отправляются.",
+  "permissions": ["scripting", "tabs"],
+  "host_permissions": ["https://zakupki.gov.ru/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["http://localhost:3000/*", "http://127.0.0.1:3000/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ]
+}
