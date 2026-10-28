@@ -5,6 +5,7 @@ node_modules/
 
 # Сборка
 .next/
+.next-dev/
 out/
 build/
 dist/
@@ -31,3 +32,9 @@ desktop.ini
 .turbo/
 .cache/
 coverage/
+
+# Сборщик поставщиков (персональные данные ИП — не в git)
+tools/lead-collector/data/
+tools/lead-collector/.env
+__pycache__/
+*.pyc

@@ -41,6 +41,9 @@ const SECURITY_HEADERS = [
 ];
 
 const nextConfig: NextConfig = {
+  // Сервер разработки (next dev) ведёт свою папку: при старте он стирает общую .next, и собранный продукт (npm run build:host → npm start) пропадал — «Продукт ещё не собран».
+  // Продукт и хостинг остаются в .next, разработка — в .next-dev; запускать их можно одновременно.
+  distDir: isDev ? ".next-dev" : ".next",
   // pdfmake и pdfkit читают свои шрифты и таблицы с диска рядом с собой — их нельзя склеивать в общий файл сборки.
   serverExternalPackages: ["pdf-parse", "mammoth", "pdfmake", "pdfkit", "pg-boss", "pg", "7z-wasm"],
   // Заголовок «X-Powered-By: Next.js» подсказывает, какие уязвимости пробовать.
