@@ -70,7 +70,6 @@ export function createSearcher(options: SearcherOptions = {}) {
 
     let blocked = false;
     let timedOut = false;
-    let failed = false;
     let empty: SearchOutcome | null = null;
     for (const engine of order) {
       const url = ENGINES[engine].url(query);
@@ -102,7 +101,6 @@ export function createSearcher(options: SearcherOptions = {}) {
         continue;
       }
       if (!response.ok) {
-        failed = true;
         if (keyed) console.error(`Brave Search API: ответ ${response.status}`);
         continue;
       }

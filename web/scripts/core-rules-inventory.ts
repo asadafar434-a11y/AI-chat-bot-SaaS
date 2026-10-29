@@ -322,6 +322,8 @@ if (validationIssues.length > 0) {
 
 summaryLines.push("", "## 5. Собственные правила по модулям", "");
 
+// Скрипт запускается из консоли, не страницей Next.js: правило про переменную module к нему не относится.
+// eslint-disable-next-line @next/next/no-assign-module-variable
 for (const module of moduleSummaries) {
   const ownRows = uniqueRules.filter((row) => !row.shared && row.moduleKey === module.key);
   summaryLines.push(`### ${module.name} (\`${module.key}\`)`, "");
