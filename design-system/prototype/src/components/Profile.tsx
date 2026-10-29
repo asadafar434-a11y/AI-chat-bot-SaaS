@@ -149,7 +149,7 @@ function KindEditor({ doc, onSave, onCancel }: { doc: MyDocument; onSave: (kinds
             onClick={() => toggle(kind)}
             className={cx(
               'rounded-full border px-3 py-1 text-[12px] font-medium transition-colors',
-              kinds.includes(kind) ? 'border-foreground bg-primary text-primary-foreground' : 'border-border bg-card text-muted-foreground hover:bg-secondary',
+              kinds.includes(kind) ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-muted-foreground hover:bg-secondary',
             )}
           >
             {DOC_KINDS[kind].group}

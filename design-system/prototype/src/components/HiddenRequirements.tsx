@@ -52,7 +52,7 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
       onClick={onClick}
       className={`min-h-8 rounded-full border px-2.5 text-[12px] font-medium transition-colors ${
         active
-          ? 'border-foreground bg-foreground text-background'
+          ? 'border-primary bg-primary text-primary-foreground'
           : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground'
       }`}
     >

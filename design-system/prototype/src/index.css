@@ -87,6 +87,7 @@
   --color-warn-surface: var(--warn-surface);
   --color-warn-foreground: var(--warn-foreground);
   --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
   --color-success: var(--success);
   --color-info: var(--info);
   --radius-sm: calc(var(--radius) - 2px);
@@ -101,8 +102,9 @@
   --foreground: #0a0a0a;
   --card: #ffffff;
   --card-foreground: #0a0a0a;
-  --primary: #0a0a0a;
-  --primary-foreground: #fafafa;
+  /* Главные кнопки и выбранные значки — фирменный голубой «Тендекса» (владелец, 29.10.2026, логотип #2F5BFF): белый текст на нём — 5,2 : 1. */
+  --primary: #2f5bff;
+  --primary-foreground: #ffffff;
   --secondary: #f5f5f5;
   --secondary-foreground: #0a0a0a;
   --muted: #f5f5f5;
@@ -112,11 +114,12 @@
   --accent: #f0f0f0;
   --accent-foreground: #0a0a0a;
   --border: #e6e6e6;
-  --ring: #0a0a0a;
+  --ring: #2f5bff;
   --warn: #eab308;
   --warn-surface: #fef9c3;
   --warn-foreground: #713f12;
   --danger: #b91c1c;
+  --danger-foreground: #fafafa;
   --success: #137538;
   --info: #4f46e5;
   /* Две линии графика (синяя и оранжевая из проверенной палитры диаграмм: разделяются и при дальтонизме, контраст с карточкой не меньше 3 : 1). */
@@ -131,8 +134,8 @@
   --foreground: #f4f4f5;
   --card: #212226;
   --card-foreground: #f4f4f5;
-  --primary: #f4f4f5;
-  --primary-foreground: #17181b;
+  --primary: #2f5bff;
+  --primary-foreground: #ffffff;
   --secondary: #2c2d32;
   --secondary-foreground: #f4f4f5;
   --muted: #2c2d32;
@@ -140,11 +143,12 @@
   --accent: #313238;
   --accent-foreground: #f4f4f5;
   --border: #3b3c43;
-  --ring: #f4f4f5;
+  --ring: #6f8cff;
   --warn: #facc15;
   --warn-surface: #4a3a0c;
   --warn-foreground: #fde68a;
   --danger: #f87171;
+  --danger-foreground: #17181b;
   --success: #4ade80;
   --info: #a5b4fc;
   --viz-1: #3987e5;

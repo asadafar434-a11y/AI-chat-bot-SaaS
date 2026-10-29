@@ -15,11 +15,11 @@
   --muted-foreground: #737373;
   --accent: #f0f0f0;
   --border: #e6e6e6;
-  --ring: #0a0a0a;
+  --ring: #2f5bff;
 
-  /* ---- основное действие — почти чёрный, не цвет ---- */
-  --primary: #0a0a0a;
-  --primary-foreground: #fafafa;
+  /* ---- основное действие — фирменный голубой «Тендекса» (логотип, 29.10.2026) ---- */
+  --primary: #2f5bff;
+  --primary-foreground: #ffffff;
 
   /* ---- индиго-градиент: робот ИИ-ассистента (кнопка чата), платное и главное (проверка специалистом) ----
      В интерфейсе — класс .bg-brand-gradient. Сплошной индиго — --info.
@@ -66,9 +66,9 @@
   --muted-foreground: #aeb0b8;
   --accent: #313238;
   --border: #3b3c43;
-  --ring: #f4f4f5;
-  --primary: #f4f4f5;
-  --primary-foreground: #17181b;
+  --ring: #6f8cff;
+  --primary: #2f5bff;
+  --primary-foreground: #ffffff;
   --success: #4ade80;
   --warn: #facc15;
   --warn-surface: #4a3a0c;

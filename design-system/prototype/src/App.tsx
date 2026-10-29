@@ -328,7 +328,7 @@ function Shell({
                     <span
                       className={`flex size-5 items-center justify-center rounded-full border text-[10px] ${
                         state === 'done'
-                          ? 'border-foreground bg-primary text-primary-foreground'
+                          ? 'border-primary bg-primary text-primary-foreground'
                           : state === 'active'
                             ? 'border-foreground'
                             : 'border-border'

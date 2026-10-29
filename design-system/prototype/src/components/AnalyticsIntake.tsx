@@ -35,7 +35,7 @@ function Choice({ active, onClick, children }: { active: boolean; onClick: () =>
       aria-pressed={active}
       onClick={onClick}
       className={`inline-flex h-8 items-center rounded-full border px-3 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-        active ? 'border-foreground bg-foreground text-background' : 'border-border bg-card hover:bg-secondary'
+        active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:bg-secondary'
       }`}
     >
       {children}

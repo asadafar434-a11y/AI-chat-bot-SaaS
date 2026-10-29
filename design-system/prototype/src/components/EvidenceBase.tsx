@@ -142,7 +142,7 @@ export function FactForm({
               onClick={() => set({ kind, fields: {}, measures: [] })}
               className={cx(
                 'rounded-full border px-3 py-1 text-[12px] font-medium transition-colors',
-                draft.kind === kind ? 'border-foreground bg-primary text-primary-foreground' : 'border-border bg-card text-muted-foreground hover:bg-secondary',
+                draft.kind === kind ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-muted-foreground hover:bg-secondary',
               )}
             >
               {FACT_KINDS[kind].one}

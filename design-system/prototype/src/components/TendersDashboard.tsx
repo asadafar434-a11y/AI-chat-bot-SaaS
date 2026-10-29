@@ -102,7 +102,7 @@ export function TendersDashboard({
               aria-pressed={filter === f.id}
               className={`inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs font-medium transition-colors ${
                 filter === f.id
-                  ? 'border-foreground bg-primary text-primary-foreground'
+                  ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground'
               }`}
             >

@@ -1,7 +1,7 @@
 // Контраст текста в светлой и тёмной теме экрана — npm test. Читает цвета из design-system/prototype/src/index.css:
 // если новая версия из Figma Make вернёт бледные цвета, тест скажет, какая пара не проходит (норма WCAG AA — 4,5 : 1).
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -55,12 +55,30 @@ for (const [theme, selector] of [["светлая", ":root"], ["тёмная", "
 
   test(`${theme} тема: текст на главной кнопке и на кнопке «опасно» читается`, () => {
     assert.ok(ratio(t["primary-foreground"], t["primary"]) >= 4.5, "главная кнопка");
-    // Кнопка «опасно» (variant danger в ui.tsx) — текст главной кнопки на цвете ошибки.
-    assert.ok(ratio(t["primary-foreground"], t["danger"]) >= 4.5, "кнопка danger");
+    // Кнопка «опасно» (variant danger в ui.tsx) — свой цвет текста на цвете ошибки.
+    assert.ok(ratio(t["danger-foreground"], t["danger"]) >= 4.5, "кнопка danger");
   });
 }
 
 test("кнопка «опасно» в ui.tsx не возвращается к белому тексту: в тёмной теме он не читался", () => {
   const ui = readFileSync(path.resolve(path.dirname(CSS), "components/ui.tsx"), "utf8");
-  assert.match(ui, /danger: 'bg-danger text-primary-foreground/);
+  assert.match(ui, /danger: 'bg-danger text-danger-foreground/);
+});
+
+// Фирменный голубой «Тендекса» (логотип, 29.10.2026): главные кнопки и выбранные значки — #2F5BFF с белым текстом в обеих темах; ни одна не возвращается к чёрному.
+for (const [theme, selector] of [["светлая", ":root"], ["тёмная", ".dark"]] as const) {
+  test(`${theme} тема: главная кнопка — фирменный голубой #2F5BFF с белым текстом, фокус читается на холсте и карточках`, () => {
+    const t = tokens(selector);
+    assert.deepEqual(t["primary"], [0x2f, 0x5b, 0xff], "цвет главной кнопки");
+    assert.deepEqual(t["primary-foreground"], [255, 255, 255], "текст на главной кнопке");
+    assert.ok(ratio(t["primary-foreground"], t["primary"]) >= 4.5, "белый на голубом");
+    for (const bg of ["background", "card"]) assert.ok(ratio(t["ring"], t[bg]) >= 3, `рамка фокуса на ${bg}: ${ratio(t["ring"], t[bg]).toFixed(2)} (нужно 3 для элементов интерфейса)`);
+  });
+}
+
+test("выбранные значки и переключатели — голубые, а не чёрные: нигде нет «border-foreground bg-foreground / bg-primary»", () => {
+  const src = path.resolve(path.dirname(CSS));
+  const walk = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : /.tsx$/.test(e.name) ? [path.join(dir, e.name)] : []));
+  const bad = walk(src).filter((f) => /border-foreground bg-(?:foreground|primary)/.test(readFileSync(f, "utf8")));
+  assert.deepEqual(bad.map((f) => path.relative(src, f)), []);
 });

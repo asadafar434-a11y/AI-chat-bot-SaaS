@@ -19,7 +19,7 @@ function Choice({ active, onClick, children }: { active: boolean; onClick: () =>
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`h-8 rounded-md border px-3 text-[12px] font-medium transition-colors ${active ? 'border-foreground bg-primary text-primary-foreground' : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
+      className={`h-8 rounded-md border px-3 text-[12px] font-medium transition-colors ${active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
     >
       {children}
     </button>

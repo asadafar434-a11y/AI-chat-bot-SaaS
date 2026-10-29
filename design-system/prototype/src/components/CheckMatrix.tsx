@@ -55,7 +55,7 @@ function Chip({ active, onClick, tone, children }: { active: boolean; onClick: (
       aria-pressed={active}
       onClick={onClick}
       className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-        active ? 'border-foreground bg-foreground text-background' : `border-border bg-card hover:bg-secondary ${tone}`
+        active ? 'border-primary bg-primary text-primary-foreground' : `border-border bg-card hover:bg-secondary ${tone}`
       }`}
     >
       {children}
@@ -133,7 +133,7 @@ function Detail({ row, data, onChange }: { row: CheckRow; data: MatrixData; onCh
               aria-checked={row.weight === w}
               aria-label={`Важность ${w}`}
               onClick={() => setWeight(w)}
-              className={`size-7 rounded-md border font-mono text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${row.weight === w ? 'border-foreground bg-foreground text-background' : 'border-border hover:bg-secondary'}`}
+              className={`size-7 rounded-md border font-mono text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${row.weight === w ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-secondary'}`}
             >
               {w}
             </button>
@@ -172,7 +172,7 @@ function Detail({ row, data, onChange }: { row: CheckRow; data: MatrixData; onCh
                   setLevel(l);
                   if (mine) save({ level: l });
                 }}
-                className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${level === l ? 'border-foreground bg-foreground text-background' : 'border-border hover:bg-secondary'}`}
+                className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${level === l ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-secondary'}`}
               >
                 <Icon k={l} />
                 {LEVEL_TEXT[l]}

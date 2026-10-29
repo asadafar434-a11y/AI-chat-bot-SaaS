@@ -74,10 +74,11 @@
   --paper-3: #ebebeb;
   --edge: #e6e6e6;
   --edge-2: #d4d4d4;
-  --brand: #0a0a0a;
-  --brand-press: #2e2e2e;
-  --brand-tint: #f0f0f0;
-  --on-brand: #fafafa;
+  /* Фирменный голубой «Тендекса» (логотип, 29.10.2026): главные кнопки, ссылки-действия, рамка фокуса. */
+  --brand: #2f5bff;
+  --brand-press: #2449d6;
+  --brand-tint: #eef2ff;
+  --on-brand: #ffffff;
   --ok: #15803d;
   --ok-tint: #edf8f1;
   --warn: #854d0e;
@@ -171,10 +172,10 @@
   --paper-3: #34353b;
   --edge: #3b3c43;
   --edge-2: #4a4b53;
-  --brand: #f4f4f5;
-  --brand-press: #d4d4d8;
-  --brand-tint: #313238;
-  --on-brand: #17181b;
+  --brand: #2f5bff;
+  --brand-press: #4a70ff;
+  --brand-tint: #1e2a5c;
+  --on-brand: #ffffff;
   --ok: #4ade80;
   --ok-tint: #263931;
   --warn: #facc15;

@@ -132,8 +132,8 @@ export function Button({ variant = 'primary', size = 'md', className, children, 
     // Градиент бренда — как у кнопки чата: для платных и главных действий.
     accent:
       'bg-brand-gradient text-white shadow-md shadow-indigo-500/30 hover:-translate-y-px hover:brightness-110 hover:shadow-lg hover:shadow-indigo-500/40 active:translate-y-0',
-    // Текст как у главной кнопки: в тёмной теме цвет ошибки светлый, и белая надпись на нём не читалась (2,8 : 1).
-    danger: 'bg-danger text-primary-foreground hover:opacity-90',
+    // Свой цвет текста: в тёмной теме цвет ошибки светлый, и белая надпись на нём не читалась (2,8 : 1); у главной кнопки теперь голубой фон с белым текстом.
+    danger: 'bg-danger text-danger-foreground hover:opacity-90',
   };
   return (
     <button className={cx(base, sizes[size], variants[variant], className)} {...rest}>

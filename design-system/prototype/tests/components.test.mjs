@@ -152,7 +152,7 @@ test('галочка: настоящий input внутри подписи — �
 
 test('кнопка «опасно» не белая на светлом красном: в тёмной теме надпись не читалась', () => {
   const out = html(h(mods.ui.Button, { variant: 'danger' }, 'Удалить'));
-  assert.match(out, /bg-danger text-primary-foreground/);
+  assert.match(out, /bg-danger text-danger-foreground/);
   assert.doesNotMatch(out, /text-white/);
 });
 

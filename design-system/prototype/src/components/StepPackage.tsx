@@ -633,7 +633,7 @@ export function StepPackage({
                           className={cx(
                             'inline-flex h-8 items-center rounded-md border px-3 text-xs font-medium transition-colors',
                             f.id === format
-                              ? 'border-foreground bg-primary text-primary-foreground'
+                              ? 'border-primary bg-primary text-primary-foreground'
                               : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-60',
                           )}
                         >
