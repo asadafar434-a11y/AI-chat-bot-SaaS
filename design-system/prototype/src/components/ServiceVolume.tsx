@@ -22,7 +22,7 @@ export function ServiceVolumeCard({ volume, nmck, costs }: { volume: ServiceVolu
   return (
     <Card className="space-y-2 p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-[14px] font-bold">Объём закупки</p>
+        <p className="text-[15px] font-bold">Объём закупки</p>
         <CertaintyBadge kind="confirmed" />
       </div>
       <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">

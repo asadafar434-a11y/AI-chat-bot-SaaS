@@ -174,3 +174,19 @@ test("платный поиск: когда в потолке не остало�
   assert.ok(json.spentRub <= 10);
   assert.deepEqual(json.results.map((r: { key: string; observations: unknown[] }) => [r.key, r.observations.length]), [["a", 0], ["b", 0]]);
 });
+
+test("агент: потолок на позицию не останавливает поиск по остальным позициям — ищет, пока не кончился общий потолок", async () => {
+  const caps: number[] = [];
+  const asked: string[] = [];
+  const mk = (spent: number) => async ({ wanted, capRub }: { wanted: { name: string }; capRub: number }) => {
+    caps.push(capRub);
+    asked.push(wanted.name);
+    return { pages: [], accepted: [], rejected: [], spentRub: spent, calls: 0, stoppedByCap: true, searchErrors: [] };
+  };
+  const six = { positions: Array.from({ length: 6 }, (_, i) => ({ key: `p${i}`, name: `Товар ${i}`, unit: "шт" })) };
+  const { d } = deps({ capRub: 30, agent: mk(10.5) });
+  const json = await (await handlePrices(post(six), d)).json();
+  assert.deepEqual(caps, [12, 12, 9], "агенту на позицию — 12 ₽ (раньше 10 ₽ и остановка на первой позиции); третьей остаётся то, что есть в общем потолке");
+  assert.equal(asked.length, 3, "после 21 ₽ в потолке 30 ₽ остаётся 9 ₽ (больше 5) — третья позиция ищется; после 31,5 ₽ поиск останавливается");
+  assert.ok(json.stoppedByCap, "общий потолок исчерпан — об этом сказано");
+});

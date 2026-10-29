@@ -1519,9 +1519,9 @@ test('товары и закупочные цены: цен меньше пят�
   const mixedText = text(mixed);
   assert.equal(mixedText.includes('Кокс или'), false, 'по позиции цен нет — карточки у неё нет, «или эквивалент» из названия убрано');
   assert.match(mixedText, /Точные цены только по 1 из 2 позиций/);
-  assert.match(mixedText, /Без цены: Кокс — поиск подходящих цен не нашёл: у продавцов может быть «цена по запросу», запросите коммерческое предложение/, 'позиции без цены названы в строке под бейджем');
+  assert.match(mixedText, /Без цены в интернете: Кокс — поиск подходящих цен не нашёл: у продавцов может быть «цена по запросу», запросите коммерческое предложение/, 'позиции без цены названы в строке под бейджем');
   const skipped = text(priceCard([priceRow(), priceRow({ id: 'p3', name: 'Кокс', state: 'not-searched', median: null, range: null, n: 0, sources: [], cost: null })]));
-  assert.match(skipped, /Без цены: Кокс — по части позиций не искали: ищем до шести главных/);
+  assert.match(skipped, /Без цены в интернете: Кокс — по части позиций не искали: ищем до шести главных/);
   // Цены по всем позициям — бейдж зелёный, строки «Без цены» нет.
   const all = priceCard([priceRow()]);
   assert.match(text(all), /Цены по всем 1 позиции/);
@@ -1841,7 +1841,7 @@ test('сколько стоит исполнение: вывод, минимум
   assert.match(t, /Извещение \.docx · позиций 4/);
   assert.match(out, /table-fixed/, 'таблицы не раздвигают экран на телефоне');
   const screen = readFileSync(path.join(root, 'src/real/analytics.tsx'), 'utf8');
-  assert.match(screen, /<ExecutionCostCard cost=\{execution\} table=\{priceTable\} compare=\{compare\} webNote=\{market\.finding\.text\} terms=\{terms\} dropped=\{market\.dropped\} \/>/);
+  assert.match(screen, /<ExecutionCostCard cost=\{execution\} table=\{priceTable\} sheet=\{sheet\} webNote=\{market\.finding\.text\} terms=\{terms\} dropped=\{market\.dropped\} \/>/);
   assert.ok(screen.indexOf('<ExecutionCostCard') < screen.indexOf('<PositionPricesCard'), 'блок — выше найденных в интернете цен');
   assert.match(screen, /stepCalc\.costs \?\? tableCost \?\? autoCost\?\.total/, 'себестоимость по таблице заказчика — раньше цен из интернета');
   const hook = readFileSync(path.join(root, 'src/real/market.ts'), 'utf8');
@@ -1850,44 +1850,43 @@ test('сколько стоит исполнение: вывод, минимум
   const intake = readFileSync(path.join(root, 'src/real/analytics-intake.tsx'), 'utf8');
   assert.match(intake, /planSearch\(withTablePrices\(found\.positions, findCustomerPriceTable\(docs\)\), MAX_SEARCH_POSITIONS\)/, 'та же раскладка, что на экране закупки');
 
-  // Без цен из интернета — строка о поиске; с ними — таблица сравнения.
-  assert.match(t, /5\. Цены в интернете/);
+  // Раздел 5 — одна таблица по позициям с источником у каждой строки (lib/price-sheet.ts).
+  assert.match(t, /5. Цены по позициям/);
   assert.match(t, /Цены в интернете ещё не найдены/);
-  const compare = {
+  const sheet = {
     rows: [
-      { id: 'doc-1', name: 'Офисное кресло Chairman 696 LT', qty: 7, customer: { min: 5510, mean: 6905.07, max: 8300 }, web: { kind: 'exact', from: 5223.8, to: 5223.8, mid: 5223.8, n: 1, host: 'o-manager.ru' }, diffPct: -24.3, where: 'below' },
-      { id: 'doc-4', name: 'Стол прямоугольный на 1 рабочее место', qty: 1, customer: { min: 11468, mean: 17556, max: 23000 }, web: { kind: 'analog', from: 11150, to: 16268, mid: 13709, n: 5, host: 'dobro.io' }, diffPct: -21.9, where: 'inside' },
+      { id: 'doc-1', name: 'Офисное кресло Chairman 696 LT', qty: 7, doc: { min: 5510, mean: 6905.07, max: 8300 }, web: { kind: 'exact', from: 5223.8, to: 5223.8, mid: 5223.8, n: 1, host: 'o-manager.ru' }, used: 'internet', webDiffers: false, total: 36566 },
+      { id: 'doc-4', name: 'Стол прямоугольный на 1 рабочее место', qty: 1, doc: { min: 11468, mean: 17556, max: 23000 }, web: null, used: 'document', webDiffers: false, total: 17556 },
+      { id: 'doc-12', name: 'Кровать', qty: 20, doc: { min: 19642, mean: 22010, max: 24390 }, web: { kind: 'exact', from: 7040, to: 7040, mid: 7040, n: 1, host: 'a.ru' }, used: 'document', webDiffers: true, total: 440200 },
     ],
-    matched: 20, exact: 1, analog: 1, exactDiffPct: -24.3,
+    table: null, counts: { internet: 1, document: 2, analog: 0, missing: 0 },
   };
-  const withWeb = text(renderToStaticMarkup(h(mods.executionUi.ExecutionCostCard, { cost, table, compare, webNote: 'найдено 6 цен' })));
-  assert.match(withWeb, /точные цены в среднем −24,3 % к средней у заказчика/);
-  assert.match(withWeb, /Офисное кресло Chairman 696 LT/);
-  assert.match(withWeb, /цен: 1 · o-manager\.ru · дешевле всех у заказчика/);
-  assert.match(withWeb, /аналог: другие размеры · 5 · dobro\.io · в диапазоне заказчика/);
-  assert.match(withWeb, /5 510 ₽ – 6 905 ₽/, 'у заказчика: от самой низкой до средней');
-  assert.match(withWeb, /11 150 ₽ – 16 268 ₽/);
-  assert.match(withWeb, /−21,9 %/);
-  assert.match(withWeb, /Сравнено позиций: 2 из 4 · по 1 — аналоги, не та же позиция/);
+  const withSheet = text(renderToStaticMarkup(h(mods.executionUi.ExecutionCostCard, { cost, table, sheet })));
+  assert.match(withSheet, /Офисное кресло Chairman 696 LT/);
+  assert.match(withSheet, /цен: 1 · o-manager.ru/);
+  assert.match(withSheet, /5 510 ₽ – 6 905 ₽/, 'у заказчика: от самой низкой до средней');
+  assert.match(withSheet, /5 224 ₽/);
+  assert.match(withSheet, /интернет/);
+  assert.match(withSheet, /документ заказчика/);
+  assert.match(withSheet, /цена в интернете сильно отличается — проверьте, тот ли товар; взята цена из документа/);
+  assert.match(withSheet, /Позиций: 3/);
 });
 
-test('сколько стоит исполнение: пометка «проверьте, тот ли товар» у подозрительной цены и строка про отброшенные цены; агент по умолчанию, обычный сбор — по PRICE_SEARCH_ENGINE=collect', () => {
+test('сколько стоит исполнение: строка про отброшенные цены; агент по умолчанию, обычный сбор — по PRICE_SEARCH_ENGINE=collect; расчёт идёт из одной таблицы по позициям', () => {
   const table = mods.priceTableLib.findCustomerPriceTable([{ name: 'Извещение .docx', text: bratskRows }]);
   const cost = mods.executionLib.executionCost(table, 1_150_000);
-  const compare = {
-    rows: [{ id: 'doc-12', name: 'Кровать односпальная', qty: 20, customer: { min: 19642, mean: 22010, max: 24390 }, web: { kind: 'exact', from: 7040, to: 7040, mid: 7040, n: 1, host: 'a.ru' }, diffPct: -68, where: 'below', suspicious: true }],
-    matched: 4, exact: 1, analog: 0, exactDiffPct: -68,
-  };
-  const t = text(renderToStaticMarkup(h(mods.executionUi.ExecutionCostCard, { cost, table, compare, dropped: 2 })));
-  assert.match(t, /дешевле всех у заказчика · проверьте, тот ли товар/);
+  const sheet = { rows: [{ id: 'doc-12', name: 'Кровать', qty: 20, doc: null, web: null, used: 'document', webDiffers: false, total: 1 }], table: null, counts: { internet: 0, document: 1, analog: 0, missing: 0 } };
+  const t = text(renderToStaticMarkup(h(mods.executionUi.ExecutionCostCard, { cost, table, sheet, dropped: 2 })));
   assert.match(t, /отброшено цен: 2 — в 3 раза ниже или выше, чем у заказчика, похоже, не тот товар/);
-  const clean = text(renderToStaticMarkup(h(mods.executionUi.ExecutionCostCard, { cost, table, compare: { ...compare, rows: [{ ...compare.rows[0], suspicious: false }] } })));
-  assert.equal(clean.includes('проверьте, тот ли товар'), false);
+  const clean = text(renderToStaticMarkup(h(mods.executionUi.ExecutionCostCard, { cost, table, sheet })));
   assert.equal(clean.includes('отброшено цен'), false);
   const hook = readFileSync(path.join(root, 'src/real/market.ts'), 'utf8');
-  assert.match(hook, /dropImplausible\(expanded, bounds, vatFactor\)/, 'неправдоподобные цены не идут ни в расчёт, ни в сравнение');
+  assert.ok(hook.includes('dropImplausible(expanded, bounds, vatFactor)'), 'неправдоподобные цены не идут ни в расчёт, ни в сравнение');
   const route = readFileSync(path.join(root, '../../web/src/app/api/prices/route.ts'), 'utf8');
   assert.match(route, /PRICE_SEARCH_ENGINE !== "collect"/);
+  const screen = readFileSync(path.join(root, 'src/real/analytics.tsx'), 'utf8');
+  assert.ok(screen.includes('buildPriceSheet(market.prices, customerTable, vatFactor)'), 'один расчёт для любой закупки');
+  assert.ok(screen.includes('const priceTable = sheet.table;'));
 });
 
 test('загрузка в «Аналитику»: при включённом «ИИ» читаются большие картинки внутри Word (таблица цен заказчика снимком), сканы по-прежнему не читаются', () => {
@@ -1898,7 +1897,7 @@ test('загрузка в «Аналитику»: при включённом «
   assert.match(route, /extractText\(file, \{ ocr, pictures \}\)/);
 });
 
-test('сколько стоит исполнение без таблицы заказчика: блок строится из цен в интернете, без раздела «Цены в интернете», с пометкой про аналоги и позиции без цены', () => {
+test('сколько стоит исполнение без таблицы заказчика: те же разделы и тот же вид, источники цен названы по числу позиций', () => {
   const table = {
     doc: 'закупочные цены из интернета', total: 100000, printedTotal: null, fromPicture: false, internet: { found: 2, analogs: 1, filled: 1, missing: 0 },
     rows: [
@@ -1911,16 +1910,56 @@ test('сколько стоит исполнение без таблицы за�
   const t = text(renderToStaticMarkup(h(mods.executionUi.ExecutionCostCard, { cost, table })));
   assert.match(t, /Сколько стоит исполнение/);
   assert.match(t, /1. Минимальная, средняя и максимальная цена/);
-  assert.match(t, /медиана найденных цен/);
+  assert.match(t, /по выбранным ценам/);
   assert.match(t, /Тумба/);
   assert.match(t, /3. Сколько реально может стоить исполнение/);
   assert.match(t, /4. По какой цене участвовать/);
-  assert.equal(t.includes('5. Цены в интернете'), false, 'раздел сравнения нужен только при таблице заказчика');
-  assert.match(t, /точные цены по 2 поз\., по аналогам — 1 \(другие размеры, ориентир\), цена заказчика — 1 \(прибыли по ним нет\)/);
-  const incomplete = text(renderToStaticMarkup(h(mods.executionUi.ExecutionCostCard, { cost: mods.executionLib.executionCost({ ...table, internet: { ...table.internet, missing: 2 } }, 1_150_000), table: { ...table, internet: { ...table.internet, missing: 2 } } })));
+  assert.match(t, /5. Цены по позициям/, 'раздел 5 есть у любой закупки');
+  assert.match(t, /Цены разделов 1–4: из интернета — 2 поз., из документов заказчика — 1, по аналогам — 1, без цены — 0./);
+  const missing = { ...table, internet: { ...table.internet, missing: 2 } };
+  const incomplete = text(renderToStaticMarkup(h(mods.executionUi.ExecutionCostCard, { cost: mods.executionLib.executionCost(missing, 1_150_000), table: missing })));
   assert.match(incomplete, /Цен найдено не по всем позициям/);
   assert.match(incomplete, /без цены — 2/);
   const screen = readFileSync(path.join(root, 'src/real/analytics.tsx'), 'utf8');
-  assert.ok(screen.includes('const priceTable = customerTable ?? webTable;'), 'нет таблицы заказчика — блок из цен в интернете');
   assert.ok(screen.includes('execution && !priceTable?.internet?.missing'), 'неполный итог в себестоимость не идёт');
+});
+
+test('где цены в интернете нет, а в документах заказчика есть цена за единицу — это написано: «Взята цена из документов заказчика»', () => {
+  const out = text(priceCard([priceRow(), priceRow({ id: 'p2', name: 'Кокс', unit: 'т', state: 'none', median: null, range: null, n: 0, sources: [], cost: null, customerUnit: 7500 })]));
+  assert.match(out, /Без цены в интернете: Кокс/);
+  assert.match(out, /Взята цена из документов заказчика: Кокс — 7 500 ₽\/т/);
+  assert.equal(text(priceCard([priceRow(), priceRow({ id: 'p3', name: 'Кокс', state: 'none', median: null, range: null, n: 0, sources: [], cost: null, customerUnit: null })])).includes('Взята цена из документов'), false, 'нет и цены заказчика — не пишем');
+});
+
+test('блок из цен в интернете при неполных данных: метка «Не проверено», остаток при НМЦ не считается, сказано по скольким позициям найдено', () => {
+  const table = {
+    doc: 'закупочные цены из интернета', total: 100000, printedTotal: null, fromPicture: false, internet: { found: 2, analogs: 0, filled: 0, missing: 18 },
+    rows: [
+      { no: null, name: 'Кровать', unit: 'шт', qty: 20, offers: [3172], mean: 3172, total: 63440, checked: true },
+      { no: null, name: 'Кресло', unit: 'шт', qty: 7, offers: [5832, 6370], mean: 6100, total: 42700, checked: true },
+    ],
+  };
+  const cost = mods.executionLib.executionCost(table, 1_781_487);
+  const out = renderToStaticMarkup(h(mods.executionUi.ExecutionCostCard, { cost, table }));
+  const t = text(out);
+  assert.match(t, /Не проверено/);
+  assert.equal(t.includes('Подтверждено'), false, 'цены из интернета — не «Подтверждено»');
+  assert.match(t, /цены найдены по 2 из 20 позиций — итоги ниже неполные, остаток при НМЦ не считается/);
+  assert.ok(t.includes('Остаток при НМЦ и при снижении не считается, пока цены не найдены по всем позициям (2 из 20)'));
+  assert.equal(t.includes('при НМЦ: экономный'), false, 'выдуманной прибыли в шапке нет');
+  assert.equal(t.includes('Остаток при НМЦ'), true, 'в разделе 4 — только пояснение');
+  assert.equal(t.includes('+1 6'), false, 'остаток вида «+1 6xx xxx ₽» по двум позициям из двадцати не показан');
+});
+
+test('три цены вверху блока «Сколько стоит исполнение» — всегда цветные плашки: минимум зелёная, средняя голубая (главный цвет), максимум жёлтая; и при неполных данных', () => {
+  const table = mods.priceTableLib.findCustomerPriceTable([{ name: 'Извещение .docx', text: bratskRows }]);
+  const cost = mods.executionLib.executionCost(table, 1_150_000);
+  const out = renderToStaticMarkup(h(mods.executionUi.ExecutionCostCard, { cost, table }));
+  assert.ok(out.includes('border-success/30 bg-success/10'), 'минимум — зелёная плашка');
+  assert.ok(out.includes('border-primary bg-primary'), 'средняя — плашка главного голубого цвета');
+  assert.ok(out.includes('border-warn/40 bg-warn-surface'), 'максимум — жёлтая плашка');
+  assert.ok(out.includes('text-primary-foreground'), 'на голубой плашке — белый текст');
+  const incomplete = { ...table, internet: { found: 1, analogs: 0, filled: 3, missing: 2 } };
+  const out2 = renderToStaticMarkup(h(mods.executionUi.ExecutionCostCard, { cost: mods.executionLib.executionCost(incomplete, 1_150_000), table: incomplete }));
+  assert.ok(out2.includes('border-primary bg-primary') && out2.includes('bg-success/10') && out2.includes('bg-warn-surface'), 'плашки цветные и при неполных данных');
 });

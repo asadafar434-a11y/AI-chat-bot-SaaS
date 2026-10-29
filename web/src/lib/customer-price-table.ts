@@ -39,6 +39,24 @@ export type CustomerPriceTable = {
 const MIN_ROWS = 3;
 const MAX_STAT_COLUMNS = 3;
 
+// Ставки НДС, которые бывают в таблицах обоснования: цены поставщиков записаны без НДС, а «принятая к расчёту» цена и итог — с НДС (ВТЕ, «Обоснование начальной цены» ККБ № 2: 53 746,67 → ×1,10 = 59 121,34).
+const VAT_FACTORS = [1.05, 1.07, 1.1, 1.18, 1.2, 1.22];
+/** Цены поставщиков в основе итога строки: если итог на ставку НДС выше их средней — цены без НДС, их пересчитывают, иначе минимум и максимум оказались бы в другой основе, чем средняя. */
+export function toPriceBasis(offers: number[], price: number): number[] {
+  const avg = offers.reduce((s, x) => s + x, 0) / offers.length;
+  const ratio = price / avg;
+  const vat = VAT_FACTORS.find((f) => Math.abs(ratio - f) <= 0.0015);
+  return vat ? offers.map((x) => r2(x * vat)) : offers;
+}
+const r2 = (n: number) => Math.round(n * 100) / 100;
+/** Последним в окне цен бывает столбец «среднее цен поставщиков» (равен среднему остальных): это не предложение поставщика. */
+function withoutAverage(offers: number[]): number[] {
+  if (offers.length < 4) return offers;
+  const rest = offers.slice(0, -1);
+  const avg = rest.reduce((s, x) => s + x, 0) / rest.length;
+  return Math.abs(offers[offers.length - 1] - avg) <= 0.011 ? rest : offers;
+}
+
 const sameMean = (avg: number, mean: number) => Math.abs(avg - mean) <= Math.max(0.011, Math.abs(mean) * 1e-6);
 // Итог строки считают от неокруглённой средней: 6 905,0667 × 7 = 48 335,47, а напечатано 48 335,49 (6 905,07 × 7) — допуск несколько копеек на единицу.
 const sameTotal = (mean: number, qty: number, total: number) => Math.abs(mean * qty - total) <= Math.max(0.05, qty * 0.006, total * 1e-5);
@@ -96,7 +114,7 @@ export function parsePriceRow(line: string): PriceTableRow | null {
         if (!found) continue;
         const head = headOf(cells, found.before ? s - 1 : s, found.qty);
         if (!head.name) continue;
-        return { ...head, offers, mean: found.price, total: found.total, checked: true };
+        return { ...head, offers: toPriceBasis(withoutAverage(offers), found.price), mean: found.price, total: found.total, checked: true };
       }
     }
   }
@@ -111,6 +129,23 @@ export function parsePriceRow(line: string): PriceTableRow | null {
       if (!nums.slice(q + 1, e).every((x) => x !== null)) continue;
       const head = headOf(cells, q, qty);
       if (head.name) return { ...head, offers: [], mean, total, checked: false };
+    }
+  }
+  // Часть цифр поставщиков закрыта водяным знаком или «(неразборчиво)» (снимок страницы с надписью «Страница 1»), но средняя и итог читаются: берём количество, среднюю
+  // и итог — две последние цифры строки, итог = средняя × количество. Цены поставщиков такой строки неизвестны: минимум и максимум у неё равны средней (checked = false).
+  const tail = nums.map((x, i) => ({ x, i })).filter((c) => c.x !== null);
+  if (tail.length >= 4) {
+    const total = tail[tail.length - 1].x!;
+    const mean = tail[tail.length - 2].x!;
+    if (mean > 0 && total > 0) {
+      for (let q = 1; q < tail[tail.length - 2].i; q++) {
+        const qty = nums[q];
+        if (qty === null || !(qty > 0) || qty > 1_000_000 || !sameTotal(mean, qty, total)) continue;
+        // Между количеством и средней — столбцы цен поставщиков и статистики (не меньше четырёх ячеек): иначе это спецификация «количество, цена, сумма», а не обоснование.
+        if (tail[tail.length - 2].i - q < 4) continue;
+        const head = headOf(cells, q, qty);
+        if (head.name && cells.slice(0, q).some((c) => /\p{L}{3}/u.test(c))) return { ...head, offers: [], mean, total, checked: false };
+      }
     }
   }
   return null;

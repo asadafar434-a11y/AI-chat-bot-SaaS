@@ -11,7 +11,7 @@ export function CustomerQuotesCard({ quotes, nmck, step }: { quotes: CustomerQuo
   return (
     <Card className="space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-[14px] font-bold">Предложения поставщиков у заказчика</p>
+        <p className="text-[15px] font-bold">Предложения поставщиков у заказчика</p>
         <CertaintyBadge kind="confirmed" />
         <HelpTip
           align="start"

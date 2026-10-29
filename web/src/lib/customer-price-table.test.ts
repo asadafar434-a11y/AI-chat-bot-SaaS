@@ -2,7 +2,7 @@
 // Образец — Приложение № 5 «Братского дома-интерната» (мебель, 223-ФЗ, НМЦД 1 781 487,02 ₽), как его переписывает распознавание снимка: ячейки через « | ».
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { findCustomerPriceTable, parsePriceRow } from "./customer-price-table.ts";
+import { findCustomerPriceTable, parsePriceRow, toPriceBasis } from "./customer-price-table.ts";
 import { BRATSK, row, Z } from "./customer-price-table.fixture.ts";
 import { executionCost, pluralOf, roundReserve } from "./execution-cost.ts";
 
@@ -117,4 +117,31 @@ test("другие виды таблиц: «принятая к расчёту»
   const c = executionCost(t, 117715500);
   assert.equal(c.min, 117715500, "минимум не выше принятой цены: заказчик снизил её коэффициентом");
   assert.equal(c.max, Math.round(10.5 * 12950000 * 100) / 100);
+});
+
+test("цены поставщиков без НДС, итог с НДС: предложения пересчитываются на ставку НДС — минимум, средняя и максимум в одной основе (ККБ № 2, «Изолят культуры бактерий»)", () => {
+  const row = parsePriceRow("4 | Изолят культуры бактерий/профиль чувствительности к антимикробным препаратам ИВД, набор | Количество выполняемых тестов ≥ 20 шт | набор | 5 | 51250 | 54390 | 55600 | 53746,666666667 | 2245,224561894 | 4,17742104 | 53746,67 | 10 | 59121,34 | 295606,7")!;
+  assert.equal(row.checked, true);
+  assert.equal(row.qty, 5);
+  assert.equal(row.mean, 59_121.34);
+  assert.equal(row.total, 295_606.7);
+  assert.deepEqual(row.offers, [56_375, 59_829, 61_160], "51 250 / 54 390 / 55 600 × 1,10");
+  const c = executionCost({ doc: "x.xls", rows: [row], total: row.total, printedTotal: null, fromPicture: false }, null);
+  assert.equal(Math.round(c.min), 281_875, "минимум 56 375 × 5 — с НДС, как и средняя");
+  assert.equal(Math.round(c.max), 305_800);
+  assert.ok(c.min < c.mean && c.mean < c.max, "минимум < средняя < максимум");
+  // Принятая цена — минимальная из предложений (не НДС): предложения не пересчитываются.
+  assert.deepEqual(toPriceBasis([100, 120, 110], 100), [100, 120, 110]);
+});
+
+test("строки под водяным знаком «Страница»: цены поставщиков «(неразборчиво)», но средняя и итог читаются — строка не теряется (Братск: строки 3, 18, 19)", () => {
+  const r3 = parsePriceRow("3 | Стол квадратный на 8 рабочих мест | 31.01.12.190 | шт | 1,00 | (неразборчиво)476,10 | 17 (неразборчиво)00,00 | 19 (неразборчиво)8,00 | 0,(неразборчиво)0 | 0,00 | 0,00 | 1 427,17 | 7,99 | 17 868,03 | 17 868,03")!;
+  assert.equal(r3.checked, false);
+  assert.deepEqual([r3.qty, r3.mean, r3.total], [1, 17_868.03, 17_868.03]);
+  assert.equal(r3.name, "Стол квадратный на 8 рабочих мест");
+  const r19 = parsePriceRow("19 | Офисный диван 3-х местный (зеленый) | 31.09.13.190 | шт | 2,00 | (неразборчиво) 854,40 | 75 (неразборчиво)0,00 | 78 (неразборчиво)0,00 | (неразборчиво) | (неразборчиво) | 0,00 | 8 019,82 | 11,15 | 71 951,47 | 143 902,94")!;
+  assert.deepEqual([r19.qty, r19.mean, r19.total], [2, 71_951.47, 143_902.94]);
+  const r18 = parsePriceRow("18 | Диван | 31.09.13.190 | шт | 1,00 | 62 (неразборчиво) | 90 000,00 | 85 000,00 | 0,00 | 0,00 | 0,00 | 14 447,09 | 18,22 | 79 284,80 | 79 284,80")!;
+  assert.deepEqual([r18.qty, r18.mean, r18.total], [1, 79_284.8, 79_284.8]);
+  assert.equal(parsePriceRow("1 | Что-то | 5 | 7"), null, "нет средней и итога — не строка");
 });

@@ -76,3 +76,13 @@ test('«Калькулятор»: кнопка «Подставить значе
   assert.match(calc, /Режим «Вручную» бесплатный/);
   assert.match(calc, /ИИ выключен: включите переключатель «ИИ» в шапке меню/);
 });
+
+test('карточки экрана закупки в «Аналитике» выглядят одинаково: заголовок 15 пикселей жирным, внутренний отступ p-4', () => {
+  const cards = ['PositionPrices', 'ExecutionCost', 'CustomerQuotes', 'CrewCost', 'ServiceVolume'];
+  for (const name of cards) {
+    const src = readFileSync(new URL('../src/components/' + name + '.tsx', import.meta.url), 'utf8');
+    assert.ok(src.includes('<p className="text-[15px] font-bold">'), name + ': заголовок карточки — 15 пикселей жирным');
+    assert.equal(src.includes('<p className="text-[14px] font-bold">'), false, name + ': заголовок карточки не 14 пикселей');
+    assert.match(src, /<Card className="space-y-\d p-4">/, name + ': карточка с отступом p-4');
+  }
+});

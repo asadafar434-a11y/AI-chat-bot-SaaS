@@ -83,7 +83,7 @@ export function CrewCostCard({ need, cost, state, saved, error, perUnitLabel }: 
   return (
     <Card className="space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-[14px] font-bold">Себестоимость по составу работ</p>
+        <p className="text-[15px] font-bold">Себестоимость по составу работ</p>
         <CertaintyBadge kind="unchecked" />
         <HelpTip
           align="start"

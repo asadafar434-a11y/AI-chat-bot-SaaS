@@ -47,6 +47,10 @@ export type PricePositionResult = { key: string; observations: Observation[]; pa
 const plain = (message: string, status: number) => new Response(message, { status, headers: { "Content-Type": "text/plain; charset=utf-8" } });
 // Страниц читает модель — не больше пяти на позицию; просматривается до десяти (бесплатно), чтобы выбрать те, где есть цена.
 const MAX_PAGES = 5;
+/** Сколько рублей на позицию получает агент, даже когда общий потолок делится на много позиций. */
+export const AGENT_MIN_POSITION_RUB = 12;
+/** Меньше этого в общем потолке — новую позицию агент уже не начинает. */
+const AGENT_MIN_NEXT_RUB = 5;
 const MAX_CANDIDATES = 10;
 
 export async function handlePrices(request: Request, deps: PricesDeps): Promise<Response> {
@@ -92,7 +96,8 @@ export async function handlePrices(request: Request, deps: PricesDeps): Promise<
     }
     const wanted = { name: p.name, unit: p.unit, region: p.region };
     // Остаток потолка переходит дальше: что не потратила одна позиция, может потратить другая, но общий потолок не превышается.
-    const positionCap = Math.min(perPosition * 2, deps.capRub - totalSpent() - searchReserve);
+    // Агенту на позицию — не меньше AGENT_MIN_POSITION_RUB: два поиска и шаги стоят около 10 ₽, а со 10 ₽ он вставал на первой же позиции и остальные не искались (29.10.2026).
+    const positionCap = Math.min(deps.agent ? Math.max(perPosition * 2, AGENT_MIN_POSITION_RUB) : perPosition * 2, deps.capRub - totalSpent() - searchReserve);
     const r = deps.agent
       ? await deps.agent({ wanted, capRub: positionCap })
       : await collectPrices(
@@ -119,7 +124,9 @@ export async function handlePrices(request: Request, deps: PricesDeps): Promise<
       onRequest: r.pages.filter((x) => x.skipReason === "цена по запросу").length,
       reasons: [...new Set(r.rejected.map((x) => x.reason))],
     });
-    if (r.stoppedByCap || deps.capRub - totalSpent() <= 0) {
+    // У агента потолок на позицию — его собственный: исчерпав его, он останавливается сам, а поиск по остальным позициям продолжается, пока не кончился общий потолок.
+    const globalLeft = deps.capRub - totalSpent();
+    if (deps.agent ? globalLeft < AGENT_MIN_NEXT_RUB : r.stoppedByCap || globalLeft <= 0) {
       stopped = true;
       break;
     }

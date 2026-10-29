@@ -4,10 +4,9 @@ import { buildSummary, findingsOf, rubles, searchFinding, type SummaryInput } fr
 import { purchaseCost } from '@/lib/position-prices';
 import { findServiceVolume } from '@/lib/service-volume';
 import { findCustomerPriceTable } from '@/lib/customer-price-table';
-import { internetPriceTable } from '@/lib/internet-price-table';
+import { buildPriceSheet } from '@/lib/price-sheet';
 import { findCustomerQuotes, quotesFinding } from '@/lib/customer-quotes';
 import { executionCost, executionFinding, rubText } from '@/lib/execution-cost';
-import { comparePrices } from '@/lib/price-compare';
 import { executionTerms } from '@/lib/execution-terms';
 import { auctionStepNote } from '@/lib/price-terms';
 import { rateTender } from '@/lib/tender-rating';
@@ -180,15 +179,15 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
   // Цены в интернете в основе начальной цены (с НДС или без): пересчёт цен без НДС.
   const vatFactor = market.data?.settings.nmckVat === 'with' ? 1 + market.data.settings.vatRate / 100 : 1;
   // Нет таблицы цен у заказчика (бывает почти всегда) — блок строится из закупочных цен, найденных в интернете, по всем позициям (lib/internet-price-table.ts).
-  const webTable = useMemo(() => (customerTable ? null : internetPriceTable(market.prices, vatFactor, 'закупочные цены из интернета')), [customerTable, market.prices, vatFactor]);
-  const priceTable = customerTable ?? webTable;
+  // Один расчёт для любой закупки (lib/price-sheet.ts): по каждой позиции — цена из интернета, иначе из документов заказчика, иначе аналоги, иначе «без цены».
+  const sheet = useMemo(() => buildPriceSheet(market.prices, customerTable, vatFactor), [market.prices, customerTable, vatFactor]);
+  const priceTable = sheet.table;
   const execution = useMemo(() => (priceTable ? executionCost(priceTable, nmck) : null), [priceTable, nmck]);
   // Что договор требует сверх товара: место, срок, разгрузка, подъём, сборка (lib/execution-terms.ts) — для раздела 3 блока.
   const terms = useMemo(() => (priceTable ? executionTerms(plain) : null), [priceTable, plain]);
   // Себестоимость по таблице заказчика — экономный сценарий: самые низкие цены поставщиков + доставка и сборка (решение владельца 29.10.2026).
   const tableCost = execution && !priceTable?.internet?.missing ? execution.scenarios[0].total : null;
   // Цены заказчика ↔ цены в интернете по позициям (lib/price-compare.ts); цены из интернета без НДС пересчитываются в основу начальной цены.
-  const compare = useMemo(() => (customerTable && market.prices ? comparePrices(market.prices, customerTable, vatFactor) : null), [customerTable, market.prices, vatFactor]);
   const auctionStep = useMemo(() => auctionStepNote(plain, nmck), [plain, nmck]);
   // Закупка товара по найденным закупочным ценам: цена × количество по каждой позиции (lib/position-prices.ts). Начальная цена «без НДС» — без НДС и считаем.
   const autoCost = useMemo(
@@ -412,7 +411,7 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
       {/* Товары и найденные закупочные цены — сразу под названием закупки: это то, что участник ищет первым (владелец, 23.10.2026: «где товар, цена его?»). Цен нет — блока нет. */}
       {volume && <ServiceVolumeCard volume={volume} nmck={nmck} costs={stepCalc.costs ?? null} />}
       {crew.need && crew.cost && crew.state !== 'none' && <CrewCostCard need={crew.need} cost={crew.cost} state={crew.state} saved={crew.saved} error={crew.error} perUnitLabel={volume ? volume.unitOf : undefined} />}
-      {execution && priceTable && <ExecutionCostCard cost={execution} table={priceTable} compare={compare} webNote={market.finding.text} terms={terms} dropped={market.dropped} />}
+      {execution && priceTable && <ExecutionCostCard cost={execution} table={priceTable} sheet={sheet} webNote={market.finding.text} terms={terms} dropped={market.dropped} />}
       {market.prices && <PositionPricesCard prices={market.prices} total={market.positionsTotal} />}
       {quotes && <CustomerQuotesCard quotes={quotes} nmck={nmck} step={auctionStep} />}
       <TenderRating rating={rating} />

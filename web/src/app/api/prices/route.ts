@@ -20,7 +20,8 @@ const useModelSearch = process.env.PRICE_SEARCH_PROVIDER !== "free";
 const MODEL = "claude-sonnet-5-5";
 const MAX_TOKENS = 1200;
 const usdRub = Number(process.env.USD_RUB) || 0;
-const capRub = Number(process.env.PRICE_SEARCH_CAP_RUB) || 30;
+// 80 ₽: агенту нужно около 12 ₽ на вид товара (два поиска и чтение страниц), шести видов — около 75 ₽ (владелец 29.10.2026: «лимит увеличь, чтобы хватало»; было 30 ₽ — хватало на 2–3 вида).
+const capRub = Number(process.env.PRICE_SEARCH_CAP_RUB) || 80;
 // Цены ищет агент на Mastra (server/market/price-agent.ts): на экзамене 29.10.2026 он нашёл 11 цен против 5 у обычного сбора за +5 ₽ (владелец: «да 1» — включить). PRICE_SEARCH_ENGINE=collect возвращает обычный сбор; модель агента — PRICE_AGENT_MODEL (по умолчанию та же, что у сбора).
 const useAgent = process.env.PRICE_SEARCH_ENGINE !== "collect";
 const AGENT_MODEL = process.env.PRICE_AGENT_MODEL || MODEL;

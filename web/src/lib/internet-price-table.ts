@@ -15,8 +15,10 @@ function rowOf(p: PositionPriceRow, vatFactor: number): { row: PriceTableRow | n
   if (qty === null || !(qty > 0)) return { row: null, kind: "missing" };
   const base = { no: null, name: p.name, unit: p.unit || null, qty };
   if ((p.state === "found" || p.state === "few") && p.unitPrices.length > 0) {
-    const sorted = [...p.unitPrices].sort((a, b) => a - b).map((x) => r2(x * vatFactor));
-    const mean = r2((p.median ?? sorted.reduce((s, x) => s + x, 0) / sorted.length) * vatFactor);
+    // НДС прибавляется один раз к цене без НДС: и к предложениям, и к средней (раньше у позиции с одной ценой он прибавлялся к средней дважды: 2 600 → 3 172 → 3 870).
+    const raw = [...p.unitPrices].sort((a, b) => a - b);
+    const sorted = raw.map((x) => r2(x * vatFactor));
+    const mean = r2((p.median ?? raw.reduce((s, x) => s + x, 0) / raw.length) * vatFactor);
     return { row: { ...base, offers: sorted, mean, total: r2(mean * qty), checked: true }, kind: "found" };
   }
   if (p.analogs) {

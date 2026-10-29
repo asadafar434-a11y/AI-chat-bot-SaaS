@@ -124,3 +124,22 @@ test("набрано пять цен — агент заканчивает, не
   assert.equal(searched.length, 1, "после набранных цен новых поисков нет");
   assert.ok(steps() <= 4);
 });
+
+test("безнадёжная позиция: четыре страницы просмотрено и ни одной цены — агент прекращает, не тратя деньги на пятую и шестую", async () => {
+  const hits = ["a", "b", "c", "d", "e", "f"].map((s) => ({ title: s, url: `https://${s}.ru/p`, domain: `${s}.ru`, snippet: "" }));
+  const { model, steps } = scripted([
+    [call("0", "search_web", { query: "реагент" })],
+    ...["a", "b", "c", "d", "e", "f"].map((s, i) => [call(String(i + 1), "read_page", { url: `https://${s}.ru/p` })]),
+  ]);
+  const downloaded: string[] = [];
+  const { d } = deps(model, {
+    search: async () => hits,
+    fetchPage: async (url: string) => (downloaded.push(url), { ok: true, html: "<html><head><title>Реагент</title></head><body><p>Цена по запросу. Звоните нам по телефону для уточнения условий поставки и наличия на складе в вашем регионе.</p></body></html>", finalUrl: url }),
+  });
+  const r = await runPriceAgent(d, { wanted: WANTED, capRub: 30 });
+  assert.equal(downloaded.length, 4, "скачано четыре страницы, пятая и шестая — нет");
+  assert.equal(r.accepted.length, 0);
+  assert.ok(r.pages.every((p) => p.skipReason === "цена по запросу"), "причина — «цена по запросу»");
+  assert.ok(steps() <= 5, `шагов было ${steps()}`);
+  assert.equal(r.stoppedByCap, false, "это не нехватка денег");
+});

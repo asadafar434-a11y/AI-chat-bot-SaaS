@@ -121,7 +121,7 @@ export function PositionPricesCard({ prices, total }: { prices: PositionPrices; 
   return (
     <Card className="space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-[14px] font-bold">Товары и закупочные цены</p>
+        <p className="text-[15px] font-bold">Товары и закупочные цены</p>
         <CertaintyBadge kind="unchecked" />
         <HelpTip align="start" content="Цены с сайтов поставщиков, найденные поиском в интернете: цитата со страницы проверена кодом, но это не предложение поставщика — уточните цену и условия поставки у него. Цены контрактов ЕИС не берутся: в них уже заложена прибыль победителя." />
         {prices.asOf && <span className="text-[12px] text-muted-foreground">цены на {day(prices.asOf)}</span>}
@@ -163,10 +163,17 @@ export function PositionPricesCard({ prices, total }: { prices: PositionPrices; 
         </div>
         {missing.length > 0 && (
           <p className="break-words">
-            <span className="font-semibold text-danger">Без цены:</span> {missing.slice(0, 4).map((r) => cleanProductName(r.name)).join(', ')}
+            <span className="font-semibold text-danger">Без цены в интернете:</span> {missing.slice(0, 4).map((r) => cleanProductName(r.name)).join(', ')}
             {missing.length > 4 ? ` и ещё ${missing.length - 4}` : ''}
             {missing.some((r) => r.state === 'none') && ' — поиск подходящих цен не нашёл: у продавцов может быть «цена по запросу», запросите коммерческое предложение'}
             {missing.some((r) => r.state === 'not-searched') && ' — по части позиций не искали: ищем до шести главных'}
+          </p>
+        )}
+        {missing.some((r) => r.customerUnit !== null) && (
+          <p className="break-words">
+            <span className="font-semibold text-foreground">Взята цена из документов заказчика:</span>{' '}
+            {missing.filter((r) => r.customerUnit !== null).slice(0, 4).map((r) => `${cleanProductName(r.name)} — ${rub(r.customerUnit!)}${r.unit ? `/${r.unit}` : ''}`).join('; ')}
+            {missing.filter((r) => r.customerUnit !== null).length > 4 ? ` и ещё ${missing.filter((r) => r.customerUnit !== null).length - 4}` : ''}
           </p>
         )}
       </div>

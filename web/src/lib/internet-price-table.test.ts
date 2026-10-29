@@ -43,3 +43,12 @@ test("цены без НДС пересчитываются в основу на
   assert.equal(internetPriceTable(prices([row("a", "Тумба", "10")])), null);
   assert.equal(internetPriceTable(null), null);
 });
+
+test("НДС прибавляется один раз: позиция с одной ценой 2 600 ₽ при ставке 1,22 — 3 172 ₽ за единицу и минимум, и средняя (раньше средняя была 3 870 ₽)", () => {
+  const t = internetPriceTable(prices([row("a", "Кровать", "20", { state: "few", unitPrices: [2_600], median: null, range: { from: 2_600, to: 2_600 }, n: 1 })]), 1.22)!;
+  assert.deepEqual(t.rows[0].offers, [3_172]);
+  assert.equal(t.rows[0].mean, 3_172);
+  assert.equal(t.rows[0].total, 63_440);
+  const c = executionCost(t, null);
+  assert.deepEqual([c.min, c.mean, c.max], [63_440, 63_440, 63_440]);
+});
