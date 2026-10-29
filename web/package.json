@@ -19,6 +19,7 @@
     "owner:create": "node --env-file=.env.local --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/create-owner.ts",
     "market:import": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/market-import.ts",
     "market:collect": "node --env-file=.env.local --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/market-collect.ts",
+    "prices:compare": "node --env-file=.env.local --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/prices-compare.ts",
     "registry:import": "node --max-old-space-size=6144 --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/registry-import.ts",
     "jobs:worker": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/jobs-worker.ts",
     "backup:create": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/backup-create.ts",
@@ -45,10 +46,12 @@
     "core:legal-review:urls": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/core-legal-review.ts --urls"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.91",
     "@ai-sdk/react": "^4.0.115",
     "@anthropic-ai/sdk": "^0.128.0",
     "@auth/prisma-adapter": "^2.11.3",
     "@base-ui/react": "^1.8.0",
+    "@mastra/core": "^1.80.0",
     "@prisma/client": "^6.19.3",
     "7z-wasm": "^1.2.0",
     "ai": "^7.0.111",

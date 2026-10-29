@@ -3,8 +3,11 @@ import type { FindingLine } from '@/lib/analytics-summary';
 import { getPrices, savePrices } from '@/lib/analytics-store';
 import { positionsFromDocuments, type RicData } from '@/lib/indicative-price';
 import { liveToLite, marketLines, marketRequestOf, withMarketAnalogs, type MarketResultLite } from '@/lib/market-merge';
+import { findCustomerPriceTable } from '@/lib/customer-price-table';
 import { missingSpecNote, positionPrices, priceLines } from '@/lib/position-prices';
-import { isFresh, mergeRetry, nextRetryAt, pickPositions, priceSearchFinding, retryKeys, shouldSearch, signatureOf, type PriceState, type SavedPrices } from '@/lib/price-cache';
+import { isFresh, mergeRetry, nextRetryAt, priceSearchFinding, retryKeys, shouldSearch, signatureOf, type PriceState, type SavedPrices } from '@/lib/price-cache';
+import { dropImplausible, tableBounds, withTablePrices } from '@/lib/price-compare';
+import { expandSaved, planSearch } from '@/lib/price-families';
 import { serverReadsEnabled } from '@/lib/server-reads';
 import { useAiEnabled } from '../lib/use-ai-mode';
 import { MAX_SEARCH_POSITIONS, searchLivePrices } from './market-search';
@@ -23,12 +26,13 @@ const newId = () => `live-${++counter}`;
 
 export function useMarketBase(data: RicData | null, docs: Doc[], region: string | null, purchaseId: string) {
   const [aiOn] = useAiEnabled();
+  // Таблица обоснования цены у заказчика: цена за единицу у позиций без своей — поиск в интернете начинается с самых дорогих видов товара, на экране видно отличие от закупки.
+  const table = useMemo(() => findCustomerPriceTable(docs), [docs]);
   const withPositions = useMemo(() => {
     if (!data) return null;
-    if (data.positions.length > 0) return data;
-    const found = positionsFromDocuments(docs);
-    return found && found.positions.length > 0 ? { ...data, positions: found.positions } : data;
-  }, [data, docs]);
+    const own = data.positions.length > 0 ? data.positions : (positionsFromDocuments(docs)?.positions ?? []);
+    return own.length > 0 ? { ...data, positions: withTablePrices(own, table) } : data;
+  }, [data, docs, table]);
 
   // ——— База цен (если есть) ———
   const request = useMemo(() => (withPositions && withPositions.positions.length > 0 ? marketRequestOf(withPositions, region) : null), [withPositions, region]);
@@ -51,7 +55,10 @@ export function useMarketBase(data: RicData | null, docs: Doc[], region: string 
   }, [requestKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ——— Живой поиск закупочных цен в интернете ———
-  const picks = useMemo(() => (withPositions ? pickPositions(withPositions.positions, MAX_SEARCH_POSITIONS) : []), [withPositions]);
+  // Ищем по виду товара (Стол, Кресло), а не по каждой позиции: найденное достаётся всем позициям вида (lib/price-families.ts).
+  const plan = useMemo(() => (withPositions ? planSearch(withPositions.positions, MAX_SEARCH_POSITIONS) : null), [withPositions]);
+  // Поиск в интернете идёт всегда, и когда у заказчика есть таблица цен поставщиков: цены сравниваются (владелец, 29.10.2026: «поиск в интернете нужен обязательно! и сопоставление цен»).
+  const picks = useMemo(() => plan?.picks ?? [], [plan]);
   const signature = useMemo(() => signatureOf(picks), [picks]);
   // undefined — сохранённое ещё читается; null — у закупки пока ничего нет.
   const [saved, setSaved] = useState<SavedPrices | null | undefined>(undefined);
@@ -106,17 +113,26 @@ export function useMarketBase(data: RicData | null, docs: Doc[], region: string 
   }, [saved, signature, aiOn, purchaseId, region, tick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const today = new Date().toISOString().slice(0, 10);
-  const live = useMemo(() => (withPositions && isFresh(saved, new Date()) && saved ? liveToLite(withPositions.positions, saved.results, today, newId) : []), [withPositions, saved, today]);
+  // Сохранено по представителям видов; для расчёта и экрана — по позициям.
+  // Цены из интернета в 3 раза ниже или выше цен поставщиков заказчика — не тот товар: в расчёт и сравнение не идут (lib/price-compare.ts, dropImplausible).
+  const bounds = useMemo(() => (withPositions ? tableBounds(withPositions.positions, table) : new Map()), [withPositions, table]);
+  const vatFactor = withPositions?.settings.nmckVat === 'with' ? 1 + withPositions.settings.vatRate / 100 : 1;
+  const checked = useMemo(() => {
+    const expanded = plan ? expandSaved(saved, plan) : saved;
+    return expanded && bounds.size > 0 ? dropImplausible(expanded, bounds, vatFactor) : expanded ? { ...expanded, dropped: 0 } : expanded;
+  }, [saved, plan, bounds, vatFactor]);
+  const savedByPosition = checked;
+  const live = useMemo(() => (withPositions && isFresh(saved, new Date()) && savedByPosition ? liveToLite(withPositions.positions, savedByPosition.results, today, newId) : []), [withPositions, saved, savedByPosition, today]);
 
   const effective = useMemo(() => (withPositions ? withMarketAnalogs(withMarketAnalogs(withPositions, market), live) : null), [withPositions, market, live]);
   const state: PriceState = picks.length === 0 ? 'no-positions' : isFresh(saved, new Date()) ? 'done' : !aiOn ? 'off' : searching || saved === undefined ? 'searching' : saved?.error ? 'failed' : 'searching';
   // Заказчик пишет, что список товаров — в отдельном файле технических требований, а файла в закупке нет: об этом говорит строка «Закупочные цены» и рейтинг.
   const specNote = useMemo(() => (picks.length === 0 ? missingSpecNote(docs) : null), [picks.length, docs]);
   // Товары закупки с найденными закупочными ценами — для блока «Товары и закупочные цены»; нет цен — блок не рисуется.
-  const prices = useMemo(() => (withPositions ? positionPrices(withPositions, saved, picks.map((p) => p.id), state, today) : null), [withPositions, saved, picks, state, today]);
+  const prices = useMemo(() => (withPositions ? positionPrices(withPositions, savedByPosition, plan?.searchedIds ?? [], state, today) : null), [withPositions, savedByPosition, plan, state, today]);
   // Найденные цены строками — для подписи внизу и подсказки бейджа; даже одна цена называется целиком (владелец, 23.10.2026: «если только одна цена — всё равно показывай»).
   const found = useMemo(() => (prices ? priceLines(prices) : []), [prices]);
   const lines = useMemo(() => [...(withPositions ? marketLines(withPositions, market) : []), ...found], [withPositions, market, found]);
   const finding: FindingLine = priceSearchFinding({ state, saved, note: state === 'no-positions' ? (specNote ?? `проверила все файлы (${docs.length}): таблицы товаров с количеством нет — искать цены не по чему`) : saved?.error, highlights: found });
-  return { data: effective, lines, finding, prices, positionsTotal: withPositions?.positions.length ?? 0, specNote };
+  return { data: effective, lines, finding, prices, positionsTotal: withPositions?.positions.length ?? 0, specNote, dropped: checked?.dropped ?? 0 };
 }

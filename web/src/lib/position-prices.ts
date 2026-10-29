@@ -2,7 +2,7 @@
 // нет цены — так и сказано, ничего не выдумывается. Рынок — только закупочная цена (за сколько можно купить), цены контрактов сюда не попадают (lib/price-basis.ts).
 
 import { parseAmount, type RicData } from "@/lib/indicative-price";
-import { comparable, marketStats, type Observation } from "@/lib/market-observations";
+import { comparable, marketStats, sameKind, type Observation } from "@/lib/market-observations";
 import type { PriceState, SavedPrices } from "@/lib/price-cache";
 import { cleanProductName } from "@/lib/prices-request";
 
@@ -10,6 +10,9 @@ export type PriceSource = { host: string; product: string; price: number; date: 
 
 /** found — цен хватает для вывода (не меньше пяти); few — найдены, но мало; none — искали, подходящих нет; searching / off / failed — поиск идёт, выключен, не удался; not-searched — по этой позиции не искали. */
 export type PositionPriceState = "found" | "few" | "none" | "searching" | "off" | "failed" | "not-searched";
+
+/** Ближайшие аналоги: тот же вид товара (слова названия совпали), но другие характеристики — размер, число мест. Это не цена позиции: в расчёт, рейтинг и «закупку по найденным ценам» не входят, показываются отдельно с пометкой. */
+export type PriceAnalogs = { n: number; range: { from: number; to: number }; sources: PriceSource[] };
 
 export type PositionPriceRow = {
   id: string;
@@ -31,6 +34,8 @@ export type PositionPriceRow = {
   cost: number | null;
   /** Все сопоставимые цены без НДС за единицу, по возрастанию (для расчёта себестоимости). */
   unitPrices: number[];
+  /** Аналоги, когда точной цены нет (state «none»); иначе null. */
+  analogs: PriceAnalogs | null;
 };
 
 export type PositionPrices = {
@@ -135,12 +140,20 @@ export function positionPrices(data: RicData, saved: SavedPrices | null | undefi
   const rows = data.positions.map((p): PositionPriceRow => {
     const quantity = parseAmount(p.qty);
     const customerUnit = p.customerUnit !== undefined && p.customerUnit > 0 ? p.customerUnit : null;
-    const empty = { id: p.id, name: p.name, unit: p.unit, qty: p.qty, customerUnit, median: null, range: null, n: 0, gapPct: null, sources: [] as PriceSource[], cost: null, unitPrices: [] as number[] };
+    const empty = { id: p.id, name: p.name, unit: p.unit, qty: p.qty, customerUnit, median: null, range: null, n: 0, gapPct: null, sources: [] as PriceSource[], cost: null, unitPrices: [] as number[], analogs: null as PriceAnalogs | null };
     if (!searched.has(p.id)) return { ...empty, state: "not-searched" };
     if (state !== "done") return { ...empty, state: state === "off" ? "off" : state === "failed" ? "failed" : "searching" };
     const target = { name: p.name, unit: p.unit, quantity: quantity !== null && quantity > 0 ? quantity : null };
     const usable = (results.get(p.id) ?? []).filter((o) => comparable(target, o).ok);
-    if (usable.length === 0) return { ...empty, state: "none" };
+    if (usable.length === 0) {
+      // Точной цены нет: тот же вид товара с другими характеристиками (стол 120×60 вместо «стола на 1 рабочее место») — показываем как аналоги.
+      const close = (results.get(p.id) ?? []).filter((o) => sameKind(target, o));
+      if (close.length === 0) return { ...empty, state: "none" };
+      const closePrices = close.map((o) => o.priceNoVat).sort((a, b) => a - b);
+      const mid = closePrices[Math.floor(closePrices.length / 2)];
+      const analogSources = [...close].sort((a, b) => Math.abs(a.priceNoVat - mid) - Math.abs(b.priceNoVat - mid)).slice(0, 3).map(sourceOf);
+      return { ...empty, state: "none", analogs: { n: close.length, range: { from: closePrices[0], to: closePrices[closePrices.length - 1] }, sources: analogSources } };
+    }
     const stats = marketStats(target, usable, today);
     const median = stats.status !== "insufficient" ? stats.median : null;
     const prices = usable.map((o) => o.priceNoVat);

@@ -259,6 +259,34 @@ export function comparable(target: Target, o: Observation): Comparable {
   return volumeOk(target, o);
 }
 
+/**
+ * Тот же вид товара, но не обязательно те же характеристики (стол 120×60 вместо «стола на 1 рабочее место»): единица совпала, в названии есть главное слово заказчика
+ * (первое значимое слово — «стол», «кресло») и совпало не меньше двух слов (не чисел). Для показа ближайших аналогов; точной ценой позиции это не считается.
+ */
+export function sameKind(target: Target, o: Observation): boolean {
+  if (normalizeUnit(target.unit ?? "") !== o.unit) return false;
+  const head = headNoun(target.name);
+  return head !== null && o.tokens.includes(head);
+}
+
+// Окончания прилагательных: «Офисное кресло», «Рабочий стол» — главное слово не первое.
+export const isAdjective = (word: string) => ADJECTIVE.test(word.toLowerCase());
+const ADJECTIVE = /(?:ый|ий|ой|ая|яя|ое|ее|ые|ие|ого|его|ому|ему|ым|им|ом|ем|ую|юю)$/;
+
+/**
+ * Главное слово названия — вид товара («стол», «кресло», «шкаф»): первое слово, которое не похоже на прилагательное и не число; остальные слова — свойства. Возвращает основу (как в tokensOf),
+ * null — если такого слова нет. Нужно, чтобы искать цены по виду товара, а не по каждой позиции отдельно.
+ */
+export function headNoun(name: string): string | null {
+  const words = String(name ?? "")
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .split(/[^a-zа-я0-9]+/)
+    .filter((w) => w.length >= 3 && !/^\d/.test(w) && tokensOf(w).length > 0);
+  const noun = words.find((w) => !ADJECTIVE.test(w)) ?? words[0];
+  return noun ? (tokensOf(noun).find((t) => !isNumeric(t)) ?? null) : null;
+}
+
 function volumeOk(target: Target, o: Observation): Comparable {
   if (target.quantity && o.quantity) {
     const ratio = target.quantity > o.quantity ? target.quantity / o.quantity : o.quantity / target.quantity;

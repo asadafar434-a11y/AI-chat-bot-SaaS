@@ -22,6 +22,7 @@ export const PRICES: Record<string, Prices> = {
   "claude-opus-5": row(5, 25, 0.5),
   "claude-opus-4-8": row(5, 25, 0.5),
   "claude-sonnet-5-5": row(2, 10, 0.2),
+  "claude-haiku-5-5": row(0.1, 0.5, 0.01),
   "claude-fable-5-1": row(10, 50, 0.25),
 };
 

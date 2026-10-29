@@ -159,3 +159,34 @@ test("цена единицы для себестоимости: одна цен
   const cost = purchaseCost(positionPrices(drug, s, ["d"], "done", "2026-10-23"), { withVat: true, vatRate: 22 });
   assert.equal(cost.total, Math.round(135623.79 * 1.1 * 25 * 100) / 100, "медиана трёх цен 135 623,79 × 1,1 (лекарства — 10 %, а не 22 %) × 25 упаковок");
 });
+
+test("точной цены нет, но есть тот же вид товара с другими характеристиками: показываются как аналоги, в расчёт не входят; другой товар и другая единица — не аналоги", () => {
+  const desk = data({ name: "Стол прямоугольный на 1 рабочее место, с настольной полкой", unit: "шт", qty: "40", customerUnit: 25_000 });
+  const found = [
+    obs(13_300, "dobro.io", "Стол прямоугольный PROSTO 120х60 RAL 9005, Муар чёрный", undefined, "шт"),
+    obs(11_150, "mebel.ru", "Стол прямоугольный GIBKO с бортиком 120х60 RAL 9005", undefined, "шт"),
+    obs(16_100, "shop.ru", "Стол прямоугольный PROSTO с бортиком 120х60 RAL 9016", undefined, "шт"),
+    obs(5_223, "o-manager.ru", "Офисное кресло Chairman 696 LT черный", undefined, "шт"),
+    obs(900, "paper.ru", "Стол прямоугольный PROSTO 120х60 (за упаковку)", undefined, "упак"),
+  ];
+  const r = positionPrices(desk, { ...saved([]), results: [{ key: "p1", observations: found, pagesRead: 5, rejected: 0 }] }, ["p1"], "done", "2026-10-22");
+  const row = r.rows[0];
+  assert.equal(row.state, "none", "точной цены нет");
+  assert.equal(row.median, null);
+  assert.equal(row.cost, null, "стоимость по аналогам не считается");
+  assert.equal(row.n, 0);
+  assert.equal(row.analogs?.n, 3, "кресло и позиция в другой единице аналогами не считаются");
+  assert.deepEqual(row.analogs?.range, { from: 11_150, to: 16_100 });
+  assert.equal(row.analogs?.sources.length, 3);
+  assert.equal(r.priced, 0);
+  assert.equal(r.cost, null, "в «закупку по найденным ценам» аналоги не входят");
+  assert.equal(purchaseCost(r, { withVat: false, vatRate: 22 }).covered, 0);
+  assert.deepEqual(priceLines(r), [], "в подпись внизу аналоги не идут");
+});
+
+test("аналогов нет, если найденное — другой товар (слова названия не совпали)", () => {
+  const desk = data({ name: "Стол прямоугольный на 8 рабочих мест", unit: "шт", qty: "2" });
+  const row = positionPrices(desk, { ...saved([]), results: [{ key: "p1", observations: [obs(5_223, "o-manager.ru", "Офисное кресло Chairman 696 LT черный", undefined, "шт")], pagesRead: 1, rejected: 0 }] }, ["p1"], "done", "2026-10-22").rows[0];
+  assert.equal(row.state, "none");
+  assert.equal(row.analogs, null);
+});

@@ -55,7 +55,7 @@ export type CollectResult = {
 };
 
 // Сайты, на которых нет закупочных цен поставщиков: видео, соцсети, энциклопедии, поисковики, новости и биржевые обзоры.
-const SKIP_DOMAINS = /(^|\.)(youtube\.com|youtu\.be|vk\.com|ok\.ru|dzen\.ru|wikipedia\.org|yandex\.ru|google\.com|tradingeconomics\.com|tiktok\.com|instagram\.com|facebook\.com|t\.me|avito\.ru|youla\.ru)$/i;
+export const SKIP_DOMAINS = /(^|\.)(youtube\.com|youtu\.be|vk\.com|ok\.ru|dzen\.ru|wikipedia\.org|yandex\.ru|google\.com|tradingeconomics\.com|tiktok\.com|instagram\.com|facebook\.com|t\.me|avito\.ru|youla\.ru)$/i;
 
 export async function collectPrices(deps: CollectDeps, options: CollectOptions): Promise<CollectResult> {
   const result: CollectResult = { pages: [], accepted: [], rejected: [], spentRub: 0, calls: 0, stoppedByCap: false, searchErrors: [] };

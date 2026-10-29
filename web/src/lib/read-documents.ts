@@ -70,12 +70,13 @@ export function scanWarning(documents: SentDocument[]): string | null {
 type Send = (url: string, init: RequestInit) => Promise<Response>;
 type OneResult = { documents: SentDocument[]; failed: FailedFile[] };
 
-async function readOne(file: File, send: Send, ocr: boolean): Promise<OneResult> {
+async function readOne(file: File, send: Send, ocr: boolean | "pictures"): Promise<OneResult> {
   const problem = fileProblem(file);
   if (problem) return { documents: [], failed: [{ name: file.name, reason: problem }] };
   const form = new FormData();
   form.append("files", file);
-  if (!ocr) form.append("ocr", "off");
+  if (ocr === "pictures") form.append("ocr", "pictures");
+  else if (!ocr) form.append("ocr", "off");
   let res: Response;
   try {
     res = await send("/api/documents", { method: "POST", body: form });
@@ -94,7 +95,8 @@ async function readOne(file: File, send: Send, ocr: boolean): Promise<OneResult>
 
 // Текст из файлов достаёт сервер. Файлы уходят по одному: так запрос не упирается в предел размера,
 // а сбой одного файла не роняет остальные. Если не прочитался ни один файл — объясняем почему.
-export async function readDocuments(files: File[], send: Send = fetch, ocr = readScanOcr() && readAiEnabled()): Promise<OneResult> {
+// ocr: true — сканы и картинки распознаются; false — нет; "pictures" — только большие картинки-таблицы внутри Word (запрос идёт к ИИ, поэтому только при включённом «ИИ»).
+export async function readDocuments(files: File[], send: Send = fetch, ocr: boolean | "pictures" = readScanOcr() && readAiEnabled()): Promise<OneResult> {
   if (files.length > MAX_FILES) {
     throw new Error(`За один раз можно загрузить не больше ${MAX_FILES} файлов — остальные добавьте следующим заходом.`);
   }

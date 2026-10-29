@@ -3,7 +3,12 @@ import { assumptionLines, buildReport, reportFileName, reportHtml } from '@/lib/
 import { buildSummary, findingsOf, rubles, searchFinding, type SummaryInput } from '@/lib/analytics-summary';
 import { purchaseCost } from '@/lib/position-prices';
 import { findServiceVolume } from '@/lib/service-volume';
+import { findCustomerPriceTable } from '@/lib/customer-price-table';
+import { internetPriceTable } from '@/lib/internet-price-table';
 import { findCustomerQuotes, quotesFinding } from '@/lib/customer-quotes';
+import { executionCost, executionFinding, rubText } from '@/lib/execution-cost';
+import { comparePrices } from '@/lib/price-compare';
+import { executionTerms } from '@/lib/execution-terms';
 import { auctionStepNote } from '@/lib/price-terms';
 import { rateTender } from '@/lib/tender-rating';
 import { getRegister, getRic, saveRegister, saveRic } from '@/lib/analytics-store';
@@ -39,6 +44,7 @@ import { AnalyticsSummary, type ReportBusy } from '../components/AnalyticsSummar
 import { Collapsible } from '../components/Collapsible';
 import { CrewCostCard } from '../components/CrewCost';
 import { CustomerQuotesCard } from '../components/CustomerQuotes';
+import { ExecutionCostCard } from '../components/ExecutionCost';
 import { PositionPricesCard } from '../components/PositionPrices';
 import { ServiceVolumeCard } from '../components/ServiceVolume';
 import { PriceBadgeChip } from '../components/PriceBadgeChip';
@@ -169,6 +175,20 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
   const crew = useCrewCost(purchase.id, plain, place?.region.name ?? null, volume?.total ?? null);
   // Предложения поставщиков из обоснования начальной цены у заказчика (ТКП №1…№3) и шаг аукциона: читает код из документов, без ИИ; показываются, когда найдены.
   const quotes = useMemo(() => findCustomerQuotes(plain), [plain]);
+  // Таблица обоснования цены у заказчика по позициям → «Сколько стоит исполнение»: минимум, средняя, максимум, сценарии с доставкой (lib/execution-cost.ts), без ИИ.
+  const customerTable = useMemo(() => findCustomerPriceTable(plain), [plain]);
+  // Цены в интернете в основе начальной цены (с НДС или без): пересчёт цен без НДС.
+  const vatFactor = market.data?.settings.nmckVat === 'with' ? 1 + market.data.settings.vatRate / 100 : 1;
+  // Нет таблицы цен у заказчика (бывает почти всегда) — блок строится из закупочных цен, найденных в интернете, по всем позициям (lib/internet-price-table.ts).
+  const webTable = useMemo(() => (customerTable ? null : internetPriceTable(market.prices, vatFactor, 'закупочные цены из интернета')), [customerTable, market.prices, vatFactor]);
+  const priceTable = customerTable ?? webTable;
+  const execution = useMemo(() => (priceTable ? executionCost(priceTable, nmck) : null), [priceTable, nmck]);
+  // Что договор требует сверх товара: место, срок, разгрузка, подъём, сборка (lib/execution-terms.ts) — для раздела 3 блока.
+  const terms = useMemo(() => (priceTable ? executionTerms(plain) : null), [priceTable, plain]);
+  // Себестоимость по таблице заказчика — экономный сценарий: самые низкие цены поставщиков + доставка и сборка (решение владельца 29.10.2026).
+  const tableCost = execution && !priceTable?.internet?.missing ? execution.scenarios[0].total : null;
+  // Цены заказчика ↔ цены в интернете по позициям (lib/price-compare.ts); цены из интернета без НДС пересчитываются в основу начальной цены.
+  const compare = useMemo(() => (customerTable && market.prices ? comparePrices(market.prices, customerTable, vatFactor) : null), [customerTable, market.prices, vatFactor]);
   const auctionStep = useMemo(() => auctionStepNote(plain, nmck), [plain, nmck]);
   // Закупка товара по найденным закупочным ценам: цена × количество по каждой позиции (lib/position-prices.ts). Начальная цена «без НДС» — без НДС и считаем.
   const autoCost = useMemo(
@@ -180,9 +200,9 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
     const e = (register.data ?? EMPTY_REGISTER).econ;
     // Себестоимость: вписанная участником важнее всего; нет её — из шага «Цена»; нет и там — по найденным закупочным ценам и количествам (владелец, 23.10.2026: «чтобы ты сразу считал, когда есть цена и количество»).
     // Себестоимость по составу работ считается для расчёта, только когда ставки найдены по всем должностям и технике: неполная сумма цену не определяет.
-    return { ...stepCalc, costs: parseAmount(e.costs) ?? stepCalc.costs ?? autoCost?.total ?? crewTotal ?? null, extra: parseAmount(e.extra) ?? stepCalc.extra, taxPct: parseAmount(e.taxPct) ?? stepCalc.taxPct };
-  }, [stepCalc, register.data, autoCost, crewTotal]);
-  const costsAuto = Boolean(autoCost?.total ?? crewTotal) && !parseAmount((register.data ?? EMPTY_REGISTER).econ.costs) && !stepCalc.costs;
+    return { ...stepCalc, costs: parseAmount(e.costs) ?? stepCalc.costs ?? tableCost ?? autoCost?.total ?? crewTotal ?? null, extra: parseAmount(e.extra) ?? stepCalc.extra, taxPct: parseAmount(e.taxPct) ?? stepCalc.taxPct };
+  }, [stepCalc, register.data, tableCost, autoCost, crewTotal]);
+  const costsAuto = Boolean(tableCost ?? autoCost?.total ?? crewTotal) && !parseAmount((register.data ?? EMPTY_REGISTER).econ.costs) && !stepCalc.costs;
   const econ = useMemo(() => economics({ calc, estimate, settings: econSettings(assumptions), price }), [calc, estimate, assumptions, price]);
 
   // Проверка гипотез обычным поиском: в запрос идут только ключевые слова темы, год и регион места поставки из документов (lib/search-queries.ts). Результат сохраняется у закупки.
@@ -292,12 +312,16 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
   // Подпись внизу: строка о предложениях поставщиков — сразу после «Цена и рынок», закупочные цены — в конце.
   const lines = useMemo(() => {
     const out = [...findings];
+    if (execution) {
+      const at = out.findIndex((l) => l.label === 'Цена и рынок');
+      out.splice(at < 0 ? out.length : at + 1, 0, executionFinding(execution));
+    }
     if (quotes) {
       const at = out.findIndex((l) => l.label === 'Цена и рынок');
       out.splice(at < 0 ? out.length : at + 1, 0, quotesFinding(quotes, nmck));
     }
     return [...out, market.finding];
-  }, [findings, quotes, nmck, market.finding]);
+  }, [findings, execution, quotes, nmck, market.finding]);
   const chartSection = summary.sections.find((s) => s.id === 'chart');
   // Рейтинг привлекательности: балл по шести факторам из уже посчитанного (lib/tender-rating.ts), без ИИ.
   const rating = useMemo(
@@ -388,6 +412,7 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
       {/* Товары и найденные закупочные цены — сразу под названием закупки: это то, что участник ищет первым (владелец, 23.10.2026: «где товар, цена его?»). Цен нет — блока нет. */}
       {volume && <ServiceVolumeCard volume={volume} nmck={nmck} costs={stepCalc.costs ?? null} />}
       {crew.need && crew.cost && crew.state !== 'none' && <CrewCostCard need={crew.need} cost={crew.cost} state={crew.state} saved={crew.saved} error={crew.error} perUnitLabel={volume ? volume.unitOf : undefined} />}
+      {execution && priceTable && <ExecutionCostCard cost={execution} table={priceTable} compare={compare} webNote={market.finding.text} terms={terms} dropped={market.dropped} />}
       {market.prices && <PositionPricesCard prices={market.prices} total={market.positionsTotal} />}
       {quotes && <CustomerQuotesCard quotes={quotes} nmck={nmck} step={auctionStep} />}
       <TenderRating rating={rating} />
@@ -399,7 +424,9 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
         onPdf={downloadPdf}
         action={(needCosts || costsAuto) && onCosts ? { label: costsAuto ? 'Уточнить себестоимость на шаге «Цена» →' : 'Ввести себестоимость на шаге «Цена» →', onClick: onCosts } : undefined}
         costNote={
-          costsAuto && autoCost?.total
+          costsAuto && tableCost !== null
+            ? `Себестоимость посчитана сама по таблице обоснования заказчика: самые низкие цены поставщиков и доставка со сборкой ${execution!.logisticsPct.low} % — ${rubText(tableCost)}. Уточните её на шаге «Цена».`
+            : costsAuto && autoCost?.total
             ? `Себестоимость посчитана сама по найденным закупочным ценам: ${rubles(autoCost.total)} (${autoCost.lines.length} ${autoCost.lines.length === 1 ? 'позиция' : 'позиций'}, ${/без\s+НДС/i.test(purchase.price ?? '') ? 'без НДС' : 'с НДС'}; при нескольких ценах — медиана, при двух — большая). Доставка, работа и ваши расходы сюда не входят: впишите свои на шаге «Цена».`
             : costsAuto && crewTotal
               ? `Себестоимость посчитана сама по составу работ: зарплаты и аренда техники из интернета с взносами за ${crew.cost?.months} мес. — ${rubles(crewTotal)}. Накладные расходы, прибыль и расходные материалы сюда не входят: впишите свои на шаге «Цена».`

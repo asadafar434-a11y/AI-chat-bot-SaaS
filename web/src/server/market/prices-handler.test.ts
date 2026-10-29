@@ -128,3 +128,49 @@ test("лекарство из реестра предельных цен: цен
   assert.ok(searched.every((q) => !/Дабрафениб/.test(q)), "в поиск по сайтам лекарство не уходило");
   assert.ok(modelCalls.every((c) => !/Дабрафениб/.test(c.user)), "и модели страницы про лекарство не отправлялись");
 });
+
+// Платный поиск (встроенный поиск модели): его расход идёт в общий потолок, запрос на позицию один.
+const TWO = { positions: [{ key: "a", name: "Уголь каменный ДПК", unit: "т" }, { key: "b", name: "Щебень гранитный 5-20", unit: "м3" }] };
+
+test("платный поиск: один запрос на позицию, его расход входит в потрачено и в потолок", async () => {
+  let searchRub = 0;
+  const { d } = deps({
+    maxQueries: 1,
+    searchWorstRub: 3,
+    searchSpent: () => searchRub,
+    search: async () => {
+      searchRub += 2;
+      return [{ title: "a", url: "https://a.ru/p", domain: "a.ru", snippet: "" }];
+    },
+  });
+  const json = await (await handlePrices(post(COAL), d)).json();
+  assert.equal(json.spentRub, 2.8, "поиск 2 ₽ + чтение одной страницы 0,8 ₽ (0,01 $ × 80)");
+});
+
+test("платный поиск: запросов на позицию ровно maxQueries", async () => {
+  const { d, searched } = deps({ maxQueries: 1 });
+  await handlePrices(post(COAL), d);
+  assert.equal(searched.length, 1);
+  assert.match(searched[0], /цена за т оптом/);
+});
+
+test("платный поиск: когда в потолке не осталось места даже на сам поиск, следующая позиция не начинается", async () => {
+  let searchRub = 0;
+  const searched: string[] = [];
+  const { d } = deps({
+    capRub: 10,
+    maxQueries: 1,
+    searchWorstRub: 6,
+    searchSpent: () => searchRub,
+    search: async (q) => {
+      searched.push(q);
+      searchRub += 5;
+      return [];
+    },
+  });
+  const json = await (await handlePrices(post(TWO), d)).json();
+  assert.equal(searched.length, 1, "после первой позиции осталось 5 ₽, а на поиск нужно 6 — вторая не ищется");
+  assert.equal(json.stoppedByCap, true);
+  assert.ok(json.spentRub <= 10);
+  assert.deepEqual(json.results.map((r: { key: string; observations: unknown[] }) => [r.key, r.observations.length]), [["a", 0], ["b", 0]]);
+});

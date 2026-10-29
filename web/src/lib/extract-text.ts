@@ -5,6 +5,7 @@ import { PDFParse } from "pdf-parse";
 import { claudeErrorText } from "@/lib/claude-errors";
 import { docText, DocTextError, isOle, rtfText } from "@/lib/doc-text";
 import { TextBuilder, type DocMap } from "@/lib/doc-source";
+import { findDocumentPictures, type DocPicture } from "@/lib/docx-pictures";
 import { DocxError, readDocx } from "@/lib/docx-reader";
 import { MAX_SCAN_PAGES, renderPages, transcribe } from "@/lib/ocr";
 import { assemblePdf, GARBLED_PLACEHOLDER, letters, pageQuality, type PdfPage } from "@/lib/pdf-structure";
@@ -141,6 +142,33 @@ async function docxText(buffer: Buffer): Promise<{ text: string; map?: DocMap; h
   }
 }
 
+// Картинки-таблицы в Word (снимок «Обоснования начальной цены» из Excel): распознаются, как скан, и дописываются в конец текста под заголовком «Картинка в документе: <что перед ней>».
+// Распознать не вышло (лимит, сбой) — документ остаётся без них: текст Word важнее.
+async function withPictures(base: { text: string; map?: DocMap }, pictures: DocPicture[], deps: OcrDeps): Promise<{ text: string; map?: DocMap }> {
+  if (pictures.length === 0 || (await ocrPages("all", pictures.length))) return base;
+  let read: string[];
+  try {
+    read = await deps.transcribe(pictures.map((p) => ({ data: Buffer.from(p.data), mediaType: p.mediaType })));
+  } catch (error) {
+    console.error("extract docx pictures", error instanceof Error ? error.message : error);
+    return base;
+  }
+  let text = base.text;
+  const spans = [...(base.map?.spans ?? [])];
+  pictures.forEach((p, i) => {
+    const body = (read[i] ?? "").trim();
+    // Таблица цен — почти одни цифры: считаем знаки, а не буквы.
+    if (body.replace(/\s+/g, "").length < 20) return;
+    const head = `Картинка в документе${p.before ? `: ${p.before}` : ""} (распознано)`;
+    text += "\n\n";
+    spans.push({ from: text.length, to: text.length + head.length, head: true });
+    text += head + "\n\n";
+    spans.push({ from: text.length, to: text.length + body.length, ocr: true });
+    text += body;
+  });
+  return { text, map: spans.length > 0 ? { ...(base.map ?? {}), spans } : base.map };
+}
+
 // .doc у заказчиков бывает трёх видов: настоящий Word 97–2003, RTF с другим расширением и .docx с другим расширением.
 async function wordText(buffer: Buffer): Promise<ExtractResult> {
   if (isOle(buffer)) return { ok: true, text: docText(buffer) };
@@ -153,7 +181,8 @@ async function wordText(buffer: Buffer): Promise<ExtractResult> {
 }
 
 // ocr: false — сканы и фото не распознаются: картинки не уходят в ИИ (выключено в браузере).
-export async function extractText(file: File, { ocr = true, deps = REAL_OCR }: { ocr?: boolean; deps?: OcrDeps } = {}): Promise<ExtractResult> {
+// pictures — распознавать большие картинки внутри Word, даже когда сканы выключены (ocr: false).
+export async function extractText(file: File, { ocr = true, deps = REAL_OCR, pictures: picturesOnly = false }: { ocr?: boolean; deps?: OcrDeps; pictures?: boolean } = {}): Promise<ExtractResult> {
   // «~$…» — временный файл, который Word кладёт рядом с открытым документом (в нём только имя владельца): документа в нём нет.
   if (file.name.startsWith("~$")) {
     return { ok: false, reason: "это временный файл Word («~$…»), а не документ — настоящий файл лежит рядом, загрузите его" };
@@ -170,8 +199,11 @@ export async function extractText(file: File, { ocr = true, deps = REAL_OCR }: {
     }
 
     if (kind === "docx") {
-      const { text, map, hidden } = await docxText(Buffer.from(await file.arrayBuffer()));
-      return { ok: true, text, ...(map && { map }), ...(hidden && { hidden }) };
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const read = await docxText(buffer);
+      const pictures = (ocr || picturesOnly) && process.env.ANTHROPIC_API_KEY ? findDocumentPictures(buffer) : [];
+      const { text, map } = await withPictures(read, pictures, deps);
+      return { ok: true, text, ...(map && { map }), ...(read.hidden && { hidden: read.hidden }) };
     }
 
     if (kind === "xlsx") {

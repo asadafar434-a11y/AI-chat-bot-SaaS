@@ -50,8 +50,11 @@ export const BUDGET_TEXT =
 
 // Журнал расходов: строка на каждый ответ модели — что за операция, модель, токены и цена.
 // Это журнал хостинга, как у остальных строк сервера; документов и ответов в нём нет.
-export function chargeAi(label: string, appId: string | null, message: { model: string; usage: AiUsage }): number {
-  const { usd, known } = costUsd(message.model, message.usage);
+// extraUsd — плата не за токены, а за встроенный поиск модели ($0,01 за поисковый запрос): она тоже идёт в бюджет закупки.
+export function chargeAi(label: string, appId: string | null, message: { model: string; usage: AiUsage }, extraUsd = 0): number {
+  const costed = costUsd(message.model, message.usage);
+  const known = costed.known;
+  const usd = costed.usd + extraUsd;
   if (budget && appId) budget.charge(appId, usd);
   const rub = usdRub ? ` ≈ ${rubOf(usd, usdRub)} ₽` : "";
   const app = appId && budget ? ` · заявка ${appId}: потрачено ${rubOf(budget.spentHere(appId), usdRub)} из ${budgetRub} ₽` : appId ? ` · заявка ${appId}` : "";

@@ -44,6 +44,9 @@ before(async () => {
     ratingLib: await server.ssrLoadModule('@/lib/tender-rating.ts'),
     badgeChipUi: await server.ssrLoadModule('/src/components/PriceBadgeChip.tsx'),
     positionPricesUi: await server.ssrLoadModule('/src/components/PositionPrices.tsx'),
+    executionUi: await server.ssrLoadModule('/src/components/ExecutionCost.tsx'),
+    priceTableLib: await server.ssrLoadModule('@/lib/customer-price-table.ts'),
+    executionLib: await server.ssrLoadModule('@/lib/execution-cost.ts'),
     collapsible: await server.ssrLoadModule('/src/components/Collapsible.tsx'),
     chartUi: await server.ssrLoadModule('/src/components/AnalyticsChart.tsx'),
     scenUi: await server.ssrLoadModule('/src/components/RicScenarioPanel.tsx'),
@@ -1501,7 +1504,7 @@ test('товары и закупочные цены: у позиции — на�
   assert.match(out, /<a href="https:\/\/shop3\.ru\/price"[^>]*rel="noopener noreferrer"/, 'ссылка открывается безопасно');
   assert.match(t, /shop3\.ru — 5 100 ₽\/т, 20\.10\.2026/);
   assert.match(t, /shop9\.ru — 5 150 ₽\/т, 19\.10\.2026 · «Уголь ДПК 6-13»/, 'название у поставщика показано, если отличается');
-  assert.match(t, /Цены только по 1 из 3 позиций/, 'цены не по всем позициям — бейдж говорит это прямо');
+  assert.match(t, /Точные цены только по 1 из 3 позиций/, 'цены не по всем позициям — бейдж говорит это прямо');
   assert.match(out, /bg-danger\/10 text-danger/, 'и он красный (владелец, 23.10.2026: «заметнее красным цветом или бейджик»)');
   assert.match(t, /закупка по найденным ценам: 7 650 000 ₽ \(по 1 из 3\)/);
   assert.match(t, /цены на 20\.10\.2026/);
@@ -1515,7 +1518,7 @@ test('товары и закупочные цены: цен меньше пят�
   const mixed = priceCard([priceRow(), priceRow({ id: 'p2', name: 'Кокс или эквивалент', state: 'none', median: null, range: null, n: 0, sources: [], cost: null })]);
   const mixedText = text(mixed);
   assert.equal(mixedText.includes('Кокс или'), false, 'по позиции цен нет — карточки у неё нет, «или эквивалент» из названия убрано');
-  assert.match(mixedText, /Цены только по 1 из 2 позиций/);
+  assert.match(mixedText, /Точные цены только по 1 из 2 позиций/);
   assert.match(mixedText, /Без цены: Кокс — поиск подходящих цен не нашёл: у продавцов может быть «цена по запросу», запросите коммерческое предложение/, 'позиции без цены названы в строке под бейджем');
   const skipped = text(priceCard([priceRow(), priceRow({ id: 'p3', name: 'Кокс', state: 'not-searched', median: null, range: null, n: 0, sources: [], cost: null })]));
   assert.match(skipped, /Без цены: Кокс — по части позиций не искали: ищем до шести главных/);
@@ -1528,6 +1531,34 @@ test('товары и закупочные цены: цен меньше пят�
     assert.equal(priceCard([priceRow({ state, median: null, range: null, n: 0, sources: [], cost: null })]), '', `состояние «${state}» — блока нет`);
   }
   assert.equal(priceCard([]), '');
+});
+
+test('товары и закупочные цены: аналоги — тот же вид товара с другими характеристиками показан отдельно, с пометкой «не цена позиции»; позиция с аналогами не числится «без цены»; одни аналоги — блок есть, но бейдж говорит «точных цен нет»', () => {
+  const analogs = { n: 3, range: { from: 11150, to: 16100 }, sources: [{ host: 'dobro.io', product: 'Стол прямоугольный PROSTO 120х60', price: 13300, date: '2026-10-29', url: 'https://dobro.io/p' }] };
+  const onlyAnalogs = priceCard([priceRow({ id: 'p2', name: 'Стол прямоугольный на 1 рабочее место', unit: 'шт', state: 'none', median: null, range: null, n: 0, sources: [], cost: null, analogs })], { cost: null, costPositions: 0 }, 5);
+  const t = text(onlyAnalogs);
+  assert.match(t, /Ближайшие аналоги/);
+  assert.match(t, /по 1 позиции точной цены нет/);
+  assert.match(t, /Стол прямоугольный на 1 рабочее место · 1500 шт/);
+  assert.match(t, /11 150 ₽ – 16 100 ₽\/шт · аналогов: 3/);
+  assert.match(t, /dobro\.io — 13 300 ₽\/шт, 29\.10\.2026 · «Стол прямоугольный PROSTO 120х60»/);
+  assert.match(t, /Точных цен нет — только аналоги \(1 из 5\)/);
+  assert.equal(t.includes('Без цены'), false, 'позиция с аналогами не «без цены»');
+  const withExact = text(priceCard([priceRow(), priceRow({ id: 'p2', name: 'Стол', state: 'none', median: null, range: null, n: 0, sources: [], cost: null, analogs })], {}, 2));
+  assert.match(withExact, /Точные цены только по 1 из 2 позиций/);
+  assert.match(withExact, /Ближайшие аналоги/);
+  assert.match(withExact, /закупка по найденным ценам: 7 650 000 ₽/, 'аналоги в закупку по найденным ценам не входят');
+});
+
+test('товары и закупочные цены: у нескольких позиций одного вида одинаковые аналоги — показаны одним блоком с названиями позиций, а не десятком одинаковых строк', () => {
+  const analogs = { n: 5, range: { from: 11150, to: 16268 }, sources: [{ host: 'dobro.io', product: 'Стол прямоугольный PROSTO 120х60', price: 13300, date: '2026-10-29', url: null }] };
+  const desk = (id, name) => priceRow({ id, name, unit: 'шт', qty: '1', state: 'none', median: null, range: null, n: 0, sources: [], cost: null, analogs });
+  const rows = [desk('a', 'Стол прямоугольный на 8 рабочих мест'), desk('b', 'Стол квадратный на 8 рабочих мест'), desk('c', 'Стол рабочий, с выкатной тумбой'), desk('d', 'Стол рабочий, с выкатной тумбой'), desk('e', 'Стол прямоугольный, раскладной')];
+  const t = text(priceCard(rows, { cost: null, costPositions: 0 }, 5));
+  assert.equal((t.match(/dobro\.io — 13 300 ₽/g) ?? []).length, 1, 'источники показаны один раз, а не пять');
+  assert.match(t, /Стол прямоугольный на 8 рабочих мест; Стол квадратный на 8 рабочих мест; Стол рабочий, с выкатной тумбой и ещё 2/);
+  assert.match(t, /11 150 ₽ – 16 268 ₽\/шт · аналогов: 5/);
+  assert.match(t, /по 5 позициям точной цены нет/);
 });
 
 test('товары и закупочные цены: блок стоит на экране закупки после плашки итога и подключён к хуку рынка; платный поиск при выключенном ИИ по-прежнему не идёт', () => {
@@ -1551,7 +1582,7 @@ test('нет файла технических требований: строк�
 test('«Открыть аналитику»: позиции берутся из документов и цены ищутся до открытия экрана — только при включённом ИИ, одним поиском по главным позициям; идёт индикатор', () => {
   const src = readFileSync(path.join(root, 'src/real/analytics-intake.tsx'), 'utf8');
   assert.match(src, /positionsFromDocuments\(docs\)/, 'позиции из документов (бланк «Спецификация» или таблица товаров)');
-  assert.match(src, /pickPositions\(found\.positions, MAX_SEARCH_POSITIONS\)/, 'главные позиции — те же, что ищет экран закупки: подпись совпадает, повторного поиска нет');
+  assert.match(src, /planSearch\(withTablePrices\(found\.positions, findCustomerPriceTable\(docs\)\), MAX_SEARCH_POSITIONS\)\.picks/, 'главные позиции — те же, что ищет экран закупки: подпись совпадает, повторного поиска нет');
   assert.match(src, /aiOn\) \{/, 'без включённого ИИ поиск не идёт');
   assert.match(src, /searchLivePrices\(id, picks, placeOf\(docs\)\?\.region\.name \?\? null, signatureOf\(picks\)\)/);
   assert.match(src, /savePrices\(id, saved\)/, 'найденное сохраняется у закупки — экран откроется уже с ценами');
@@ -1763,4 +1794,133 @@ test('объём услуги: детодни из ТЗ, цена заказчи
   const screen = readFileSync(path.join(root, 'src/real/analytics.tsx'), 'utf8');
   assert.match(screen, /findServiceVolume\(plain\)/);
   assert.ok(screen.indexOf('<ServiceVolumeCard') < screen.indexOf('<TenderRating'), 'объём — наверху, выше рейтинга');
+});
+
+// «Сколько стоит исполнение» по таблице обоснования цены заказчика (29.10.2026): строки таблицы так, как их переписывает распознавание снимка.
+const bratskRows = [
+  ['1', 'Офисное кресло', '7,00', '6 905,20 | 8 300,00 | 0,00 | 5 510,00 | 0,00 | 0,00', '6 905,07', '48 335,49'],
+  ['12', 'Кровать односпальная с металлическим основанием', '20,00', '19 642,00 | 24 390,00 | 22 000,00 | 0,00 | 0,00 | 0,00', '22 010,67', '440 213,40'],
+  ['13', 'Комод', '15,00', '7 667,70 | 0,00 | 0,00 | 0,00 | 9 825,00 | 7 469,00', '8 320,57', '124 808,55'],
+  ['14', 'Тумба с выдвижным ящиком и дверцей', '50,00', '7 454,20 | 9 700,00 | 9 500,00 | 0,00 | 0,00 | 0,00', '8 884,73', '444 236,50'],
+].map(([no, name, qty, offers, mean, total]) => [no, name, '31.09.12.121', 'шт', qty, offers, '1 000,00', '10,00', mean, total].join(' | ')).join('\n');
+
+test('сколько стоит исполнение: вывод, минимум/средняя/максимум, самые дорогие позиции, сценарии с доставкой и остатком; подключено к экрану закупки и к себестоимости; поиск в интернете идёт и сравнивается с ценами заказчика', () => {
+  const table = mods.priceTableLib.findCustomerPriceTable([{ name: 'Извещение .docx', text: bratskRows }]);
+  assert.ok(table, 'таблица найдена');
+  const cost = mods.executionLib.executionCost(table, 1_150_000);
+  const terms = { place: 'г. Братск', term: '15 календарных дней', duties: ['разгрузка', 'подъём на этаж', 'сборка', 'установка'], priceClause: '2.5' };
+  const out = renderToStaticMarkup(h(mods.executionUi.ExecutionCostCard, { cost, table, terms }));
+  const t = text(out);
+  // Разделы — как в образце владельца (расчёт другой модели по мебели для Братска).
+  assert.match(t, /Сколько стоит исполнение/);
+  assert.match(t, /Подтверждено/);
+  assert.match(t, /1\. Минимальная, средняя и максимальная цена/);
+  assert.match(t, /Минимум по позициям/);
+  assert.match(t, /Максимум по позициям/);
+  assert.match(t, /а не один поставщик на весь комплект/);
+  assert.match(t, /2\. Самые дорогие позиции/);
+  assert.match(t, /Тумба с выдвижным ящиком и дверцей/);
+  assert.match(t, /Заранее получите подтверждённые цены на:/);
+  assert.match(t, /3\. Сколько реально может стоить исполнение/);
+  assert.match(t, /Договор: поставка в течение 15 календарных дней, место — г\. Братск; поставщик сам делает разгрузку, подъём на этаж, сборку и установку — это входит в цену договора \(п\. 2\.5\)/);
+  assert.match(t, /резерв 6,5 \/ 8,5 \/ 11 % от товаров/);
+  assert.match(t, /Резерв на доставку и сборку/);
+  assert.match(t, /Экономный/);
+  assert.match(t, /Базовый/);
+  assert.match(t, /Дорогой/);
+  assert.match(t, /резерв второй раз прибавлять не нужно/);
+  assert.match(t, /4\. По какой цене участвовать/);
+  assert.match(t, /Остаток при НМЦ/);
+  assert.match(t, /При −5 % \(1 092 500 ₽\)/);
+  assert.match(t, /до налогов, административных и прочих расходов/);
+  assert.match(t, /Вывод/);
+  assert.match(t, /Перед участием подтвердите цены и сроки на .+, а также стоимость доставки, разгрузки, подъёма на этаж, сборки и установки\./);
+  assert.equal(t.includes('Технические риски'), false, 'нет найденных — нет раздела');
+  const withIssue = text(renderToStaticMarkup(h(mods.executionUi.ExecutionCostCard, { cost, table, specIssues: [{ position: 'Офисное кресло Chairman 696 LT', text: 'заказчик требует нагрузку до 150 кг, у производителя — до 100 кг', host: 'chairman.ru', url: null }] })));
+  assert.match(withIssue, /Технические риски Офисное кресло Chairman 696 LT: заказчик требует нагрузку до 150 кг, у производителя — до 100 кг · chairman\.ru/);
+  assert.match(t, /Извещение \.docx · позиций 4/);
+  assert.match(out, /table-fixed/, 'таблицы не раздвигают экран на телефоне');
+  const screen = readFileSync(path.join(root, 'src/real/analytics.tsx'), 'utf8');
+  assert.match(screen, /<ExecutionCostCard cost=\{execution\} table=\{priceTable\} compare=\{compare\} webNote=\{market\.finding\.text\} terms=\{terms\} dropped=\{market\.dropped\} \/>/);
+  assert.ok(screen.indexOf('<ExecutionCostCard') < screen.indexOf('<PositionPricesCard'), 'блок — выше найденных в интернете цен');
+  assert.match(screen, /stepCalc\.costs \?\? tableCost \?\? autoCost\?\.total/, 'себестоимость по таблице заказчика — раньше цен из интернета');
+  const hook = readFileSync(path.join(root, 'src/real/market.ts'), 'utf8');
+  assert.equal(hook.includes('ownPrices'), false, 'поиск в интернете не отключается из-за таблицы заказчика (владелец: «нужен обязательно»)');
+  assert.match(hook, /withTablePrices\(own, table\)/, 'цены заказчика — к позициям: поиск начинается с самых дорогих');
+  const intake = readFileSync(path.join(root, 'src/real/analytics-intake.tsx'), 'utf8');
+  assert.match(intake, /planSearch\(withTablePrices\(found\.positions, findCustomerPriceTable\(docs\)\), MAX_SEARCH_POSITIONS\)/, 'та же раскладка, что на экране закупки');
+
+  // Без цен из интернета — строка о поиске; с ними — таблица сравнения.
+  assert.match(t, /5\. Цены в интернете/);
+  assert.match(t, /Цены в интернете ещё не найдены/);
+  const compare = {
+    rows: [
+      { id: 'doc-1', name: 'Офисное кресло Chairman 696 LT', qty: 7, customer: { min: 5510, mean: 6905.07, max: 8300 }, web: { kind: 'exact', from: 5223.8, to: 5223.8, mid: 5223.8, n: 1, host: 'o-manager.ru' }, diffPct: -24.3, where: 'below' },
+      { id: 'doc-4', name: 'Стол прямоугольный на 1 рабочее место', qty: 1, customer: { min: 11468, mean: 17556, max: 23000 }, web: { kind: 'analog', from: 11150, to: 16268, mid: 13709, n: 5, host: 'dobro.io' }, diffPct: -21.9, where: 'inside' },
+    ],
+    matched: 20, exact: 1, analog: 1, exactDiffPct: -24.3,
+  };
+  const withWeb = text(renderToStaticMarkup(h(mods.executionUi.ExecutionCostCard, { cost, table, compare, webNote: 'найдено 6 цен' })));
+  assert.match(withWeb, /точные цены в среднем −24,3 % к средней у заказчика/);
+  assert.match(withWeb, /Офисное кресло Chairman 696 LT/);
+  assert.match(withWeb, /цен: 1 · o-manager\.ru · дешевле всех у заказчика/);
+  assert.match(withWeb, /аналог: другие размеры · 5 · dobro\.io · в диапазоне заказчика/);
+  assert.match(withWeb, /5 510 ₽ – 6 905 ₽/, 'у заказчика: от самой низкой до средней');
+  assert.match(withWeb, /11 150 ₽ – 16 268 ₽/);
+  assert.match(withWeb, /−21,9 %/);
+  assert.match(withWeb, /Сравнено позиций: 2 из 4 · по 1 — аналоги, не та же позиция/);
+});
+
+test('сколько стоит исполнение: пометка «проверьте, тот ли товар» у подозрительной цены и строка про отброшенные цены; агент по умолчанию, обычный сбор — по PRICE_SEARCH_ENGINE=collect', () => {
+  const table = mods.priceTableLib.findCustomerPriceTable([{ name: 'Извещение .docx', text: bratskRows }]);
+  const cost = mods.executionLib.executionCost(table, 1_150_000);
+  const compare = {
+    rows: [{ id: 'doc-12', name: 'Кровать односпальная', qty: 20, customer: { min: 19642, mean: 22010, max: 24390 }, web: { kind: 'exact', from: 7040, to: 7040, mid: 7040, n: 1, host: 'a.ru' }, diffPct: -68, where: 'below', suspicious: true }],
+    matched: 4, exact: 1, analog: 0, exactDiffPct: -68,
+  };
+  const t = text(renderToStaticMarkup(h(mods.executionUi.ExecutionCostCard, { cost, table, compare, dropped: 2 })));
+  assert.match(t, /дешевле всех у заказчика · проверьте, тот ли товар/);
+  assert.match(t, /отброшено цен: 2 — в 3 раза ниже или выше, чем у заказчика, похоже, не тот товар/);
+  const clean = text(renderToStaticMarkup(h(mods.executionUi.ExecutionCostCard, { cost, table, compare: { ...compare, rows: [{ ...compare.rows[0], suspicious: false }] } })));
+  assert.equal(clean.includes('проверьте, тот ли товар'), false);
+  assert.equal(clean.includes('отброшено цен'), false);
+  const hook = readFileSync(path.join(root, 'src/real/market.ts'), 'utf8');
+  assert.match(hook, /dropImplausible\(expanded, bounds, vatFactor\)/, 'неправдоподобные цены не идут ни в расчёт, ни в сравнение');
+  const route = readFileSync(path.join(root, '../../web/src/app/api/prices/route.ts'), 'utf8');
+  assert.match(route, /PRICE_SEARCH_ENGINE !== "collect"/);
+});
+
+test('загрузка в «Аналитику»: при включённом «ИИ» читаются большие картинки внутри Word (таблица цен заказчика снимком), сканы по-прежнему не читаются', () => {
+  const intake = readFileSync(path.join(root, 'src/real/analytics-intake.tsx'), 'utf8');
+  assert.match(intake, /readDocuments\(files, fetch, aiOn \? 'pictures' : false\)/);
+  const route = readFileSync(path.join(root, '../../web/src/app/api/documents/route.ts'), 'utf8');
+  assert.match(route, /ocrField === "pictures"/);
+  assert.match(route, /extractText\(file, \{ ocr, pictures \}\)/);
+});
+
+test('сколько стоит исполнение без таблицы заказчика: блок строится из цен в интернете, без раздела «Цены в интернете», с пометкой про аналоги и позиции без цены', () => {
+  const table = {
+    doc: 'закупочные цены из интернета', total: 100000, printedTotal: null, fromPicture: false, internet: { found: 2, analogs: 1, filled: 1, missing: 0 },
+    rows: [
+      { no: null, name: 'Тумба', unit: 'шт', qty: 50, offers: [7454, 9500, 9700], mean: 9500, total: 475000, checked: true },
+      { no: null, name: 'Кровать', unit: 'шт', qty: 20, offers: [19000, 21000], mean: 20000, total: 400000, checked: true },
+      { no: null, name: 'Шкаф', unit: 'шт', qty: 10, offers: [], mean: 12000, total: 120000, checked: false },
+    ],
+  };
+  const cost = mods.executionLib.executionCost(table, 1_150_000);
+  const t = text(renderToStaticMarkup(h(mods.executionUi.ExecutionCostCard, { cost, table })));
+  assert.match(t, /Сколько стоит исполнение/);
+  assert.match(t, /1. Минимальная, средняя и максимальная цена/);
+  assert.match(t, /медиана найденных цен/);
+  assert.match(t, /Тумба/);
+  assert.match(t, /3. Сколько реально может стоить исполнение/);
+  assert.match(t, /4. По какой цене участвовать/);
+  assert.equal(t.includes('5. Цены в интернете'), false, 'раздел сравнения нужен только при таблице заказчика');
+  assert.match(t, /точные цены по 2 поз\., по аналогам — 1 \(другие размеры, ориентир\), цена заказчика — 1 \(прибыли по ним нет\)/);
+  const incomplete = text(renderToStaticMarkup(h(mods.executionUi.ExecutionCostCard, { cost: mods.executionLib.executionCost({ ...table, internet: { ...table.internet, missing: 2 } }, 1_150_000), table: { ...table, internet: { ...table.internet, missing: 2 } } })));
+  assert.match(incomplete, /Цен найдено не по всем позициям/);
+  assert.match(incomplete, /без цены — 2/);
+  const screen = readFileSync(path.join(root, 'src/real/analytics.tsx'), 'utf8');
+  assert.ok(screen.includes('const priceTable = customerTable ?? webTable;'), 'нет таблицы заказчика — блок из цен в интернете');
+  assert.ok(screen.includes('execution && !priceTable?.internet?.missing'), 'неполный итог в себестоимость не идёт');
 });

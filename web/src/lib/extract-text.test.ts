@@ -2,7 +2,7 @@
 // Запросов к ИИ тут нет: сканы проверяются только до того места, где их пришлось бы распознавать.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { Document, Packer, Paragraph } from "docx";
+import { Document, ImageRun, Packer, Paragraph, Table, TableCell, TableRow } from "docx";
 import ExcelJS from "exceljs";
 import { extractText } from "./extract-text.ts";
 import { pdf } from "./pdf-fixtures.ts";
@@ -138,4 +138,94 @@ test("временный файл Word «~$…» — не документ: пр
   const lock = file("~$формационная карта.docx", new Uint8Array(162));
   const result = await extractText(lock);
   assert.deepEqual(result, { ok: false, reason: "это временный файл Word («~$…»), а не документ — настоящий файл лежит рядом, загрузите его" });
+});
+
+// Таблица «Обоснование начальной цены», вставленная в Word снимком (Братский дом-интернат, 29.10.2026): большая картинка вне таблиц распознаётся, фото товаров в ячейках — нет.
+const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
+const wordWithPictures = () =>
+  Packer.toBuffer(
+    new Document({
+      sections: [
+        {
+          children: [
+            new Paragraph("Описание объекта закупки"),
+            new Table({
+              rows: [
+                new TableRow({
+                  children: [
+                    new TableCell({ children: [new Paragraph("Стул")] }),
+                    new TableCell({ children: [new Paragraph({ children: [new ImageRun({ type: "png", data: PNG, transformation: { width: 150, height: 150 } })] })] }),
+                  ],
+                }),
+              ],
+            }),
+            new Paragraph("Приложение № 5 к извещению о проведении закупки"),
+            new Paragraph({ children: [new ImageRun({ type: "png", data: PNG, transformation: { width: 950, height: 500 } })] }),
+          ],
+        },
+      ],
+    }),
+  );
+const ROW = "16 | Стул | 31.01.11.159 | шт | 20,00 | 2 854,80 | 3 500,00 | 5 000,00 | 0,00 | 1 100,62 | 29,08 | 3 784,93 | 75 698,60";
+
+test("Word: таблица-снимок вне таблиц распознаётся и дописывается под заголовком; фото товара в ячейке не распознаётся (за него не платим)", async () => {
+  const seen: number[] = [];
+  const deps = {
+    renderPages: async () => {
+      throw new Error("не нужен");
+    },
+    transcribe: async (images: { data: Buffer }[]) => {
+      seen.push(images.length);
+      return images.map(() => ROW);
+    },
+  };
+  const bytes = await wordWithPictures();
+  const result = await withKey("test-key", () => extractText(file("Извещение.docx", bytes), { deps }));
+  assert.deepEqual(seen, [1], "одна картинка — снимок таблицы; фото стула в ячейке не отправлялось");
+  assert.ok(result.ok);
+  const text = result.ok ? result.text : "";
+  assert.match(text, /Картинка в документе: Приложение № 5 к извещению о проведении закупки \(распознано\)\n\n16 \| Стул/);
+  const spans = result.ok ? (result.map?.spans ?? []) : [];
+  const at = text.indexOf("16 | Стул");
+  assert.ok(spans.some((sp) => sp.ocr && sp.from === at), "в карте отмечено: распознано со снимка");
+
+  seen.length = 0;
+  const off = await withKey("test-key", () => extractText(file("Извещение.docx", bytes), { ocr: false, deps }));
+  assert.equal(seen.length, 0, "распознавание выключено — картинки не уходят в ИИ");
+  assert.ok(off.ok && !off.text.includes("Картинка в документе"));
+  const noKey = await withKey(undefined, () => extractText(file("Извещение.docx", bytes), { deps }));
+  assert.equal(seen.length, 0, "ключа нет — тоже");
+  assert.ok(noKey.ok);
+  const failed = await withKey("test-key", () =>
+    extractText(file("Извещение.docx", bytes), {
+      deps: {
+        ...deps,
+        transcribe: async () => {
+          throw new Error("сбой");
+        },
+      },
+    }),
+  );
+  assert.ok(failed.ok, "сбой распознавания не ломает чтение документа");
+});
+
+test("Word: режим «только картинки» (загрузка в «Аналитику»): сканы выключены, но таблица-снимок распознаётся", async () => {
+  const seen: number[] = [];
+  const deps = {
+    renderPages: async () => {
+      throw new Error("не нужен");
+    },
+    transcribe: async (images: { data: Buffer }[]) => {
+      seen.push(images.length);
+      return images.map(() => ROW);
+    },
+  };
+  const bytes = await wordWithPictures();
+  const only = await withKey("test-key", () => extractText(file("Извещение.docx", bytes), { ocr: false, pictures: true, deps }));
+  assert.deepEqual(seen, [1]);
+  assert.ok(only.ok && only.text.includes("Картинка в документе") && only.text.includes("16 | Стул"));
+  seen.length = 0;
+  const none = await withKey("test-key", () => extractText(file("Извещение.docx", bytes), { ocr: false, deps }));
+  assert.equal(seen.length, 0, "без режима картинки не читаются");
+  assert.ok(none.ok && !none.text.includes("Картинка в документе"));
 });

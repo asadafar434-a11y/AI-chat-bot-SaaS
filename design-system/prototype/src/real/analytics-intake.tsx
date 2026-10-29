@@ -3,7 +3,10 @@ import { savePrices } from '@/lib/analytics-store';
 import { introOf, purchaseForAnalytics, type Intro, type IntakeFields } from '@/lib/analytics-intake';
 import { placeOf } from '@/lib/hidden-costs';
 import { positionsFromDocuments } from '@/lib/indicative-price';
-import { pickPositions, signatureOf } from '@/lib/price-cache';
+import { findCustomerPriceTable } from '@/lib/customer-price-table';
+import { withTablePrices } from '@/lib/price-compare';
+import { planSearch } from '@/lib/price-families';
+import { signatureOf } from '@/lib/price-cache';
 import { saveExcelFiles } from '@/lib/forms-store';
 import { errorMessage } from '@/lib/http-error';
 import { extractRequirements, fromRequirements } from '@/lib/purchase';
@@ -63,8 +66,8 @@ export function AnalyticsIntake({ open, onClose, onCreated }: { open: boolean; o
     setBusy('reading');
     setError('');
     try {
-      // Распознавание сканов — платное (ИИ), поэтому здесь выключено.
-      const read = await readDocuments(files, fetch, false);
+      // Сканы и фото — платное распознавание, поэтому здесь выключено; но таблица цен заказчика, вставленная в Word снимком, нужна расчёту: при включённом «ИИ» читаются только большие картинки внутри Word (около 5 ₽ за картинку).
+      const read = await readDocuments(files, fetch, aiOn ? 'pictures' : false);
       for (const file of files) sources.current.set(file.name, file);
       const next = mergeUpload(upload, read);
       setUpload(next);
@@ -88,7 +91,9 @@ export function AnalyticsIntake({ open, onClose, onCreated }: { open: boolean; o
       // Всё остальное — до открытия экрана и одновременно: разбор документов и закупочные цены по позициям из документов.
       const docs = upload.documents.map((d) => ({ name: d.name, text: d.text }));
       const found = positionsFromDocuments(docs);
-      const picks = found ? pickPositions(found.positions, MAX_SEARCH_POSITIONS) : [];
+      // Та же раскладка по видам товара, что и на экране закупки (real/market.ts): подпись совпадает, повторного платного поиска при открытии не будет.
+      // Цены заказчика из таблицы обоснования — к позициям (поиск начинается с самых дорогих видов товара); так же, как на экране закупки (real/market.ts), иначе подпись разойдётся и поиск повторится.
+      const picks = found ? planSearch(withTablePrices(found.positions, findCustomerPriceTable(docs)), MAX_SEARCH_POSITIONS).picks : [];
       if (aiOn) {
         setBusy('searching');
         setStatus(picks.length > 0 ? `Разбираю документы и ищу закупочные цены (позиций в документах: ${found!.positions.length}) — до двух минут.` : 'Разбираю документы — до двух минут.');

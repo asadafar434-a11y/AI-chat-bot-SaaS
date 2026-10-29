@@ -1,9 +1,10 @@
 import "server-only";
 import type { Observation } from "@/lib/market-observations";
+import type { Wanted } from "@/lib/price-extract";
 import { parsePricesRequest, searchQueriesFor, type PricePosition } from "@/lib/prices-request";
 import { badRequest, readJson } from "@/lib/read-json";
 import { moscowDay } from "@/lib/registry-types";
-import { collectPrices, type CollectDeps } from "@/server/market/collect";
+import { collectPrices, type CollectDeps, type CollectResult } from "@/server/market/collect";
 
 // «Найти закупочные цены в интернете по позициям закупки» (/api/prices): без кнопки, при открытии аналитики. По каждой позиции — поиск, чтение страниц платной моделью, проверка кода (lib/price-extract.ts).
 // Расходы ограничены тремя способами: потолок на запрос в рублях (перед каждым вызовом модели считается худший случай), бюджет ИИ на закупку (ai-guard) и лимиты на частоту запросов (proxy.ts).
@@ -28,6 +29,14 @@ export type PricesDeps = {
   now?: () => Date;
   /** Пауза между запросами к бесплатному поиску (см. CollectDeps.pause). */
   pause?: () => Promise<void>;
+  /** Поиск платный (встроенный поиск модели): сколько рублей он уже потратил в этом запросе — идёт в общий потолок. Бесплатному поиску не нужен. */
+  searchSpent?: () => number;
+  /** Худший расход одного поискового запроса, ₽: перед позицией столько оставляется в потолке на поиск. */
+  searchWorstRub?: number;
+  /** Сколько запросов в поиск на позицию (платный поиск — один; бесплатный — все). */
+  maxQueries?: number;
+  /** Пилот: поиск цен агентом (server/market/price-agent.ts) вместо обычного сбора — та же проверка цен кодом и тот же потолок; нет — обычный сбор. */
+  agent?: (options: { wanted: Wanted; capRub: number }) => Promise<CollectResult>;
   /** Официальный источник цен по позиции, если он есть (реестр предельных цен на лекарства): бесплатно и без модели. null или пусто — не лекарство или в реестре нет, идёт обычный поиск. */
   registry?: (position: PricePosition, day: string) => Promise<Observation[] | null>;
 };
@@ -60,6 +69,8 @@ export async function handlePrices(request: Request, deps: PricesDeps): Promise<
   const errors = new Set<string>();
   let spentRub = 0;
   let stopped = false;
+  // Расход на чтение страниц и на платный поиск вместе: потолок общий.
+  const totalSpent = () => Math.round((spentRub + (deps.searchSpent?.() ?? 0)) * 100) / 100;
   for (const p of positions) {
     // Лекарство из реестра предельных цен: официальные цены с датой решения, платный поиск по сайтам не нужен.
     const official = await deps.registry?.(p, day).catch(() => null);
@@ -68,24 +79,34 @@ export async function handlePrices(request: Request, deps: PricesDeps): Promise<
       continue;
     }
     if (results.length > 0) await deps.pause?.();
-    const queries = searchQueriesFor(p);
+    const queries = searchQueriesFor(p).slice(0, deps.maxQueries ?? Infinity);
     if (queries.length === 0) {
       results.push({ key: p.key, observations: [], pagesRead: 0, rejected: 0 });
       continue;
     }
-    const r = await collectPrices(
-      {
-        search: deps.search,
-        fetchPage: deps.fetchPage,
-        ask: (system, user) => deps.ask(system, user, appId),
-        worstCaseRub: deps.worstCaseRub,
-        usdRub: deps.usdRub,
-        today: () => day,
-        pause: deps.pause,
-      },
-      // Остаток потолка переходит дальше: что не потратила одна позиция, может потратить другая, но общий потолок не превышается.
-      { wanted: { name: p.name, unit: p.unit, region: p.region }, queries, maxPages: MAX_PAGES, maxCandidates: MAX_CANDIDATES, capRub: Math.min(perPosition * 2, deps.capRub - spentRub) },
-    );
+    // Платный поиск: если в потолке не осталось места даже на сам поиск — позицию не начинаем.
+    const searchReserve = (deps.searchWorstRub ?? 0) * queries.length;
+    if (deps.capRub - totalSpent() < searchReserve) {
+      stopped = true;
+      break;
+    }
+    const wanted = { name: p.name, unit: p.unit, region: p.region };
+    // Остаток потолка переходит дальше: что не потратила одна позиция, может потратить другая, но общий потолок не превышается.
+    const positionCap = Math.min(perPosition * 2, deps.capRub - totalSpent() - searchReserve);
+    const r = deps.agent
+      ? await deps.agent({ wanted, capRub: positionCap })
+      : await collectPrices(
+          {
+            search: deps.search,
+            fetchPage: deps.fetchPage,
+            ask: (system, user) => deps.ask(system, user, appId),
+            worstCaseRub: deps.worstCaseRub,
+            usdRub: deps.usdRub,
+            today: () => day,
+            pause: deps.pause,
+          },
+          { wanted, queries, maxPages: MAX_PAGES, maxCandidates: MAX_CANDIDATES, capRub: positionCap },
+        );
     spentRub = Math.round((spentRub + r.spentRub) * 100) / 100;
     for (const e of r.searchErrors) errors.add(/подтвердить, что вы человек|не отвечает/.test(e) ? "поиск не ответил (просит подтвердить, что вы человек)" : "поиск не удался");
     results.push({
@@ -98,11 +119,11 @@ export async function handlePrices(request: Request, deps: PricesDeps): Promise<
       onRequest: r.pages.filter((x) => x.skipReason === "цена по запросу").length,
       reasons: [...new Set(r.rejected.map((x) => x.reason))],
     });
-    if (r.stoppedByCap || deps.capRub - spentRub <= 0) {
+    if (r.stoppedByCap || deps.capRub - totalSpent() <= 0) {
       stopped = true;
       break;
     }
   }
   for (const p of positions) if (!results.some((r) => r.key === p.key)) results.push({ key: p.key, observations: [], pagesRead: 0, rejected: 0 });
-  return Response.json({ asOf: day, spentRub, stoppedByCap: stopped, searchErrors: [...errors], results });
+  return Response.json({ asOf: day, spentRub: totalSpent(), stoppedByCap: stopped, searchErrors: [...errors], results });
 }
