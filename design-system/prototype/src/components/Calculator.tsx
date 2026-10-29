@@ -2,10 +2,12 @@ import { useRef, useState } from 'react';
 import { calculatorsBySphere, findCalculator } from '@/lib/core/calculators/registry';
 import type { CalculatorInput, CalculatorResult, CalculatorValue } from '@/lib/core/calculators/types';
 import { coreModules, type CoreModuleKey } from '@/lib/core/modules/index';
+import { assertAiEnabled } from '@/lib/ai-mode';
 import { titleOf, type Purchase } from '@/lib/purchase';
 import { getDocuments } from '@/lib/purchase-store';
 import { forServer, readDocuments, type SentDocument } from '@/lib/read-documents';
 import { AlertTriangle, Calculator as CalculatorIcon, RefreshCw, Upload } from '../lib/icons';
+import { useAiEnabled } from '../lib/use-ai-mode';
 import { AIDisclaimer, Badge, Button, Card, fieldClass } from './ui';
 
 const SUB_SPHERE_LABELS: Record<string, string> = { general: 'Общий', device: 'Медизделия', medicine: 'Лекарства' };
@@ -144,6 +146,8 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
   const [hiddenCosts, setHiddenCosts] = useState<string[]>([]);
   const [aiError, setAiError] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
+  // Общий переключатель «ИИ» в шапке меню: выключен — запрос к модели не уходит и кнопка недоступна.
+  const [aiOn] = useAiEnabled();
 
   const descriptor = findCalculator(sphereKey, subSphereKey);
 
@@ -190,6 +194,7 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
     setAiNote('');
     setHiddenCosts([]);
     try {
+      assertAiEnabled();
       let documents: SentDocument[] = [];
       if (docSource === 'purchase' && purchaseId) documents = await getDocuments(purchaseId);
       else if (docSource === 'upload') documents = uploaded;
@@ -330,10 +335,15 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
             <p className="text-[12px] text-muted-foreground">
               С документами ИИ сначала ищет цифры и скрытые расходы в них самих; без документов — оценивает по рыночным ориентирам.
             </p>
-            <Button type="button" variant="secondary" size="sm" onClick={fillWithAi} disabled={aiBusy}>
+            <Button type="button" variant="secondary" size="sm" onClick={fillWithAi} disabled={aiBusy || !aiOn}>
               <RefreshCw className={`size-3.5 ${aiBusy ? 'animate-spin' : ''}`} />
               {aiBusy ? 'Запрашиваю ИИ…' : 'Подставить значения с ИИ'}
             </Button>
+            <p className="text-[12px] text-muted-foreground">
+              {aiOn
+                ? `Платно: ${docSource === 'none' ? 'без документов — около 2–5 ₽' : 'с документами — от 5 до 50 ₽, зависит от их объёма'}. Режим «Вручную» бесплатный.`
+                : 'ИИ выключен: включите переключатель «ИИ» в шапке меню или считайте вручную.'}
+            </p>
           </div>
         )}
 

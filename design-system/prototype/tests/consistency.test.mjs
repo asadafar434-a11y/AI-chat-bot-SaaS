@@ -65,3 +65,14 @@ test('«Состав исполнителей» свёрнут по умолча
   assert.match(review, /dispatchEvent\(new Event\('tl:open-cast'\)\)/);
   assert.match(cast, /CAST_OPEN_EVENT = 'tl:open-cast'/);
 });
+
+test('«Калькулятор»: кнопка «Подставить значения с ИИ» платная — не работает при выключенном «ИИ», проверка стоит до запроса, цена написана рядом', () => {
+  const calc = src('components/Calculator.tsx');
+  const guard = calc.indexOf('assertAiEnabled();');
+  const request = calc.indexOf("fetch('/api/calculator-ai-fill'");
+  assert.ok(guard > 0 && request > guard, 'проверка переключателя — до запроса к серверу');
+  assert.match(calc, /disabled=\{aiBusy \|\| !aiOn\}/);
+  assert.match(calc, /Платно: /);
+  assert.match(calc, /Режим «Вручную» бесплатный/);
+  assert.match(calc, /ИИ выключен: включите переключатель «ИИ» в шапке меню/);
+});
