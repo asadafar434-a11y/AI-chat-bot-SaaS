@@ -22,6 +22,6 @@ test("food: срок годности меньше требуемого даёт
 
 test("food: доставка считается по расстоянию и тарифу", () => {
   const result = foodCalculator.calculate({ ...validFoodInput.data, ...sampleLogisticsInput, riskScore: 0 });
-  const delivery = result.values.find((item) => item.key === "logistics.deliveryCost");
+  const delivery = result.values.find((item) => item.key === "delivery.deliveryCost");
   assert.equal(delivery?.value, 300 * 60);
 });

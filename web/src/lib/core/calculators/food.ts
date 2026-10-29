@@ -5,7 +5,7 @@ const SPHERE_KEY = "food";
 const SPHERE_LABEL = "Продукты питания";
 
 export const foodCalculator: CalculatorDescriptor = createStandardCalculators(
-  { sphereKey: SPHERE_KEY, subSphereKey: "general", sphereLabel: SPHERE_LABEL, kind: "goods" },
+  { sphereKey: SPHERE_KEY, subSphereKey: "general", sphereLabel: SPHERE_LABEL, kind: "goods", omitCostFields: ["installationCost", "warrantyCost"] },
   [
     {
       section: "shelfLife",
@@ -24,8 +24,8 @@ export const foodCalculator: CalculatorDescriptor = createStandardCalculators(
       }),
     },
     {
-      section: "logistics",
-      descriptor: createDeliveryInstallationCalculator({ sphereKey: SPHERE_KEY, subSphereKey: "general", sphereLabel: SPHERE_LABEL }),
+      section: "delivery",
+      descriptor: createDeliveryInstallationCalculator({ sphereKey: SPHERE_KEY, subSphereKey: "general", sphereLabel: SPHERE_LABEL, installation: false }),
     },
   ],
 );

@@ -6,6 +6,6 @@ const SUB_SPHERE_KEY = "general";
 const SPHERE_LABEL = "Канцтовары";
 
 export const stationeryCalculator: CalculatorDescriptor = createStandardCalculators(
-  { sphereKey: SPHERE_KEY, subSphereKey: SUB_SPHERE_KEY, sphereLabel: SPHERE_LABEL, kind: "goods" },
-  [{ section: "logistics", descriptor: createDeliveryInstallationCalculator({ sphereKey: SPHERE_KEY, subSphereKey: SUB_SPHERE_KEY, sphereLabel: SPHERE_LABEL }) }],
+  { sphereKey: SPHERE_KEY, subSphereKey: SUB_SPHERE_KEY, sphereLabel: SPHERE_LABEL, kind: "goods", omitCostFields: ["installationCost", "warrantyCost"] },
+  [{ section: "delivery", descriptor: createDeliveryInstallationCalculator({ sphereKey: SPHERE_KEY, subSphereKey: SUB_SPHERE_KEY, sphereLabel: SPHERE_LABEL, installation: false }) }],
 );

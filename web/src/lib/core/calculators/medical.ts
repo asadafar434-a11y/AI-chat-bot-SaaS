@@ -33,6 +33,8 @@ const medicineConfig: StandardCalculatorsConfig = {
   kind: "goods",
   lowRiskRuleId: "internal.low_risk",
   extraCostFields: [{ key: "coldChainCost", label: "Холодовая цепь" }],
+  // У лекарства нет монтажа и гарантии (вместо гарантии — срок годности).
+  omitCostFields: ["installationCost", "warrantyCost"],
 };
 
 function missingResult(explanation: string, keys: string[], ruleIds: string[], sourceUrls: string[]): CalculatorResult {
@@ -300,14 +302,15 @@ function createPostAwardChecklistCalculator(subSphereKey: "device" | "medicine")
     subSphereKey,
     title: subSphereKey === "device" ? "Комплект документов после контракта — медизделия" : "Комплект документов после контракта — лекарства",
     description: "Список документов, которые нужно подготовить после заключения контракта, по условиям закупки.",
+    // Монтаж, поверка, ТО и гарантия — у медизделий; у лекарств после контракта остаются холодовая цепь и маркировка.
     inputSchema: [
-      { key: "installationRequired", label: "Требуется монтаж", kind: "boolean", required: false },
-      { key: "verificationRequired", label: "Требуется поверка", kind: "boolean", required: false },
-      { key: "maintenanceRequired", label: "Требуется ТО", kind: "boolean", required: false },
-      { key: "warrantyRequired", label: "Требуется гарантия", kind: "boolean", required: false },
-      { key: "coldChainRequired", label: "Требуется холодовая цепь", kind: "boolean", required: false },
-      { key: "markingRequired", label: "Требуется маркировка", kind: "boolean", required: false },
-    ],
+      { key: "installationRequired", label: "Требуется монтаж", kind: "boolean" as const, required: false },
+      { key: "verificationRequired", label: "Требуется поверка", kind: "boolean" as const, required: false },
+      { key: "maintenanceRequired", label: "Требуется ТО", kind: "boolean" as const, required: false },
+      { key: "warrantyRequired", label: "Требуется гарантия", kind: "boolean" as const, required: false },
+      { key: "coldChainRequired", label: "Требуется холодовая цепь", kind: "boolean" as const, required: false },
+      { key: "markingRequired", label: "Требуется маркировка", kind: "boolean" as const, required: false },
+    ].filter((f) => subSphereKey === "device" || ["coldChainRequired", "markingRequired"].includes(f.key)),
     outputSchema: [{ key: "items", label: "Документы", kind: "string", required: false }],
     ruleIds: ["medical.device.registry_entry"],
     sourceUrls: ["Внутренняя политика Core v1"],

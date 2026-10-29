@@ -6,6 +6,6 @@ const SUB_SPHERE_KEY = "general";
 const SPHERE_LABEL = "Стройматериалы";
 
 export const buildingMaterialsCalculator: CalculatorDescriptor = createStandardCalculators(
-  { sphereKey: SPHERE_KEY, subSphereKey: SUB_SPHERE_KEY, sphereLabel: SPHERE_LABEL, kind: "goods" },
-  [{ section: "logistics", descriptor: createDeliveryInstallationCalculator({ sphereKey: SPHERE_KEY, subSphereKey: SUB_SPHERE_KEY, sphereLabel: SPHERE_LABEL }) }],
+  { sphereKey: SPHERE_KEY, subSphereKey: SUB_SPHERE_KEY, sphereLabel: SPHERE_LABEL, kind: "goods", omitCostFields: ["installationCost"] },
+  [{ section: "delivery", descriptor: createDeliveryInstallationCalculator({ sphereKey: SPHERE_KEY, subSphereKey: SUB_SPHERE_KEY, sphereLabel: SPHERE_LABEL, installation: false }) }],
 );

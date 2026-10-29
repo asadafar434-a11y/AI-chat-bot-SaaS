@@ -23,6 +23,11 @@ export type StandardCalculatorsConfig = {
   lowRiskRuleId?: string;
   /** Дополнительные поля затрат, которые модульный узел `calc.price` суммирует (например, `coldChainCost` у медицины). */
   extraCostFields?: { key: string; label: string }[];
+  /**
+   * Поля затрат товарной сферы, которых в ней не бывает: «Монтаж» у канцтоваров, продуктов, автомобилей и лекарств, «Гарантия» у продуктов, спецодежды и лекарств.
+   * Поле не показывается и не просится; расчёт читает его как ноль, как и раньше, когда оно не заполнено.
+   */
+  omitCostFields?: ("installationCost" | "warrantyCost")[];
 };
 
 const scheduleFieldNames = (kind: GoodsOrService) =>
@@ -46,6 +51,12 @@ function missingResult(explanation: string, needsInput: CalculatorFieldSchema[],
   return { values: [], explanation, usedInputs: [], ruleIds, sourceUrls, needsInput, warnings: [] };
 }
 
+/** Убирает из полей цены те, что в этой сфере не бывают (config.omitCostFields). */
+function dropOmittedCostFields(config: StandardCalculatorsConfig, fields: CalculatorFieldSchema[]): CalculatorFieldSchema[] {
+  const omit: string[] = config.omitCostFields ?? [];
+  return fields.filter((f) => !omit.includes(f.key));
+}
+
 /** Цена, маржа и порог антидемпинга — напрямую использует узел `calc.price` самого модуля. */
 export function createPriceMarginCalculator(config: StandardCalculatorsConfig): CalculatorDescriptor {
   const { sphereKey, subSphereKey, sphereLabel } = config;
@@ -57,7 +68,7 @@ export function createPriceMarginCalculator(config: StandardCalculatorsConfig): 
     subSphereKey,
     title: `Цена и маржа — ${sphereLabel}`,
     description: "Себестоимость, дополнительные затраты, маржа и порог антидемпинга (ст. 37 44-ФЗ) по правилам модуля.",
-    inputSchema: [
+    inputSchema: dropOmittedCostFields(config, [
       { key: "cost", label: "Себестоимость", kind: "number", required: true, unit: "₽" },
       { key: "offerPrice", label: "Цена предложения", kind: "number", required: true, unit: "₽" },
       { key: "nmck", label: "НМЦК", kind: "number", required: true, unit: "₽" },
@@ -73,7 +84,7 @@ export function createPriceMarginCalculator(config: StandardCalculatorsConfig): 
           ]),
       ...(config.extraCostFields ?? []).map((item) => ({ key: item.key, label: item.label, kind: "number" as const, required: false, unit: "₽" })),
       { key: "otherCost", label: "Прочие затраты", kind: "number" as const, required: false, unit: "₽" },
-    ],
+    ]),
     outputSchema: [
       { key: "additionalCosts", label: "Дополнительные затраты", kind: "number", required: false, unit: "₽" },
       { key: "totalCost", label: "Полная себестоимость", kind: "number", required: false, unit: "₽" },
@@ -477,6 +488,8 @@ export type ExecutionCostCalculatorConfig = {
   sphereKey: string;
   subSphereKey: string;
   sphereLabel: string;
+  /** Бывает ли в сфере аренда и содержание техники: у страхования, юридических услуг и недвижимости — нет (поле не показывается, считается как ноль). */
+  equipment?: boolean;
 };
 
 /**
@@ -488,6 +501,7 @@ export type ExecutionCostCalculatorConfig = {
  */
 export function createExecutionCostCalculator(config: ExecutionCostCalculatorConfig): CalculatorDescriptor {
   const { sphereKey, subSphereKey, sphereLabel } = config;
+  const withEquipment = config.equipment !== false;
   return {
     sphereKey,
     subSphereKey,
@@ -498,7 +512,7 @@ export function createExecutionCostCalculator(config: ExecutionCostCalculatorCon
       { key: "headcount", label: "Численность персонала", kind: "number", required: true, unit: "чел." },
       { key: "avgMonthlySalary", label: "Средняя зарплата на человека в месяц", kind: "number", required: true, unit: "₽" },
       { key: "payrollTaxRate", label: "Страховые взносы с ФОТ", kind: "number", required: true, unit: "%" },
-      { key: "equipmentMonthlyCost", label: "Аренда и содержание техники в месяц", kind: "number", required: false, unit: "₽" },
+      ...(withEquipment ? [{ key: "equipmentMonthlyCost", label: "Аренда и содержание техники в месяц", kind: "number" as const, required: false, unit: "₽" }] : []),
       { key: "otherMonthlyCost", label: "Прочие расходы в месяц (ИТ, СИЗ, админ.)", kind: "number", required: false, unit: "₽" },
       { key: "months", label: "Срок исполнения", kind: "number", required: true, unit: "мес." },
       { key: "reservePercent", label: "Резерв на непредвиденное", kind: "number", required: false, unit: "%" },
@@ -545,7 +559,7 @@ export function createExecutionCostCalculator(config: ExecutionCostCalculatorCon
         );
       }
 
-      const equipmentMonthlyCost = readNumber(input, "equipmentMonthlyCost") ?? 0;
+      const equipmentMonthlyCost = (withEquipment ? readNumber(input, "equipmentMonthlyCost") : null) ?? 0;
       const otherMonthlyCost = readNumber(input, "otherMonthlyCost") ?? 0;
       const reservePercent = readNumber(input, "reservePercent") ?? 0;
       const volume = readNumber(input, "volume");
@@ -567,7 +581,7 @@ export function createExecutionCostCalculator(config: ExecutionCostCalculatorCon
         values: [
           field("monthlyPayroll", "ФОТ с начислениями в месяц", monthlyPayroll, "₽"),
           field("totalPayroll", "ФОТ с начислениями за весь срок", totalPayroll, "₽"),
-          field("totalEquipment", "Техника за весь срок", totalEquipment, "₽"),
+          ...(withEquipment ? [field("totalEquipment", "Техника за весь срок", totalEquipment, "₽")] : []),
           field("totalOther", "Прочие расходы за весь срок", totalOther, "₽"),
           field("subtotal", "Итого до резерва", subtotal, "₽"),
           field("reserveAmount", "Резерв", reserveAmount, "₽"),
@@ -582,7 +596,7 @@ export function createExecutionCostCalculator(config: ExecutionCostCalculatorCon
           "headcount",
           "avgMonthlySalary",
           "payrollTaxRate",
-          "equipmentMonthlyCost",
+          ...(withEquipment ? ["equipmentMonthlyCost"] : []),
           "otherMonthlyCost",
           "months",
           "reservePercent",
@@ -603,6 +617,8 @@ export type DeliveryInstallationCalculatorConfig = {
   sphereKey: string;
   subSphereKey: string;
   sphereLabel: string;
+  /** Нужен ли монтаж в этой сфере: мебель, оргтехника, учебное оборудование, медизделия — да; канцтовары, продукты, спецодежда, стройматериалы — нет (тогда только доставка). */
+  installation?: boolean;
 };
 
 /**
@@ -613,24 +629,31 @@ export type DeliveryInstallationCalculatorConfig = {
  */
 export function createDeliveryInstallationCalculator(config: DeliveryInstallationCalculatorConfig): CalculatorDescriptor {
   const { sphereKey, subSphereKey, sphereLabel } = config;
+  const withInstallation = config.installation !== false;
   return {
     sphereKey,
     subSphereKey,
-    title: `Доставка и монтаж — ${sphereLabel}`,
-    description: "Стоимость доставки по расстоянию и тарифу и стоимость монтажной бригады по дневной ставке — разовые расходы на поставку.",
+    title: withInstallation ? `Доставка и монтаж — ${sphereLabel}` : `Доставка — ${sphereLabel}`,
+    description: withInstallation
+      ? "Стоимость доставки по расстоянию и тарифу и стоимость монтажной бригады по дневной ставке — разовые расходы на поставку."
+      : "Стоимость доставки по расстоянию и тарифу — разовый расход на поставку.",
     inputSchema: [
       { key: "deliveryDistanceKm", label: "Расстояние доставки", kind: "number", required: false, unit: "км" },
       { key: "deliveryRatePerKm", label: "Тариф за км", kind: "number", required: false, unit: "₽/км" },
       { key: "deliveryTripsCount", label: "Число рейсов", kind: "number", required: false },
-      { key: "installationCrewSize", label: "Размер монтажной бригады", kind: "number", required: false, unit: "чел." },
-      { key: "installationDays", label: "Срок монтажа", kind: "number", required: false, unit: "дн." },
-      { key: "installationDailyRate", label: "Дневная ставка монтажника", kind: "number", required: false, unit: "₽/чел./дн." },
-      { key: "installationOtherCost", label: "Прочие расходы на монтаж", kind: "number", required: false, unit: "₽" },
+      ...(withInstallation
+        ? [
+            { key: "installationCrewSize", label: "Размер монтажной бригады", kind: "number" as const, required: false, unit: "чел." },
+            { key: "installationDays", label: "Срок монтажа", kind: "number" as const, required: false, unit: "дн." },
+            { key: "installationDailyRate", label: "Дневная ставка монтажника", kind: "number" as const, required: false, unit: "₽/чел./дн." },
+            { key: "installationOtherCost", label: "Прочие расходы на монтаж", kind: "number" as const, required: false, unit: "₽" },
+          ]
+        : []),
     ],
     outputSchema: [
       { key: "deliveryCost", label: "Стоимость доставки", kind: "number", required: false, unit: "₽" },
-      { key: "installationCost", label: "Стоимость монтажа", kind: "number", required: false, unit: "₽" },
-      { key: "totalLogisticsCost", label: "Доставка и монтаж — итого", kind: "number", required: false, unit: "₽" },
+      ...(withInstallation ? [{ key: "installationCost", label: "Стоимость монтажа", kind: "number" as const, required: false, unit: "₽" }] : []),
+      { key: "totalLogisticsCost", label: withInstallation ? "Доставка и монтаж — итого" : "Доставка — итого", kind: "number", required: false, unit: "₽" },
     ],
     ruleIds: [`${sphereKey}.delivery_installation`],
     sourceUrls: ["Внутренняя политика Core v1 — модель стоимости доставки и монтажа"],
@@ -640,10 +663,10 @@ export function createDeliveryInstallationCalculator(config: DeliveryInstallatio
       const trips = readNumber(input, "deliveryTripsCount") ?? 1;
       const deliveryCost = distance !== null && ratePerKm !== null ? roundMoney(distance * ratePerKm * trips) : null;
 
-      const crewSize = readNumber(input, "installationCrewSize");
-      const days = readNumber(input, "installationDays");
-      const dailyRate = readNumber(input, "installationDailyRate");
-      const otherCost = readNumber(input, "installationOtherCost") ?? 0;
+      const crewSize = withInstallation ? readNumber(input, "installationCrewSize") : null;
+      const days = withInstallation ? readNumber(input, "installationDays") : null;
+      const dailyRate = withInstallation ? readNumber(input, "installationDailyRate") : null;
+      const otherCost = (withInstallation ? readNumber(input, "installationOtherCost") : null) ?? 0;
       const installationCost =
         crewSize !== null && days !== null && dailyRate !== null ? roundMoney(crewSize * days * dailyRate + otherCost) : otherCost > 0 ? roundMoney(otherCost) : null;
 
@@ -653,21 +676,18 @@ export function createDeliveryInstallationCalculator(config: DeliveryInstallatio
       return {
         values: [
           field("deliveryCost", "Стоимость доставки", deliveryCost, "₽"),
-          field("installationCost", "Стоимость монтажа", installationCost, "₽"),
-          field("totalLogisticsCost", "Доставка и монтаж — итого", totalLogisticsCost, "₽"),
+          ...(withInstallation ? [field("installationCost", "Стоимость монтажа", installationCost, "₽")] : []),
+          field("totalLogisticsCost", withInstallation ? "Доставка и монтаж — итого" : "Доставка — итого", totalLogisticsCost, "₽"),
         ],
         explanation:
           deliveryCost === null && installationCost === null
-            ? "Доставка и монтаж не посчитаны — поля не заполнены (это необязательные расходы)."
-            : `Доставка и монтаж — итого: ${totalLogisticsCost} ₽.`,
+            ? `${withInstallation ? "Доставка и монтаж не посчитаны" : "Доставка не посчитана"} — поля не заполнены (это необязательные расходы).`
+            : `${withInstallation ? "Доставка и монтаж" : "Доставка"} — итого: ${totalLogisticsCost} ₽.`,
         usedInputs: [
           "deliveryDistanceKm",
           "deliveryRatePerKm",
           "deliveryTripsCount",
-          "installationCrewSize",
-          "installationDays",
-          "installationDailyRate",
-          "installationOtherCost",
+          ...(withInstallation ? ["installationCrewSize", "installationDays", "installationDailyRate", "installationOtherCost"] : []),
         ].filter((key) => input[key] !== undefined),
         ruleIds: [`${sphereKey}.delivery_installation`],
         sourceUrls: ["Внутренняя политика Core v1 — модель стоимости доставки и монтажа"],

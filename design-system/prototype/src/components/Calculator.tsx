@@ -27,6 +27,7 @@ const SECTION_LABELS: Record<string, string> = {
   postAward: 'Документы после контракта',
   executionCost: 'Себестоимость исполнения (персонал и техника)',
   logistics: 'Доставка и монтаж',
+  delivery: 'Доставка',
 };
 const sectionLabel = (key: string) => SECTION_LABELS[key] ?? key;
 

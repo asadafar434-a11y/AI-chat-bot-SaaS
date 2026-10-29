@@ -5,7 +5,7 @@ const SPHERE_KEY = "automobiles";
 const SPHERE_LABEL = "Автомобили";
 
 export const automobilesCalculator: CalculatorDescriptor = createStandardCalculators(
-  { sphereKey: SPHERE_KEY, subSphereKey: "general", sphereLabel: SPHERE_LABEL, kind: "goods" },
+  { sphereKey: SPHERE_KEY, subSphereKey: "general", sphereLabel: SPHERE_LABEL, kind: "goods", omitCostFields: ["installationCost"] },
   [
     {
       section: "vehicleYear",
