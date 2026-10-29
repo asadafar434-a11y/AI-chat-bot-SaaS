@@ -33,7 +33,7 @@ export function ConsentGate({ children }: { children: ReactNode }) {
       <form onSubmit={submit} className="island grid w-full max-w-[400px] gap-4 p-6 max-sm:p-5">
         <div className="flex items-center gap-2.5">
           <BrandMark className="size-7" />
-          <span className="font-heading text-sm leading-5 font-bold tracking-[-0.01em]">Тендерный юрист</span>
+          <span className="font-heading text-sm leading-5 font-bold tracking-[-0.01em]">Тендекс</span>
         </div>
         <div className="grid gap-1">
           <h1 className="t-page">Перед началом</h1>

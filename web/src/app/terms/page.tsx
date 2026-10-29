@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { LegalPage, Mail, Review, Section, Val } from "@/components/legal-page";
 import { readOperator } from "@/lib/legal";
 
-export const metadata: Metadata = { title: "Условия использования — Тендерный юрист" };
+export const metadata: Metadata = { title: "Условия использования — Тендекс" };
 
 // Разделы 2–4 — то, что закон об ИИ (243-ФЗ) требует сообщать пользователю: что он имеет дело с ИИ,
 // кому принадлежат права на результаты и как получить к ним доступ и сохранить их.
@@ -14,7 +14,7 @@ export default async function TermsPage() {
   return (
     <LegalPage title="Условия использования" operator={op}>
       <p>
-        Договор между вами и <b><Val field={op.name} /></b> о пользовании сервисом «Тендерный юрист». Пользуясь сервисом, вы
+        Договор между вами и <b><Val field={op.name} /></b> о пользовании сервисом «Тендекс». Пользуясь сервисом, вы
         принимаете эти условия.
       </p>
 

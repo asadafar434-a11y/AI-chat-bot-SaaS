@@ -38,7 +38,7 @@ export function BackupIsland({ onRestored }: { onRestored?: () => void }) {
         setOutcome({ tone: "info", text: "Сохранять пока нечего: в организации нет ни закупок, ни образцов, ни реквизитов." });
         return;
       }
-      const name = `Тендерный юрист — копия ${new Date(backup.savedAt).toLocaleDateString("ru-RU")}.json`;
+      const name = `Тендекс — копия ${new Date(backup.savedAt).toLocaleDateString("ru-RU")}.json`;
       saveFile(new Blob([JSON.stringify(backup)], { type: "application/json" }), name);
       setOutcome({ tone: "ok", text: `Копия сохранена — файл «${name}» в загрузках браузера. В нём ${inside}.` });
     } catch {

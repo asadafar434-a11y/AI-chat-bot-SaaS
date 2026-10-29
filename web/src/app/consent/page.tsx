@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { LegalPage, Mail, Section, Val } from "@/components/legal-page";
 import { readOperator } from "@/lib/legal";
 
-export const metadata: Metadata = { title: "Согласие на обработку персональных данных — Тендерный юрист" };
+export const metadata: Metadata = { title: "Согласие на обработку персональных данных — Тендекс" };
 
 // Согласие — отдельным документом, а не пунктом условий: так требует ст. 9 152-ФЗ с 1 сентября 2025 года.
 // На странице входа — своя галочка со ссылкой сюда. Передача за рубеж — отдельный документ: /consent-transfer.
@@ -14,7 +14,7 @@ export default async function ConsentPage() {
   return (
     <LegalPage title="Согласие на обработку персональных данных" operator={op}>
       <p>
-        Пользуясь сервисом «Тендерный юрист», свободно, своей волей и в своём интересе даю согласие <b><Val field={op.name} /></b>{" "}
+        Пользуясь сервисом «Тендекс», свободно, своей волей и в своём интересе даю согласие <b><Val field={op.name} /></b>{" "}
         (ИНН <Val field={op.inn} />, адрес: <Val field={op.address} />) на обработку моих персональных данных на условиях ниже.
       </p>
 

@@ -40,7 +40,7 @@ export function ConsentGate({ children }: { children: ReactNode }) {
         <Card className="animate-fade-up space-y-4 p-6">
           <div className="flex items-center gap-2.5">
             <BrandMark className="size-8" />
-            <span className="text-sm font-bold tracking-tight">Тендерный юрист</span>
+            <span className="text-sm font-bold tracking-tight">Тендекс</span>
           </div>
           <div className="space-y-1.5">
             <h1 className="text-2xl font-semibold tracking-tight">Перед началом</h1>

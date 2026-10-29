@@ -3,7 +3,7 @@ import { LoginForm } from "@/components/login-form";
 
 // Страницу входа видят все, кто открыл закрытую ссылку, — поисковикам её показывать незачем.
 export const metadata: Metadata = {
-  title: "Вход — Тендерный юрист",
+  title: "Вход — Тендекс",
   robots: { index: false, follow: false },
 };
 

@@ -79,7 +79,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <div inert={open} className="flex min-h-0 min-w-0 flex-col">
           <header className="mx-2 mt-[max(8px,env(safe-area-inset-top,0px))] flex flex-none items-center gap-2 rounded-[var(--r-shell)] bg-card py-2 pl-3 pr-2 shadow-[var(--island-shadow)] lg:hidden">
-            <Link href="/" aria-label="Тендерный юрист — на главную" className="flex min-w-0 items-center gap-2.5">
+            <Link href="/" aria-label="Тендекс — на главную" className="flex min-w-0 items-center gap-2.5">
               <BrandMark className="size-8" />
               <BrandName />
             </Link>

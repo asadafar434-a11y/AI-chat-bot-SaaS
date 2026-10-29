@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Тендерный юрист",
+  title: "Тендекс",
   description: "ИИ-ассистент по 44-ФЗ и 223-ФЗ: загрузите документы и задайте вопрос",
 };
 

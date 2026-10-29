@@ -260,7 +260,7 @@ function DataCards() {
         setBackupNote({ tone: 'info', text: onServer ? 'Сохранять пока нечего: нет ни закупок, ни образцов, ни фактов, ни реквизитов.' : 'Сохранять пока нечего: в этом браузере нет ни закупок, ни образцов, ни фактов, ни реквизитов.' });
         return;
       }
-      const name = `Тендерный юрист — копия ${new Date(backup.savedAt).toLocaleDateString('ru-RU')}.json`;
+      const name = `Тендекс — копия ${new Date(backup.savedAt).toLocaleDateString('ru-RU')}.json`;
       saveFile(new Blob([JSON.stringify(backup)], { type: 'application/json' }), name);
       setBackupNote({ tone: 'ok', text: `Копия сохранена — файл «${name}» в загрузках браузера. В нём ${inside}.` });
     } catch {

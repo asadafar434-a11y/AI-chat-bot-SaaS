@@ -41,7 +41,7 @@ export type Parsed = { ok: true; dump: Dump } | { ok: false; reason: string };
 
 // Файл выбирает пользователь — берём только то, что похоже на нашу копию, остальное отбрасываем.
 export function parseBackup(raw: unknown): Parsed {
-  if (!isObject(raw) || raw.format !== BACKUP_FORMAT) return { ok: false, reason: "Это не копия данных «Тендерного юриста»." };
+  if (!isObject(raw) || raw.format !== BACKUP_FORMAT) return { ok: false, reason: "Это не копия данных «Тендекса»." };
   if (raw.version !== BACKUP_VERSION) return { ok: false, reason: "Копия сделана другой версией приложения — её пока не прочитать." };
   const list = (x: unknown) => (Array.isArray(x) ? x : []);
   const purchases = list(raw.purchases).filter(withId);

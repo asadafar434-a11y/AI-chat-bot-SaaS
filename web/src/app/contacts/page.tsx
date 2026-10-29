@@ -6,7 +6,7 @@ import { readOperator, type OperatorValue } from "@/lib/legal";
 // Номера — моноширинным, как все данные в приложении.
 const Num = ({ field }: { field: OperatorValue }) => (field.value ? <span className="font-mono">{field.value}</span> : <Val field={field} />);
 
-export const metadata: Metadata = { title: "Контакты — Тендерный юрист" };
+export const metadata: Metadata = { title: "Контакты — Тендекс" };
 
 // Сведения о владельце сайта — ч. 2 ст. 10 149-ФЗ: наименование, адрес и почта для заявлений правообладателей.
 export default async function ContactsPage() {

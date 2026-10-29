@@ -142,7 +142,7 @@ function Logo() {
     <div className="flex min-w-0 items-center gap-3">
       <BrandMark className="size-9 shrink-0" />
       <div className="leading-none">
-        <p className="text-sm font-semibold tracking-tight">Тендерный юрист</p>
+        <p className="text-sm font-semibold tracking-tight">Тендекс</p>
         <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">AI · 44-ФЗ / 223-ФЗ</p>
       </div>
     </div>

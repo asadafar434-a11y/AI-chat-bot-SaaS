@@ -120,7 +120,7 @@ export function SideNav({ onClose }: { onClose: () => void }) {
   return (
     <>
       <div className="flex min-h-16 flex-none items-center gap-2 py-3 pl-3 pr-2">
-        <Link href="/" aria-label="Тендерный юрист — на главную" className="inline-flex min-w-0 items-center gap-3">
+        <Link href="/" aria-label="Тендекс — на главную" className="inline-flex min-w-0 items-center gap-3">
           <BrandMark className="size-9" />
           <BrandName />
         </Link>
@@ -192,7 +192,7 @@ export function SideNav({ onClose }: { onClose: () => void }) {
 export function BrandName() {
   return (
     <span className="grid min-w-0 leading-none">
-      <span className="truncate text-sm font-semibold tracking-[-0.01em]">Тендерный юрист</span>
+      <span className="truncate text-sm font-semibold tracking-[-0.01em]">Тендекс</span>
       <span className="mt-1 truncate font-mono text-[10px] uppercase tracking-wider text-[var(--ink-3)]">AI · 44-ФЗ / 223-ФЗ</span>
     </span>
   );

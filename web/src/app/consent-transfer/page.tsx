@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { LegalPage, Mail, Points, Section, Val } from "@/components/legal-page";
 import { readOperator } from "@/lib/legal";
 
-export const metadata: Metadata = { title: "Согласие на трансграничную передачу персональных данных — Тендерный юрист" };
+export const metadata: Metadata = { title: "Согласие на трансграничную передачу персональных данных — Тендекс" };
 
 // Передача за рубеж — отдельным документом и отдельной галочкой, а не пунктом общего согласия.
 // Шаблон: форму согласия для страны без адекватной защиты, сроки и уведомление Роскомнадзора (ч. 3 ст. 12 152-ФЗ)
@@ -15,7 +15,7 @@ export default async function ConsentTransferPage() {
   return (
     <LegalPage title="Согласие на трансграничную передачу персональных данных" operator={op}>
       <p>
-        Пользуясь сервисом «Тендерный юрист», свободно, своей волей и в своём интересе даю согласие <b><Val field={op.name} /></b>{" "}
+        Пользуясь сервисом «Тендекс», свободно, своей волей и в своём интересе даю согласие <b><Val field={op.name} /></b>{" "}
         (ИНН <Val field={op.inn} />, адрес: <Val field={op.address} />) на трансграничную передачу моих персональных данных на
         условиях ниже.
       </p>

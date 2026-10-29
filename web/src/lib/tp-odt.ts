@@ -170,7 +170,7 @@ export function renderOdt(model: DocModel): Buffer {
 
   const meta =
     `${XML_HEAD}<office:document-meta ${NAMESPACES} office:version="1.2"><office:meta>` +
-    `<meta:generator>Тендерный юрист</meta:generator><dc:title>${escapeXml(model.title.replace(INVALID_XML, ""))}</dc:title>` +
+    `<meta:generator>Тендекс</meta:generator><dc:title>${escapeXml(model.title.replace(INVALID_XML, ""))}</dc:title>` +
     "</office:meta></office:document-meta>";
 
   const manifest =

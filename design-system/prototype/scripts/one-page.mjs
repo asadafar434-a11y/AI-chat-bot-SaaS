@@ -10,7 +10,7 @@ const css = read('.css')
 const js = read('.js')
 if (/<\/script/i.test(js) || /<\/style/i.test(css)) throw new Error('В сборке есть закрывающий тег — встроить нельзя')
 
-const title = 'Тендерный юрист — прототип'
+const title = 'Тендекс — прототип'
 // Значок вкладки — логотип 64 px (public/favicon.png из design-system/logo.png), встроенный в страницу.
 const favicon = `data:image/png;base64,${readFileSync(new URL('../public/favicon.png', import.meta.url)).toString('base64')}`
 const body = `<style>\n${css}\n</style>\n<div id="root"></div>\n<script type="module">\n${js}\n</script>\n`

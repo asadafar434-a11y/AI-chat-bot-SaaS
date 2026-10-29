@@ -49,7 +49,7 @@ export function LegalPage({ title, operator, children }: { title: string; operat
       <div className="mx-auto grid max-w-[760px] gap-2 p-2 pb-6 sm:pt-6">
         <Link href="/" className="inline-flex w-fit items-center gap-2.5 px-2 py-2">
           <BrandMark className="size-7" />
-          <span className="font-heading text-sm leading-5 font-bold tracking-[-0.01em]">Тендерный юрист</span>
+          <span className="font-heading text-sm leading-5 font-bold tracking-[-0.01em]">Тендекс</span>
         </Link>
 
         <article className="island grid gap-6 px-[var(--pad)] py-5 sm:px-8 sm:py-7">

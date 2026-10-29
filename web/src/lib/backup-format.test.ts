@@ -48,7 +48,7 @@ test("факты базы доказательств: копия без них (
 });
 
 test("чужой файл, другая версия и пустая копия не принимаются", () => {
-  assert.deepEqual(parseBackup({ hello: 1 }), { ok: false, reason: "Это не копия данных «Тендерного юриста»." });
+  assert.deepEqual(parseBackup({ hello: 1 }), { ok: false, reason: "Это не копия данных «Тендекса»." });
   assert.equal(parseBackup(null).ok, false);
   const other = { ...buildBackup(dump), version: 99 };
   assert.match((parseBackup(other) as { reason: string }).reason, /другой версией/);

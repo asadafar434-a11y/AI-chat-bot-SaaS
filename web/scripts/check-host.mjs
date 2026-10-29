@@ -80,7 +80,7 @@ try {
   const html = await home.text();
   check(home.status === 200 && (home.headers.get("content-type") ?? "").includes("text/html"), "главная страница открывается");
   check(html.includes('id="root"') && html.includes("/product/assets/"), "это экран продукта: есть #root и файлы из /product/assets/");
-  check(/<title>Тендерный юрист<\/title>/.test(html), "заголовок страницы — «Тендерный юрист», без «прототип»");
+  check(/<title>Тендекс<\/title>/.test(html), "заголовок страницы — «Тендекс», без «прототип»");
   const csp = home.headers.get("content-security-policy") ?? "";
   check(csp.includes("default-src 'self'") && csp.includes("font-src 'self'"), "политика содержимого на месте");
 
