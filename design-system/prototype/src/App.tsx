@@ -177,7 +177,7 @@ function Product() {
         />
 
         <main tabIndex={-1} className="min-w-0 flex-1 outline-none lg:overflow-y-auto">
-          <div className="mx-auto max-w-6xl py-2 pb-24 lg:py-4">
+          <div className="mx-auto max-w-6xl pt-2 pb-24 lg:pt-0 lg:pb-4">
             {view === 'tenders' && (
               <TendersDashboard
                 tenders={tenders}

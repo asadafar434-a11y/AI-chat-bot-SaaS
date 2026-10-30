@@ -22,7 +22,7 @@ test('шаги закупки на телефоне: строка шагов п�
   const app = src('App.tsx');
   assert.match(app, /data-step-active=\{state === 'active'\}/);
   assert.match(app, /list\.scrollLeft \+= c\.left - l\.left/);
-  assert.match(app, /max-w-6xl py-2 pb-24 lg:py-4/);
+  assert.match(app, /max-w-6xl pt-2 pb-24 lg:pt-0 lg:pb-4/);
 });
 
 test('шаги закупки: пройденные — зелёная галочка, текущий — синяя плашка с белым значком', () => {
