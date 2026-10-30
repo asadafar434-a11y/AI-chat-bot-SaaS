@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { TrendingDown, ChevronDown, AlertTriangle, CheckCircle2 } from '../lib/icons';
-import { Badge, Button, Card, HelpTip, Tooltip, cx } from './ui';
+import { Button, Card, HelpTip, Tooltip, cx } from './ui';
 import { isAuction, isSingleSupplier, priceIntro } from '@/lib/law-kind';
 import { priceFloor, type PriceCalc } from '@/lib/price-floor';
 import { splitPrice, toKop } from '@/lib/price-split';
@@ -85,20 +85,16 @@ export function StepPricing({
 
   return (
     <div className="animate-fade-up space-y-5">
-      <div>
-        <div className="flex flex-wrap items-center gap-2">
+      {/* Заголовок шага и главный расчёт — одним блоком: без отдельной шапки и без лишней подписи. */}
+      <Card className={cx('p-4', loss ? 'border-danger/40 bg-danger/5' : floorPrice ? 'border-success/40 bg-success/5' : '')}>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
           <h1 className="text-2xl font-semibold tracking-tight">Цена</h1>
-          <Badge tone="neutral">расчёт без ИИ</Badge>
+          <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            {shortIntro(kind)}
+            <HelpTip align="start" content={priceIntro(kind)} />
+          </p>
         </div>
-        <p className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-          {shortIntro(kind)}
-          <HelpTip align="start" content={priceIntro(kind)} />
-        </p>
-      </div>
-
-      {/* Уровень 1: до какой цены можно опускаться — самое важное число шага. */}
-      <Card className={cx('p-5', loss ? 'border-danger/40 bg-danger/5' : floorPrice ? 'border-success/40 bg-success/5' : '')}>
-        <p className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground">
+        <p className="mt-3 flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground">
           {fixed ? 'Что останется вам' : 'До какой цены снижаться'}
           <HelpTip
             content={
