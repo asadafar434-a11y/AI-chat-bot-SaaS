@@ -1,4 +1,4 @@
-import { type ReactNode, type ButtonHTMLAttributes, type KeyboardEvent as ReactKeyboardEvent, type RefObject, useEffect, useId, useRef } from 'react';
+import { type ReactNode, type ButtonHTMLAttributes, type KeyboardEvent as ReactKeyboardEvent, type RefObject, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Info, Bell, Check, Sparkles, Loader2 } from '../lib/icons';
 import { tabTarget } from '@/lib/focus-trap';
@@ -208,20 +208,30 @@ export function Tooltip({
   side = 'top',
   align = 'center',
   className,
+  dismissOnClick = false,
 }: {
   content: ReactNode;
   children: ReactNode;
   side?: 'top' | 'bottom';
   align?: 'center' | 'start' | 'end';
   className?: string;
+  dismissOnClick?: boolean;
 }) {
+  // После нажатия подсказка гаснет, даже если кнопка осталась в фокусе и под курсором: иначе она висела бы поверх соседних кнопок.
+  // Фокус с клавиатуры подсказку по-прежнему показывает; кнопка нажимается, и подсказка снова появится после ухода фокуса.
+  const [dismissed, setDismissed] = useState(false);
   return (
-    <span className={cx('group/tip relative inline-flex items-center', className)}>
+    <span
+      className={cx('group/tip relative inline-flex items-center', className)}
+      onPointerDown={dismissOnClick ? () => setDismissed(true) : undefined}
+      onBlurCapture={dismissOnClick ? () => setDismissed(false) : undefined}
+    >
       {children}
       <span
         role="tooltip"
         className={cx(
-          'animate-tip pointer-events-none absolute z-50 hidden w-max max-w-[240px] rounded-lg border border-border bg-card px-3 py-2 text-left font-sans text-[12px] font-normal normal-case leading-snug tracking-normal text-foreground shadow-xl group-hover/tip:block group-focus-within/tip:block',
+          'animate-tip pointer-events-none absolute z-50 hidden w-max max-w-[240px] rounded-lg border border-border bg-card px-3 py-2 text-left font-sans text-[12px] font-normal normal-case leading-snug tracking-normal text-foreground shadow-xl',
+          !dismissed && 'group-hover/tip:block group-focus-within/tip:block',
           side === 'top' ? 'bottom-full mb-2' : 'top-full mt-2',
           align === 'center' && 'left-1/2 -translate-x-1/2',
           align === 'start' && 'left-0',
@@ -257,15 +267,17 @@ export function IconButton({
   side,
   align,
   className,
+  dismissOnClick = true,
   ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   label: string;
   tone?: 'neutral' | 'danger';
   side?: 'top' | 'bottom';
   align?: 'center' | 'start' | 'end';
+  dismissOnClick?: boolean;
 }) {
   return (
-    <Tooltip content={label} side={side} align={align}>
+    <Tooltip content={label} side={side} align={align} dismissOnClick={dismissOnClick}>
       <button
         type="button"
         aria-label={label}
