@@ -253,7 +253,7 @@ export function StepAnalysis({
           return (
             <div
               key={doc.id}
-              className={`rounded-lg border bg-card transition-all duration-300 ${expanded ? 'border-foreground/30' : 'border-border'}`}
+              className={`card-hover rounded-lg border bg-card transition-all duration-300 ${expanded ? 'border-foreground/30' : 'border-border'}`}
             >
               <button
                 type="button"

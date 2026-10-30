@@ -178,7 +178,7 @@ export function HiddenRequirementsBlock({ card }: { card: HiddenRequirementsCard
                 const key = keyOf(f);
                 const open = activeId === key;
                 return (
-                  <li key={key} className="min-w-0 space-y-1.5 rounded-md border border-border p-3 text-[13px]">
+                  <li key={key} className="card-hover min-w-0 space-y-1.5 rounded-md border border-border p-3 text-[13px]">
                     <button
                       type="button"
                       aria-expanded={open}

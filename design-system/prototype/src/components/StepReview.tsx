@@ -475,7 +475,7 @@ function FieldRow({
     <div
       ref={rowRef}
       className={cx(
-        'scroll-mt-24 rounded-lg border bg-card transition-all',
+        'card-hover scroll-mt-24 rounded-lg border bg-card transition-all',
         expanded ? 'border-foreground/30 shadow-sm' : 'border-border',
         field.status === 'invalid' && 'border-l-2 border-l-danger',
       )}
@@ -652,7 +652,7 @@ function AutoList({ fields, collapsed, whereOf, snippetOf }: { fields: Applicati
   const [open, setOpen] = useState(!collapsed);
   if (fields.length === 0) return null;
   return (
-    <div className="rounded-lg border border-border bg-card">
+    <div className="card-hover rounded-lg border border-border bg-card">
       <button onClick={() => setOpen(!open)} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left">
         <Sparkles className="size-4 shrink-0 text-success" />
         <span className="min-w-0 flex-1 text-[13px] font-medium">Заполнено автоматически · {fields.length}</span>

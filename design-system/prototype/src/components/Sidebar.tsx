@@ -196,7 +196,7 @@ function Body({ view, onNavigate, onNewTender, onOpenChat, notices, onOpenNotice
 
       <button
         onClick={onOpenChat}
-        className="flex items-center gap-2.5 rounded-md border border-border bg-secondary/50 px-3 py-2.5 text-left transition-colors hover:bg-secondary"
+        className="card-hover flex items-center gap-2.5 rounded-md border border-border bg-secondary/50 px-3 py-2.5 text-left transition-colors hover:bg-secondary"
       >
         <BotMark className="size-8 shrink-0" />
         <div className="min-w-0 leading-tight">
@@ -216,7 +216,7 @@ function Body({ view, onNavigate, onNewTender, onOpenChat, notices, onOpenNotice
         )}
 
         {/* Компания и вход — одна карточка: сверху компания (ведёт в профиль), снизу кто вошёл. «Выйти» — в «Настройках» (решение владельца 16.10.2026). */}
-        <div className="relative overflow-hidden rounded-md border border-border">
+        <div className="card-hover relative overflow-hidden rounded-md border border-border">
           <button
             onClick={() => onNavigate('profile')}
             aria-current={view === 'profile' ? 'page' : undefined}
@@ -257,7 +257,7 @@ function NoticeRow({ notice, onOpen }: { notice: Notice; onOpen: (id: string) =>
     <button
       onClick={() => onOpen(notice.id)}
       className={cx(
-        'relative flex w-full items-start gap-2.5 rounded-md border px-3 py-2.5 text-left transition-colors',
+        'card-hover relative flex w-full items-start gap-2.5 rounded-md border px-3 py-2.5 text-left transition-colors',
         replied ? 'border-success/40 bg-success/10 hover:bg-success/15' : 'border-warn/40 bg-warn-surface/40 hover:bg-warn-surface/60',
       )}
     >

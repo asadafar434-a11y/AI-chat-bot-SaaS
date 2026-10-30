@@ -128,6 +128,8 @@
   /* Две линии графика (синяя и оранжевая из проверенной палитры диаграмм: разделяются и при дальтонизме, контраст с карточкой не меньше 3 : 1). */
   --viz-1: #2a78d6;
   --viz-2: #eb6834;
+  /* Лёгкая тень кликабельной карточки при наведении. */
+  --hover-shadow: 0 2px 10px rgb(0 0 0 / 0.08), 0 1px 2px rgb(0 0 0 / 0.04);
   --radius: 12px;
 }
 
@@ -156,6 +158,7 @@
   --info: #a5b4fc;
   --viz-1: #3987e5;
   --viz-2: #d95926;
+  --hover-shadow: 0 2px 12px rgb(0 0 0 / 0.55), 0 1px 2px rgb(0 0 0 / 0.35);
   color-scheme: dark;
 }
 
@@ -182,6 +185,43 @@ body {
 /* Градиент бренда: кнопки ИИ, кнопка чата, проверка специалистом. От голубого «Тендекса» к фиолетовому (владелец, 30.10.2026). */
 .bg-brand-gradient {
   background-image: linear-gradient(135deg, #2f5bff 0%, #4f56f7 50%, #7a4dff 100%);
+}
+
+/* Кликабельные элементы — палец, а не стрелка. Выключенные кнопки и поля остаются со стрелкой. */
+button:not(:disabled),
+a[href],
+label[for],
+summary,
+select:not(:disabled),
+[role='button'],
+[role='switch'],
+[role='tab'] {
+  cursor: pointer;
+}
+
+/* Кликабельная карточка: при наведении — лёгкая тень, чтобы было видно, что на неё можно нажать. */
+.card-hover {
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+@media (hover: hover) {
+  .card-hover:hover {
+    box-shadow: var(--hover-shadow);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-hover {
+    transition: none;
+  }
+}
+
+/* Поля ввода: при наведении рамка чуть темнее — тот же отклик, что у карточек, но без тени. */
+@media (hover: hover) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='color']):not([disabled]):not(:focus):hover,
+  textarea:not([disabled]):not(:focus):hover,
+  select:not([disabled]):not(:focus):hover {
+    border-color: color-mix(in srgb, var(--foreground) 30%, var(--border));
+  }
 }
 
 /* Ползунок цены: толстая дорожка с заливкой до значения и крупный бегунок.

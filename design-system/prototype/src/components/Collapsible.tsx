@@ -28,7 +28,7 @@ export function Collapsible({
 }) {
   const id = useId();
   return (
-    <section className="rounded-xl border border-border bg-card shadow-sm">
+    <section className="card-hover rounded-xl border border-border bg-card shadow-sm">
       <h2 className="m-0">
         <button
           type="button"

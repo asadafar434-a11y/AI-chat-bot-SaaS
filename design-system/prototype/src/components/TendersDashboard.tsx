@@ -84,7 +84,7 @@ export function TendersDashboard({
 
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex h-9 min-w-[220px] flex-1 items-center gap-2 rounded-md border border-border bg-card px-3 focus-within:border-foreground focus-within:ring-2 focus-within:ring-ring/20">
+        <div className="flex h-9 min-w-[220px] flex-1 items-center gap-2 rounded-md border border-border bg-card px-3 hover:border-foreground/30 focus-within:border-foreground focus-within:ring-2 focus-within:ring-ring/20 focus-within:ring-inset">
           <Search className="size-4 text-muted-foreground" />
           <input
             value={query}
@@ -114,12 +114,12 @@ export function TendersDashboard({
       </div>
 
       {/* List */}
-      <div className="max-w-4xl space-y-2.5">
+      <div className="space-y-2.5">
         {list.map((t) => {
           const st = statusLabels[t.status];
           const progress = t.progress;
           return (
-            <Card key={t.id} className="group transition-colors hover:border-foreground/25">
+            <Card key={t.id} className="card-hover group transition-colors hover:border-foreground/25">
               <div className="flex w-full items-center gap-2 p-4">
                 <div className="min-w-0 flex-1">
                   <button onClick={() => onOpen(t.id)} className="block w-full min-w-0 text-left">

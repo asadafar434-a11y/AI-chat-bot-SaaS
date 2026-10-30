@@ -70,7 +70,7 @@ export function BidHistory({ purchases }: { purchases: Purchase[] | null }) {
       ) : (
         <>
           {submitted.length > 5 && (
-          <div className="flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 focus-within:border-foreground focus-within:ring-2 focus-within:ring-ring/20">
+          <div className="flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 hover:border-foreground/30 focus-within:border-foreground focus-within:ring-2 focus-within:ring-ring/20 focus-within:ring-inset">
             <Search className="size-4 text-muted-foreground" />
             <input
               value={query}
