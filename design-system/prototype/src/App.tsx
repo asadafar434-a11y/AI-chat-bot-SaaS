@@ -302,8 +302,8 @@ function Shell({
 
         {/* Шаги — отдельной панелью: пройденные с зелёной галочкой, текущий — белой плашкой с синим значком.
             Край размыт всегда — честный намёк, что шаги можно прокрутить: на телефоне их не все видно за кадром. */}
-        <div className="rounded-lg border border-border bg-secondary/60 p-1">
-          <ol ref={stepsRef} className="flex items-center gap-1 overflow-x-auto [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)]">
+        <div className="w-fit max-w-full rounded-lg border border-border bg-secondary p-1.5 shadow-sm">
+          <ol ref={stepsRef} className="flex items-center gap-1 overflow-x-auto">
             {steps.map((s, i) => {
               const state = i === step ? 'active' : done[i] ? 'done' : 'todo';
               const Icon = s.icon;
@@ -322,28 +322,28 @@ function Shell({
                       aria-current={state === 'active' ? 'step' : undefined}
                       className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-all disabled:cursor-not-allowed ${
                         state === 'active'
-                          ? 'bg-card font-semibold text-foreground shadow-sm'
+                          ? 'bg-primary font-semibold text-primary-foreground shadow-sm'
                           : state === 'done'
-                            ? 'font-medium text-foreground hover:bg-card/70'
+                            ? 'font-medium text-foreground hover:bg-card'
                             : 'font-medium text-muted-foreground'
                       }`}
                     >
                       <span
-                        className={`flex size-6 items-center justify-center rounded-full border transition-colors ${
+                        className={`flex size-7 items-center justify-center rounded-full border transition-colors ${
                           state === 'done'
                             ? 'border-success bg-success text-background'
                             : state === 'active'
-                              ? 'border-primary bg-primary text-primary-foreground'
+                              ? 'border-primary-foreground/30 bg-primary-foreground text-primary'
                               : 'border-border bg-card text-muted-foreground'
                         }`}
                       >
-                        {state === 'done' ? <Check className="size-3.5" /> : <Icon className="size-3.5" />}
+                        {state === 'done' ? <Check className="size-4" /> : <Icon className="size-4" />}
                       </span>
                       {s.label}
                     </button>
                   </Tooltip>
                   {i < steps.length - 1 && (
-                    <span className={`h-0.5 w-5 shrink-0 rounded-full ${done[i] ? 'bg-success/40' : 'bg-border'}`} />
+                    <span className={`h-0.5 w-5 shrink-0 rounded-full ${done[i] ? 'bg-success/50' : 'bg-border'}`} />
                   )}
                 </li>
               );

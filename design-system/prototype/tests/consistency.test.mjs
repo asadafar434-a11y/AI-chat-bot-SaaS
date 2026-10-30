@@ -25,11 +25,11 @@ test('шаги закупки на телефоне: строка шагов п�
   assert.match(app, /max-w-6xl py-2 pb-24 lg:py-4/);
 });
 
-test('шаги закупки: пройденные — зелёная галочка, текущий — белая плашка с синим значком', () => {
+test('шаги закупки: пройденные — зелёная галочка, текущий — синяя плашка с белым значком', () => {
   const app = src('App.tsx');
   assert.match(app, /border-success bg-success text-background/, 'пройденный шаг — зелёная галочка');
-  assert.match(app, /border-primary bg-primary text-primary-foreground/, 'текущий шаг — синий значок');
-  assert.match(app, /bg-card font-semibold text-foreground shadow-sm/, 'текущий шаг — акцентная плашка');
+  assert.match(app, /border-primary-foreground\/30 bg-primary-foreground text-primary/, 'текущий шаг — белый значок с синей иконкой');
+  assert.match(app, /bg-primary font-semibold text-primary-foreground shadow-sm/, 'текущий шаг — синяя акцентная плашка');
 });
 
 test('переключатели и фильтры — высота 32 из шкалы 28/32/36, а не подбор отступами', () => {
