@@ -3,7 +3,7 @@ import { CheckCircle2, AlertTriangle, XCircle, Sparkles, ChevronRight, Info, Clo
 import { contradictionsSummary, type ContradictionsResult } from '@/lib/contradictions';
 import { plural } from '@/lib/plural';
 import type { AfterWin } from '@/lib/after-win';
-import { Button, Card, Badge, Dot, Tooltip } from './ui';
+import { Button, Card, Badge, HelpTip, StepActions, Tooltip, cx } from './ui';
 import type { CheckStatus } from '../lib/data';
 import { RequirementsList, type RequirementRowView } from './RequirementsList';
 import { DocSnippetToggle, type DocSnippet } from './StepReview';
@@ -198,34 +198,45 @@ export function StepAnalysis({
 
   return (
     <div className="animate-fade-up space-y-6">
-      <div>
+      <div className="flex flex-wrap items-center gap-2">
         <h1 className="text-2xl font-semibold tracking-tight">Анализ комплекта</h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          ИИ сверил извещение и ТЗ с составом заявки{kindText ? ` на ${kindText}` : ''}. Сверху — то, без чего заявку
-          отклонят, ниже — что требует внимания, готовое — в конце. Нажмите на строку, чтобы увидеть, что не так и
-          где это исправить.
-        </p>
+        <HelpTip
+          align="start"
+          content={`ИИ сверил извещение и ТЗ с составом заявки${kindText ? ` на ${kindText}` : ''}. Сверху — то, без чего заявку отклонят, ниже — что требует внимания, готовое — в конце. Нажмите на строку, чтобы увидеть, что не так и где это исправить.`}
+        />
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <Card className="grid grid-cols-3 divide-x divide-border overflow-hidden p-0">
         {(
           [
-            ['danger', counts.missing ?? 0, 'Не хватает', 'Документа нет в загруженных файлах — без него заявку отклонят.'],
-            ['warn', counts.warn ?? 0, 'Внимание', 'Документ есть, но нужно что-то дописать или подтвердить.'],
-            ['success', counts.ok ?? 0, 'Готово', 'Составлено и заполнено — войдёт в пакет как есть.'],
+            ['danger', counts.missing ?? 0, 'Не хватает', XCircle],
+            ['warn', counts.warn ?? 0, 'Внимание', AlertTriangle],
+            ['success', counts.ok ?? 0, 'Готово', CheckCircle2],
           ] as const
-        ).map(([tone, n, label, hint], i) => (
-          <Tooltip key={label} content={hint} side="bottom" align={i === 0 ? 'start' : i === 2 ? 'end' : 'center'} className="w-full">
-            <Card className="w-full p-4">
-              <div className="flex items-center gap-2">
-                <Dot tone={tone} />
-                <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">{label}</span>
-              </div>
-              <p className="mt-2 text-2xl font-semibold tabular-nums">{n}</p>
-            </Card>
-          </Tooltip>
+        ).map(([tone, n, label, Icon]) => (
+          <div key={label} className="flex items-center gap-2 p-3 sm:gap-2.5 sm:p-4">
+            <span
+              className={cx(
+                'flex size-7 shrink-0 items-center justify-center rounded-full sm:size-8',
+                tone === 'danger' ? 'bg-danger/10 text-danger' : tone === 'warn' ? 'bg-warn/15 text-warn-foreground' : 'bg-success/10 text-success',
+              )}
+            >
+              <Icon className="size-3.5 sm:size-4" />
+            </span>
+            <div className="min-w-0">
+              <p
+                className={cx(
+                  'text-xl font-semibold leading-none tabular-nums',
+                  tone === 'danger' ? 'text-danger' : tone === 'warn' ? 'text-warn-foreground' : 'text-success',
+                )}
+              >
+                {n}
+              </p>
+              <p className="mt-1 text-[11px] leading-tight text-muted-foreground sm:text-[12px]">{label}</p>
+            </div>
+          </div>
         ))}
-      </div>
+      </Card>
 
       <div className="space-y-2">
         {docs.length === 0 && (
@@ -399,12 +410,12 @@ export function StepAnalysis({
 
       <RequirementsList rows={requirements} onFix={() => onFix('review')} />
 
-      <div className="flex justify-between">
+      <StepActions className="justify-between">
         <Button variant="ghost" onClick={onBack}>
           ← Назад
         </Button>
         <Button onClick={onNext}>Дальше: цена →</Button>
-      </div>
+      </StepActions>
     </div>
   );
 }

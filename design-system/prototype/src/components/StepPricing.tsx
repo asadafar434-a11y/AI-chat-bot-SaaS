@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { TrendingDown, ChevronDown, AlertTriangle, CheckCircle2 } from '../lib/icons';
-import { Button, Card, HelpTip, Tooltip, cx } from './ui';
+import { Button, Card, HelpTip, StepActions, Tooltip, cx } from './ui';
 import { isAuction, isSingleSupplier, priceIntro } from '@/lib/law-kind';
 import { priceFloor, type PriceCalc } from '@/lib/price-floor';
 import { splitPrice, toKop } from '@/lib/price-split';
@@ -292,12 +292,12 @@ export function StepPricing({
         </Card>
       </div>
 
-      <div className="flex justify-between">
+      <StepActions className="justify-between">
         <Button variant="ghost" onClick={onBack}>
           ← Назад
         </Button>
         <Button onClick={onNext}>{fixed ? 'Дальше →' : 'Проверить заявку →'}</Button>
-      </div>
+      </StepActions>
     </div>
   );
 }

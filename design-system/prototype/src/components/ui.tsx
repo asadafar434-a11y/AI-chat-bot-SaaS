@@ -296,6 +296,21 @@ export function IconButton({
   );
 }
 
+// Плавающая полоса действий внизу шага: кнопки видны, пока листаешь длинный шаг.
+// На телефоне поднимается выше кнопки ИИ-ассистента, на компьютере оставляет место справа.
+export function StepActions({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      className={cx(
+        'sticky bottom-24 z-30 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card/90 p-2 shadow-[var(--float)] backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-card/50 sm:bottom-4 sm:pr-20',
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
 // Галочка: настоящий input скрыт, но остаётся доступным с клавиатуры и экранному диктору.
 export function Checkbox({
   checked,
