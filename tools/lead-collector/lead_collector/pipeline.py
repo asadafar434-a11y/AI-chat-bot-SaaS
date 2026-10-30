@@ -133,8 +133,12 @@ def parse_folder(conn: sqlite3.Connection, folder: Path, region: str, min_amount
     for path in sorted(folder.glob("*.zip")):
         total.merge(process_archive(conn, path.read_bytes(), region, min_amount, period))
     for path in sorted(folder.glob("*.htm*")):
+        number = path.stem if re.fullmatch(r"\d{19}", path.stem) else ""
+        if number and conn.execute("SELECT 1 FROM contracts WHERE reg_number=? LIMIT 1", (number,)).fetchone():
+            total.contracts_seen += 1
+            total.repeated_contracts += 1  # уже в базе: файл не разбираем заново
+            continue
         html = path.read_text(encoding="utf-8", errors="replace")
         # Страницы собраны по дате размещения, поэтому период по дате заключения к ним не применяем.
-        number = path.stem if re.fullmatch(r"\d{19}", path.stem) else ""
         total.merge(store_records(conn, parse_card(html, number, region), min_amount))
     return total
