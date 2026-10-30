@@ -97,15 +97,17 @@ export function Sidebar(props: Props) {
           <div ref={menuBox} tabIndex={-1} className="fixed inset-0 z-50 outline-none lg:hidden" role="dialog" aria-modal="true" aria-label="Меню">
             <div className="animate-tip absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setMenuOpen(false)} />
             <div className="animate-slide-in absolute inset-y-0 left-0 flex w-[min(320px,86vw)] flex-col gap-5 overflow-y-auto [&>*]:shrink-0 border-r border-border bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] shadow-2xl">
-              <div className="flex items-center justify-between gap-2">
-                <Logo />
-                <div className="flex shrink-0 items-center gap-1">
-                  <AiSwitch />
-                  <ThemeButton dark={props.dark} setDark={props.setDark} />
-                  <IconButton label="Закрыть меню" onClick={() => setMenuOpen(false)} side="bottom" align="end">
-                    <X className="size-5" />
-                  </IconButton>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-2">
+                  <Logo />
+                  <div className="flex shrink-0 items-center gap-1">
+                    <ThemeButton dark={props.dark} setDark={props.setDark} />
+                    <IconButton label="Закрыть меню" onClick={() => setMenuOpen(false)} side="bottom" align="end">
+                      <X className="size-5" />
+                    </IconButton>
+                  </div>
                 </div>
+                <AiSwitch className="w-full justify-center" />
               </div>
               <Body {...inMenu} />
             </div>
@@ -115,12 +117,12 @@ export function Sidebar(props: Props) {
 
       {/* Компьютер: боковая панель */}
       <aside className="hidden shrink-0 flex-col gap-5 rounded-2xl border border-border bg-card p-4 shadow-sm lg:flex lg:h-full lg:w-[248px] lg:overflow-y-auto [&>*]:shrink-0">
-        <div className="flex items-start justify-between gap-2">
-          <Logo />
-          <div className="flex shrink-0 items-center gap-1">
-            <AiSwitch />
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-2">
+            <Logo />
             <ThemeButton dark={props.dark} setDark={props.setDark} />
           </div>
+          <AiSwitch className="w-full justify-center" />
         </div>
         <Body {...props} />
       </aside>
@@ -141,9 +143,9 @@ function Logo() {
   return (
     <div className="flex min-w-0 items-center gap-3">
       <BrandMark className="size-9 shrink-0" />
-      <div className="leading-none">
-        <p className="text-sm font-semibold tracking-tight">Тендекс</p>
-        <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">AI · 44-ФЗ / 223-ФЗ</p>
+      <div className="min-w-0 leading-none">
+        <p className="whitespace-nowrap text-sm font-semibold tracking-tight">Тендекс</p>
+        <p className="mt-1 truncate whitespace-nowrap font-mono text-[10px] uppercase tracking-wider text-muted-foreground">AI · 44-ФЗ / 223-ФЗ</p>
       </div>
     </div>
   );
