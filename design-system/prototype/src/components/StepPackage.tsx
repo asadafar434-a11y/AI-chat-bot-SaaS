@@ -340,7 +340,7 @@ function FileRow({
           </IconButton>
         )}
         {row.action === 'compose' ? (
-          <Button size="sm" variant="secondary" onClick={onCompose}>
+          <Button size="sm" variant="ai" onClick={onCompose}>
             Составить
           </Button>
         ) : (

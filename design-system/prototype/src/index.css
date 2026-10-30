@@ -90,9 +90,12 @@
   --color-danger-foreground: var(--danger-foreground);
   --color-success: var(--success);
   --color-info: var(--info);
-  --radius-sm: calc(var(--radius) - 2px);
+  /* Одно скругление для карточек, полей, кнопок и окон (владелец, 29.10.2026: «радиус всех элементов должен быть одинаковый»): rounded-md, -lg, -xl и -2xl — один и тот же --radius. Мелкие значки (галочка, метка) — rounded-sm; бейджи и круги — rounded-full. */
+  --radius-sm: calc(var(--radius) - 8px);
   --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: var(--radius);
+  --radius-2xl: var(--radius);
   --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Geist Mono', ui-monospace, monospace;
 }
@@ -125,7 +128,7 @@
   /* Две линии графика (синяя и оранжевая из проверенной палитры диаграмм: разделяются и при дальтонизме, контраст с карточкой не меньше 3 : 1). */
   --viz-1: #2a78d6;
   --viz-2: #eb6834;
-  --radius: 8px;
+  --radius: 12px;
 }
 
 .dark {
@@ -176,9 +179,9 @@ body {
   overflow-x: clip;
 }
 
-/* Градиент бренда: кнопка чата, проверка специалистом, уведомления. */
+/* Градиент бренда: кнопки ИИ, кнопка чата, проверка специалистом. От голубого «Тендекса» к фиолетовому (владелец, 30.10.2026). */
 .bg-brand-gradient {
-  background-image: linear-gradient(135deg, #4f46e5 0%, #6366f1 45%, #3b82f6 100%);
+  background-image: linear-gradient(135deg, #2f5bff 0%, #4f56f7 50%, #7a4dff 100%);
 }
 
 /* Ползунок цены: толстая дорожка с заливкой до значения и крупный бегунок.

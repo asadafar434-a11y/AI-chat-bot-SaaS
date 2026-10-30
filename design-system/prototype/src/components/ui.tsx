@@ -1,6 +1,6 @@
 import { type ReactNode, type ButtonHTMLAttributes, type KeyboardEvent as ReactKeyboardEvent, type RefObject, useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Info, Bell, Check } from '../lib/icons';
+import { X, Info, Bell, Check, Sparkles, Loader2 } from '../lib/icons';
 import { tabTarget } from '@/lib/focus-trap';
 
 export function cx(...parts: (string | false | undefined | null)[]) {
@@ -116,11 +116,13 @@ export function Modal({
 }
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'warn' | 'accent' | 'danger';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'warn' | 'accent' | 'ai' | 'danger';
   size?: 'sm' | 'md';
+  /** Для `ai`: идёт запрос к ИИ — вместо значка ИИ крутится индикатор. */
+  busy?: boolean;
 };
 
-export function Button({ variant = 'primary', size = 'md', className, children, ...rest }: ButtonProps) {
+export function Button({ variant = 'primary', size = 'md', busy, className, children, ...rest }: ButtonProps) {
   const base =
     'inline-flex items-center justify-center gap-2 font-medium rounded-md transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-40 disabled:pointer-events-none whitespace-nowrap';
   const sizes = { sm: 'text-[13px] h-8 px-3', md: 'text-sm h-9 px-4' };
@@ -132,11 +134,14 @@ export function Button({ variant = 'primary', size = 'md', className, children, 
     // Градиент бренда — как у кнопки чата: для платных и главных действий.
     accent:
       'bg-brand-gradient text-white shadow-md shadow-indigo-500/30 hover:-translate-y-px hover:brightness-110 hover:shadow-lg hover:shadow-indigo-500/40 active:translate-y-0',
+    // Кнопка, которая вызывает ИИ: значок ИИ (искры) и градиент от голубого «Тендекса» к фиолетовому (владелец, 30.10.2026).
+    ai: 'bg-brand-gradient text-white shadow-md shadow-[#2f5bff]/30 hover:-translate-y-px hover:brightness-110 hover:shadow-lg active:translate-y-0',
     // Свой цвет текста: в тёмной теме цвет ошибки светлый, и белая надпись на нём не читалась (2,8 : 1); у главной кнопки теперь голубой фон с белым текстом.
     danger: 'bg-danger text-danger-foreground hover:opacity-90',
   };
   return (
     <button className={cx(base, sizes[size], variants[variant], className)} {...rest}>
+      {variant === 'ai' && (busy ? <Loader2 className={cx('animate-spin', size === 'sm' ? 'size-3.5' : 'size-4')} /> : <Sparkles className={size === 'sm' ? 'size-3.5' : 'size-4'} />)}
       {children}
     </button>
   );

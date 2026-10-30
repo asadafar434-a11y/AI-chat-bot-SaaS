@@ -47,8 +47,9 @@ import { ExecutionCostCard } from '../components/ExecutionCost';
 import { PositionPricesCard } from '../components/PositionPrices';
 import { ServiceVolumeCard } from '../components/ServiceVolume';
 import { PriceBadgeChip } from '../components/PriceBadgeChip';
-import { TenderRating } from '../components/TenderRating';
-import { ArrowLeft, BarChart2 } from '../lib/icons';
+import { RatingBlockers, TenderRatingChip } from '../components/TenderRating';
+import { Button, Modal } from '../components/ui';
+import { ArrowLeft, BarChart2, Trash2 } from '../lib/icons';
 import { useProfile } from './analysis';
 import { useMarketBase } from './market';
 import { AnalyticsIntake } from './analytics-intake';
@@ -130,7 +131,9 @@ export function AnalyticsList({ onOpen }: { onOpen: (id: string) => void }) {
 // подпись из 4–5 строк «что нашла аналитика» (lib/analytics-summary.ts). Полей ввода нет: расчёты по договору, рискам, цене, РИЦ и 27 проверкам идут внутри и лежат в отчёте Word и PDF (lib/analytics-report.ts);
 // затраты участник вводит один раз — на шаге «Цена». Панели для ручного ввода (договор, расходы, расчёт заказчика, РИЦ, матрица) остались в коде, на экране их нет.
 export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () => void; onAnalyze?: () => void; onCosts?: () => void }) {
-  const { purchase, documents } = usePurchase();
+  const { purchase, documents, remove } = usePurchase();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const profile = useProfile();
   const ric = usePersisted<RicData>(purchase.id, getRic, saveRic, EMPTY_RIC, 'расчёт РИЦ');
   const register = usePersisted<RegisterData>(purchase.id, getRegister, saveRegister, EMPTY_REGISTER, 'скрытые затраты');
@@ -393,20 +396,32 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
         >
           <ArrowLeft className="size-3" /> Аналитика
         </button>
-        <div className="flex items-start gap-2">
-          <BarChart2 className="mt-0.5 size-4 shrink-0" />
-          <div className="min-w-0">
-            <p className="break-words text-sm font-medium">{titleOf(purchase)}</p>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
-              {nmck !== null ? `Начальная цена: ${purchase.price}` : 'Начальной цены в документах нет'}
-            </p>
-            {badge && (
-              <div className="mt-2">
-                <PriceBadgeChip badge={badge} market={market.lines} />
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+          <div className="flex min-w-0 flex-1 basis-72 items-start gap-2">
+            <BarChart2 className="mt-1 size-4 shrink-0" />
+            <div className="min-w-0 flex-1">
+              {/* Цена — в строке заголовка напротив названия (владелец, 30.10.2026) */}
+              <div className="flex items-start justify-between gap-x-4">
+                <p className="min-w-0 flex-1 break-words text-sm font-medium">{titleOf(purchase)}</p>
+                <p className="shrink-0 text-right">
+                  {nmck !== null ? (
+                    <span className="font-mono text-lg font-bold tabular-nums">{purchase.price}</span>
+                  ) : (
+                    <span className="text-[13px] text-muted-foreground">Начальной цены в документах нет</span>
+                  )}
+                  {nmck !== null && <span className="block text-[11px] text-muted-foreground">начальная цена</span>}
+                </p>
               </div>
-            )}
+              {badge && (
+                <div className="mt-2">
+                  <PriceBadgeChip badge={badge} market={market.lines} />
+                </div>
+              )}
+            </div>
           </div>
+          <TenderRatingChip rating={rating} />
         </div>
+        <RatingBlockers rating={rating} className="border-t border-border pt-3 empty:hidden" />
       </div>
       {/* Товары и найденные закупочные цены — сразу под названием закупки: это то, что участник ищет первым (владелец, 23.10.2026: «где товар, цена его?»). Цен нет — блока нет. */}
       {volume && <ServiceVolumeCard volume={volume} nmck={nmck} costs={stepCalc.costs ?? null} />}
@@ -414,7 +429,6 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
       {execution && priceTable && <ExecutionCostCard cost={execution} table={priceTable} sheet={sheet} webNote={market.finding.text} terms={terms} dropped={market.dropped} />}
       {market.prices && <PositionPricesCard prices={market.prices} total={market.positionsTotal} />}
       {quotes && <CustomerQuotesCard quotes={quotes} nmck={nmck} step={auctionStep} />}
-      <TenderRating rating={rating} />
       <AnalyticsSummary
         summary={summary}
         busy={busy}
@@ -456,6 +470,47 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
           onRun: () => void searchAll(),
         }}
       />
+
+      {/* Удаление закупки — в самом конце экрана, подальше от рабочих кнопок (владелец, 30.10.2026) */}
+      <div className="flex justify-end border-t border-border pt-4">
+        <Button variant="secondary" size="sm" onClick={() => setConfirmDelete(true)}>
+          <Trash2 className="size-3.5" /> Удалить закупку
+        </Button>
+      </div>
+      <Modal
+        open={confirmDelete}
+        onClose={() => (deleting ? undefined : setConfirmDelete(false))}
+        title="Удалить закупку?"
+        subtitle={titleOf(purchase)}
+        footer={
+          <>
+            <Button variant="secondary" size="sm" disabled={deleting} onClick={() => setConfirmDelete(false)}>
+              Отмена
+            </Button>
+            <Button
+              size="sm"
+              variant="danger"
+              disabled={deleting}
+              onClick={async () => {
+                setDeleting(true);
+                try {
+                  await remove();
+                  onBack();
+                } finally {
+                  setDeleting(false);
+                  setConfirmDelete(false);
+                }
+              }}
+            >
+              <Trash2 className="size-3.5" /> Удалить
+            </Button>
+          </>
+        }
+      >
+        <div className="px-5 py-6">
+          <p className="text-[13px] text-muted-foreground">Закупка, её документы и расчёты будут удалены с этого компьютера. Это нельзя отменить.</p>
+        </div>
+      </Modal>
     </div>
   );
 }

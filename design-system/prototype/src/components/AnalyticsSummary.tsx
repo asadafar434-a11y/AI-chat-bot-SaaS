@@ -105,7 +105,7 @@ export function AnalyticsSummary({
 
         {analyze && (
           <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-foreground/10 pt-3">
-            <Button onClick={analyze.onClick}>{analyze.label}</Button>
+            <Button variant="ai" onClick={analyze.onClick}>{analyze.label}</Button>
           </div>
         )}
       </div>

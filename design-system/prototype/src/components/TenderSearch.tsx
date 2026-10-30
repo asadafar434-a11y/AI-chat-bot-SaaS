@@ -44,14 +44,18 @@ function Row({ l, today, onNew }: { l: TenderListing; today: string; onNew: () =
   const left = l.deadline ? dayDiff(l.deadline, today) : null;
   return (
     <li className="space-y-1.5 border-b border-border px-4 py-3 last:border-0">
-      <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
-        <p className="min-w-[12rem] flex-1 break-words text-[13px] font-medium">{l.title}</p>
-        {l.law && <Badge tone="neutral">{l.law}</Badge>}
-        {l.method && <Badge tone="neutral" wrap>{l.method}</Badge>}
+      <div className="flex items-start justify-between gap-x-4">
+        <p className="min-w-0 flex-1 break-words text-[13px] font-medium">{l.title}</p>
+        <span className={l.price !== null ? 'shrink-0 text-right font-mono text-lg font-bold tabular-nums' : 'shrink-0 text-right text-[12px] text-muted-foreground'}>{l.price !== null ? rub(l.price) : 'цена не указана'}</span>
       </div>
+      {(l.law || l.method) && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {l.law && <Badge tone="neutral">{l.law}</Badge>}
+          {l.method && <Badge tone="neutral" wrap>{l.method}</Badge>}
+        </div>
+      )}
       {l.customer && <p className="break-words text-[12px] text-muted-foreground">{l.customer}</p>}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-        <span className="font-mono text-[15px] font-bold">{l.price !== null ? rub(l.price) : 'цена не указана'}</span>
         {l.deadline && (
           <span className={`text-[12px] ${left !== null && left >= 0 && left <= 3 ? 'font-medium text-warn-foreground' : 'text-muted-foreground'}`}>
             заявки до {ruDate(l.deadline)}

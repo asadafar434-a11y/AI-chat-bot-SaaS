@@ -107,7 +107,7 @@ test('раздел: список закупок, «готово» у РИЦ и �
     renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: [{ id: 'p1', title: 'Поставка угля', price: '25 930 002,00 ₽', kind: '223-ФЗ · аукцион' }], onOpen: none, onUpload: none })),
   );
   assert.match(list, /Поставка угля/);
-  assert.match(list, /начальная цена 25 930 002,00 ₽/);
+  assert.match(list, /Поставка угля 25 930 002,00 ₽/, 'цена стоит в строке заголовка, напротив названия');
   assert.equal(list.includes('Открыть расчёт'), false, 'строка закупки — кнопка целиком, без лишней подписи');
   assert.match(list, /РИЦ — расчёт индикативной цены/);
   assert.match(list, /Расчёт цены у заказчика/);
@@ -1426,7 +1426,10 @@ test('расшифровка рейтинга: препятствия отдел
 
 test('рейтинг и экран закупки: карточка рейтинга и ценовой бейдж стоят на экране, поля ввода не вернулись', () => {
   const src = readFileSync(path.join(root, 'src/real/analytics.tsx'), 'utf8');
-  assert.match(src, /<TenderRating rating=\{rating\} \/>/);
+  assert.match(src, /<TenderRatingChip rating=\{rating\} \/>/, 'рейтинг — в верхней плашке');
+  assert.ok(src.indexOf('<TenderRatingChip') < src.indexOf('<AnalyticsSummary'), 'рейтинг выше плашки итога');
+  assert.match(src, /Удалить закупку/, 'удаление — внутри экрана закупки');
+  assert.ok(src.lastIndexOf('Удалить закупку') > src.indexOf('<AnalyticsFindings'), 'удаление — в самом конце');
   assert.match(src, /<PriceBadgeChip badge=\{badge\} market=\{market\.lines\} \/>/);
   assert.match(src, /useMarketBase\(data, plain,/, 'позиции из бланка заказчика и цены базы подключены под капотом');
   assert.match(src, /rateTender\(/);
@@ -1564,7 +1567,7 @@ test('товары и закупочные цены: у нескольких п�
 test('товары и закупочные цены: блок стоит на экране закупки после плашки итога и подключён к хуку рынка; платный поиск при выключенном ИИ по-прежнему не идёт', () => {
   const screen = readFileSync(path.join(root, 'src/real/analytics.tsx'), 'utf8');
   assert.match(screen, /<PositionPricesCard prices=\{market\.prices\} total=\{market\.positionsTotal\} \/>/);
-  assert.ok(screen.indexOf('<PositionPricesCard') < screen.indexOf('<TenderRating'), 'товары и цены — сразу под названием закупки, выше рейтинга и плашки итога');
+  assert.ok(screen.indexOf('<PositionPricesCard') < screen.indexOf('<AnalyticsSummary'), 'товары и цены — сразу под названием закупки, выше плашки итога и плашки итога');
   assert.ok(screen.indexOf('<PositionPricesCard') < screen.indexOf('<AnalyticsFindings'), 'до подписи внизу');
   const hook = readFileSync(path.join(root, 'src/real/market.ts'), 'utf8');
   assert.match(hook, /positionPrices\(withPositions, saved/);
@@ -1652,7 +1655,7 @@ test('себестоимость по составу работ: состав и
   assert.match(screen, /useCrewCost\(purchase\.id, plain,/);
   assert.match(screen, /<CrewCostCard need=\{crew\.need\}/);
   assert.match(screen, /const crewTotal = crew\.cost\?\.complete \? crew\.cost\.termTotal : null;/, 'в расчёт цены идёт только полная сумма');
-  assert.ok(screen.indexOf('<CrewCostCard') > screen.indexOf('<ServiceVolumeCard') && screen.indexOf('<CrewCostCard') < screen.indexOf('<TenderRating'), 'под объёмом, над рейтингом');
+  assert.ok(screen.indexOf('<CrewCostCard') > screen.indexOf('<ServiceVolumeCard') && screen.indexOf('<CrewCostCard') < screen.indexOf('<AnalyticsSummary'), 'под объёмом, над плашкой итога');
   const hook = readFileSync(path.join(root, 'src/real/rates.ts'), 'utf8');
   assert.match(hook, /fetch\('\/api\/rates'/);
   assert.match(hook, /aiHeaders\(purchaseId\)/, 'запрос по правилам ИИ: выключенный переключатель его не пускает');
@@ -1757,7 +1760,7 @@ test('предложения поставщиков у заказчика: тр�
   assert.match(screen, /findCustomerQuotes\(plain\)/);
   assert.match(screen, /<CustomerQuotesCard quotes=\{quotes\}/);
   assert.match(screen, /quotesFinding\(quotes, nmck\)/);
-  assert.ok(screen.indexOf('<CustomerQuotesCard') < screen.indexOf('<TenderRating'), 'предложения заказчика — выше рейтинга');
+  assert.ok(screen.indexOf('<CustomerQuotesCard') < screen.indexOf('<AnalyticsSummary'), 'предложения заказчика — выше рейтинга');
 });
 
 test('объём услуги: детодни из ТЗ, цена заказчика за единицу и себестоимость участника; без себестоимости — подсказка, куда её вписать', async () => {
@@ -1793,7 +1796,7 @@ test('объём услуги: детодни из ТЗ, цена заказчи
   assert.match(text(renderToStaticMarkup(h(mod.ServiceVolumeCard, { volume: shifts, nmck: 730000, costs: null }))), /Впишите себестоимость одной смены на шаге «Цена»/);
   const screen = readFileSync(path.join(root, 'src/real/analytics.tsx'), 'utf8');
   assert.match(screen, /findServiceVolume\(plain\)/);
-  assert.ok(screen.indexOf('<ServiceVolumeCard') < screen.indexOf('<TenderRating'), 'объём — наверху, выше рейтинга');
+  assert.ok(screen.indexOf('<ServiceVolumeCard') < screen.indexOf('<AnalyticsSummary'), 'объём — наверху, выше рейтинга');
 });
 
 // «Сколько стоит исполнение» по таблице обоснования цены заказчика (29.10.2026): строки таблицы так, как их переписывает распознавание снимка.

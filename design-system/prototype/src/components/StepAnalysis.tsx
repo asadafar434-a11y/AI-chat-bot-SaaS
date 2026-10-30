@@ -68,8 +68,7 @@ function ContradictionsBlock({ card }: { card: ContradictionsCard }) {
             или оспорить требование. Платный запрос к ИИ — только по кнопке.
           </p>
         </div>
-        <Button size="sm" variant={result ? 'secondary' : 'primary'} disabled={running} onClick={onRun}>
-          {running ? <Loader2 className="size-3.5 animate-spin" /> : null}
+        <Button size="sm" variant="ai" busy={running} disabled={running} onClick={onRun}>
           {running ? 'ИИ читает документы…' : result ? 'Проверить заново' : 'Найти противоречия'}
         </Button>
       </div>

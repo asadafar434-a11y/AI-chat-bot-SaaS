@@ -123,8 +123,7 @@ export function HiddenRequirementsBlock({ card }: { card: HiddenRequirementsCard
             двояко. Платный запрос к ИИ — только по кнопке.
           </p>
         </div>
-        <Button size="sm" variant={result ? 'secondary' : 'primary'} disabled={running} onClick={onRun}>
-          {running ? <Loader2 className="size-3.5 animate-spin" /> : null}
+        <Button size="sm" variant="ai" busy={running} disabled={running} onClick={onRun}>
           {running ? 'ИИ читает документы…' : result ? 'Проверить заново' : 'Найти скрытые требования'}
         </Button>
       </div>

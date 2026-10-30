@@ -484,8 +484,7 @@ export function EvidenceSection({
             content="ИИ найдёт в ваших документах лицензии, договоры, сотрудников и другие факты. Каждый факт программа сверит с текстом документа, а вы подтвердите. Это запрос к ИИ."
             align="end"
           >
-            <Button size="sm" variant="secondary" disabled={busy || eligible === 0} onClick={onFind}>
-              {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+            <Button size="sm" variant="ai" busy={busy} disabled={busy || eligible === 0} onClick={onFind}>
               {busy ? 'Ищу факты…' : 'Найти факты в документах'}
             </Button>
           </Tooltip>

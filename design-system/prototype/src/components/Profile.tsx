@@ -417,8 +417,7 @@ export function Profile() {
             )}
             {sourceDocs.length > 0 && (
               <Tooltip content="ИИ найдёт реквизиты в ваших анкетах и карточке предприятия и впишет пустые поля." align="end">
-                <Button variant="secondary" onClick={() => void fillFromDocuments()} disabled={filling || !profile}>
-                  {filling ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                <Button variant="ai" busy={filling} onClick={() => void fillFromDocuments()} disabled={filling || !profile}>
                   {filling ? 'Ищу реквизиты…' : 'Заполнить из документов'}
                 </Button>
               </Tooltip>

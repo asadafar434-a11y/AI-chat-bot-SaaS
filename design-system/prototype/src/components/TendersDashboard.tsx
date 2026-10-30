@@ -114,15 +114,15 @@ export function TendersDashboard({
       </div>
 
       {/* List */}
-      <div className="space-y-2.5">
+      <div className="max-w-4xl space-y-2.5">
         {list.map((t) => {
           const st = statusLabels[t.status];
           const progress = t.progress;
           return (
             <Card key={t.id} className="group transition-colors hover:border-foreground/25">
               <div className="flex w-full items-center gap-2 p-4">
-                <button onClick={() => onOpen(t.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-                  <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1">
+                  <button onClick={() => onOpen(t.id)} className="block w-full min-w-0 text-left">
                     <div className="flex flex-wrap items-center gap-2">
                       <Tooltip content={st.hint} align="start">
                         <Badge tone={st.tone}>{st.label}</Badge>
@@ -133,17 +133,18 @@ export function TendersDashboard({
                         </span>
                       </Tooltip>
                       {t.sample && <Badge>пример</Badge>}
-                      <span className="font-mono text-[11px] text-muted-foreground">
-                        {t.law}
-                      </span>
+                      <span className="font-mono text-[11px] text-muted-foreground">{t.law}</span>
                     </div>
-                    <p className="mt-2 text-sm font-medium leading-snug">{t.title}</p>
+                    {/* Цена — сразу после названия и крупнее остального текста (владелец, 29.10.2026: «цена должна быть рядом с названием и побольше») */}
+                    <div className="mt-2 flex items-start justify-between gap-x-4 gap-y-0.5">
+                      <p className="min-w-0 flex-1 text-sm font-medium leading-snug">{t.title}</p>
+                      <Tooltip content="НМЦК — начальная (максимальная) цена контракта. Выше неё цену предложить нельзя." align="start">
+                        <span className={cx('shrink-0 text-right font-mono tabular-nums', t.nmck ? 'text-lg font-bold text-foreground' : 'text-[13px] text-muted-foreground')}>{t.nmck ? rub(t.nmck) : 'цена не указана'}</span>
+                      </Tooltip>
+                    </div>
                     <p className="mt-0.5 text-[13px] text-muted-foreground">{t.customer}</p>
 
                     <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-muted-foreground">
-                      <Tooltip content="НМЦК — начальная (максимальная) цена контракта. Выше неё цену предложить нельзя." align="start">
-                        <span className={cx('font-mono tabular-nums', t.nmck ? 'text-[15px] font-bold text-foreground' : 'text-muted-foreground')}>{t.nmck ? rub(t.nmck) : 'цена не указана'}</span>
-                      </Tooltip>
                       <span
                         className={cx(
                           'inline-flex items-center gap-1',
@@ -166,48 +167,37 @@ export function TendersDashboard({
                         </Tooltip>
                       )}
                     </div>
+                  </button>
 
-                    <Tooltip
-                      content="Готовность заявки: доля заполненных и подтверждённых полей."
-                      side="bottom"
-                      align="start"
-                      className="mt-3 flex w-full"
-                    >
+                  {/* Внизу: прогресс слева, напротив него — «Отметить поданной» и «Удалить» (при наведении) */}
+                  <div className="mt-3 flex items-center gap-3">
+                    <Tooltip content="Готовность заявки: доля заполненных и подтверждённых полей." side="bottom" align="start" className="flex min-w-0 flex-1">
                       <div className="flex w-full items-center gap-3">
                         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
-                          <div
-                            className="h-full rounded-full bg-foreground transition-all"
-                            style={{ width: `${progress}%` }}
-                          />
+                          <div className={cx('h-full rounded-full transition-all', progress >= 100 ? 'bg-success' : 'bg-foreground')} style={{ width: `${progress}%` }} />
                         </div>
                         <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{progress}%</span>
                       </div>
                     </Tooltip>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button
+                        onClick={() => onToggleSubmitted(t.id)}
+                        className="inline-flex min-h-7 shrink-0 items-center text-[12px] text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                      >
+                        {t.status === 'submitted' ? 'Снять отметку «Подана»' : 'Отметить поданной'}
+                      </button>
+                      <IconButton
+                        label="Удалить закупку"
+                        tone="danger"
+                        align="end"
+                        onClick={() => setDeleteTarget(t)}
+                        className="opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
+                      >
+                        <Trash2 className="size-4" />
+                      </IconButton>
+                    </div>
                   </div>
-                </button>
-
-                {/* Удалить — при наведении на карточку; шеврон — по центру справа */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleSubmitted(t.id);
-                  }}
-                  className="hidden min-h-7 shrink-0 items-center text-[12px] text-muted-foreground underline underline-offset-4 hover:text-foreground sm:inline-flex"
-                >
-                  {t.status === 'submitted' ? 'Снять отметку «Подана»' : 'Отметить поданной'}
-                </button>
-                <IconButton
-                  label="Удалить закупку"
-                  tone="danger"
-                  align="end"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDeleteTarget(t);
-                  }}
-                  className="opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
-                >
-                  <Trash2 className="size-4" />
-                </IconButton>
+                </div>
                 <button
                   onClick={() => onOpen(t.id)}
                   aria-label="Открыть закупку"

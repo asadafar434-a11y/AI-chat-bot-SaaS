@@ -335,8 +335,7 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
             <p className="text-[12px] text-muted-foreground">
               С документами ИИ сначала ищет цифры и скрытые расходы в них самих; без документов — оценивает по рыночным ориентирам.
             </p>
-            <Button type="button" variant="secondary" size="sm" onClick={fillWithAi} disabled={aiBusy || !aiOn}>
-              <RefreshCw className={`size-3.5 ${aiBusy ? 'animate-spin' : ''}`} />
+            <Button type="button" variant="ai" size="sm" busy={aiBusy} onClick={fillWithAi} disabled={aiBusy || !aiOn}>
               {aiBusy ? 'Запрашиваю ИИ…' : 'Подставить значения с ИИ'}
             </Button>
             <p className="text-[12px] text-muted-foreground">
