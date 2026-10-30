@@ -300,50 +300,56 @@ function Shell({
           {aside}
         </div>
 
-        {/* Край размыт всегда — честный намёк, что шаги можно прокрутить: на телефоне их не все видно за кадром. */}
-        <ol ref={stepsRef} className="flex items-center gap-1.5 overflow-x-auto pb-1 [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)]">
-          {steps.map((s, i) => {
-            const state = i === step ? 'active' : done[i] ? 'done' : 'todo';
-            const Icon = s.icon;
-            const locked = i > reach;
-            return (
-              <li key={s.label} className="flex shrink-0 items-center gap-1.5">
-                <Tooltip
-                  content={locked ? `${s.hint}. Откроется после шага «${steps[reach].label}».` : s.hint}
-                  side="bottom"
-                  align={i === 0 ? 'start' : i === steps.length - 1 ? 'end' : 'center'}
-                >
-                  <button
-                    onClick={() => !locked && setStep(i)}
-                    disabled={locked}
-                    data-step-active={state === 'active'}
-                    className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors disabled:cursor-not-allowed ${
-                      state === 'active'
-                        ? 'bg-secondary text-foreground'
-                        : state === 'done'
-                          ? 'text-foreground hover:bg-secondary/60'
-                          : 'text-muted-foreground'
-                    }`}
+        {/* Шаги — отдельной панелью: пройденные с зелёной галочкой, текущий — белой плашкой с синим значком.
+            Край размыт всегда — честный намёк, что шаги можно прокрутить: на телефоне их не все видно за кадром. */}
+        <div className="rounded-lg border border-border bg-secondary/60 p-1">
+          <ol ref={stepsRef} className="flex items-center gap-1 overflow-x-auto [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)]">
+            {steps.map((s, i) => {
+              const state = i === step ? 'active' : done[i] ? 'done' : 'todo';
+              const Icon = s.icon;
+              const locked = i > reach;
+              return (
+                <li key={s.label} className="flex shrink-0 items-center gap-1">
+                  <Tooltip
+                    content={locked ? `${s.hint}. Откроется после шага «${steps[reach].label}».` : s.hint}
+                    side="bottom"
+                    align={i === 0 ? 'start' : i === steps.length - 1 ? 'end' : 'center'}
                   >
-                    <span
-                      className={`flex size-5 items-center justify-center rounded-full border text-[10px] ${
-                        state === 'done'
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : state === 'active'
-                            ? 'border-foreground'
-                            : 'border-border'
+                    <button
+                      onClick={() => !locked && setStep(i)}
+                      disabled={locked}
+                      data-step-active={state === 'active'}
+                      aria-current={state === 'active' ? 'step' : undefined}
+                      className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-all disabled:cursor-not-allowed ${
+                        state === 'active'
+                          ? 'bg-card font-semibold text-foreground shadow-sm'
+                          : state === 'done'
+                            ? 'font-medium text-foreground hover:bg-card/70'
+                            : 'font-medium text-muted-foreground'
                       }`}
                     >
-                      {state === 'done' ? <Check className="size-3" /> : <Icon className="size-3" />}
-                    </span>
-                    {s.label}
-                  </button>
-                </Tooltip>
-                {i < steps.length - 1 && <span className="h-px w-4 shrink-0 bg-border" />}
-              </li>
-            );
-          })}
-        </ol>
+                      <span
+                        className={`flex size-6 items-center justify-center rounded-full border transition-colors ${
+                          state === 'done'
+                            ? 'border-success bg-success text-background'
+                            : state === 'active'
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border bg-card text-muted-foreground'
+                        }`}
+                      >
+                        {state === 'done' ? <Check className="size-3.5" /> : <Icon className="size-3.5" />}
+                      </span>
+                      {s.label}
+                    </button>
+                  </Tooltip>
+                  {i < steps.length - 1 && (
+                    <span className={`h-0.5 w-5 shrink-0 rounded-full ${done[i] ? 'bg-success/40' : 'bg-border'}`} />
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </div>
       </div>
 
       <div>{children}</div>

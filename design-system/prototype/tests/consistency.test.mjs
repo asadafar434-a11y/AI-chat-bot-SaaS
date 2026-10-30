@@ -25,6 +25,13 @@ test('шаги закупки на телефоне: строка шагов п�
   assert.match(app, /max-w-6xl py-2 pb-24 lg:py-4/);
 });
 
+test('шаги закупки: пройденные — зелёная галочка, текущий — белая плашка с синим значком', () => {
+  const app = src('App.tsx');
+  assert.match(app, /border-success bg-success text-background/, 'пройденный шаг — зелёная галочка');
+  assert.match(app, /border-primary bg-primary text-primary-foreground/, 'текущий шаг — синий значок');
+  assert.match(app, /bg-card font-semibold text-foreground shadow-sm/, 'текущий шаг — акцентная плашка');
+});
+
 test('переключатели и фильтры — высота 32 из шкалы 28/32/36, а не подбор отступами', () => {
   assert.match(src('components/StepPackage.tsx'), /inline-flex h-8 items-center rounded-md border px-3 text-xs font-medium/);
   assert.match(src('components/TendersDashboard.tsx'), /inline-flex h-8 items-center gap-1\.5 rounded-md border px-3 text-xs font-medium/);
