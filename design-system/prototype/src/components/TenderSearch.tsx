@@ -3,6 +3,7 @@ import { eisNumberUrl, SORT_LABELS, type SearchResult, type TenderFilters, type 
 import { plural } from '@/lib/plural';
 import { ArrowUpRight, Copy, Loader2, Plus, Search, Trash2, Upload } from '../lib/icons';
 import { Badge, Button, Card, Checkbox, HelpTip, fieldClass } from './ui';
+import { SectionIcon } from './SectionIcon';
 
 // «Поиск закупок»: фильтры (слова и исключения, закон, цена, даты, «приём заявок идёт»), список закупок из выгрузки ЕИС и три шага, как её получить: «Найти в ЕИС» → закладка «Скопировать закупки» → вставить сюда.
 // Закупки — только из выгрузки участника; чего в выгрузке нет, то не показываем (lib/tender-import.ts). Живая лента без выгрузки — «скоро»: нужен доступ к данным ЕИС с нашего сервера.
@@ -186,7 +187,7 @@ export function TenderSearch({
     <div className="animate-fade-up space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Поиск закупок</h1>
+          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight"><SectionIcon name="search" className="size-8" />Поиск закупок</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {has ? `В выгрузке ${result.total} ${plural(result.total, 'закупка', 'закупки', 'закупок')}${loadedAt ? ` · загружена ${new Date(loadedAt).toLocaleDateString('ru-RU')}` : ''}` : 'Задайте фильтры, найдите закупки в ЕИС и загрузите их сюда.'}
           </p>

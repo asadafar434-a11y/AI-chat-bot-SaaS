@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Search } from '../lib/icons';
 import { Badge, Card, HelpTip, Soon } from './ui';
+import { SectionIcon } from './SectionIcon';
 import { rub } from '../lib/data';
 import { titleOf, type Purchase } from '@/lib/purchase';
 import { parseRubles } from '@/lib/rub-words';
@@ -41,7 +42,7 @@ export function BidHistory({ purchases }: { purchases: Purchase[] | null }) {
     <div className="animate-fade-up space-y-5">
       <div>
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-semibold tracking-tight">История заявок</h1>
+          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight"><SectionIcon name="history" className="size-8" />История заявок</h1>
           <HelpTip
             align="start"
             content="Закупки, которые вы отметили поданными. Итоги торгов с площадок — в разработке: статус «Подана» значит, что результат пока не известен, победителя и места здесь нет."

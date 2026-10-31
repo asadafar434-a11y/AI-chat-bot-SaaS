@@ -36,7 +36,7 @@ const withAccount = (el) => h(account.AccountContext.Provider, { value: { email:
 
 test('настройки: аккаунт (почта, «Сменить пароль», «Выйти»), внешний вид (две кнопки темы), копия данных и удаление', () => {
   const out = html(withAccount(h(settings.Settings, { dark: false, setDark: noop })));
-  assert.match(out, /<h1[^>]*>Настройки<\/h1>/);
+  assert.match(out, /<h1[^>]*>.*Настройки<\/h1>/);
   assert.match(out, />Аккаунт</);
   assert.match(out, /owner@example\.com/);
   assert.match(out, /Сменить пароль/);

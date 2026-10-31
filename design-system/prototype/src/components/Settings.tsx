@@ -12,6 +12,7 @@ import { Download, Loader2, LogOut, Moon, Sun, Trash2, Upload } from '../lib/ico
 import { Notice, type Tone } from './Notice';
 import { PasswordInput } from './PasswordInput';
 import { Button, Card, cx, fieldClass } from './ui';
+import { SectionIcon } from './SectionIcon';
 
 // «Настройки»: аккаунт (почта, смена пароля, выход), внешний вид (тема) и данные (копия файлом, удаление). Всё, что относится к человеку и его
 // данным, а не к реквизитам компании: реквизиты, база доказательств и образцы остаются в «Профиле компании».
@@ -35,7 +36,7 @@ export function Settings({ dark, setDark }: { dark: boolean; setDark: (v: boolea
   return (
     <div className="animate-fade-up space-y-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Настройки</h1>
+        <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight"><SectionIcon name="settings" className="size-8" />Настройки</h1>
         <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">Аккаунт, внешний вид и ваши данные. Реквизиты компании — в «Профиле компании» (карточка внизу меню).</p>
       </div>
       <AccountCard />

@@ -9,6 +9,7 @@ import { forServer, readDocuments, type SentDocument } from '@/lib/read-document
 import { AlertTriangle, Calculator as CalculatorIcon, RefreshCw, Upload } from '../lib/icons';
 import { useAiEnabled } from '../lib/use-ai-mode';
 import { AIDisclaimer, Badge, Button, Card, fieldClass } from './ui';
+import { SectionIcon } from './SectionIcon';
 
 const SUB_SPHERE_LABELS: Record<string, string> = { general: 'Общий', device: 'Медизделия', medicine: 'Лекарства' };
 const subSphereLabel = (key: string) => SUB_SPHERE_LABELS[key] ?? key;
@@ -223,7 +224,7 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
   return (
     <div className="mx-auto max-w-5xl space-y-4 p-4 sm:p-6">
       <div>
-        <h1 className="text-xl font-semibold">Калькулятор</h1>
+        <h1 className="flex items-center gap-2 text-xl font-semibold"><SectionIcon name="calculator" className="size-8" />Калькулятор</h1>
         <p className="text-[13px] text-muted-foreground">Цена, маржа, обеспечение, срок и риск по правилам сферы</p>
       </div>
 
