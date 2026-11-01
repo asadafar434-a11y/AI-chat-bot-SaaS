@@ -1690,6 +1690,8 @@ test('проверка контрагента по ИНН: форма, ошиб�
     ],
     statements: [{ year: 2025, revenue: 140930138, netProfit: -13075211, assets: 161324221, equity: -51330552 }, { year: 2024, revenue: 120394401, netProfit: -42658831, assets: 139198678, equity: -38255341 }],
     links, sources: { egrul: ok, fedresurs: ok, bo: ok },
+    reliability: { scale: 14, nominality: { level: 1, text: 'Риск номинальности не выявлен' }, financial: { level: 1, text: 'Финансовые риски не выявлены' }, balance: { good: 92, warn: 8, bad: 0 }, factors: [{ code: 'reg', tone: 'good', weight: 1, text: 'Юридическое лицо зарегистрировано 12 лет назад' }, { code: 'cap', tone: 'warn', weight: 2, text: 'Уставный капитал является минимальным' }] },
+    efrsb: [], sanctions: { included: false, countries: [], founderLinked: false }, contacts: { phones: ['+7 495 000-00-00'], emails: ['info@example.ru'], website: 'https://example.ru' },
   };
   const full = renderToStaticMarkup(h(mod.CounterpartyCard, { ...props, inn: '1434031363', report }));
   const t = text(full);
@@ -1699,6 +1701,15 @@ test('проверка контрагента по ИНН: форма, ошиб�
   assert.match(t, /Возраст: зарегистрирована 19\.12\.2005, 20 лет/);
   assert.match(t, /Капитал: собственный капитал отрицательный на конец 2025 года/);
   assert.match(t, /Бухгалтерская отчётность \(ГИР БО ФНС\)/);
+  assert.match(t, /Оценка надёжности — расчёт Checko, не наше заключение/);
+  assert.match(t, /Масштаб бизнеса: 14 из 100/);
+  assert.match(t, /Полож 92% · Внимание 8% · Негатив 0%/);
+  assert.match(t, /ЕФРСБ \(реестр банкротств\): нет сообщений о банкротстве/);
+  assert.match(t, /Блокировка банковских счетов: Сведений о приостановлении операций по счетам нет/);
+  assert.match(t, /Санкции: не входит в санкционные списки/);
+  assert.match(t, /Правило 50%: нет связей с подсанкционными участниками/);
+  assert.match(t, /Контакты — из открытых источников/);
+  assert.match(t, /\+7 495 000-00-00/);
   assert.match(t, /2025[\s\S]*140,9 млрд ₽[\s\S]*−13,1 млрд ₽[\s\S]*161,3 млрд ₽[\s\S]*−51,3 млрд ₽/, 'отчётность по годам в одной строке');
   assert.match(full, /class="font-mono text-danger">−13,1/, 'отрицательные суммы красным');
   assert.match(full, /<a href="https:\/\/zakupki\.gov\.ru\/epz\/dishonestsupplier\/search\/results\.html\?searchString=1434031363"[^>]*rel="noopener noreferrer"/, 'РНП открывается с подставленным ИНН и безопасно');
