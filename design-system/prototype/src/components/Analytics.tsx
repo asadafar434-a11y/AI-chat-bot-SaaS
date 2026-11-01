@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { BarChart2, ChevronRight, UploadCloud } from '../lib/icons';
+import { ChevronRight, UploadCloud } from '../lib/icons';
 import { Button, Card, HelpTip, Soon } from './ui';
+import { SectionIcon } from './SectionIcon';
 
 // Раздел «Аналитика» в левом меню: расчёты по закупке отдельно от шагов подготовки заявки. Сейчас готов РИЦ (расчёт индикативной цены); остальное — «скоро».
 // План и статус каждого шага — АНАЛИТИКА-ПЛАН.md в корне проекта.
@@ -43,7 +44,7 @@ export function AnalyticsHome({ purchases, onOpen, onUpload, extra }: Props) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <BarChart2 className="size-5" />
+            <SectionIcon name="analytics" className="size-8" />
             <h1 className="text-xl font-semibold tracking-tight">Аналитика</h1>
           </div>
           <p className="mt-1 flex items-center gap-1.5 text-[13px] text-muted-foreground">

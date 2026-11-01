@@ -36,7 +36,7 @@ const withAccount = (el) => h(account.AccountContext.Provider, { value: { email:
 
 test('настройки: аккаунт (почта, «Сменить пароль», «Выйти»), внешний вид (две кнопки темы), копия данных и удаление', () => {
   const out = html(withAccount(h(settings.Settings, { dark: false, setDark: noop })));
-  assert.match(out, /<h1[^>]*>Настройки<\/h1>/);
+  assert.match(out, /<h1[^>]*>.*Настройки<\/h1>/);
   assert.match(out, />Аккаунт</);
   assert.match(out, /owner@example\.com/);
   assert.match(out, /Сменить пароль/);
@@ -95,5 +95,6 @@ test('переключатель ИИ в шапке: кнопка-выключа
   assert.match(out, /aria-checked="true"/);
   assert.match(out, /aria-label="ИИ включён\. Выключить"/);
   assert.match(out, />ИИ вкл</);
-  assert.match(out, /bg-success/, 'включён — зелёная точка');
+  assert.match(out, /bg-brand-gradient/, 'включён — фирменный градиент, видно сразу');
+  assert.match(out, /viewBox="0 0 40 40"/, 'в кнопке — робот ИИ-ассистента');
 });

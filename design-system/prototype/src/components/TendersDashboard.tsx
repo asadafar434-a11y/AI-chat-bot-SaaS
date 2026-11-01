@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Search, Plus, Calendar, FileText, ChevronRight, Trash2 } from '../lib/icons';
 import { Button, Card, Badge, Modal, AIDisclaimer, Tooltip, IconButton, cx } from './ui';
+import { SectionIcon } from './SectionIcon';
 import { statusLabels, procedureMeta, rub, type TenderCard, type TenderStatus } from '../lib/data';
 
 const filters: { id: TenderStatus | 'all'; label: string }[] = [
@@ -63,7 +64,7 @@ export function TendersDashboard({
     <div className="animate-fade-up space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Мои закупки</h1>
+          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight"><SectionIcon name="cart" className="size-8" />Мои закупки</h1>
           <p className="mt-0.5 text-[13px] text-muted-foreground">
             Загрузите документацию — ИИ проведёт до готового пакета.
           </p>

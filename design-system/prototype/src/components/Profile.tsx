@@ -34,6 +34,7 @@ import {
 import { EvidenceBase } from './EvidenceBase';
 import { Notice, type Tone } from './Notice';
 import { Badge, Button, Card, HelpTip, IconButton, TabPanel, Tabs, Tooltip, cx } from './ui';
+import { SectionIcon } from './SectionIcon';
 
 type TabKey = 'profile' | 'evidence' | 'docs';
 const TAB_LABELS: Record<TabKey, string> = {
@@ -376,7 +377,7 @@ export function Profile() {
   return (
     <div className="animate-fade-up space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Профиль компании</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight"><SectionIcon name="company" className="size-9" />Профиль компании</h1>
         <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
           Реквизиты для заявок, база доказательств компании и образцы прошлых документов. Копия данных и удаление — в «Настройках».
         </p>
