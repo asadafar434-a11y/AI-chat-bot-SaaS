@@ -49,12 +49,12 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  /* Скругления как в прототипе: md 8 — кнопки и поля, lg и xl 12 — карточки, 2xl 16 — сайдбар и шапка */
-  --radius-sm: calc(var(--radius) - 2px);
+  /* Одно скругление, как в прототипе (29.10.2026): кнопки, поля, карточки, сайдбар и окна */
+  --radius-sm: calc(var(--radius) - 8px);
   --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 4px);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) * 2);
+  --radius-lg: var(--radius);
+  --radius-xl: var(--radius);
+  --radius-2xl: var(--radius);
   --radius-3xl: calc(var(--radius) * 3);
   --radius-4xl: calc(var(--radius) * 4);
 }
@@ -93,12 +93,12 @@
   --info-tint: #eef0ff;
 
   /* Скругления по ролям: 16 — сайдбар и шапка на телефоне, 12 — карточки-острова, 8 — кнопки, поля, строки */
-  --r-shell: 16px;
+  --r-shell: 12px;
   --r-island: 12px;
-  --r-surface: 10px;
-  --r-card: 8px;
-  --r-bubble: 16px;
-  --r-ctl: 8px;
+  --r-surface: 12px;
+  --r-card: 12px;
+  --r-bubble: 12px;
+  --r-ctl: 12px;
   --r-pill: 999px;
 
   /* Острова на холсте: белая карточка с рамкой 1 px и лёгкой тенью, как Card в прототипе */
@@ -148,7 +148,7 @@
   --chart-3: var(--warn);
   --chart-4: var(--ink-3);
   --chart-5: var(--edge-2);
-  --radius: 0.5rem;
+  --radius: 0.75rem;
   --sidebar: var(--card);
   --sidebar-foreground: var(--ink);
   --sidebar-primary: var(--brand);
@@ -259,10 +259,10 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Индиго-градиент, как bg-brand-gradient в прототипе. Только робот ИИ-ассистента (у него свой SVG, bot-mark.tsx)
+/* Градиент от голубого «Тендекса» к фиолетовому, как bg-brand-gradient в прототипе (30.10.2026). Только робот ИИ-ассистента (у него свой SVG, bot-mark.tsx)
    и главное платное действие — проверка специалистом. Больше нигде. */
 @utility bg-brand-gradient {
-  background-image: linear-gradient(135deg, #4f46e5 0%, #6366f1 45%, #3b82f6 100%);
+  background-image: linear-gradient(135deg, #2f5bff 0%, #4f56f7 50%, #7a4dff 100%);
 }
 
 @layer base {

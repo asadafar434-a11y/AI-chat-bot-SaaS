@@ -130,6 +130,54 @@ export function RatingDetails({ rating }: { rating: Rating }) {
   );
 }
 
+// Препятствия под рейтингом: не больше двух строк, остальные — в расшифровке.
+export function RatingBlockers({ rating, className = '' }: { rating: Rating; className?: string }) {
+  if (rating.blockers.length === 0) return null;
+  return (
+    <ul className={`space-y-1 ${className}`}>
+      {rating.blockers.slice(0, 2).map((b) => (
+        <li key={b.id} className="flex items-start gap-2 text-[13px] font-medium text-danger">
+          <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+          <span className="min-w-0 break-words">{b.text}</span>
+        </li>
+      ))}
+      {rating.blockers.length > 2 && <li className="text-[12px] text-muted-foreground">и ещё {rating.blockers.length - 2} — в расшифровке</li>}
+    </ul>
+  );
+}
+
+// Рейтинг в верхней плашке закупки (владелец, 30.10.2026): кольцо, вердикт и «предварительно» справа от названия; по нажатию — та же расшифровка.
+export function TenderRatingChip({ rating }: { rating: Rating }) {
+  const [open, setOpen] = useState(false);
+  const ready = rating.status === 'ready';
+  const tone: RatingTone = ready ? rating.verdict!.tone : 'muted';
+  const label = ready ? rating.verdict!.label : 'Недостаточно данных';
+  const aria = ready
+    ? `Рейтинг привлекательности ${rating.score} из 100${rating.preliminary ? ' (предварительно)' : ''}: ${label}. Открыть расшифровку`
+    : `Рейтинг не посчитан: ${label.toLowerCase()}. Открыть, чего не хватает`;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label={aria}
+        className="flex shrink-0 items-center gap-3 rounded-lg border border-border bg-secondary/40 px-3 py-2 text-left outline-none transition-colors hover:bg-secondary focus-visible:ring-2 focus-visible:ring-foreground/30"
+      >
+        <RatingRing score={rating.score} tone={tone} size={56} />
+        <span className="min-w-0">
+          <span className="block text-[11px] text-muted-foreground">Привлекательность тендера</span>
+          <span className={`block text-[15px] font-bold leading-tight ${ready ? RING_TEXT[tone] : 'text-foreground'}`}>{label}</span>
+          {ready && rating.preliminary && <span className="mt-1 inline-block rounded-full border border-warn/40 bg-warn-surface px-2 py-0.5 text-[11px] font-medium text-warn-foreground">предварительно</span>}
+        </span>
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+      </button>
+      <Modal open={open} onClose={() => setOpen(false)} title="Рейтинг привлекательности тендера" subtitle="Считает код по прозрачным правилам, а не ИИ. Это не вероятность победы.">
+        <RatingDetails rating={rating} />
+      </Modal>
+    </>
+  );
+}
+
 export function TenderRating({ rating }: { rating: Rating }) {
   const [open, setOpen] = useState(false);
   const ready = rating.status === 'ready';

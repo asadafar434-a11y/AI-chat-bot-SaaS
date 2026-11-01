@@ -22,7 +22,14 @@ test('шаги закупки на телефоне: строка шагов п�
   const app = src('App.tsx');
   assert.match(app, /data-step-active=\{state === 'active'\}/);
   assert.match(app, /list\.scrollLeft \+= c\.left - l\.left/);
-  assert.match(app, /max-w-6xl py-2 pb-24 lg:py-4/);
+  assert.match(app, /max-w-6xl pt-2 pb-24 lg:pt-0 lg:pb-4/);
+});
+
+test('шаги закупки: пройденные — зелёная галочка, текущий — синяя плашка с белым значком', () => {
+  const app = src('App.tsx');
+  assert.match(app, /border-success bg-success text-background/, 'пройденный шаг — зелёная галочка');
+  assert.match(app, /border-primary-foreground\/30 bg-primary-foreground text-primary/, 'текущий шаг — белый значок с синей иконкой');
+  assert.match(app, /bg-primary font-semibold text-primary-foreground shadow-sm/, 'текущий шаг — синяя акцентная плашка');
 });
 
 test('переключатели и фильтры — высота 32 из шкалы 28/32/36, а не подбор отступами', () => {
@@ -85,4 +92,28 @@ test('карточки экрана закупки в «Аналитике» в�
     assert.equal(src.includes('<p className="text-[14px] font-bold">'), false, name + ': заголовок карточки не 14 пикселей');
     assert.match(src, /<Card className="space-y-\d p-4">/, name + ': карточка с отступом p-4');
   }
+});
+
+test('одно скругление для карточек, полей и кнопок: все размеры радиуса равны --radius (решение владельца 30.10.2026)', () => {
+  const css = src('index.css');
+  assert.match(css, /--radius: 12px;/);
+  for (const size of ['md', 'lg', 'xl', '2xl']) assert.ok(css.includes(`--radius-${size}: var(--radius);`), size);
+});
+
+test('кнопки, которые вызывают ИИ, — вариант ai: значок ИИ и градиент от голубого к фиолетовому', () => {
+  const ui = src('components/ui.tsx');
+  assert.match(ui, /ai: 'bg-brand-gradient text-white/);
+  assert.match(ui, /variant === 'ai' &&/);
+  assert.match(src('index.css'), /\.bg-brand-gradient \{\s*background-image: linear-gradient\(135deg, #2f5bff[^;]*#7a4dff/);
+  for (const file of ['components/HiddenRequirements.tsx', 'components/StepAnalysis.tsx', 'components/Profile.tsx', 'components/Calculator.tsx', 'components/EvidenceBase.tsx', 'components/AnalyticsSummary.tsx', 'real/review.tsx', 'components/StepPackage.tsx']) {
+    assert.match(src(file), /variant="ai"/, file);
+  }
+});
+
+test('карточка закупки: цена в строке заголовка, прогресс зелёный на 100 %, «Отметить поданной» и «Удалить» внизу', () => {
+  const card = src('components/TendersDashboard.tsx');
+  assert.match(card, /justify-between[^"]*"[^>]*>\s*<p className="min-w-0 flex-1 text-sm font-medium leading-snug">\{t\.title\}<\/p>/);
+  assert.match(card, /progress >= 100 \? 'bg-success' : 'bg-foreground'/);
+  assert.ok(card.lastIndexOf('Отметить поданной') > card.indexOf('{progress}%'), 'кнопка внизу, рядом с прогрессом');
+  for (const file of ['components/Analytics.tsx', 'components/TenderSearch.tsx']) assert.match(src(file), /justify-between gap-x-4/, file);
 });

@@ -113,7 +113,7 @@ export function CastCard({
 
   return (
     <div id="cast-card" className="scroll-mt-24">
-      <Card className="p-0">
+      <Card className="card-hover p-0">
         <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="flex w-full items-center gap-2.5 px-4 py-3 text-left">
           {todo ? <AlertTriangle className="size-4 shrink-0 text-warn" /> : <CheckCircle2 className="size-4 shrink-0 text-success" />}
           <div className="min-w-0 flex-1">

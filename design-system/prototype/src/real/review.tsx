@@ -94,7 +94,7 @@ function ComposeCard({ onDone }: { onDone: () => void }) {
                 <AlertTriangle className="mt-0.5 size-4 shrink-0" /> <span className="min-w-0 break-words">{error}</span>
               </p>
             )}
-            <Button onClick={() => void compose()}>Составить документы</Button>
+            <Button variant="ai" onClick={() => void compose()}>Составить документы</Button>
           </>
         )}
       </Card>

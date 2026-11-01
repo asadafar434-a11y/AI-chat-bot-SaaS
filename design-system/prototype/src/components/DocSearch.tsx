@@ -114,7 +114,7 @@ export function DocSearch({ documents }: { documents: SentDocument[] }) {
       {open && (
         <div className="animate-fade-up">
           <div className="space-y-2.5 border-t border-border px-4 pb-3 pt-3">
-            <label className="flex h-10 items-center gap-2 rounded-md border border-border bg-background px-3 text-muted-foreground focus-within:border-foreground focus-within:ring-2 focus-within:ring-ring/20">
+            <label className="flex h-10 items-center gap-2 rounded-md border border-border bg-background px-3 text-muted-foreground hover:border-foreground/30 focus-within:border-foreground focus-within:ring-2 focus-within:ring-ring/20 focus-within:ring-inset">
               <Search className="size-4 shrink-0" />
               <input
                 type="search"

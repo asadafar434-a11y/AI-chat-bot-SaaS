@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { UploadCloud, FileText, X, Link2, Loader2, CheckCircle2, AlertTriangle } from '../lib/icons';
-import { Button, Card, Soon, Tooltip } from './ui';
+import { Button, Card, Soon, StepActions, Tooltip } from './ui';
 
 // Шаг «Загрузка». Вид — прототипа; данные — настоящие: файлы, которые прочитал сервер, и то, что из них распознано.
 export type UploadFile = { name: string; meta: string; warn?: boolean };
@@ -202,7 +202,7 @@ export function StepUpload({
 
       {extra}
 
-      <div className="flex flex-wrap items-center justify-end gap-3">
+      <StepActions className="justify-end">
         {busy === 'analyzing' && (
           <span className="text-xs text-muted-foreground">ИИ читает документы — это может занять минуту…</span>
         )}
@@ -216,7 +216,7 @@ export function StepUpload({
           {busy === 'analyzing' && <Loader2 className="size-4 animate-spin" />}
           {nextLabel}
         </Button>
-      </div>
+      </StepActions>
     </div>
   );
 }

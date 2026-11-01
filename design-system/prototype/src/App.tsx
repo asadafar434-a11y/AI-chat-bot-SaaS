@@ -177,7 +177,7 @@ function Product() {
         />
 
         <main tabIndex={-1} className="min-w-0 flex-1 outline-none lg:overflow-y-auto">
-          <div className="mx-auto max-w-6xl py-2 pb-24 lg:py-4">
+          <div className="mx-auto max-w-6xl pt-2 pb-24 lg:pt-0 lg:pb-4">
             {view === 'tenders' && (
               <TendersDashboard
                 tenders={tenders}
@@ -300,50 +300,56 @@ function Shell({
           {aside}
         </div>
 
-        {/* Край размыт всегда — честный намёк, что шаги можно прокрутить: на телефоне их не все видно за кадром. */}
-        <ol ref={stepsRef} className="flex items-center gap-1.5 overflow-x-auto pb-1 [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)]">
-          {steps.map((s, i) => {
-            const state = i === step ? 'active' : done[i] ? 'done' : 'todo';
-            const Icon = s.icon;
-            const locked = i > reach;
-            return (
-              <li key={s.label} className="flex shrink-0 items-center gap-1.5">
-                <Tooltip
-                  content={locked ? `${s.hint}. Откроется после шага «${steps[reach].label}».` : s.hint}
-                  side="bottom"
-                  align={i === 0 ? 'start' : i === steps.length - 1 ? 'end' : 'center'}
-                >
-                  <button
-                    onClick={() => !locked && setStep(i)}
-                    disabled={locked}
-                    data-step-active={state === 'active'}
-                    className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors disabled:cursor-not-allowed ${
-                      state === 'active'
-                        ? 'bg-secondary text-foreground'
-                        : state === 'done'
-                          ? 'text-foreground hover:bg-secondary/60'
-                          : 'text-muted-foreground'
-                    }`}
+        {/* Шаги — отдельной панелью: пройденные с зелёной галочкой, текущий — белой плашкой с синим значком.
+            Край размыт всегда — честный намёк, что шаги можно прокрутить: на телефоне их не все видно за кадром. */}
+        <div className="w-fit max-w-full rounded-lg border border-border bg-secondary p-1.5 shadow-sm">
+          <ol ref={stepsRef} className="flex items-center gap-1 overflow-x-auto">
+            {steps.map((s, i) => {
+              const state = i === step ? 'active' : done[i] ? 'done' : 'todo';
+              const Icon = s.icon;
+              const locked = i > reach;
+              return (
+                <li key={s.label} className="flex shrink-0 items-center gap-1">
+                  <Tooltip
+                    content={locked ? `${s.hint}. Откроется после шага «${steps[reach].label}».` : s.hint}
+                    side="bottom"
+                    align={i === 0 ? 'start' : i === steps.length - 1 ? 'end' : 'center'}
                   >
-                    <span
-                      className={`flex size-5 items-center justify-center rounded-full border text-[10px] ${
-                        state === 'done'
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : state === 'active'
-                            ? 'border-foreground'
-                            : 'border-border'
+                    <button
+                      onClick={() => !locked && setStep(i)}
+                      disabled={locked}
+                      data-step-active={state === 'active'}
+                      aria-current={state === 'active' ? 'step' : undefined}
+                      className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-all disabled:cursor-not-allowed ${
+                        state === 'active'
+                          ? 'bg-primary font-semibold text-primary-foreground shadow-sm'
+                          : state === 'done'
+                            ? 'font-medium text-foreground hover:bg-card'
+                            : 'font-medium text-muted-foreground'
                       }`}
                     >
-                      {state === 'done' ? <Check className="size-3" /> : <Icon className="size-3" />}
-                    </span>
-                    {s.label}
-                  </button>
-                </Tooltip>
-                {i < steps.length - 1 && <span className="h-px w-4 shrink-0 bg-border" />}
-              </li>
-            );
-          })}
-        </ol>
+                      <span
+                        className={`flex size-7 items-center justify-center rounded-full border transition-colors ${
+                          state === 'done'
+                            ? 'border-success bg-success text-background'
+                            : state === 'active'
+                              ? 'border-primary-foreground/30 bg-primary-foreground text-primary'
+                              : 'border-border bg-card text-muted-foreground'
+                        }`}
+                      >
+                        {state === 'done' ? <Check className="size-4" /> : <Icon className="size-4" />}
+                      </span>
+                      {s.label}
+                    </button>
+                  </Tooltip>
+                  {i < steps.length - 1 && (
+                    <span className={`h-0.5 w-5 shrink-0 rounded-full ${done[i] ? 'bg-success/50' : 'bg-border'}`} />
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </div>
       </div>
 
       <div>{children}</div>

@@ -130,7 +130,7 @@ export function RequirementsList({
           const Icon = meta.icon;
           const expanded = openId === r.id;
           return (
-            <li key={r.id} className={cx('rounded-lg border bg-card transition-all duration-300', expanded ? 'border-foreground/30' : 'border-border')}>
+            <li key={r.id} className={cx('card-hover rounded-lg border bg-card transition-all duration-300', expanded ? 'border-foreground/30' : 'border-border')}>
               <button
                 type="button"
                 aria-expanded={expanded}

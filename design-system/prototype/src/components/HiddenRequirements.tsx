@@ -123,8 +123,7 @@ export function HiddenRequirementsBlock({ card }: { card: HiddenRequirementsCard
             двояко. Платный запрос к ИИ — только по кнопке.
           </p>
         </div>
-        <Button size="sm" variant={result ? 'secondary' : 'primary'} disabled={running} onClick={onRun}>
-          {running ? <Loader2 className="size-3.5 animate-spin" /> : null}
+        <Button size="sm" variant="ai" busy={running} disabled={running} onClick={onRun}>
           {running ? 'ИИ читает документы…' : result ? 'Проверить заново' : 'Найти скрытые требования'}
         </Button>
       </div>
@@ -179,7 +178,7 @@ export function HiddenRequirementsBlock({ card }: { card: HiddenRequirementsCard
                 const key = keyOf(f);
                 const open = activeId === key;
                 return (
-                  <li key={key} className="min-w-0 space-y-1.5 rounded-md border border-border p-3 text-[13px]">
+                  <li key={key} className="card-hover min-w-0 space-y-1.5 rounded-md border border-border p-3 text-[13px]">
                     <button
                       type="button"
                       aria-expanded={open}
