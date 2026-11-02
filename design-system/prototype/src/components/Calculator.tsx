@@ -66,7 +66,7 @@ function BoolToggle({ value, onChange }: { value: boolean | undefined; onChange:
           type="button"
           aria-pressed={value === option}
           onClick={() => onChange(option)}
-          className={`h-9 rounded-md px-4 text-[13px] font-medium transition-colors ${
+          className={`h-8 rounded-md px-3 text-[12px] font-medium transition-colors ${
             value === option ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:bg-secondary/70'
           }`}
         >
@@ -102,7 +102,7 @@ function ValueRow({ item }: { item: CalculatorValue }) {
 function ResultView({ result }: { result: CalculatorResult }) {
   const groups = groupBySection(result.values, (item) => splitKey(item.key).section);
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {result.needsInput.length > 0 && (
         <div className="flex items-start gap-2 rounded-md bg-warn/10 px-3 py-2.5 text-[13px] text-warn">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
@@ -110,11 +110,11 @@ function ResultView({ result }: { result: CalculatorResult }) {
         </div>
       )}
       {groups.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-2">
           {groups.map(({ section, items }) => (
-            <div key={section} className="space-y-2 rounded-md border border-border p-3">
-              <h4 className="text-[13px] font-semibold">{sectionLabel(section)}</h4>
-              <div className="space-y-1 text-[13px]">
+            <div key={section} className="space-y-1.5 rounded-md border border-border p-2.5">
+              <h4 className="text-[12px] font-semibold">{sectionLabel(section)}</h4>
+              <div className="space-y-1 text-[12px]">
                 {items.map((item) => (
                   <ValueRow key={item.key} item={item} />
                 ))}
@@ -222,17 +222,19 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4 p-4 sm:p-6">
+    <div className="animate-fade-up space-y-4">
       <div>
         <h1 className="flex items-center gap-2 text-xl font-semibold"><SectionIcon name="calculator" className="size-8" />Калькулятор</h1>
         <p className="text-[13px] text-muted-foreground">Цена, маржа, обеспечение, срок и риск по правилам сферы</p>
       </div>
 
-      <Card className="space-y-4 p-4">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="space-y-1.5">
-            <span className="text-[13px] font-medium">Сфера закупки</span>
-            <select value={sphereKey} onChange={(e) => onSphereChange(e.target.value)} className={fieldClass()}>
+      <div className="grid items-start gap-3 xl:grid-cols-3">
+      <Card className="space-y-3 p-3">
+        <p className="text-[13px] font-semibold">Параметры</p>
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+          <label className="space-y-1">
+            <span className="text-[12px] font-medium">Сфера закупки</span>
+            <select value={sphereKey} onChange={(e) => onSphereChange(e.target.value)} className={fieldClass('sm')}>
               {sphereKeys.map((key) => (
                 <option key={key} value={key}>
                   {coreModules[key as CoreModuleKey]?.name ?? key}
@@ -241,15 +243,15 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
             </select>
           </label>
           {subSphereKeys.length > 1 && (
-            <label className="space-y-1.5">
-              <span className="text-[13px] font-medium">Вид</span>
+            <label className="space-y-1">
+              <span className="text-[12px] font-medium">Вид</span>
               <select
                 value={subSphereKey}
                 onChange={(e) => {
                   setSubSphereKey(e.target.value);
                   resetForm();
                 }}
-                className={fieldClass()}
+                className={fieldClass('sm')}
               >
                 {subSphereKeys.map((key) => (
                   <option key={key} value={key}>
@@ -261,9 +263,9 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
           )}
         </div>
 
-        <div className="space-y-1.5">
-          <span className="text-[13px] font-medium">Как заполнять</span>
-          <div className="inline-flex gap-1.5">
+        <div className="space-y-1">
+          <span className="text-[12px] font-medium">Как заполнять</span>
+          <div className="inline-flex gap-1">
             {([
               ['manual', 'Вручную'],
               ['ai', 'С ИИ'],
@@ -276,7 +278,7 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
                   setMode(option);
                   setAiError('');
                 }}
-                className={`h-9 rounded-md px-4 text-[13px] font-medium transition-colors ${
+                className={`h-8 rounded-md px-3 text-[12px] font-medium transition-colors ${
                   mode === option ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:bg-secondary/70'
                 }`}
               >
@@ -287,10 +289,10 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
         </div>
 
         {mode === 'ai' && descriptor && (
-          <div className="space-y-3 rounded-md border border-border bg-secondary/30 p-3">
-            <div className="space-y-1.5">
-              <span className="text-[13px] font-medium">Источник документов</span>
-              <div className="inline-flex flex-wrap gap-1.5">
+          <div className="space-y-2 rounded-md border border-border bg-secondary/30 p-2.5">
+            <div className="space-y-1">
+              <span className="text-[12px] font-medium">Источник документов</span>
+              <div className="inline-flex flex-wrap gap-1">
                 {([
                   ['none', 'Без документов'],
                   ['purchase', 'Выбрать закупку'],
@@ -301,7 +303,7 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
                     type="button"
                     aria-pressed={docSource === option}
                     onClick={() => setDocSource(option)}
-                    className={`h-8 rounded-md px-3 text-[12px] font-medium transition-colors ${
+                    className={`h-7 rounded-md px-2 text-[11px] font-medium transition-colors ${
                       docSource === option ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:bg-secondary/70'
                     }`}
                   >
@@ -323,40 +325,47 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
             )}
 
             {docSource === 'upload' && (
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <Button type="button" variant="secondary" size="sm" onClick={() => fileInput.current?.click()}>
                   <Upload className="size-3.5" />
                   Выбрать файлы
                 </Button>
                 <input ref={fileInput} type="file" multiple hidden onChange={(e) => onUpload(e.target.files)} />
-                {uploaded.length > 0 && <p className="text-[12px] text-muted-foreground">Загружено: {uploaded.map((d) => d.name).join(', ')}</p>}
+                {uploaded.length > 0 && <p className="text-[11px] text-muted-foreground">Загружено: {uploaded.map((d) => d.name).join(', ')}</p>}
               </div>
             )}
 
-            <p className="text-[12px] text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground">
               С документами ИИ сначала ищет цифры и скрытые расходы в них самих; без документов — оценивает по рыночным ориентирам.
             </p>
-            <Button type="button" variant="ai" size="sm" busy={aiBusy} onClick={fillWithAi} disabled={aiBusy || !aiOn}>
+            <Button type="button" variant="ai" size="sm" busy={aiBusy} onClick={fillWithAi} disabled={aiBusy || !aiOn} className="w-full">
               {aiBusy ? 'Запрашиваю ИИ…' : 'Подставить значения с ИИ'}
             </Button>
-            <p className="text-[12px] text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground">
               {aiOn
                 ? `Платно: ${docSource === 'none' ? 'без документов — около 2–5 ₽' : 'с документами — от 5 до 50 ₽, зависит от их объёма'}. Режим «Вручную» бесплатный.`
                 : 'ИИ выключен: включите переключатель «ИИ» в шапке меню или считайте вручную.'}
             </p>
           </div>
         )}
+      </Card>
 
+      <Card className="space-y-3 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[13px] font-semibold">Данные расчёта</p>
+          {descriptor && <span className="text-[11px] text-muted-foreground">{descriptor.title}</span>}
+        </div>
+        {!descriptor && <p className="text-[12px] text-muted-foreground">Выберите сферу — появятся поля расчёта.</p>}
         {descriptor && (
           <>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {groupBySection(descriptor.inputSchema, (field) => field.section ?? '').map(({ section, items }) => (
-                <div key={section || '_'} className="space-y-2">
-                  {section && <h4 className="text-[13px] font-semibold text-muted-foreground">{sectionLabel(section)}</h4>}
-                  <div className="grid gap-3 sm:grid-cols-2">
+                <div key={section || '_'} className="space-y-1.5">
+                  {section && <h4 className="text-[12px] font-semibold text-muted-foreground">{sectionLabel(section)}</h4>}
+                  <div className="space-y-2">
                     {items.map((field) => (
-                      <label key={field.key} className="space-y-1.5">
-                        <span className="text-[13px] font-medium">
+                      <label key={field.key} className="space-y-1">
+                        <span className="text-[12px] font-medium">
                           {field.label}
                           {field.required && <span className="text-danger"> *</span>}
                         </span>
@@ -371,10 +380,10 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
                                 const raw = e.target.value;
                                 setField(field.key, field.kind === 'number' ? (raw === '' ? undefined : Number(raw)) : raw);
                               }}
-                              className={fieldClass()}
+                              className={fieldClass('sm')}
                             />
                             {field.unit && (
-                              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-muted-foreground">
+                              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground">
                                 {field.unit}
                               </span>
                             )}
@@ -387,13 +396,16 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
               ))}
             </div>
 
-            <Button type="button" onClick={run}>
+            <Button type="button" onClick={run} className="w-full">
               <CalculatorIcon className="size-4" />
               Рассчитать
             </Button>
           </>
         )}
+      </Card>
 
+      <Card className="space-y-3 p-3">
+        <p className="text-[13px] font-semibold">Результат</p>
         {aiError && (
           <div className="flex items-start gap-2 rounded-md bg-warn/10 px-3 py-2.5 text-[13px] text-warn">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
@@ -401,7 +413,7 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
           </div>
         )}
 
-        {result && <ResultView result={result} />}
+        {result ? <ResultView result={result} /> : <p className="text-[12px] text-muted-foreground">Заполните данные и нажмите «Рассчитать».</p>}
 
         {hiddenCosts.length > 0 && (
           <div className="space-y-1.5 rounded-md border border-warn/40 bg-warn/10 p-3">
@@ -421,6 +433,7 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
           </div>
         )}
       </Card>
+      </div>
     </div>
   );
 }

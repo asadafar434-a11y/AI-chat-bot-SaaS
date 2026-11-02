@@ -1,4 +1,4 @@
-import { type ReactNode, type ButtonHTMLAttributes, type KeyboardEvent as ReactKeyboardEvent, type RefObject, useEffect, useId, useRef, useState } from 'react';
+import { type ReactNode, type ButtonHTMLAttributes, type KeyboardEvent as ReactKeyboardEvent, type RefObject, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Info, Bell, Check, Sparkles, Loader2 } from '../lib/icons';
 import { tabTarget } from '@/lib/focus-trap';
@@ -200,8 +200,8 @@ export function Soon({ className }: { className?: string }) {
   );
 }
 
-// Подсказка при наведении и при фокусе с клавиатуры. align — к какому краю прижать, чтобы не вылезти за экран.
-// Скрытая подсказка не занимает места (display: none) — иначе на телефоне она раздвигает страницу.
+// Подсказка при наведении и при фокусе с клавиатуры. Рисуется порталом поверх интерфейса, чтобы её не обрезали
+// карточки и прокручиваемые колонки (overflow: hidden / auto). align — к какому краю прижать, чтобы не вылезти за экран.
 export function Tooltip({
   content,
   children,
@@ -217,29 +217,91 @@ export function Tooltip({
   className?: string;
   dismissOnClick?: boolean;
 }) {
-  // После нажатия подсказка гаснет, даже если кнопка осталась в фокусе и под курсором: иначе она висела бы поверх соседних кнопок.
-  // Фокус с клавиатуры подсказку по-прежнему показывает; кнопка нажимается, и подсказка снова появится после ухода фокуса.
+  // После нажатия подсказка гаснет, пока курсор не уйдёт с кнопки: иначе она висела бы поверх соседних кнопок.
+  // Уход курсора или фокуса сбрасывает гашение — при следующем наведении подсказка снова появится, в том числе с новым текстом после смены темы.
   const [dismissed, setDismissed] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const anchor = useRef<HTMLSpanElement>(null);
+  const tip = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => setMounted(true), []);
+
+  const place = useCallback(() => {
+    const a = anchor.current?.getBoundingClientRect();
+    const t = tip.current?.getBoundingClientRect();
+    if (!a || !t) return;
+    const gap = 8;
+    let left = align === 'start' ? a.left : align === 'end' ? a.right - t.width : a.left + a.width / 2 - t.width / 2;
+    let top = side === 'top' ? a.top - t.height - gap : a.bottom + gap;
+    left = Math.max(8, Math.min(left, window.innerWidth - t.width - 8));
+    top = Math.max(8, Math.min(top, window.innerHeight - t.height - 8));
+    setPos({ top, left });
+  }, [align, side]);
+
+  useLayoutEffect(() => {
+    if (open) place();
+  }, [open, content, place]);
+
+  useEffect(() => {
+    if (!open) return;
+    const update = () => place();
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  }, [open, place]);
+
+  const show = () => {
+    if (!dismissed) setOpen(true);
+  };
+  const hide = () => {
+    setOpen(false);
+    setDismissed(false);
+  };
+
   return (
     <span
-      className={cx('group/tip relative inline-flex items-center', className)}
-      onPointerDown={dismissOnClick ? () => setDismissed(true) : undefined}
-      onBlurCapture={dismissOnClick ? () => setDismissed(false) : undefined}
+      ref={anchor}
+      className={cx('relative inline-flex items-center', className)}
+      onPointerEnter={show}
+      onPointerLeave={hide}
+      onFocusCapture={show}
+      onBlurCapture={hide}
+      onPointerDown={
+        dismissOnClick
+          ? () => {
+              setDismissed(true);
+              setOpen(false);
+            }
+          : undefined
+      }
     >
       {children}
-      <span
-        role="tooltip"
-        className={cx(
-          'animate-tip pointer-events-none absolute z-50 hidden w-max max-w-[240px] rounded-lg border border-border bg-card px-3 py-2 text-left font-sans text-[12px] font-normal normal-case leading-snug tracking-normal text-foreground shadow-xl',
-          !dismissed && 'group-hover/tip:block group-focus-within/tip:block',
-          side === 'top' ? 'bottom-full mb-2' : 'top-full mt-2',
-          align === 'center' && 'left-1/2 -translate-x-1/2',
-          align === 'start' && 'left-0',
-          align === 'end' && 'right-0',
-        )}
-      >
+      {/* Скрытая копия остаётся в разметке для диктора и статической проверки; видимую рисует портал. */}
+      <span role="tooltip" hidden className="sr-only">
         {content}
       </span>
+      {mounted &&
+        open &&
+        !dismissed &&
+        createPortal(
+          <span
+            ref={tip}
+            role="tooltip"
+            className={cx(
+              'animate-tip pointer-events-none fixed z-[100] w-max max-w-[260px] rounded-lg border border-border bg-card px-3 py-2 text-left font-sans text-[12px] font-normal normal-case leading-snug tracking-normal text-foreground shadow-xl',
+              !pos && 'invisible',
+            )}
+            style={pos ? { top: pos.top, left: pos.left } : undefined}
+          >
+            {content}
+          </span>,
+          document.body,
+        )}
     </span>
   );
 }
