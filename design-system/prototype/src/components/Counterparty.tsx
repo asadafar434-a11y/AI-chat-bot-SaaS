@@ -68,7 +68,7 @@ function Spark({ values, color }: { values: (number | null)[]; color: string }) 
 
 function Metric({ icon, label, value, hint, delta, danger, spark }: { icon: ReactNode; label: string; value: string; hint?: string; delta?: number | null; danger?: boolean; spark?: ReactNode }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+    <div className="rounded-xl border border-border bg-card p-4">
       <div className="flex items-center justify-between gap-2">
         <p className="flex min-w-0 items-center gap-1.5 text-[12px] font-medium text-muted-foreground">
           <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-[#2F5BFF]/10 text-[#2F5BFF]">{icon}</span>
@@ -157,7 +157,7 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
         </p>
       ) : (
         <>
-          <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[linear-gradient(135deg,#0a1533_0%,#153a8a_55%,#2F5BFF_100%)] p-4 text-white shadow-lg">
+          <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[linear-gradient(135deg,#0a1533_0%,#153a8a_55%,#2F5BFF_100%)] p-4 text-white">
             <div aria-hidden className="pointer-events-none absolute -right-10 -top-16 size-48 rounded-full bg-white/10 blur-2xl" />
             <div aria-hidden className="pointer-events-none absolute -bottom-20 right-20 size-40 rounded-full bg-[#8cc8ff]/20 blur-2xl" />
             <div className="relative space-y-3">
@@ -194,7 +194,7 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
           </div>
 
           {report.facts.length > 0 && (
-            <div className="grid gap-x-4 gap-y-1.5 rounded-xl border border-border bg-card p-3 text-[13px] shadow-sm sm:grid-cols-2">
+            <div className="grid gap-x-4 gap-y-1.5 rounded-xl border border-border bg-card p-3 text-[13px] sm:grid-cols-2">
               {report.facts.map((f) => (
                 <div key={f.id} className="flex items-start gap-2">
                   <span className="mt-1.5">
@@ -210,7 +210,7 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
           )}
 
           {rel && (
-            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <div className="rounded-xl border border-border bg-card p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-[13px] font-semibold">
                   Оценка надёжности <span className="font-normal text-muted-foreground">— расчёт Checko, не наше заключение</span>
@@ -292,7 +292,7 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
           )}
 
           {sorted.length > 0 && (
-            <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
                 <p className="text-[13px] font-semibold">Финансовая отчётность</p>
                 <p className="text-[12px] text-muted-foreground">
@@ -336,7 +336,7 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
           )}
 
           {sorted.length > 1 && (
-            <div className="grid gap-4 rounded-xl border border-border bg-card p-4 shadow-sm sm:grid-cols-2">
+            <div className="grid gap-4 rounded-xl border border-border bg-card p-4 sm:grid-cols-2">
               <Trend title="Выручка" color="#2F5BFF" data={sorted.map((s) => ({ year: s.year, value: s.revenue }))} />
               <Trend title="Чистая прибыль" color="#16A34A" data={sorted.map((s) => ({ year: s.year, value: s.netProfit }))} />
             </div>
@@ -347,7 +347,7 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
               {hasCases && (
                 <div className="space-y-3">
                   {report.courts && report.courts.cases.length > 0 && (
-                    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+                    <div className="overflow-hidden rounded-xl border border-border bg-card">
                       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2.5">
                         <p className="flex items-center gap-2 text-[13px] font-semibold">
                           <Scale className="size-4 text-[#2F5BFF]" />
@@ -378,7 +378,7 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
                     </div>
                   )}
                   {report.enforcements && report.enforcements.items.length > 0 && (
-                    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+                    <div className="overflow-hidden rounded-xl border border-border bg-card">
                       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2.5">
                         <p className="flex items-center gap-2 text-[13px] font-semibold">
                           <Wallet className="size-4 text-[#2F5BFF]" />
@@ -405,7 +405,7 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
               )}
 
               {hasChecks && (
-                <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+                <div className="overflow-hidden rounded-xl border border-border bg-card">
                   <div className="border-b border-border px-3 py-2.5">
                     <p className="text-[13px] font-semibold">Реестры и риски</p>
                   </div>
@@ -446,7 +446,7 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
           )}
 
           {report.contacts && (report.contacts.phones.length > 0 || report.contacts.emails.length > 0 || report.contacts.website) && (
-            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <div className="rounded-xl border border-border bg-card p-4">
               <p className="text-[13px] font-semibold">
                 Контакты <span className="font-normal text-muted-foreground">— из открытых источников</span>
               </p>
@@ -482,7 +482,7 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
       )}
 
       {report.links.length > 0 && (
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-[13px] font-semibold">
             Проверить вручную <span className="font-normal text-muted-foreground">— без капчи эти реестры не отдают</span>
           </p>

@@ -43,7 +43,7 @@ export function Tariffs() {
         {PLANS.map((p) => {
           const top = p === best;
           return (
-            <Card key={p.count} className={cx('relative flex flex-col p-5', top && 'border-foreground/40 shadow-md')}>
+            <Card key={p.count} className={cx('relative flex flex-col p-5', top && 'border-foreground/40')}>
               {top && (
                 <span className="bg-brand-gradient absolute -top-2.5 left-5 rounded-full px-2 py-0.5 text-[11px] font-medium text-white">Выгоднее всего</span>
               )}

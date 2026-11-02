@@ -74,7 +74,7 @@ export function Sidebar(props: Props) {
   return (
     <>
       {/* Телефон: шапка с бургером */}
-      <header className="flex items-center justify-between gap-2 rounded-2xl border border-border bg-card px-3 py-2.5 shadow-sm lg:hidden">
+      <header className="flex items-center justify-between gap-2 rounded-2xl border border-border bg-card px-3 py-2.5 lg:hidden">
         <Logo />
         <div className="flex items-center gap-1.5">
           <IconButton label="Новая закупка" onClick={props.onNewTender} side="bottom" align="end" className="size-9 border border-border">
@@ -116,7 +116,7 @@ export function Sidebar(props: Props) {
         )}
 
       {/* Компьютер: боковая панель */}
-      <aside className="hidden shrink-0 flex-col gap-5 rounded-2xl border border-border bg-card p-4 shadow-sm lg:flex lg:h-full lg:w-[248px] lg:overflow-y-auto [&>*]:shrink-0">
+      <aside className="hidden shrink-0 flex-col gap-5 rounded-2xl border border-border bg-card p-4 lg:flex lg:h-full lg:w-[248px] lg:overflow-y-auto [&>*]:shrink-0">
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-2">
             <Logo />

@@ -389,7 +389,7 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
 
   return (
     <div className="space-y-6">
-      <div className="space-y-3 rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="space-y-3 rounded-2xl border border-border bg-card p-5">
         <button
           onClick={onBack}
           className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2.5 py-1 text-[12px] font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"

@@ -54,7 +54,7 @@ export function AnalyticsSummary({
   const tiles = summary.facts.filter((f) => !(f.id === 'target' && headline) && !(f.id === 'risks' && topRisks.length > 0));
   return (
     <div className="space-y-3">
-      <div className={`rounded-2xl border p-5 shadow-sm ${wrap}`}>
+      <div className={`rounded-2xl border p-5 ${wrap}`}>
         <div className="flex items-start gap-3">
           <Icon className={`mt-0.5 size-6 shrink-0 ${title}`} />
           <div className="min-w-0 flex-1">
