@@ -28,6 +28,85 @@ export function innProblem(raw: string): string | null {
 
 export const innKind = (inn: string): InnKind => (inn.length === 12 ? "person" : "legal");
 
+// ——— Поиск по названию, ФИО и ОГРН ———
+// Одно поле на всё: цифры — ИНН (10/12) или ОГРН (13/15), буквы — название или фамилия. Что именно искать по тексту, выбирает человек (SEARCH_MODES).
+
+/** Что искать по тексту: организацию по названию, ИП по ФИО или организации, где руководитель — этот человек. */
+export type SearchMode = "org" | "ent" | "leader";
+export const SEARCH_MODES: { id: SearchMode; label: string; hint: string }[] = [
+  { id: "org", label: "Организация", hint: "название, например «Ростелеком»" },
+  { id: "ent", label: "ИП", hint: "фамилия и имя предпринимателя" },
+  { id: "leader", label: "Руководитель", hint: "фамилия и имя — найдёт организации, где он руководитель" },
+];
+export const isSearchMode = (value: unknown): value is SearchMode => value === "org" || value === "ent" || value === "leader";
+
+export type Lookup = { kind: "inn" | "ogrn" | "text"; value: string };
+
+/** Что вписал человек: только цифры (и пробелы с дефисами) — номер, иначе текст для поиска. Номер из 13 или 15 цифр — ОГРН, остальное — ИНН. */
+export function lookupOf(raw: string): Lookup {
+  const trimmed = raw.trim();
+  if (trimmed && /^[\d\s-]+$/.test(trimmed)) {
+    const digits = normalizeInn(trimmed);
+    return { kind: digits.length === 13 || digits.length === 15 ? "ogrn" : "inn", value: digits };
+  }
+  return { kind: "text", value: trimmed.replace(/\s+/g, " ") };
+}
+
+/** Что не так с ОГРН (13 цифр у организации, 15 у ИП; контрольная цифра — остаток от деления на 11 или 13). */
+export function ogrnProblem(raw: string): string | null {
+  const ogrn = normalizeInn(raw);
+  if (ogrn.length !== 13 && ogrn.length !== 15) return "ОГРН — 13 цифр у организации или 15 у ИП, а у вас " + ogrn.length + ".";
+  const divisor = ogrn.length === 13 ? 11 : 13;
+  let rest = 0;
+  for (const digit of ogrn.slice(0, -1)) rest = (rest * 10 + Number(digit)) % divisor; // остаток от деления длинного числа без BigInt
+  return rest % 10 === Number(ogrn.slice(-1)) ? null : "Контрольная цифра ОГРН не сходится — проверьте, нет ли опечатки.";
+}
+
+/** Текст поиска: не короче четырёх знаков (так требует поиск Checko), не длиннее ста двадцати. */
+export function textQueryProblem(raw: string): string | null {
+  const query = raw.trim();
+  if (query.length < 4) return "Для поиска впишите не меньше четырёх букв названия или фамилии — или ИНН, или ОГРН.";
+  if (query.length > 120) return "Слишком длинный запрос — сократите до названия или фамилии с именем.";
+  return null;
+}
+
+/** Одна найденная организация или ИП — чтобы выбрать нужную и проверить по её ИНН. */
+export type SearchHit = {
+  inn: string;
+  ogrn: string | null;
+  name: string;
+  kind: "org" | "ent";
+  status: string | null;
+  region: string | null;
+  address: string | null;
+  registered: string | null;
+  terminated: string | null;
+};
+
+/** /search: записи организаций (obj=org) или ИП (obj=ent). Запись без ИНН пропускается — по ней проверить нечего. */
+export function parseCheckoSearch(json: unknown, kind: "org" | "ent"): { hits: SearchHit[]; more: boolean } {
+  const data = obj(obj(json).data);
+  const hits: SearchHit[] = [];
+  for (const r of arr(data.Записи)) {
+    const inn = text(r.ИНН);
+    if (!inn || !/^\d{10}(\d{2})?$/.test(inn)) continue;
+    const name = kind === "ent" ? text(r.ФИО) : (text(r.НаимСокр) ?? text(r.НаимПолн));
+    hits.push({
+      inn,
+      ogrn: text(r.ОГРН) ?? text(r.ОГРНИП),
+      name: name ?? inn,
+      kind,
+      status: text(r.Статус),
+      region: text(r.РегионКод),
+      address: kind === "org" ? text(r.ЮрАдрес) : null,
+      registered: isoAny(r.ДатаРег),
+      terminated: isoAny(r.ДатаЛикв) ?? isoAny(r.ДатаПрекращ),
+    });
+  }
+  const pages = num(data.СтрВсего);
+  return { hits, more: pages !== null && pages > 1 };
+}
+
 // ——— Источники ———
 
 export type SourceId = "egrul" | "fedresurs" | "bo" | "checko";

@@ -16,7 +16,7 @@ type Props = {
   onOpen: (id: string) => void;
   /** «Загрузить закупку»: файлы, название и цена — без ИИ (components/AnalyticsIntake.tsx). */
   onUpload: () => void;
-  /** Блок между шапкой и списком закупок: «Проверка контрагента по ИНН» (real/counterparty.tsx). */
+  /** Блок между шапкой и списком закупок: «Проверка контрагента» (real/counterparty.tsx). */
   extra?: ReactNode;
 };
 

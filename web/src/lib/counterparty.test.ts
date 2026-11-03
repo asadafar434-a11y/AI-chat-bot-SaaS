@@ -5,9 +5,11 @@ import {
   buildReport,
   innProblem,
   latestBoReport,
+  lookupOf,
   manualLinks,
   normalizeInn,
   notFound,
+  ogrnProblem,
   parseBoDetails,
   parseBoSearch,
   parseCheckoCompany,
@@ -15,9 +17,11 @@ import {
   parseCheckoFinances,
   parseCheckoLegalCases,
   parseCheckoReliability,
+  parseCheckoSearch,
   parseEgrul,
   parseFedresurs,
   statusTone,
+  textQueryProblem,
   thousandsText,
   type Parts,
   type SourceId,
@@ -343,4 +347,41 @@ test("отчёт из Checko: факты про РНП, налоги, МСП, с
   assert.match(by.fssp.text.replace(/\s/g, " "), /2 производства; остаток долга 300 тыс\. ₽; последнее от 10\.01\.2026/);
   assert.deepEqual(report.links.map((l) => l.id), ["fedresurs"]);
   assert.equal(notFound(report), false);
+});
+
+test("что вписано в поле: цифры — ИНН или ОГРН по длине, буквы — текст для поиска", () => {
+  assert.deepEqual(lookupOf("1434 031 363"), { kind: "inn", value: "1434031363" });
+  assert.deepEqual(lookupOf("500100732259"), { kind: "inn", value: "500100732259" });
+  assert.deepEqual(lookupOf("1-05-14-01746769"), { kind: "ogrn", value: "1051401746769" });
+  assert.deepEqual(lookupOf("304770000000008"), { kind: "ogrn", value: "304770000000008" });
+  assert.deepEqual(lookupOf("12345"), { kind: "inn", value: "12345" }, "кривой номер уйдёт на проверку ИНН и получит понятную причину");
+  assert.deepEqual(lookupOf("  ПАО   Ростелеком "), { kind: "text", value: "ПАО Ростелеком" });
+  assert.deepEqual(lookupOf("ИП Иванов 123"), { kind: "text", value: "ИП Иванов 123" }, "буквы — значит название");
+});
+
+test("ОГРН: 13 цифр у организации, 15 у ИП, контрольная цифра — остаток от деления на 11 или 13", () => {
+  assert.equal(ogrnProblem("1051401746769"), null, "АО «ДГК»");
+  assert.equal(ogrnProblem("1027700132195"), null, "ПАО «Сбербанк»");
+  assert.equal(ogrnProblem("304770000000008"), null, "ИП: остаток от деления на 13");
+  assert.match(ogrnProblem("1051401746760") ?? "", /Контрольная цифра ОГРН/);
+  assert.match(ogrnProblem("304770000000000") ?? "", /Контрольная цифра ОГРН/);
+  assert.match(ogrnProblem("12345") ?? "", /13 цифр у организации или 15 у ИП, а у вас 5/);
+});
+
+test("текст поиска: не короче четырёх знаков и не длиннее ста двадцати", () => {
+  assert.match(textQueryProblem("ооо") ?? "", /четырёх/);
+  assert.match(textQueryProblem("   дгк ") ?? "", /четырёх/, "пробелы по краям не считаются");
+  assert.equal(textQueryProblem("Дальневосточная"), null);
+  assert.match(textQueryProblem("а".repeat(121)) ?? "", /длинный/);
+});
+
+test("ответ /search: организации по названию и ИП по ФИО; запись без ИНН пропускается; страниц больше одной — more", () => {
+  const org = parseCheckoSearch({ data: { СтрВсего: 3, Записи: [{ ОГРН: "1051401746769", ИНН: "1434031363", НаимСокр: 'АО "ДГК"', НаимПолн: "АКЦИОНЕРНОЕ ОБЩЕСТВО", ДатаРег: "2005-12-19", Статус: "Действует", ДатаЛикв: "", РегионКод: "27", ЮрАдрес: "г. Хабаровск" }, { ОГРН: "1", НаимСокр: "без ИНН" }, { ИНН: "123", НаимСокр: "кривой ИНН" }] } }, "org");
+  assert.equal(org.hits.length, 1);
+  assert.deepEqual(org.hits[0], { inn: "1434031363", ogrn: "1051401746769", name: 'АО "ДГК"', kind: "org", status: "Действует", region: "27", address: "г. Хабаровск", registered: "2005-12-19", terminated: null });
+  assert.equal(org.more, true);
+  const ent = parseCheckoSearch({ data: { СтрВсего: 1, Записи: [{ ОГРНИП: "304770000000008", ИНН: "770000000017", ФИО: "ИВАНОВ ИВАН ИВАНОВИЧ", Статус: "Прекращена деятельность", ДатаПрекращ: "2019-02-03" }] } }, "ent");
+  assert.deepEqual([ent.hits[0].name, ent.hits[0].ogrn, ent.hits[0].terminated, ent.hits[0].address, ent.more], ["ИВАНОВ ИВАН ИВАНОВИЧ", "304770000000008", "2019-02-03", null, false]);
+  assert.deepEqual(parseCheckoSearch({ data: {} }, "org"), { hits: [], more: false });
+  assert.deepEqual(parseCheckoSearch("мусор", "ent"), { hits: [], more: false });
 });

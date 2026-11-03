@@ -1,5 +1,17 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
-import { accountBlocking, notFound, SOURCE_NAMES, thousandsText, type CounterpartyReport, type Tone as ReportTone } from '@/lib/counterparty';
+import {
+  accountBlocking,
+  lookupOf,
+  notFound,
+  SEARCH_MODES,
+  SOURCE_NAMES,
+  statusTone,
+  thousandsText,
+  type CounterpartyReport,
+  type SearchHit,
+  type SearchMode,
+  type Tone as ReportTone,
+} from '@/lib/counterparty';
 import {
   Building2,
   CheckCircle2,
@@ -21,7 +33,7 @@ import { CertaintyBadge } from './Certainty';
 import { CountUp, GroupedBars, Ring, SegmentBar, Spark, VIZ, type BarRow } from './CounterpartyViz';
 import { Badge, Button, Card, Chip, cx, Dot, HelpTip, Tooltip, type Tone, fieldBase } from './ui';
 
-// «Проверка контрагента по ИНН» в «Аналитике»: организация, статус и отчётность из открытых реестров или Checko API.
+// «Проверка контрагента» (ИНН, ОГРН, название, ФИО) в «Аналитике»: организация, статус и отчётность из открытых реестров или Checko API.
 // Показываем то, что написал реестр, с датой; вывода «надёжен» нет. Оценка Checko подписана как мнение сервиса.
 // Оформление — шапка с кольцом, карточки-показатели со счётчиками и мини-графиками, столбики по годам, диаграммы дел и долга; цифры считает сервер,
 // графики рисуются в CounterpartyViz.tsx и оживают, когда попадают на экран (при «уменьшить движение» — сразу готовые).
@@ -632,25 +644,68 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
 }
 
 export type CounterpartyCardProps = {
+  /** Что вписано в поле: ИНН, ОГРН, название или фамилия. */
   inn: string;
   onInn: (value: string) => void;
   onCheck: () => void;
   busy: boolean;
-  /** Ошибка проверки ИНН или запроса — одной строкой. */
+  /** Ошибка проверки или запроса — одной строкой. */
   error: string | null;
   report: CounterpartyReport | null;
+  /** Что искать, когда вписан текст: организацию, ИП или руководителя. */
+  mode?: SearchMode;
+  onMode?: (mode: SearchMode) => void;
+  /** Найденные по названию или ФИО: null — поиска не было, пусто — ничего не нашли. */
+  hits?: SearchHit[] | null;
+  /** Найдено больше, чем показано. */
+  more?: boolean;
+  onPick?: (hit: SearchHit) => void;
 };
 
-export function CounterpartyCard({ inn, onInn, onCheck, busy, error, report }: CounterpartyCardProps) {
+function HitRow({ hit, onPick, disabled }: { hit: SearchHit; onPick: () => void; disabled: boolean }) {
+  const status = hit.status ? statusTone(hit.status) : null;
+  return (
+    <li>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={onPick}
+        className="card-hover flex w-full flex-wrap items-start justify-between gap-x-3 gap-y-1 rounded-md border bg-card px-3 py-2.5 text-left transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14px] font-bold leading-snug">{hit.name}</span>
+          <span className="mt-0.5 block text-[12px] text-muted-foreground">
+            <span className="font-mono">ИНН {hit.inn}</span>
+            {hit.ogrn && <span className="font-mono"> · {hit.kind === 'ent' ? 'ОГРНИП' : 'ОГРН'} {hit.ogrn}</span>}
+            {hit.registered && <> · с {day(hit.registered)}</>}
+            {hit.region && <> · регион {hit.region}</>}
+          </span>
+          {hit.address && <span className="mt-0.5 block text-[12px] text-muted-foreground">{hit.address}</span>}
+        </span>
+        <span className="flex shrink-0 items-center gap-2">
+          {status && hit.status && (
+            <Badge tone={TONE[status]} wrap>
+              {hit.terminated ? `${hit.status} · ${day(hit.terminated)}` : hit.status}
+            </Badge>
+          )}
+          <span className="text-[13px] font-medium text-primary">Проверить</span>
+        </span>
+      </button>
+    </li>
+  );
+}
+
+export function CounterpartyCard({ inn, onInn, onCheck, busy, error, report, mode = 'org', onMode, hits = null, more = false, onPick }: CounterpartyCardProps) {
+  const text = lookupOf(inn).kind === 'text' && inn.trim() !== '';
   return (
     <Card className="space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
         <Search className="size-4" />
-        <p className="text-[14px] font-bold">Проверка контрагента по ИНН</p>
+        <p className="text-[14px] font-bold">Проверка контрагента</p>
         <Badge tone="success">Бесплатно: без ИИ</Badge>
         <HelpTip
           align="start"
-          content="Заказчик, поставщик, конкурент: впишите ИНН — программа за несколько секунд проверит открытые реестры (ЕГРЮЛ, Федресурс, бухгалтерская отчётность ГИР БО, КАД, ФССП и РНП — напрямую или через Checko API) и покажет, действует ли организация, нет ли банкротства, судов и долгов. В реестры уходит только ИНН."
+          content="Заказчик, поставщик, конкурент: впишите ИНН или ОГРН — или название организации, фамилию и имя ИП, фамилию руководителя. Программа за несколько секунд проверит открытые реестры (ЕГРЮЛ, Федресурс, бухгалтерская отчётность ГИР БО, КАД, ФССП и РНП — напрямую или через Checko API) и покажет, действует ли организация, нет ли банкротства, судов и долгов. По названию и ФИО ищет Checko: найденных покажем списком, нужного выбираете и проверяете. В реестры уходит только то, что вы вписали."
         />
       </div>
       <form
@@ -661,23 +716,30 @@ export function CounterpartyCard({ inn, onInn, onCheck, busy, error, report }: C
         }}
       >
         <label className="min-w-[200px] flex-1 text-[12px]">
-          <span className="sr-only">ИНН организации или ИП</span>
+          <span className="sr-only">ИНН, ОГРН, название организации или фамилия</span>
           <input
             type="text"
-            inputMode="numeric"
             autoComplete="off"
             value={inn}
-            maxLength={16}
+            maxLength={120}
             onChange={(e) => onInn(e.target.value)}
-            placeholder="ИНН: 10 цифр у организации, 12 у ИП"
+            placeholder="ИНН, ОГРН, название или фамилия"
             aria-invalid={error ? true : undefined}
             className={inputClass}
           />
         </label>
         <Button type="submit" disabled={busy}>
-          {busy ? 'Проверяю…' : 'Проверить'}
+          {busy ? (text ? 'Ищу…' : 'Проверяю…') : text ? 'Найти' : 'Проверить'}
         </Button>
       </form>
+      {text && onMode && (
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Что искать">
+          {SEARCH_MODES.map((m) => (
+            <Chip key={m.id} label={m.label} on={mode === m.id} onClick={() => onMode(m.id)} />
+          ))}
+          <span className="text-[12px] text-muted-foreground">{SEARCH_MODES.find((m) => m.id === mode)?.hint}</span>
+        </div>
+      )}
       {error && (
         <p role="alert" className="text-[12px] text-danger">
           {error}
@@ -685,8 +747,26 @@ export function CounterpartyCard({ inn, onInn, onCheck, busy, error, report }: C
       )}
       {busy && !report && (
         <p role="status" className="text-[12px] text-muted-foreground">
-          Спрашиваю ЕГРЮЛ, Федресурс и ГИР БО — обычно несколько секунд…
+          {text ? 'Ищу в реестрах — обычно пара секунд…' : 'Спрашиваю ЕГРЮЛ, Федресурс и ГИР БО — обычно несколько секунд…'}
         </p>
+      )}
+      {hits && hits.length === 0 && !busy && (
+        <p role="status" className="text-[13px] text-muted-foreground">
+          Ничего не нашли. Проверьте написание — или впишите ИНН либо ОГРН.
+        </p>
+      )}
+      {hits && hits.length > 0 && onPick && (
+        <div className="space-y-2">
+          <p className="text-[12px] text-muted-foreground">
+            Найдено: <span className="font-mono font-medium text-foreground">{hits.length}</span>. Выберите нужную — проверю по её ИНН.
+            {more && ' Показаны первые, остальные скрыты — уточните запрос.'}
+          </p>
+          <ul className="space-y-2">
+            {hits.map((hit) => (
+              <HitRow key={`${hit.kind}-${hit.inn}-${hit.ogrn ?? ''}`} hit={hit} disabled={busy} onPick={() => onPick(hit)} />
+            ))}
+          </ul>
+        </div>
       )}
       {report && <CounterpartyReportView report={report} />}
     </Card>

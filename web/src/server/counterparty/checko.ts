@@ -5,7 +5,10 @@ import {
   parseCheckoFinances,
   parseCheckoLegalCases,
   parseCheckoReliability,
+  parseCheckoSearch,
   type Parts,
+  type SearchHit,
+  type SearchMode,
   type SourceState,
 } from "@/lib/counterparty";
 
@@ -32,17 +35,17 @@ export type CheckoOptions = { apiKey: string; fetcher?: typeof fetch; timeoutMs?
 const failureOf = (error: unknown): string =>
   error instanceof SourceError ? error.message : error instanceof Error && error.name === "TimeoutError" ? "не ответил вовремя" : "не ответил";
 
-export function createCheckoLoader(options: CheckoOptions) {
+// Один запрос к Checko: ключ добавляется здесь и в тексте ошибки заменяется звёздочками. «Не найдено» — NotFound, остальное — SourceError.
+function createRequester(options: CheckoOptions) {
   const fetcher = options.fetcher ?? fetch;
   const timeout = options.timeoutMs ?? 12_000;
   const baseUrl = (options.baseUrl ?? "https://api.checko.ru/v2").replace(/\/+$/, "");
   const apiKey = options.apiKey.trim();
 
-  async function get(method: string, inn: string, extra: Record<string, string> = {}): Promise<unknown> {
+  return async function request(method: string, params: Record<string, string>): Promise<unknown> {
     const url = new URL(`${baseUrl}/${method}`);
     url.searchParams.set("key", apiKey);
-    url.searchParams.set("inn", inn);
-    for (const [name, value] of Object.entries(extra)) url.searchParams.set(name, value);
+    for (const [name, value] of Object.entries(params)) url.searchParams.set(name, value);
 
     const response = await fetcher(url.toString(), {
       signal: AbortSignal.timeout(timeout),
@@ -66,6 +69,48 @@ export function createCheckoLoader(options: CheckoOptions) {
       throw new SourceError(`ответил ошибкой: ${message}`);
     }
     return json;
+  };
+}
+
+/** Поиск по названию, ФИО и ОГРН: один запрос на поиск, один на перевод ОГРН в ИНН. Дальше проверка идёт по ИНН, как обычно. */
+export function createCheckoFinder(options: CheckoOptions) {
+  const request = createRequester(options);
+  const fail = (error: unknown): never => {
+    if (error instanceof CheckoError) throw error;
+    throw new CheckoError(`Checko ${failureOf(error)}`, error instanceof SourceError ? 502 : 504);
+  };
+
+  return {
+    /** Организации по названию, ИП по ФИО или организации по руководителю. Пусто — ничего не найдено. */
+    async search(query: string, mode: SearchMode): Promise<{ hits: SearchHit[]; more: boolean }> {
+      const kind = mode === "ent" ? "ent" : "org";
+      const by = mode === "leader" ? "leader-name" : "name";
+      try {
+        return parseCheckoSearch(await request("search", { by, obj: kind, query, limit: "20" }), kind);
+      } catch (error) {
+        if (error instanceof NotFound) return { hits: [], more: false };
+        return fail(error);
+      }
+    },
+    /** ОГРН → ИНН (13 цифр — организация, 15 — ИП). null — такой записи нет. */
+    async innByOgrn(ogrn: string): Promise<string | null> {
+      try {
+        const json = (await request(ogrn.length === 15 ? "entrepreneur" : "company", { ogrn })) as { data?: { ИНН?: unknown } };
+        const inn = typeof json?.data?.ИНН === "string" ? json.data.ИНН.trim() : "";
+        return /^\d{10}(\d{2})?$/.test(inn) ? inn : null;
+      } catch (error) {
+        if (error instanceof NotFound) return null;
+        return fail(error);
+      }
+    },
+  };
+}
+
+export function createCheckoLoader(options: CheckoOptions) {
+  const request = createRequester(options);
+
+  async function get(method: string, inn: string, extra: Record<string, string> = {}): Promise<unknown> {
+    return request(method, { inn, ...extra });
   }
 
   return async function load(inn: string): Promise<Parts> {

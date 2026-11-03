@@ -1657,21 +1657,39 @@ test('себестоимость по составу работ: состав и
   assert.match(hook, /!aiOn/, 'ИИ выключен — не ищем');
 });
 
-test('проверка контрагента по ИНН: форма, ошибка словами, отчёт с фактами и отчётностью по годам, красный статус банкротства, ссылки на ручную проверку; блок стоит на главной «Аналитики»', async () => {
+test('проверка контрагента: форма (ИНН, ОГРН, название, ФИО), ошибка словами, отчёт с фактами и отчётностью по годам, красный статус банкротства, ссылки на ручную проверку; блок стоит на главной «Аналитики»', async () => {
   const mod = await server.ssrLoadModule('/src/components/Counterparty.tsx');
   const props = { inn: '', onInn() {}, onCheck() {}, busy: false, error: null, report: null };
   const empty = renderToStaticMarkup(h(mod.CounterpartyCard, props));
-  assert.match(text(empty), /Проверка контрагента по ИНН/);
+  assert.match(text(empty), /Проверка контрагента/);
   assert.match(text(empty), /Бесплатно: без ИИ/);
-  assert.match(empty, /placeholder="ИНН: 10 цифр у организации, 12 у ИП"/);
+  assert.match(empty, /placeholder="ИНН, ОГРН, название или фамилия"/);
+  assert.doesNotMatch(empty, /Что искать/, 'пока вписано пусто или число — выбор «Организация / ИП / Руководитель» не нужен');
   assert.match(empty, /<button[^>]*type="submit"[^>]*>Проверить<\/button>/);
-  assert.match(empty, /class="sr-only">ИНН организации или ИП</, 'у поля есть подпись для чтения с экрана');
+  assert.match(empty, /class="sr-only">ИНН, ОГРН, название организации или фамилия</, 'у поля есть подпись для чтения с экрана');
   assert.doesNotMatch(empty, /role="alert"/);
 
   const bad = renderToStaticMarkup(h(mod.CounterpartyCard, { ...props, inn: '123', error: 'ИНН — 10 цифр у организации или 12 у ИП, а у вас 3.' }));
   assert.match(bad, /role="alert"[^>]*>ИНН — 10 цифр/);
   assert.match(bad, /aria-invalid="true"/);
   assert.match(text(renderToStaticMarkup(h(mod.CounterpartyCard, { ...props, busy: true }))), /Проверяю…[\s\S]*Спрашиваю ЕГРЮЛ, Федресурс и ГИР БО/);
+
+  // Вписан текст: выбор, что искать, и кнопка «Найти»; найденные — список с кнопками «Проверить», нужного выбирают.
+  const word = renderToStaticMarkup(h(mod.CounterpartyCard, { ...props, inn: 'ростелеком', onMode() {}, mode: 'ent' }));
+  assert.match(word, /role="group"[^>]*aria-label="Что искать"/);
+  for (const label of ['Организация', 'ИП', 'Руководитель']) assert.match(text(word), new RegExp(label));
+  assert.match(word, /aria-pressed="true"[^>]*>[\s\S]*?ИП/, 'выбранный способ нажат');
+  assert.match(word, /<button[^>]*type="submit"[^>]*>Найти<\/button>/);
+  assert.match(text(renderToStaticMarkup(h(mod.CounterpartyCard, { ...props, inn: 'ростелеком', onMode() {}, busy: true }))), /Ищу…[\s\S]*Ищу в реестрах/);
+  const hit = { inn: '1434031363', ogrn: '1051401746769', name: 'АО "ДГК"', kind: 'org', status: 'Действует', region: '27', address: 'г. Хабаровск', registered: '2005-12-19', terminated: null };
+  const ended = { inn: '770000000017', ogrn: '304770000000008', name: 'ИВАНОВ ИВАН ИВАНОВИЧ', kind: 'ent', status: 'Прекращена деятельность', region: '77', address: null, registered: null, terminated: '2019-02-03' };
+  const list = renderToStaticMarkup(h(mod.CounterpartyCard, { ...props, inn: 'дгк хабаровск', onMode() {}, hits: [hit, ended], more: true, onPick() {} }));
+  assert.match(text(list), /Найдено: 2[\s\S]*Выберите нужную/);
+  assert.match(text(list), /АО .{1,6}ДГК.{1,6}[\s\S]*ИНН 1434031363[\s\S]*ОГРН 1051401746769[\s\S]*с 19\.12\.2005[\s\S]*Действует/);
+  assert.match(text(list), /ИВАНОВ ИВАН ИВАНОВИЧ[\s\S]*ОГРНИП 304770000000008[\s\S]*Прекращена деятельность · 03\.02\.2019/);
+  assert.equal((list.match(/Проверить<\/span>/g) ?? []).length, 2, 'у каждой найденной своя кнопка');
+  assert.match(text(list), /остальные скрыты — уточните запрос/);
+  assert.match(text(renderToStaticMarkup(h(mod.CounterpartyCard, { ...props, inn: 'дгк хабаровск', onMode() {}, hits: [], onPick() {} }))), /Ничего не нашли[\s\S]*ИНН либо ОГРН/);
 
   const links = [
     { id: 'rnp', title: 'Реестр недобросовестных поставщиков', hint: 'ЕИС, поиск по ИНН', url: 'https://zakupki.gov.ru/epz/dishonestsupplier/search/results.html?searchString=1434031363' },
@@ -1732,7 +1750,10 @@ test('проверка контрагента по ИНН: форма, ошиб�
   assert.ok(home.indexOf('{extra}') < home.indexOf('>Закупки<'), 'проверка контрагента — над списком закупок');
   const client = readFileSync(path.join(root, 'src/real/counterparty.tsx'), 'utf8');
   assert.match(client, /fetch\('\/api\/counterparty'/);
-  assert.match(client, /innProblem\(digits\)/, 'кривой ИНН не уходит на сервер');
+  assert.match(client, /innProblem\(lookup\.value\)/, 'кривой ИНН не уходит на сервер');
+  assert.match(client, /ogrnProblem\(lookup\.value\)/, 'кривой ОГРН не уходит на сервер');
+  assert.match(client, /textQueryProblem\(lookup\.value\)/, 'слишком короткий текст не уходит на сервер');
+  assert.match(client, /\{ query: lookup\.value, mode \}/, 'по тексту сервер спрашивают с выбранным способом поиска');
 });
 
 test('предложения поставщиков у заказчика: три ТКП из «Обоснования НМЦ» — диапазон, разброс, по какому взята начальная цена, шаг аукциона; в экран закупки блок и строка подписи подключены', async () => {

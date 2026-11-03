@@ -11,11 +11,13 @@ import {
   type CounterpartyReport,
   type FedresursInfo,
   type Identity,
+  type SearchHit,
+  type SearchMode,
   type SourceId,
   type SourceState,
   type Statement,
 } from "@/lib/counterparty";
-import { createCheckoLoader, CheckoError } from "@/server/counterparty/checko";
+import { createCheckoFinder, createCheckoLoader, CheckoError } from "@/server/counterparty/checko";
 
 // Проверка контрагента по ИНН: если на сервере есть ключ Checko API, карточка, отчётность, суды, приставы и РНП приходят оттуда одним
 // набором запросов; иначе сервер спрашивает три открытых реестра. Участнику уходит готовый отчёт, в реестры — только ИНН.
@@ -39,6 +41,47 @@ const USER_AGENT = "Mozilla/5.0 (compatible; TenderLawyer/1.0; counterparty-chec
 class SourceError extends Error {}
 
 const failureOf = (error: unknown): string => (error instanceof SourceError ? error.message : error instanceof Error && error.name === "TimeoutError" ? "не ответил вовремя" : "не ответил");
+
+export type CounterpartyFinder = {
+  search: (query: string, mode: SearchMode) => Promise<{ hits: SearchHit[]; more: boolean }>;
+  /** ОГРН → ИНН; null — такой записи нет. */
+  innByOgrn: (ogrn: string) => Promise<string | null>;
+};
+
+/**
+ * Поиск по названию, ФИО и ОГРН. Открытые реестры без капчи по названию не отдают, поэтому поиск идёт только через Checko: нет ключа — честный отказ,
+ * а проверка по ИНН продолжает работать. Результат поиска держится в памяти шесть часов; запросов — не больше десяти в минуту на процесс.
+ */
+export function createCounterpartyFinder(options: CounterpartyOptions = {}): CounterpartyFinder {
+  const now = options.now ?? Date.now;
+  const ttl = options.ttlMs ?? 6 * 60 * 60 * 1000;
+  const maxPerMinute = options.maxPerMinute ?? 10;
+  const cache = new Map<string, { at: number; value: unknown }>();
+  const recent: number[] = [];
+  const checko = options.checkoApiKey?.trim() ? createCheckoFinder({ apiKey: options.checkoApiKey, fetcher: options.fetcher, timeoutMs: options.timeoutMs }) : null;
+
+  async function cached<T>(key: string, run: (finder: NonNullable<typeof checko>) => Promise<T>): Promise<T> {
+    if (!checko) throw new CounterpartyError("Поиск по названию, ФИО и ОГРН работает через Checko, а ключ на этом сервере не подключён. Впишите ИНН — по нему проверка работает.", 501);
+    const saved = cache.get(key);
+    if (saved && now() - saved.at < ttl) return saved.value as T;
+    while (recent.length > 0 && now() - recent[0] > 60_000) recent.shift();
+    if (recent.length >= maxPerMinute) throw new CounterpartyError("Слишком много поисков подряд. Повторите через минуту.", 429);
+    recent.push(now());
+    try {
+      const value = await run(checko);
+      cache.set(key, { at: now(), value });
+      return value;
+    } catch (error) {
+      if (error instanceof CheckoError) throw new CounterpartyError(`Поиск сейчас недоступен: ${error.message}. Впишите ИНН или повторите позже.`, error.status);
+      throw error;
+    }
+  }
+
+  return {
+    search: (query, mode) => cached(`s:${mode}:${query.toLowerCase()}`, (finder) => finder.search(query, mode)),
+    innByOgrn: (ogrn) => cached(`o:${ogrn}`, (finder) => finder.innByOgrn(ogrn)),
+  };
+}
 
 export function createCounterpartyLoader(options: CounterpartyOptions = {}) {
   const fetcher = options.fetcher ?? fetch;

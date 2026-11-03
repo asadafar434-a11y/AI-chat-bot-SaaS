@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { CounterpartyError, createCounterpartyLoader } from "./counterparty.ts";
+import { CounterpartyError, createCounterpartyFinder, createCounterpartyLoader } from "./counterparty.ts";
 import { handleCounterparty } from "./handler.ts";
 
 // Проверка контрагента без сети: подставной fetch отвечает так, как отвечают реестры (ответы по АО «ДГК», урезаны) — npm test.
 const INN = "1434031363";
+const find = createCounterpartyFinder();
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
 const EGRUL_ROW = { rows: [{ c: 'АО "ДГК"', g: "ГЕНЕРАЛЬНЫЙ ДИРЕКТОР: Иртов Сергей Викторович", i: INN, k: "ul", n: 'АКЦИОНЕРНОЕ ОБЩЕСТВО "ДАЛЬНЕВОСТОЧНАЯ ГЕНЕРИРУЮЩАЯ КОМПАНИЯ"', o: "1051401746769", p: "272101001", r: "19.12.2005", rn: "Хабаровский край" }] };
@@ -107,21 +108,21 @@ test("маршрут: без входа — отказ; кривой ИНН — 
     asked++;
     return { ...(await createCounterpartyLoader({ fetcher: registries().fetcher })(inn)) };
   };
-  const denied = await handleCounterparty(post({ inn: INN }), { authorize: async () => new Response("Требуется вход", { status: 401 }), load });
+  const denied = await handleCounterparty(post({ inn: INN }), { find, authorize: async () => new Response("Требуется вход", { status: 401 }), load });
   assert.equal(denied.status, 401);
   const allow = async () => null;
-  const bad = await handleCounterparty(post({ inn: "1434031364" }), { authorize: allow, load });
+  const bad = await handleCounterparty(post({ inn: "1434031364" }), { find, authorize: allow, load });
   assert.equal(bad.status, 400);
   assert.match(await bad.text(), /Контрольная цифра/);
-  assert.equal((await handleCounterparty(post("не json"), { authorize: allow, load })).status, 400);
-  assert.equal((await handleCounterparty(post({ inn: 5 }), { authorize: allow, load })).status, 400);
+  assert.equal((await handleCounterparty(post("не json"), { find, authorize: allow, load })).status, 400);
+  assert.equal((await handleCounterparty(post({ inn: 5 }), { find, authorize: allow, load })).status, 400);
   assert.equal(asked, 0, "реестры не трогали");
-  const good = await handleCounterparty(post({ inn: "1434 031 363" }), { authorize: allow, load });
+  const good = await handleCounterparty(post({ inn: "1434 031 363" }), { find, authorize: allow, load });
   assert.equal(good.status, 200);
   assert.equal(((await good.json()) as { name: string }).name, 'АО "ДГК"');
-  const limited = await handleCounterparty(post({ inn: INN }), { authorize: allow, load: async () => { throw new CounterpartyError("Слишком много проверок подряд", 429); } });
+  const limited = await handleCounterparty(post({ inn: INN }), { find, authorize: allow, load: async () => { throw new CounterpartyError("Слишком много проверок подряд", 429); } });
   assert.equal(limited.status, 429);
-  const broken = await handleCounterparty(post({ inn: INN }), { authorize: allow, load: async () => { throw new Error("внутренняя ошибка с подробностями"); } });
+  const broken = await handleCounterparty(post({ inn: INN }), { find, authorize: allow, load: async () => { throw new Error("внутренняя ошибка с подробностями"); } });
   assert.equal(broken.status, 502);
   assert.equal(await broken.text(), "Проверка сейчас недоступна. Повторите позже.", "внутренние подробности наружу не идут");
 });
@@ -226,4 +227,97 @@ test("ключ Checko не подошёл или API недоступен — о
   } finally {
     console.error = logged;
   }
+});
+
+// Поиск по названию, ФИО и ОГРН: ответы /search по документации api.checko.ru/v2.
+const CHECKO_SEARCH_ORG = { data: { СтрВсего: 2, СтрТекущ: 1, Записи: [{ ОГРН: "1051401746769", ИНН: INN, КПП: "272101001", НаимСокр: 'АО "ДГК"', НаимПолн: 'АКЦИОНЕРНОЕ ОБЩЕСТВО "ДГК"', ДатаРег: "2005-12-19", Статус: "Действует", РегионКод: "27", ЮрАдрес: "г. Хабаровск" }, { ОГРН: "1", НаимСокр: "Без ИНН" }] }, meta: { status: "ok" } };
+const CHECKO_SEARCH_ENT = { data: { СтрВсего: 1, Записи: [{ ОГРНИП: "304770000000000", ИНН: "770000000017", ФИО: "ИВАНОВ ИВАН ИВАНОВИЧ", ДатаРег: "2004-05-01", Статус: "Прекращена деятельность", ДатаПрекращ: "2019-02-03", РегионКод: "77" }] }, meta: { status: "ok" } };
+
+function searchApi() {
+  const calls: string[] = [];
+  const fetcher = (async (url: string) => {
+    calls.push(url);
+    const u = new URL(url);
+    if (u.pathname.endsWith("/search")) return json(u.searchParams.get("obj") === "ent" ? CHECKO_SEARCH_ENT : CHECKO_SEARCH_ORG);
+    if (u.pathname.endsWith("/company")) return u.searchParams.get("ogrn") === "1051401746769" ? json({ data: { ИНН: INN, ОГРН: "1051401746769", НаимСокр: 'АО "ДГК"' }, meta: { status: "ok" } }) : json({ meta: { status: "error", message: "Компания не найдена" } });
+    return new Response("нет", { status: 404 });
+  }) as typeof fetch;
+  return { calls, fetcher };
+}
+
+test("поиск по названию: запрос search с by=name и obj=org, записи без ИНН пропускаются, повтор берётся из памяти", async () => {
+  const { calls, fetcher } = searchApi();
+  const finder = createCounterpartyFinder({ checkoApiKey: "SECRET-KEY", fetcher });
+  const found = await finder.search("дгк хабаровск", "org");
+  assert.equal(found.hits.length, 1);
+  assert.deepEqual([found.hits[0].inn, found.hits[0].name, found.hits[0].status, found.hits[0].region, found.hits[0].kind], [INN, 'АО "ДГК"', "Действует", "27", "org"]);
+  assert.equal(found.more, true, "страниц больше одной — об этом скажем");
+  const u = new URL(calls[0]);
+  assert.deepEqual([u.pathname, u.searchParams.get("by"), u.searchParams.get("obj"), u.searchParams.get("query"), u.searchParams.get("key")], ["/v2/search", "name", "org", "дгк хабаровск", "SECRET-KEY"]);
+  await finder.search("ДГК Хабаровск", "org");
+  assert.equal(calls.length, 1, "тот же запрос в пределах шести часов — из памяти");
+});
+
+test("поиск ИП по ФИО и организаций по руководителю: obj=ent и by=leader-name", async () => {
+  const { calls, fetcher } = searchApi();
+  const finder = createCounterpartyFinder({ checkoApiKey: "K", fetcher });
+  const ent = await finder.search("иванов иван", "ent");
+  assert.deepEqual([ent.hits[0].inn, ent.hits[0].name, ent.hits[0].terminated, ent.hits[0].kind], ["770000000017", "ИВАНОВ ИВАН ИВАНОВИЧ", "2019-02-03", "ent"]);
+  await finder.search("иртов сергей", "leader");
+  const leader = new URL(calls[1]);
+  assert.deepEqual([leader.searchParams.get("by"), leader.searchParams.get("obj")], ["leader-name", "org"]);
+});
+
+test("ОГРН переводится в ИНН (13 цифр — /company, 15 — /entrepreneur); нет записи — null; ключа нет — понятный отказ, не пустота", async () => {
+  const { calls, fetcher } = searchApi();
+  const finder = createCounterpartyFinder({ checkoApiKey: "K", fetcher });
+  assert.equal(await finder.innByOgrn("1051401746769"), INN);
+  assert.equal(new URL(calls[0]).searchParams.get("ogrn"), "1051401746769");
+  assert.equal(await finder.innByOgrn("1027700132195"), null);
+  const noKey = createCounterpartyFinder({ fetcher });
+  await assert.rejects(noKey.search("ростелеком", "org"), (e: unknown) => e instanceof CounterpartyError && e.status === 501 && /ключ/.test(e.message));
+});
+
+test("поиск: сбой Checko — понятное сообщение без ключа; лимит поисков в минуту", async () => {
+  const bad = (async () => json({ meta: { status: "error", message: "Неверный ключ API SECRET-KEY" } })) as typeof fetch;
+  await assert.rejects(createCounterpartyFinder({ checkoApiKey: "SECRET-KEY", fetcher: bad }).search("ростелеком", "org"), (e: unknown) => e instanceof CounterpartyError && !e.message.includes("SECRET-KEY") && /недоступен/.test(e.message));
+  const { fetcher } = searchApi();
+  const finder = createCounterpartyFinder({ checkoApiKey: "K", fetcher, maxPerMinute: 2, now: () => 0 });
+  await finder.search("первый запрос", "org");
+  await finder.search("второй запрос", "org");
+  await assert.rejects(finder.search("третий запрос", "org"), (e: unknown) => e instanceof CounterpartyError && e.status === 429);
+});
+
+test("маршрут: query+mode — список, ОГРН — отчёт по найденному ИНН, кривые ввод и ОГРН отсекаются до обращения к Checko", async () => {
+  const { calls, fetcher } = searchApi();
+  const realFind = createCounterpartyFinder({ checkoApiKey: "K", fetcher });
+  const loaded: string[] = [];
+  const load = async (inn: string) => { loaded.push(inn); return { ...(await createCounterpartyLoader({ fetcher: registries().fetcher })(inn)) }; };
+  const deps = { authorize: async () => null, load, find: realFind };
+
+  const list = await handleCounterparty(post({ query: "  дгк   хабаровск ", mode: "org" }), deps);
+  assert.equal(list.status, 200);
+  assert.equal(((await list.json()) as { hits: unknown[] }).hits.length, 1);
+  assert.equal(new URL(calls[0]).searchParams.get("query"), "дгк хабаровск", "пробелы схлопнуты");
+  assert.equal(loaded.length, 0, "список — ещё не проверка");
+
+  const short = await handleCounterparty(post({ query: "дгк", mode: "org" }), deps);
+  assert.equal(short.status, 400);
+  assert.match(await short.text(), /четырёх/);
+  assert.equal((await handleCounterparty(post({ query: "дгк хабаровск", mode: "что-то" }), deps)).status, 400);
+  const badOgrn = await handleCounterparty(post({ ogrn: "1051401746760" }), deps);
+  assert.equal(badOgrn.status, 400);
+  assert.match(await badOgrn.text(), /Контрольная цифра ОГРН/);
+  assert.equal(calls.length, 1, "после первого поиска Checko не спрашивали");
+
+  const byOgrn = await handleCounterparty(post({ ogrn: "1 051 401 746 769" }), deps);
+  assert.equal(byOgrn.status, 200);
+  assert.deepEqual(loaded, [INN]);
+  assert.equal(((await byOgrn.json()) as { name: string }).name, 'АО "ДГК"');
+
+  const none = await handleCounterparty(post({ ogrn: "1027700132195" }), deps);
+  assert.deepEqual(await none.json(), { hits: [], more: false });
+
+  const noKey = await handleCounterparty(post({ query: "ростелеком", mode: "org" }), { ...deps, find: createCounterpartyFinder() });
+  assert.equal(noKey.status, 501);
 });

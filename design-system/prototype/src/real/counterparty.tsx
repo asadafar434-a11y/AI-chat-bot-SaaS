@@ -1,41 +1,84 @@
 import { useState } from 'react';
-import { innProblem, normalizeInn, type CounterpartyReport } from '@/lib/counterparty';
+import { innProblem, lookupOf, ogrnProblem, textQueryProblem, type CounterpartyReport, type SearchHit, type SearchMode } from '@/lib/counterparty';
 import { errorMessage, errorText } from '@/lib/http-error';
 import { CounterpartyCard } from '../components/Counterparty';
 
-// «Проверка контрагента по ИНН» на главной раздела «Аналитика»: сервер (/api/counterparty) спрашивает ЕГРЮЛ, Федресурс и ГИР БО; в них уходит только ИНН.
+// «Проверка контрагента» на главной раздела «Аналитика»: ИНН или ОГРН — сразу отчёт; название, ФИО или руководитель — список найденных, из него выбирают нужную.
+// Сервер (/api/counterparty) спрашивает ЕГРЮЛ, Федресурс и ГИР БО или Checko; в них уходит только то, что вписал человек.
 
-export async function checkCounterparty(inn: string): Promise<{ report: CounterpartyReport } | { error: string }> {
+export type CounterpartyAnswer = { report: CounterpartyReport } | { hits: SearchHit[]; more: boolean } | { error: string };
+
+/** Один запрос к серверу: { inn } и { ogrn } отвечают отчётом (ОГРН, которого нет, — пустым списком), { query, mode } — списком найденных. */
+export async function askCounterparty(body: { inn: string } | { ogrn: string } | { query: string; mode: SearchMode }): Promise<CounterpartyAnswer> {
   try {
-    const res = await fetch('/api/counterparty', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inn }) });
+    const res = await fetch('/api/counterparty', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (!res.ok) return { error: await errorText(res, 'Проверка сейчас недоступна. Повторите позже.') };
-    return { report: (await res.json()) as CounterpartyReport };
+    const json = (await res.json()) as CounterpartyReport | { hits: SearchHit[]; more?: boolean };
+    return 'hits' in json ? { hits: json.hits, more: json.more === true } : { report: json };
   } catch (e) {
     return { error: errorMessage(e) };
   }
 }
 
+export async function checkCounterparty(inn: string): Promise<{ report: CounterpartyReport } | { error: string }> {
+  const answer = await askCounterparty({ inn });
+  return 'hits' in answer ? { error: 'Проверка сейчас недоступна. Повторите позже.' } : answer;
+}
+
 export function CounterpartyBlock() {
-  const [inn, setInn] = useState('');
+  const [input, setInput] = useState('');
+  const [mode, setMode] = useState<SearchMode>('org');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<CounterpartyReport | null>(null);
+  const [hits, setHits] = useState<{ list: SearchHit[]; more: boolean } | null>(null);
 
-  const check = async () => {
-    const digits = normalizeInn(inn);
-    const problem = innProblem(digits);
+  const run = async (body: Parameters<typeof askCounterparty>[0]) => {
+    setError(null);
+    setBusy(true);
+    setReport(null);
+    setHits(null);
+    const answer = await askCounterparty(body);
+    setBusy(false);
+    if ('error' in answer) setError(answer.error);
+    else if ('hits' in answer) setHits({ list: answer.hits, more: answer.more });
+    else setReport(answer.report);
+  };
+
+  const check = () => {
+    const lookup = lookupOf(input);
+    const problem = lookup.kind === 'inn' ? innProblem(lookup.value) : lookup.kind === 'ogrn' ? ogrnProblem(lookup.value) : textQueryProblem(lookup.value);
     if (problem) {
       setError(problem);
       return;
     }
-    setError(null);
-    setBusy(true);
-    setReport(null);
-    const result = await checkCounterparty(digits);
-    setBusy(false);
-    if ('error' in result) setError(result.error);
-    else setReport(result.report);
+    void run(lookup.kind === 'inn' ? { inn: lookup.value } : lookup.kind === 'ogrn' ? { ogrn: lookup.value } : { query: lookup.value, mode });
   };
 
-  return <CounterpartyCard inn={inn} onInn={(v) => { setInn(v); if (error) setError(null); }} onCheck={() => void check()} busy={busy} error={error} report={report} />;
+  const pick = (hit: SearchHit) => {
+    setInput(hit.inn);
+    void run({ inn: hit.inn });
+  };
+
+  return (
+    <CounterpartyCard
+      inn={input}
+      onInn={(v) => {
+        setInput(v);
+        if (error) setError(null);
+      }}
+      onCheck={check}
+      busy={busy}
+      error={error}
+      report={report}
+      mode={mode}
+      onMode={(m) => {
+        setMode(m);
+        setHits(null);
+      }}
+      hits={hits?.list ?? null}
+      more={hits?.more ?? false}
+      onPick={pick}
+    />
+  );
 }
