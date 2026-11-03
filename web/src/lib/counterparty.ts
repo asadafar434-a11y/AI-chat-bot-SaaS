@@ -1,6 +1,7 @@
 // Проверка контрагента по ИНН по открытым реестрам, без ИИ и без платы: что за организация и действует ли она (ЕГРЮЛ, Федресурс) и что у неё с отчётностью (ГИР БО ФНС).
 // Модуль чистый: разбирает ответы реестров и собирает отчёт; сами запросы делает сервер (server/counterparty/). Чего реестры без капчи не дают — суды (КАД), приставы (ФССП),
 // реестр недобросовестных поставщиков (ЕИС) — программа не выдумывает: даёт ссылку на ручную проверку и честно говорит «ждёт источника».
+// Если у сервера есть ключ Checko API, те же сведения приходят одним ответом (ЕГРЮЛ, ГИР БО, РНП, КАД, ФССП) — см. parseChecko* ниже; форма отчёта от этого не меняется.
 //
 // Правило: показываем то, что написал реестр, с датой; вывода «надёжен» или «ненадёжен» нет. Отчётность в ГИР БО хранится в тысячах рублей.
 
@@ -29,14 +30,20 @@ export const innKind = (inn: string): InnKind => (inn.length === 12 ? "person" :
 
 // ——— Источники ———
 
-export type SourceId = "egrul" | "fedresurs" | "bo";
-export const SOURCE_NAMES: Record<SourceId, string> = { egrul: "ЕГРЮЛ", fedresurs: "Федресурс", bo: "ГИР БО ФНС" };
+export type SourceId = "egrul" | "fedresurs" | "bo" | "checko";
+export const SOURCE_NAMES: Record<SourceId, string> = { egrul: "ЕГРЮЛ", fedresurs: "Федресурс", bo: "ГИР БО ФНС", checko: "Checko (ЕГРЮЛ, ФНС, КАД, ФССП)" };
 export type SourceState = { ok: true } | { ok: false; reason: string };
 
 const isoOfRu = (s: unknown): string | null => {
   const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(typeof s === "string" ? s.trim() : "");
   return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
 };
+// Checko отдаёт даты то по-русски (19.12.2005), то по ISO (2021-03-23) — принимаем оба вида.
+const isoAny = (s: unknown): string | null => isoOfRu(s) ?? (typeof s === "string" && /^\d{4}-\d{2}-\d{2}/.test(s.trim()) ? s.trim().slice(0, 10) : null);
+const obj = (v: unknown): Record<string, unknown> => (v !== null && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
+const arr = (v: unknown): Record<string, unknown>[] => (Array.isArray(v) ? v.map((x) => obj(x)) : []);
+const bool = (v: unknown): boolean => v === true;
+const rublesToThousands = (v: number | null): number | null => (v === null ? null : Math.round(v / 1000));
 const text = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.replace(/\s+/g, " ").trim() : null);
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 const stripTags = (s: string) => s.replace(/<[^>]*>/g, "");
@@ -134,11 +141,243 @@ export function parseBoDetails(json: unknown, period: number): Statement[] {
   return [at("current", period), at("previous", period - 1), at("beforePrevious", period - 2)].filter((s) => s.assets !== null || s.revenue !== null);
 }
 
+// ——— Checko API ———
+// Ответы Checko разбираются теми же правилами, что и реестры: только факты и даты. Деньги в /finances и /enforcements — рубли,
+// поэтому в отчёт они попадают в тысячах, как и ГИР БО. Ключ API здесь не участвует: модуль чистый.
+
+export type CourtRole = "plaintiff" | "defendant" | "other";
+export type CourtCase = {
+  number: string;
+  date: string | null;
+  url: string | null;
+  role: CourtRole;
+  claimSum: number | null;
+  active: boolean;
+  result: string | null;
+  opponent: string | null;
+};
+export type CourtsInfo = { total: number; active: number; plaintiff: number; defendant: number; claimSum: number | null; cases: CourtCase[] };
+export type Enforcement = { number: string | null; date: string | null; subject: string | null; debt: number | null; outstanding: number | null };
+export type EnforcementsInfo = { total: number; debtSum: number; outstandingSum: number; items: Enforcement[] };
+export type RnpRecord = { number: string | null; date: string | null; customer: string | null; purchase: string | null };
+export type RnpInfo = { included: boolean; records: RnpRecord[] };
+export type TaxesInfo = { year: string | null; paid: number | null; arrears: number | null; arrearsDate: string | null; regimes: string[] };
+export type MspInfo = { category: string; since: string | null };
+export type EfrsbMessage = { type: string | null; date: string | null; caseNumber: string | null };
+export type SanctionsInfo = { included: boolean; countries: string[]; founderLinked: boolean };
+export type ContactsInfo = { phones: string[]; emails: string[]; website: string | null };
+export type ReliabilityFactor = { code: string | null; tone: Tone; weight: number | null; text: string };
+export type ReliabilityInfo = {
+  scale: number | null;
+  nominality: { level: number | null; text: string | null };
+  financial: { level: number | null; text: string | null };
+  balance: { good: number; warn: number; bad: number };
+  factors: ReliabilityFactor[];
+};
+
+export type CheckoCompany = {
+  identity: Identity | null;
+  address: string | null;
+  statusText: string | null;
+  rnp: RnpInfo;
+  taxes: TaxesInfo | null;
+  msp: MspInfo | null;
+  staff: number | null;
+  efrsb: EfrsbMessage[];
+  sanctions: SanctionsInfo;
+  contacts: ContactsInfo;
+};
+
+const strings = (value: unknown): string[] => (Array.isArray(value) ? value.map((x) => text(x)).filter((x): x is string => x !== null) : []);
+
+/** /company или /entrepreneur: реквизиты, статус, адрес, руководитель, РНП, налоги, МСП, численность, ЕФРСБ, санкции, контакты. */
+export function parseCheckoCompany(json: unknown, inn: string): CheckoCompany | null {
+  const data = obj(obj(json).data);
+  const status = obj(data.Статус);
+  const terminated = isoAny(obj(data.Ликвид).Дата) ?? isoAny(obj(data.Прекращ).Дата);
+  const isIp = inn.length === 12 || text(data.ОГРНИП) !== null;
+  const shortName = text(data.НаимСокр);
+  const fullName = text(data.НаимПолн);
+  const personName = text(data.ФИО);
+  const name = isIp ? personName : (fullName ?? shortName);
+  const ogrn = text(data.ОГРН) ?? text(data.ОГРНИП);
+  const registered = isoAny(data.ДатаРег);
+  const head = arr(data.Руковод)[0];
+  const headRole = isIp ? null : (text(head?.НаимДолжн) ?? text(head?.ВидДолжн));
+  const headName = isIp ? null : text(head?.ФИО);
+
+  const identity: Identity | null =
+    name || ogrn || registered
+      ? {
+          name: name ?? inn,
+          shortName: isIp ? name : shortName,
+          ogrn,
+          kpp: isIp ? null : text(data.КПП),
+          registered,
+          terminated,
+          headRole,
+          headName,
+          region: text(obj(data.Регион).Наим),
+        }
+      : null;
+
+  const address = isIp ? text(data.НасПункт) : text(obj(data.ЮрАдрес).АдресРФ);
+
+  const records: RnpRecord[] = arr(data.НедобПостЗап)
+    .map((r) => ({
+      number: text(r.РеестрНомер),
+      date: isoAny(r.ДатаПуб) ?? isoAny(r.ДатаУтв),
+      customer: text(r.ЗаказНаимСокр) ?? text(r.ЗаказНаимПолн),
+      purchase: text(r.ЗакупОпис) ?? text(r.ЗакупНомер),
+    }))
+    .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+  const rnp: RnpInfo = { included: bool(data.НедобПост) || records.length > 0, records };
+
+  const taxesRaw = obj(data.Налоги);
+  const regimes = (Array.isArray(taxesRaw.ОсобРежим) ? taxesRaw.ОсобРежим : []).map((x) => text(x)).filter((x): x is string => x !== null);
+  const paid = num(taxesRaw.СумУпл);
+  const arrears = num(taxesRaw.СумНедоим);
+  const taxes: TaxesInfo | null =
+    regimes.length > 0 || paid !== null || arrears !== null
+      ? { year: text(taxesRaw.СведУплГод), paid, arrears, arrearsDate: isoAny(taxesRaw.НедоимДата), regimes }
+      : null;
+
+  const mspRaw = obj(data.РМСП);
+  const category = text(mspRaw.Кат);
+  const msp: MspInfo | null = category ? { category: category.toLowerCase(), since: isoAny(mspRaw.ДатаВкл) } : null;
+  const staff = num(data.СЧР);
+
+  const efrsb: EfrsbMessage[] = arr(data.ЕФРСБ)
+    .map((r) => ({ type: text(r.Тип), date: isoAny(r.Дата), caseNumber: text(r.Дело) }))
+    .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+  const sanctions: SanctionsInfo = { included: bool(data.Санкции), countries: strings(data.СанкцииСтраны), founderLinked: bool(data.СанкцУчр) };
+  const contactsRaw = obj(data.Контакты);
+  const contacts: ContactsInfo = { phones: strings(contactsRaw.Тел), emails: strings(contactsRaw.Емэйл), website: text(contactsRaw.ВебСайт) };
+
+  if (!identity && !taxes && !msp && records.length === 0) return null;
+  return { identity, address, statusText: text(status.Наим), rnp, taxes, msp, staff: staff !== null && staff > 0 ? staff : null, efrsb, sanctions, contacts };
+}
+
+/** /finances: выручка 2110, чистая прибыль 2400, активы 1600, капитал 1300 — за последние пять лет, в тысячах рублей. */
+export function parseCheckoFinances(json: unknown): Statement[] {
+  const data = obj(obj(json).data);
+  return Object.entries(data)
+    .filter(([year]) => /^\d{4}$/.test(year))
+    .map(([year, raw]): Statement => {
+      const row = obj(raw);
+      return {
+        year: Number(year),
+        revenue: rublesToThousands(num(row["2110"])),
+        netProfit: rublesToThousands(num(row["2400"])),
+        assets: rublesToThousands(num(row["1600"])),
+        equity: rublesToThousands(num(row["1300"])),
+      };
+    })
+    .filter((s) => s.revenue !== null || s.netProfit !== null || s.assets !== null || s.equity !== null)
+    .sort((a, b) => b.year - a.year)
+    .slice(0, 5);
+}
+
+/** /legal-cases: сколько дел, роль, активность, сумма исков и последние дела. Сумма — рубли. */
+export function parseCheckoLegalCases(json: unknown, inn: string): CourtsInfo | null {
+  const data = obj(json).data;
+  if (data === undefined || data === null) return null;
+  const d = obj(data);
+  const roleOf = (record: Record<string, unknown>): CourtRole => {
+    if (arr(record.Ответ).some((p) => text(p.ИНН) === inn)) return "defendant";
+    if (arr(record.Ист).some((p) => text(p.ИНН) === inn)) return "plaintiff";
+    return "other";
+  };
+  const opponentOf = (record: Record<string, unknown>, role: CourtRole): string | null => {
+    const side = role === "defendant" ? arr(record.Ист) : role === "plaintiff" ? arr(record.Ответ) : [];
+    return text(side[0]?.Наим);
+  };
+  const cases: CourtCase[] = arr(d.Записи)
+    .map((r) => {
+      const role = roleOf(r);
+      return {
+        number: text(r.Номер) ?? "—",
+        date: isoAny(r.Дата),
+        url: text(r.СтрКАД),
+        role,
+        claimSum: num(r.СуммИск),
+        active: bool(r.ПрАктив),
+        result: text(r.ИсходТекст),
+        opponent: opponentOf(r, role),
+      };
+    })
+    .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+  const claimSum = num(d.ОбщСуммИск) ?? (cases.some((c) => c.claimSum !== null) ? cases.reduce((sum, c) => sum + (c.claimSum ?? 0), 0) : null);
+  return {
+    total: num(d.ЗапВсего) ?? cases.length,
+    active: cases.filter((c) => c.active).length,
+    plaintiff: cases.filter((c) => c.role === "plaintiff").length,
+    defendant: cases.filter((c) => c.role === "defendant").length,
+    claimSum,
+    cases,
+  };
+}
+
+/** /enforcements: производства ФССП, суммы долга и остатка — рубли. */
+export function parseCheckoEnforcements(json: unknown): EnforcementsInfo | null {
+  const data = obj(json).data;
+  if (data === undefined || data === null) return null;
+  const items: Enforcement[] = arr(obj(data).Записи)
+    .map((r) => ({
+      number: text(r.ИспПрНомер),
+      date: isoAny(r.ИспПрДата),
+      subject: text(r.ПредмИсп),
+      debt: num(r.СумДолг),
+      outstanding: num(r.ОстЗадолж),
+    }))
+    .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+  return {
+    total: items.length,
+    debtSum: items.reduce((sum, i) => sum + (i.debt ?? 0), 0),
+    outstandingSum: items.reduce((sum, i) => sum + (i.outstanding ?? 0), 0),
+    items,
+  };
+}
+
+/** /reliability: оценка Checko — масштаб, риск номинальности и финансовый, баланс факторов. Это мнение сервиса, не наш вывод. */
+export function parseCheckoReliability(json: unknown): ReliabilityInfo | null {
+  const data = obj(json).data;
+  if (data === undefined || data === null) return null;
+  const d = obj(data);
+  const tone = (type: string | null): Tone => (type === "Полож" ? "good" : type === "Негатив" ? "danger" : "warn");
+  const factors: ReliabilityFactor[] = arr(d.Факторы).map((f) => ({
+    code: text(f.Код),
+    tone: tone(text(f.Тип)),
+    weight: num(f.Вес),
+    text: text(f.Текст) ?? "",
+  })).filter((f) => f.text.length > 0);
+  const balance = obj(d.Баланс);
+  const nominality = obj(d.Номинальность);
+  const financial = obj(d.ФинРиски);
+  return {
+    scale: num(d.Масштаб),
+    nominality: { level: num(nominality.Уровень), text: text(nominality.Наим) },
+    financial: { level: num(financial.Уровень), text: text(financial.Наим) },
+    balance: { good: num(balance.Полож) ?? 0, warn: num(balance.ТрВним) ?? 0, bad: num(balance.Негатив) ?? 0 },
+    factors,
+  };
+}
+
+/** Блокировка счетов отдельным полем в API нет: Checko показывает её как фактор надёжности. */
+export type BlockingInfo = { blocked: boolean; text: string };
+export function accountBlocking(reliability: ReliabilityInfo | null | undefined): BlockingInfo | null {
+  if (!reliability) return null;
+  const factor = reliability.factors.find((f) => /блокиров|приостановлен[^.]*счет|операций по счет/i.test(f.text));
+  return factor ? { blocked: true, text: factor.text } : { blocked: false, text: "Сведений о приостановлении операций по счетам нет" };
+}
+
 // ——— Отчёт ———
 
 export type Tone = "good" | "warn" | "danger" | "muted";
 export type Fact = { id: string; label: string; text: string; tone: Tone };
 export type ManualLink = { id: string; title: string; hint: string; url: string };
+/** Кто ответил: открытые реестры напрямую или Checko API (в нём те же реестры одним ответом). */
+export type ReportProvider = "direct" | "checko";
 
 export type Parts = {
   inn: string;
@@ -146,7 +385,22 @@ export type Parts = {
   fedresurs: FedresursInfo | null;
   bo: BoOrganization | null;
   statements: Statement[];
-  sources: Record<SourceId, SourceState>;
+  /** Адрес, если его назвал не ЕГРЮЛ, Федресурс и не ГИР БО (например, Checko). */
+  address?: string | null;
+  /** Статус словами реестра, когда он пришёл не через Федресурс (Checko: ЕГРЮЛ). */
+  statusText?: string | null;
+  rnp?: RnpInfo | null;
+  taxes?: TaxesInfo | null;
+  msp?: MspInfo | null;
+  staff?: number | null;
+  courts?: CourtsInfo | null;
+  enforcements?: EnforcementsInfo | null;
+  efrsb?: EfrsbMessage[] | null;
+  sanctions?: SanctionsInfo | null;
+  contacts?: ContactsInfo | null;
+  reliability?: ReliabilityInfo | null;
+  provider?: ReportProvider;
+  sources: Partial<Record<SourceId, SourceState>>;
 };
 
 export type CounterpartyReport = {
@@ -161,7 +415,18 @@ export type CounterpartyReport = {
   facts: Fact[];
   statements: Statement[];
   links: ManualLink[];
-  sources: Record<SourceId, SourceState>;
+  provider?: ReportProvider;
+  rnp?: RnpInfo | null;
+  taxes?: TaxesInfo | null;
+  msp?: MspInfo | null;
+  staff?: number | null;
+  courts?: CourtsInfo | null;
+  enforcements?: EnforcementsInfo | null;
+  efrsb?: EfrsbMessage[] | null;
+  sanctions?: SanctionsInfo | null;
+  contacts?: ContactsInfo | null;
+  reliability?: ReliabilityInfo | null;
+  sources: Partial<Record<SourceId, SourceState>>;
 };
 
 /** Тон статуса по словам реестра: банкротство и ликвидация — красным, «Действующее» — зелёным, остальное — внимание. */
@@ -193,14 +458,18 @@ export function thousandsText(valueK: number | null): string {
 /** Порог «молодой компании»: меньше года с регистрации. */
 export const YOUNG_COMPANY_YEARS = 1;
 
+/** Рубли (КАД, ФССП, налоги Checko) → та же шкала, что у отчётности: тысячи рублей. */
+const rublesText = (rub: number | null): string => thousandsText(rub === null ? null : Math.round(rub / 10) / 100);
+
 /** Ссылки на то, что реестры без капчи не отдают: открываются в браузере участника, ИНН подставлен там, где сайт это позволяет. */
-export function manualLinks(inn: string, fedresursGuid: string | null): ManualLink[] {
-  return [
+export function manualLinks(inn: string, fedresursGuid: string | null, auto: { rnp?: boolean; kad?: boolean; fssp?: boolean } = {}): ManualLink[] {
+  const links: ManualLink[] = [
     { id: "rnp", title: "Реестр недобросовестных поставщиков", hint: "ЕИС, поиск по ИНН", url: `https://zakupki.gov.ru/epz/dishonestsupplier/search/results.html?searchString=${inn}` },
     { id: "kad", title: "Арбитражные дела", hint: `КАД: вставьте ИНН ${inn} в поиск`, url: "https://kad.arbitr.ru/" },
     { id: "fssp", title: "Исполнительные производства", hint: `ФССП: поиск по организации, ИНН ${inn}`, url: "https://fssp.gov.ru/iss/ip" },
     { id: "fedresurs", title: "Карточка на Федресурсе", hint: "сообщения о банкротстве и другие факты", url: fedresursGuid ? `https://fedresurs.ru/company/${fedresursGuid}` : "https://fedresurs.ru/search/entity" },
   ];
+  return links.filter((l) => !(l.id === "rnp" && auto.rnp) && !(l.id === "kad" && auto.kad) && !(l.id === "fssp" && auto.fssp));
 }
 
 /** Собирает отчёт из того, что ответили реестры. Сам ничего не додумывает: не ответил реестр — этого факта нет, причина видна в sources. */
@@ -208,9 +477,10 @@ export function buildReport(parts: Parts, now: Date): CounterpartyReport {
   const { inn, egrul, fedresurs, bo, statements } = parts;
   const facts: Fact[] = [];
 
-  // Статус: слова Федресурса; ЕГРЮЛ с датой прекращения сильнее — организации уже нет.
+  // Статус: слова ЕГРЮЛ из Checko, затем Федресурса; дата прекращения в ЕГРЮЛ сильнее — организации уже нет.
   let status: CounterpartyReport["status"] = null;
   if (egrul?.terminated) status = { text: `Деятельность прекращена ${ruDate(egrul.terminated)} (ЕГРЮЛ)`, tone: "danger" };
+  else if (parts.statusText) status = { text: parts.statusText, tone: statusTone(parts.statusText) };
   else if (fedresurs) status = { text: fedresurs.status, tone: statusTone(fedresurs.status) };
   else if (bo?.status) status = { text: bo.status === "ACTIVE" ? "Действующее" : bo.status, tone: bo.status === "ACTIVE" ? "good" : "warn" };
 
@@ -225,6 +495,64 @@ export function buildReport(parts: Parts, now: Date): CounterpartyReport {
   }
   if (egrul?.headName) facts.push({ id: "head", label: egrul.headRole ?? "Руководитель", text: egrul.headName, tone: "muted" });
 
+  if (parts.rnp?.included) {
+    const n = parts.rnp.records.length;
+    const latest = parts.rnp.records[0];
+    facts.push({
+      id: "rnp",
+      label: "РНП",
+      text: `в реестре недобросовестных поставщиков${n > 0 ? `: ${n} ${plural(n, "запись", "записи", "записей")}${latest?.date ? `, последняя от ${ruDate(latest.date)}` : ""}` : ""}`,
+      tone: "danger",
+    });
+  }
+
+  if (parts.taxes) {
+    const t = parts.taxes;
+    const bits: string[] = [];
+    if (t.paid !== null) bits.push(`уплачено ${rublesText(t.paid)}${t.year ? ` за ${t.year} год` : ""}`);
+    if (t.regimes.length > 0) bits.push(`режим: ${t.regimes.join(", ")}`);
+    if (bits.length > 0) facts.push({ id: "taxes", label: "Налоги", text: bits.join("; "), tone: "muted" });
+    if (t.arrears !== null && t.arrears > 0) {
+      facts.push({ id: "tax-arrears", label: "Задолженность", text: `${rublesText(t.arrears)} по налогам${t.arrearsDate ? ` на ${ruDate(t.arrearsDate)}` : ""}`, tone: "warn" });
+    }
+  }
+
+  if (parts.msp) {
+    const since = parts.msp.since;
+    facts.push({ id: "msp", label: "МСП", text: `${parts.msp.category}${since ? ` с ${ruDate(since)}` : ""}`, tone: "muted" });
+  }
+
+  if (parts.staff !== null && parts.staff !== undefined) {
+    facts.push({ id: "staff", label: "Сотрудники", text: `${parts.staff} ${plural(parts.staff, "человек", "человека", "человек")}`, tone: "muted" });
+  }
+
+  if (parts.courts) {
+    const c = parts.courts;
+    if (c.total === 0) facts.push({ id: "courts", label: "Арбитраж", text: "дел не найдено", tone: "muted" });
+    else {
+      const bits = [`${c.total} ${plural(c.total, "дело", "дела", "дел")}`];
+      if (c.defendant > 0) bits.push(`ответчик — ${c.defendant}`);
+      if (c.active > 0) bits.push(`активных — ${c.active}`);
+      if (c.claimSum !== null && c.claimSum > 0) bits.push(`сумма исков ${rublesText(c.claimSum)}`);
+      const latest = c.cases[0];
+      if (latest?.date) bits.push(`последнее № ${latest.number} от ${ruDate(latest.date)}`);
+      facts.push({ id: "courts", label: "Арбитраж", text: bits.join("; "), tone: c.active > 0 ? "warn" : "muted" });
+    }
+  }
+
+  if (parts.enforcements) {
+    const e = parts.enforcements;
+    if (e.total === 0) facts.push({ id: "fssp", label: "Приставы", text: "производств не найдено", tone: "muted" });
+    else {
+      const bits = [`${e.total} ${plural(e.total, "производство", "производства", "производств")}`];
+      if (e.outstandingSum > 0) bits.push(`остаток долга ${rublesText(e.outstandingSum)}`);
+      else if (e.debtSum > 0) bits.push(`долг ${rublesText(e.debtSum)}`);
+      const latest = e.items[0];
+      if (latest?.date) bits.push(`последнее от ${ruDate(latest.date)}`);
+      facts.push({ id: "fssp", label: "Приставы", text: bits.join("; "), tone: e.outstandingSum > 0 ? "warn" : "muted" });
+    }
+  }
+
   const sorted = [...statements].sort((a, b) => b.year - a.year);
   const last = sorted[0];
   if (last) {
@@ -233,7 +561,7 @@ export function buildReport(parts: Parts, now: Date): CounterpartyReport {
     if (last.year < due) facts.push({ id: "stale", label: "Отчётность", text: `последняя в ГИР БО — за ${last.year} год, за ${due} не найдена`, tone: "warn" });
     if (last.netProfit !== null && last.netProfit < 0) facts.push({ id: "loss", label: "Результат", text: `убыток за ${last.year} год: ${thousandsText(last.netProfit)}`, tone: "warn" });
     if (last.equity !== null && last.equity < 0) facts.push({ id: "equity", label: "Капитал", text: `собственный капитал отрицательный на конец ${last.year} года: ${thousandsText(last.equity)} — обязательства больше активов`, tone: "danger" });
-  } else if (parts.sources.bo.ok && (bo !== null || egrul !== null)) {
+  } else if (parts.sources.bo?.ok && (bo !== null || egrul !== null)) {
     facts.push({ id: "nostatements", label: "Отчётность", text: "в ГИР БО отчётности нет (бывает у ИП, малых и новых организаций)", tone: "muted" });
   }
 
@@ -244,11 +572,22 @@ export function buildReport(parts: Parts, now: Date): CounterpartyReport {
     at: now.toISOString(),
     name,
     identity: egrul,
-    address: fedresurs?.address ?? bo?.address ?? null,
+    address: fedresurs?.address ?? bo?.address ?? parts.address ?? null,
     status,
     facts,
     statements: sorted,
-    links: manualLinks(inn, fedresurs?.guid ?? null),
+    links: manualLinks(inn, fedresurs?.guid ?? null, { rnp: parts.rnp !== null && parts.rnp !== undefined, kad: parts.courts !== null && parts.courts !== undefined, fssp: parts.enforcements !== null && parts.enforcements !== undefined }),
+    provider: parts.provider ?? "direct",
+    rnp: parts.rnp ?? null,
+    taxes: parts.taxes ?? null,
+    msp: parts.msp ?? null,
+    staff: parts.staff ?? null,
+    courts: parts.courts ?? null,
+    enforcements: parts.enforcements ?? null,
+    efrsb: parts.efrsb ?? null,
+    sanctions: parts.sanctions ?? null,
+    contacts: parts.contacts ?? null,
+    reliability: parts.reliability ?? null,
     sources: parts.sources,
   };
 }

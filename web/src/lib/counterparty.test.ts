@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  accountBlocking,
   buildReport,
   innProblem,
   latestBoReport,
@@ -9,6 +10,11 @@ import {
   notFound,
   parseBoDetails,
   parseBoSearch,
+  parseCheckoCompany,
+  parseCheckoEnforcements,
+  parseCheckoFinances,
+  parseCheckoLegalCases,
+  parseCheckoReliability,
   parseEgrul,
   parseFedresurs,
   statusTone,
@@ -174,4 +180,167 @@ test("ссылки на ручную проверку: РНП с подстав�
   assert.match(links[0].url, /dishonestsupplier\/search\/results\.html\?searchString=1434031363$/);
   assert.equal(links[3].url, "https://fedresurs.ru/company/10cb58c0-8909-48ba-bb27-985e275180f1");
   assert.equal(manualLinks("1434031363", null)[3].url, "https://fedresurs.ru/search/entity");
+  // Checko уже отдал РНП, КАД и ФССП — ручные ссылки на них не нужны, остаётся карточка Федресурса.
+  assert.deepEqual(manualLinks("1434031363", null, { rnp: true, kad: true, fssp: true }).map((l) => l.id), ["fedresurs"]);
+});
+
+// Ответы Checko API по АО «ДГК» — по документации api.checko.ru/v2 (урезаны до полей, которые читаем).
+const CHECKO_COMPANY = {
+  data: {
+    ОГРН: "1051401746769",
+    ИНН: "1434031363",
+    КПП: "272101001",
+    ДатаРег: "19.12.2005",
+    НаимСокр: 'АО "ДГК"',
+    НаимПолн: 'АКЦИОНЕРНОЕ ОБЩЕСТВО "ДАЛЬНЕВОСТОЧНАЯ ГЕНЕРИРУЮЩАЯ КОМПАНИЯ"',
+    Статус: { Код: "001", Наим: "Действующее" },
+    Ликвид: {},
+    Регион: { Код: "27", Наим: "Хабаровский край" },
+    ЮрАдрес: { АдресРФ: "680000, ХАБАРОВСКИЙ КРАЙ, Г. ХАБАРОВСК, УЛ. ФРУНЗЕ, Д. 49" },
+    Руковод: [{ ФИО: "Иртов Сергей Викторович", НаимДолжн: "Генеральный директор" }],
+    Налоги: { ОсобРежим: ["УСН"], СумУпл: 2304722, СведУплГод: "2025", СумНедоим: 104500, НедоимДата: "01.10.2026" },
+    РМСП: { Кат: "МИКРОПРЕДПРИЯТИЕ", ДатаВкл: "10.01.2022" },
+    СЧР: 9,
+    НедобПост: true,
+    НедобПостЗап: [{ РеестрНомер: "РНП-1", ДатаПуб: "23.03.2021", ЗаказНаимСокр: "ГУ ГУПФР №3", ЗакупОпис: "Оказание услуг" }],
+    ЕФРСБ: [{ Тип: "Сообщение о намерении обратиться в суд", Дата: "2026-01-20", Дело: "А40-1/2026" }],
+    Санкции: false,
+    СанкцииСтраны: [],
+    СанкцУчр: false,
+    Контакты: { Тел: ["+7 495 000-00-00"], Емэйл: ["info@example.ru"], ВебСайт: "https://example.ru" },
+  },
+  meta: { status: "ok", balance: 1000 },
+};
+const CHECKO_RELIABILITY = {
+  data: {
+    Масштаб: 14,
+    Номинальность: { Уровень: 1, Наим: "Риск номинальности не выявлен" },
+    ФинРиски: { Уровень: 1, Наим: "Финансовые риски не выявлены" },
+    Баланс: { Полож: 92, ТрВним: 8, Негатив: 0 },
+    Факторы: [
+      { Код: "reg", Тип: "Полож", Вес: 1, Текст: "Юридическое лицо зарегистрировано 12 лет назад" },
+      { Код: "cap", Тип: "ТрВним", Вес: 2, Текст: "Уставный капитал является минимальным и составляет 10 тыс. руб." },
+    ],
+  },
+  meta: { status: "ok" },
+};
+const CHECKO_FINANCES = {
+  data: {
+    "2025": { "2110": 140930138000, "2400": 1200000000, "1600": 161324221000, "1300": 9000000000 },
+    "2024": { "2110": 120394401000, "2400": -42658831000, "1600": 139198678000, "1300": -38255341000 },
+  },
+  meta: { status: "ok" },
+};
+const CHECKO_LEGAL = {
+  data: {
+    ЗапВсего: 2,
+    ОбщСуммИск: 9000,
+    Записи: [
+      { Номер: "А40-59337/2021", Дата: "2021-03-23", ПрАктив: false, СтрКАД: "https://kad.arbitr.ru/Card/1", СуммИск: 9000, Ист: [{ ИНН: "1027722019555", Наим: "ГУ ГУПФР №3" }], Ответ: [{ ИНН: "1434031363", Наим: 'АО "ДГК"' }], ИсходТекст: "Иск удовлетворён" },
+      { Номер: "А40-100/2026", Дата: "2026-02-01", ПрАктив: true, СтрКАД: "https://kad.arbitr.ru/Card/2", СуммИск: 0, Ист: [{ ИНН: "1434031363", Наим: 'АО "ДГК"' }], Ответ: [{ ИНН: "7700000000", Наим: "ООО Ромашка" }] },
+    ],
+  },
+};
+const CHECKO_ENFORCEMENTS = {
+  data: {
+    Записи: [
+      { ИспПрНомер: "111/2021", ИспПрДата: "2021-06-01", ПредмИсп: "Взыскание", СумДолг: 100000, ОстЗадолж: 50000 },
+      { ИспПрНомер: "222/2026", ИспПрДата: "2026-01-10", ПредмИсп: "Другой долг", СумДолг: 250000, ОстЗадолж: 250000 },
+    ],
+  },
+};
+
+test("Checko /company: реквизиты, статус, налоги, МСП, численность и РНП — в тех же полях отчёта", () => {
+  const c = parseCheckoCompany(CHECKO_COMPANY, "1434031363")!;
+  assert.deepEqual([c.identity?.shortName, c.identity?.ogrn, c.identity?.kpp, c.identity?.registered, c.identity?.region], ['АО "ДГК"', "1051401746769", "272101001", "2005-12-19", "Хабаровский край"]);
+  assert.deepEqual([c.identity?.headRole, c.identity?.headName], ["Генеральный директор", "Иртов Сергей Викторович"]);
+  assert.equal(c.statusText, "Действующее");
+  assert.equal(c.address, "680000, ХАБАРОВСКИЙ КРАЙ, Г. ХАБАРОВСК, УЛ. ФРУНЗЕ, Д. 49");
+  assert.deepEqual(c.taxes, { year: "2025", paid: 2304722, arrears: 104500, arrearsDate: "2026-10-01", regimes: ["УСН"] });
+  assert.deepEqual(c.msp, { category: "микропредприятие", since: "2022-01-10" });
+  assert.equal(c.staff, 9);
+  assert.equal(c.rnp.included, true);
+  assert.deepEqual(c.rnp.records.map((r) => [r.number, r.date, r.customer]), [["РНП-1", "2021-03-23", "ГУ ГУПФР №3"]]);
+  assert.deepEqual(c.efrsb, [{ type: "Сообщение о намерении обратиться в суд", date: "2026-01-20", caseNumber: "А40-1/2026" }]);
+  assert.deepEqual(c.sanctions, { included: false, countries: [], founderLinked: false });
+  assert.deepEqual(c.contacts, { phones: ["+7 495 000-00-00"], emails: ["info@example.ru"], website: "https://example.ru" });
+  assert.equal(parseCheckoCompany({ data: {} }, "1434031363"), null);
+});
+
+test("Checko /finances: рубли переводятся в тысячи, годы — по убыванию; /legal-cases и /enforcements — роли, суммы, активность", () => {
+  const s = parseCheckoFinances(CHECKO_FINANCES);
+  assert.deepEqual(s.map((x) => x.year), [2025, 2024]);
+  assert.deepEqual([s[0].revenue, s[0].netProfit, s[0].assets, s[0].equity], [140930138, 1200000, 161324221, 9000000]);
+  assert.equal(s[1].netProfit, -42658831);
+
+  const courts = parseCheckoLegalCases(CHECKO_LEGAL, "1434031363")!;
+  assert.deepEqual([courts.total, courts.active, courts.plaintiff, courts.defendant, courts.claimSum], [2, 1, 1, 1, 9000]);
+  assert.deepEqual([courts.cases[0].number, courts.cases[0].role, courts.cases[0].opponent, courts.cases[0].active], ["А40-100/2026", "plaintiff", "ООО Ромашка", true]);
+  assert.deepEqual([courts.cases[1].role, courts.cases[1].opponent, courts.cases[1].result], ["defendant", "ГУ ГУПФР №3", "Иск удовлетворён"]);
+
+  const e = parseCheckoEnforcements(CHECKO_ENFORCEMENTS)!;
+  assert.deepEqual([e.total, e.debtSum, e.outstandingSum], [2, 350000, 300000]);
+  assert.deepEqual([e.items[0].number, e.items[0].date, e.items[0].outstanding], ["222/2026", "2026-01-10", 250000]);
+  assert.equal(parseCheckoLegalCases({}, "1"), null);
+  assert.equal(parseCheckoEnforcements({}), null);
+});
+
+test("Checko /reliability: масштаб, риски, баланс факторов; блокировка счетов выводится из фактора, а не выдумывается", () => {
+  const rel = parseCheckoReliability(CHECKO_RELIABILITY)!;
+  assert.deepEqual([rel.scale, rel.nominality.level, rel.nominality.text], [14, 1, "Риск номинальности не выявлен"]);
+  assert.deepEqual([rel.financial.level, rel.financial.text], [1, "Финансовые риски не выявлены"]);
+  assert.deepEqual(rel.balance, { good: 92, warn: 8, bad: 0 });
+  assert.deepEqual(rel.factors.map((f) => f.tone), ["good", "warn"]);
+  assert.deepEqual(accountBlocking(rel), { blocked: false, text: "Сведений о приостановлении операций по счетам нет" });
+
+  const blocked = parseCheckoReliability({ data: { Факторы: [{ Тип: "Негатив", Текст: "Есть сведения о приостановлении операций по счетам от 02.10.2026" }] } })!;
+  assert.deepEqual([blocked.factors[0].tone, accountBlocking(blocked)?.blocked], ["danger", true]);
+  assert.match(accountBlocking(blocked)?.text ?? "", /приостановлении операций/);
+  assert.equal(parseCheckoReliability({}), null);
+});
+
+test("отчёт из Checko: факты про РНП, налоги, МСП, суды и приставов; ручные ссылки на РНП/КАД/ФССП больше не нужны", () => {
+  const c = parseCheckoCompany(CHECKO_COMPANY, "1434031363")!;
+  const report = buildReport(
+    {
+      inn: "1434031363",
+      egrul: c.identity,
+      fedresurs: null,
+      bo: null,
+      address: c.address,
+      statusText: c.statusText,
+      statements: parseCheckoFinances(CHECKO_FINANCES),
+      rnp: c.rnp,
+      taxes: c.taxes,
+      msp: c.msp,
+      staff: c.staff,
+      courts: parseCheckoLegalCases(CHECKO_LEGAL, "1434031363"),
+      enforcements: parseCheckoEnforcements(CHECKO_ENFORCEMENTS),
+      efrsb: c.efrsb,
+      sanctions: c.sanctions,
+      contacts: c.contacts,
+      reliability: parseCheckoReliability(CHECKO_RELIABILITY),
+      provider: "checko",
+      sources: { checko: { ok: true } },
+    },
+    NOW,
+  );
+  const by = Object.fromEntries(report.facts.map((f) => [f.id, f]));
+  assert.equal(report.provider, "checko");
+  assert.deepEqual(report.status, { text: "Действующее", tone: "good" });
+  assert.deepEqual(report.contacts, { phones: ["+7 495 000-00-00"], emails: ["info@example.ru"], website: "https://example.ru" });
+  assert.equal(report.efrsb?.length, 1);
+  assert.deepEqual(report.sanctions, { included: false, countries: [], founderLinked: false });
+  assert.equal(report.reliability?.scale, 14);
+  assert.deepEqual(report.reliability?.balance, { good: 92, warn: 8, bad: 0 });
+  assert.equal(by.rnp.tone, "danger");
+  assert.match(by.rnp.text, /1 запись, последняя от 23\.03\.2021/);
+  assert.match(by.taxes.text.replace(/\s/g, " "), /уплачено 2,3 млн ₽ за 2025 год; режим: УСН/);
+  assert.deepEqual([by["tax-arrears"].tone, by["tax-arrears"].text.replace(/\s/g, " ")], ["warn", "105 тыс. ₽ по налогам на 01.10.2026"]);
+  assert.equal(by.msp.text, "микропредприятие с 10.01.2022");
+  assert.equal(by.staff.text, "9 человек");
+  assert.match(by.courts.text.replace(/\s/g, " "), /2 дела; ответчик — 1; активных — 1; сумма исков 9 тыс\. ₽; последнее № А40-100\/2026 от 01\.02\.2026/);
+  assert.match(by.fssp.text.replace(/\s/g, " "), /2 производства; остаток долга 300 тыс\. ₽; последнее от 10\.01\.2026/);
+  assert.deepEqual(report.links.map((l) => l.id), ["fedresurs"]);
+  assert.equal(notFound(report), false);
 });

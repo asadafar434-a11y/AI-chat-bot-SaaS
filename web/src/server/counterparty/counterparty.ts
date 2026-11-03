@@ -15,10 +15,12 @@ import {
   type SourceState,
   type Statement,
 } from "@/lib/counterparty";
+import { createCheckoLoader, CheckoError } from "@/server/counterparty/checko";
 
-// Проверка контрагента по ИНН: сервер спрашивает три открытых реестра, участнику уходит готовый отчёт. В реестры уходит только ИНН — больше ничего от участника.
-// Реестры отдают данные без входа и без капчи; если какой-то просит проверочное слово или молчит — это видно в отчёте (sources), капчу программа не обходит.
-// Ответ держится в памяти шесть часов; запросов к реестрам — не больше десяти в минуту на процесс (общий адрес сервера не должен долбить государственные сайты).
+// Проверка контрагента по ИНН: если на сервере есть ключ Checko API, карточка, отчётность, суды, приставы и РНП приходят оттуда одним
+// набором запросов; иначе сервер спрашивает три открытых реестра. Участнику уходит готовый отчёт, в реестры — только ИНН.
+// Ответ держится в памяти шесть часов; запросов — не больше десяти проверок в минуту на процесс.
+// Если Checko не ответил (истёк ключ, лимит, сбой) — откат на открытые реестры, а не пустая карточка.
 
 export class CounterpartyError extends Error {
   readonly status: number;
@@ -28,7 +30,7 @@ export class CounterpartyError extends Error {
   }
 }
 
-export type CounterpartyOptions = { fetcher?: typeof fetch; now?: () => number; ttlMs?: number; timeoutMs?: number; maxPerMinute?: number };
+export type CounterpartyOptions = { fetcher?: typeof fetch; now?: () => number; ttlMs?: number; timeoutMs?: number; maxPerMinute?: number; checkoApiKey?: string };
 
 // Реестры отвечают браузерам; приходим как скромный клиент и называем себя.
 // Заголовок — только латиница: русские буквы в значении заголовка fetch не принимает.
@@ -46,6 +48,7 @@ export function createCounterpartyLoader(options: CounterpartyOptions = {}) {
   const maxPerMinute = options.maxPerMinute ?? 10;
   const cache = new Map<string, { at: number; report: CounterpartyReport }>();
   const recent: number[] = [];
+  const checko = options.checkoApiKey?.trim() ? createCheckoLoader({ apiKey: options.checkoApiKey, fetcher, timeoutMs: options.timeoutMs }) : null;
 
   async function call(url: string, init: RequestInit = {}): Promise<unknown> {
     const response = await fetcher(url, { ...init, signal: AbortSignal.timeout(timeout), headers: { "User-Agent": USER_AGENT, Accept: "application/json", ...(init.headers as Record<string, string> | undefined) } });
@@ -88,9 +91,23 @@ export function createCounterpartyLoader(options: CounterpartyOptions = {}) {
     if (recent.length >= maxPerMinute) throw new CounterpartyError("Слишком много проверок подряд — реестры этого не любят. Повторите через минуту.", 429);
     recent.push(now());
 
+    const complete = (report: CounterpartyReport) => Object.values(report.sources).every((s) => s?.ok);
+
+    if (checko) {
+      try {
+        const report = buildReport(await checko(inn), new Date(now()));
+        if (complete(report)) cache.set(inn, { at: now(), report });
+        return { ...report, cached: false };
+      } catch (error) {
+        if (!(error instanceof CheckoError)) throw error;
+        // Ключ не тот, кончился лимит или API недоступен — не показываем участнику пустоту, спрашиваем открытые реестры.
+        console.error("counterparty checko failed, falling back to registries:", error.message);
+      }
+    }
+
     const [e, f, b] = await Promise.allSettled([egrul(inn), fedresurs(inn), bo(inn)]);
     const state = (id: SourceId, r: PromiseSettledResult<unknown>): SourceState => (r.status === "fulfilled" ? { ok: true } : { ok: false, reason: `${SOURCE_NAMES[id]} ${failureOf(r.reason)}` });
-    const sources: Record<SourceId, SourceState> = { egrul: state("egrul", e), fedresurs: state("fedresurs", f), bo: state("bo", b) };
+    const sources: Record<"egrul" | "fedresurs" | "bo", SourceState> = { egrul: state("egrul", e), fedresurs: state("fedresurs", f), bo: state("bo", b) };
     if (Object.values(sources).every((s) => !s.ok)) throw new CounterpartyError("Реестры сейчас не отвечают. Повторите позже или проверьте вручную по ссылкам ниже.", 502);
 
     const boResult = b.status === "fulfilled" ? b.value : { org: null, statements: [] };
@@ -99,7 +116,7 @@ export function createCounterpartyLoader(options: CounterpartyOptions = {}) {
       new Date(now()),
     );
     // Неполный ответ (какой-то реестр молчал) в память не кладём: следующая проверка спросит заново.
-    if (Object.values(sources).every((s) => s.ok)) cache.set(inn, { at: now(), report });
+    if (complete(report)) cache.set(inn, { at: now(), report });
     return { ...report, cached: false };
   };
 }

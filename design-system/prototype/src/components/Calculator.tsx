@@ -222,7 +222,7 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
+    <div className="animate-fade-up flex flex-1 flex-col gap-4">
       <div>
         <h1 className="flex items-center gap-2 text-xl font-semibold"><SectionIcon name="calculator" className="size-8" />Калькулятор</h1>
         <p className="text-[13px] text-muted-foreground">Цена, маржа, обеспечение, срок и риск по правилам сферы</p>

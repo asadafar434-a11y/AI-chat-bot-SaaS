@@ -67,7 +67,7 @@ test("повторная проверка того же ИНН — из памя
   const broken = registries({ fedresurs: () => json({}, 451) });
   const load2 = createCounterpartyLoader({ fetcher: broken.fetcher, now: () => now });
   const partial = await load2(INN);
-  assert.equal(partial.sources.fedresurs.ok, false);
+  assert.equal(partial.sources.fedresurs?.ok, false);
   const before = broken.calls.length;
   await load2(INN);
   assert.ok(broken.calls.length > before, "после сбоя следующая проверка спрашивает снова");
@@ -78,7 +78,7 @@ test("один реестр молчит или отказывает — отч�
   const report = await createCounterpartyLoader({ fetcher: down.fetcher })(INN);
   assert.deepEqual(report.sources.fedresurs, { ok: false, reason: "Федресурс отказал в доступе (просит подождать)" });
   assert.deepEqual(report.sources.egrul, { ok: false, reason: "ЕГРЮЛ просит ввести проверочное слово — повторите позже" });
-  assert.equal(report.sources.bo.ok, true);
+  assert.equal(report.sources.bo?.ok, true);
   assert.equal(report.statements.length > 0, true, "отчётность из ГИР БО на месте");
   assert.equal(down.calls.filter((c) => c.url.startsWith("https://egrul.nalog.ru/search-result")).length, 0, "после капчи результат не запрашивается");
 });
@@ -124,4 +124,106 @@ test("маршрут: без входа — отказ; кривой ИНН — 
   const broken = await handleCounterparty(post({ inn: INN }), { authorize: allow, load: async () => { throw new Error("внутренняя ошибка с подробностями"); } });
   assert.equal(broken.status, 502);
   assert.equal(await broken.text(), "Проверка сейчас недоступна. Повторите позже.", "внутренние подробности наружу не идут");
+});
+
+// Checko API: ответы по документации api.checko.ru/v2, урезаны до полей, которые читаем.
+const CHECKO_COMPANY = {
+  data: {
+    ОГРН: "1051401746769",
+    ИНН: INN,
+    КПП: "272101001",
+    ДатаРег: "19.12.2005",
+    НаимСокр: 'АО "ДГК"',
+    НаимПолн: 'АКЦИОНЕРНОЕ ОБЩЕСТВО "ДАЛЬНЕВОСТОЧНАЯ ГЕНЕРИРУЮЩАЯ КОМПАНИЯ"',
+    Статус: { Наим: "Действующее" },
+    Регион: { Наим: "Хабаровский край" },
+    ЮрАдрес: { АдресРФ: "680000, ХАБАРОВСКИЙ КРАЙ, Г. ХАБАРОВСК" },
+    Руковод: [{ ФИО: "Иртов Сергей Викторович", НаимДолжн: "Генеральный директор" }],
+    Налоги: { ОсобРежим: [], СумУпл: 2304722, СведУплГод: "2025", СумНедоим: 0 },
+    РМСП: { Кат: "МИКРОПРЕДПРИЯТИЕ", ДатаВкл: "10.01.2022" },
+    СЧР: 9,
+    НедобПост: false,
+    НедобПостЗап: [],
+    ЕФРСБ: [],
+    Санкции: false,
+    СанкцииСтраны: [],
+    СанкцУчр: false,
+    Контакты: { Тел: ["+7 495 000-00-00"], Емэйл: ["info@example.ru"], ВебСайт: "https://example.ru" },
+  },
+  meta: { status: "ok", balance: 1000 },
+};
+const CHECKO_FINANCES = { data: { "2025": { "2110": 140930138000, "2400": 1200000000, "1600": 161324221000, "1300": 9000000000 } }, meta: { status: "ok" } };
+const CHECKO_LEGAL = { data: { ЗапВсего: 1, ОбщСуммИск: 9000, Записи: [{ Номер: "А40-59337/2021", Дата: "2021-03-23", ПрАктив: false, СтрКАД: "https://kad.arbitr.ru/Card/1", СуммИск: 9000, Ист: [{ ИНН: "1027722019555", Наим: "ГУ ГУПФР №3" }], Ответ: [{ ИНН: INN, Наим: 'АО "ДГК"' }] }] } };
+const CHECKO_ENFORCEMENTS = { data: { Записи: [{ ИспПрНомер: "111/2021", ИспПрДата: "2021-06-01", ПредмИсп: "Взыскание", СумДолг: 100000, ОстЗадолж: 50000 }] } };
+const CHECKO_RELIABILITY = { data: { Масштаб: 14, Номинальность: { Уровень: 1, Наим: "Риск номинальности не выявлен" }, ФинРиски: { Уровень: 1, Наим: "Финансовые риски не выявлены" }, Баланс: { Полож: 92, ТрВним: 8, Негатив: 0 }, Факторы: [{ Тип: "Полож", Текст: "Юридическое лицо зарегистрировано 12 лет назад" }] } };
+
+function checkoApi(over: { company?: () => Response } = {}) {
+  const calls: string[] = [];
+  const fetcher = (async (url: string) => {
+    calls.push(url);
+    if (url.includes("/company")) return over.company ? over.company() : json(CHECKO_COMPANY);
+    if (url.includes("/finances")) return json(CHECKO_FINANCES);
+    if (url.includes("/legal-cases")) return json(CHECKO_LEGAL);
+    if (url.includes("/enforcements")) return json(CHECKO_ENFORCEMENTS);
+    if (url.includes("/reliability")) return json(CHECKO_RELIABILITY);
+    return new Response("нет", { status: 404 });
+  }) as typeof fetch;
+  return { calls, fetcher };
+}
+
+test("ключ Checko: пять запросов к api.checko.ru, отчёт с судами, приставами, надёжностью и контактами, ключ не уходит в ответ и к реестрам не ходим", async () => {
+  const { calls, fetcher } = checkoApi();
+  const report = await createCounterpartyLoader({ checkoApiKey: "SECRET-KEY", fetcher, now: () => Date.parse("2026-10-25T09:00:00Z") })(INN);
+  assert.equal(report.provider, "checko");
+  assert.deepEqual(report.sources, { checko: { ok: true } });
+  assert.equal(report.name, 'АО "ДГК"');
+  assert.deepEqual(report.status, { text: "Действующее", tone: "good" });
+  assert.equal(report.statements[0].revenue, 140930138);
+  assert.deepEqual([report.courts?.total, report.enforcements?.total], [1, 1]);
+  assert.equal(report.reliability?.scale, 14);
+  assert.deepEqual(report.contacts, { phones: ["+7 495 000-00-00"], emails: ["info@example.ru"], website: "https://example.ru" });
+  assert.deepEqual(report.links.map((l) => l.id), ["fedresurs"]);
+  assert.ok(calls.every((u) => u.startsWith("https://api.checko.ru/v2/")));
+  assert.ok(calls.every((u) => u.includes("key=SECRET-KEY") && u.includes(`inn=${INN}`)));
+  assert.ok(calls.some((u) => u.includes("/company")), "карточка");
+  assert.ok(calls.some((u) => u.includes("/finances")), "отчётность");
+  assert.ok(calls.some((u) => u.includes("/legal-cases")), "суды");
+  assert.ok(calls.some((u) => u.includes("/enforcements")), "приставы");
+  assert.ok(calls.some((u) => u.includes("/reliability")), "надёжность");
+  assert.ok(!JSON.stringify(report).includes("SECRET-KEY"), "ключ не попадает в отчёт участнику");
+});
+
+test("Checko не нашёл организацию — это честное «не найдено», а не сбой: реестры не опрашиваются", async () => {
+  const { calls, fetcher } = checkoApi({ company: () => json({ meta: { status: "error", message: "Компания не найдена" } }) });
+  const report = await createCounterpartyLoader({ checkoApiKey: "SECRET-KEY", fetcher })(INN);
+  assert.deepEqual(report.sources, { checko: { ok: true } });
+  assert.equal(report.identity, null);
+  assert.equal(calls.every((u) => u.startsWith("https://api.checko.ru/")), true);
+});
+
+test("ключ Checko не подошёл или API недоступен — откат на открытые реестры, отчёт всё равно собран", async () => {
+  const calls: string[] = [];
+  const fetcher = (async (url: string) => {
+    calls.push(url);
+    if (url.startsWith("https://api.checko.ru/")) return json({ meta: { status: "error", message: "Неверный ключ API" } });
+    if (url === "https://egrul.nalog.ru/") return json({ t: "AB".repeat(40), captchaRequired: false });
+    if (url.startsWith("https://egrul.nalog.ru/search-result/")) return json(EGRUL_ROW);
+    if (url.startsWith("https://fedresurs.ru/backend/companies")) return json(FEDRESURS);
+    if (url.includes("/advanced-search/organizations/search")) return json(BO_SEARCH);
+    if (url.endsWith("/bfo/")) return json(BO_REPORTS);
+    if (url.endsWith("/details")) return json(BO_DETAILS);
+    return new Response("нет", { status: 404 });
+  }) as typeof fetch;
+
+  const logged = console.error;
+  console.error = () => {};
+  try {
+    const report = await createCounterpartyLoader({ checkoApiKey: "BAD", fetcher })(INN);
+    assert.equal(report.provider, "direct");
+    assert.ok(Object.values(report.sources).every((s) => s?.ok));
+    assert.ok(calls.some((u) => u.includes("egrul.nalog.ru")), "после сбоя Checko спросили ЕГРЮЛ");
+    assert.ok(!JSON.stringify(report).includes("BAD"), "ключ не попадает в отчёт");
+  } finally {
+    console.error = logged;
+  }
 });

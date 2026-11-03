@@ -189,7 +189,7 @@ export function TenderRating({ rating }: { rating: Rating }) {
   const withData = rating.factors.filter((f) => f.score !== null);
   return (
     <>
-      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div className="rounded-2xl border border-border bg-card p-4">
         <button
           type="button"
           onClick={() => setOpen(true)}
