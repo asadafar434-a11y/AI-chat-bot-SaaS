@@ -12,16 +12,18 @@ import {
   type MyDocument,
   type ProfileMeta,
 } from '@/lib/me-store';
+import { EMPTY_CARD, profileStrength, type CompanyCard } from '@/lib/company-card';
+import { getCompanyCard, saveCompanyCard } from '@/lib/company-card-store';
+import { listFacts } from '@/lib/evidence-store';
 import { errorMessage } from '@/lib/http-error';
 import { DOC_KIND_KEYS, DOC_KINDS, PART_SAMPLE_KIND, REQUISITE_KINDS, type DocKind, type FoundField } from '@/lib/my-docs';
 import { plural } from '@/lib/plural';
-import { filledCount, PROFILE_GROUPS, PROFILE_KEYS, type Profile as ProfileData, type ProfileKey } from '@/lib/profile';
+import { EMPTY_PROFILE, filledCount, PROFILE_GROUPS, PROFILE_KEYS, type Profile as ProfileData, type ProfileKey } from '@/lib/profile';
 import { ACCEPTED_FILES, readDocuments, type FailedFile } from '@/lib/read-documents';
 import { profileProblems } from '@/lib/requisites-check';
 import {
   AlertTriangle,
   Building2,
-  Check,
   FileText,
   Loader2,
   Pencil,
@@ -31,14 +33,19 @@ import {
   Trash2,
   Upload,
 } from '../lib/icons';
+import { CertificatesPanel, ExperiencePanel, IndustriesPanel, LicensesPanel, ProfileBar, ProfileHero, ProfileSteps } from './CompanyProfile';
 import { EvidenceBase } from './EvidenceBase';
 import { Notice, type Tone } from './Notice';
-import { Badge, Button, Card, HelpTip, IconButton, TabPanel, Tabs, Tooltip, cx } from './ui';
+import { Badge, Button, Card, HelpTip, IconButton, TabPanel, Tooltip, cx } from './ui';
 import { SectionIcon } from './SectionIcon';
 
-type TabKey = 'profile' | 'evidence' | 'docs';
+type TabKey = 'profile' | 'experience' | 'industries' | 'licenses' | 'certificates' | 'evidence' | 'docs';
 const TAB_LABELS: Record<TabKey, string> = {
   profile: 'Реквизиты',
+  experience: 'Опыт и финансы',
+  industries: 'Специализация',
+  licenses: 'Лицензии',
+  certificates: 'Сертификаты',
   evidence: 'База доказательств',
   docs: 'Образцы и документы',
 };
@@ -179,6 +186,10 @@ export function Profile() {
   const [loadError, setLoadError] = useState(false);
   const [editing, setEditing] = useState(false);
   const [snapshot, setSnapshot] = useState<{ profile: ProfileData; meta: ProfileMeta } | null>(null);
+  const [card, setCard] = useState<CompanyCard>(EMPTY_CARD);
+  const [factCount, setFactCount] = useState(0);
+  const cardTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestCard = useRef<CompanyCard | null>(null);
   const [filling, setFilling] = useState(false);
   const [fillNote, setFillNote] = useState<Outcome | null>(null);
   // Подсказка о формате не появляется, пока поле в фокусе: недописанный номер — ещё не ошибка.
@@ -206,6 +217,8 @@ export function Profile() {
       () => setLoadError(true),
     );
     listMyDocuments().then(setDocs, () => setDocs([]));
+    getCompanyCard().then(setCard, () => undefined);
+    listFacts().then((f) => setFactCount(f.length), () => setFactCount(0));
   }
 
   useEffect(() => {
@@ -216,8 +229,28 @@ export function Profile() {
         clearTimeout(timer.current);
         void saveProfile(latest.current.profile, latest.current.meta);
       }
+      if (cardTimer.current && latestCard.current) {
+        clearTimeout(cardTimer.current);
+        void saveCompanyCard(latestCard.current);
+      }
     };
   }, []);
+
+  // Карточка компании сохраняется сама, как реквизиты: через паузу после правки, а уходя со страницы — сразу.
+  function changeCard(next: CompanyCard) {
+    latestCard.current = next;
+    setCard(next);
+    setSave('saving');
+    if (cardTimer.current) clearTimeout(cardTimer.current);
+    cardTimer.current = setTimeout(() => {
+      cardTimer.current = null;
+      latestCard.current = null;
+      saveCompanyCard(next).then(
+        () => setSave('saved'),
+        () => setSave('failed'),
+      );
+    }, 400);
+  }
 
   function persist(nextProfile: ProfileData, nextMeta: ProfileMeta) {
     latest.current = { profile: nextProfile, meta: nextMeta };
@@ -372,6 +405,8 @@ export function Profile() {
 
   const problems = profile ? profileProblems(profile) : {};
   const used = new Map(SAMPLE_KINDS.map((kind) => [kind, new Set(samplesOf(docs, kind).map((d) => d.id))]));
+  const strength = profileStrength(profile ?? EMPTY_PROFILE, card);
+  const barTabs: TabKey[] = ['profile', 'experience', 'industries', 'licenses', 'certificates'];
   const saveText = save === 'saving' ? 'Сохраняю…' : save === 'saved' ? 'Сохранено' : save === 'failed' ? 'Не сохранилось — попробуйте ещё раз' : '';
 
   return (
@@ -385,13 +420,15 @@ export function Profile() {
 
       {loadError && <Notice tone="warn">Браузер не дал открыть сохранённые реквизиты. Обновите страницу.</Notice>}
 
-      <Tabs
+      <ProfileHero strength={strength} facts={factCount} onOpen={(key) => setTab(key as TabKey)} />
+
+      <ProfileSteps
         idPrefix={tabId}
         active={tab}
         onChange={(key) => setTab(key as TabKey)}
-        items={[
-          { key: 'profile', label: TAB_LABELS.profile },
-          { key: 'evidence', label: TAB_LABELS.evidence },
+        strength={strength}
+        extras={[
+          { key: 'evidence', label: TAB_LABELS.evidence, badge: factCount > 0 ? <Badge>{factCount}</Badge> : undefined },
           { key: 'docs', label: TAB_LABELS.docs, badge: docs.length > 0 ? <Badge>{docs.length}</Badge> : undefined },
         ]}
       />
@@ -411,11 +448,6 @@ export function Profile() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {saveText && (
-              <span aria-live="polite" className={cx('inline-flex items-center gap-1.5 text-xs', save === 'failed' ? 'text-warn-foreground' : 'text-success')}>
-                {save === 'saved' && <Check className="size-3.5" />} {saveText}
-              </span>
-            )}
             {sourceDocs.length > 0 && (
               <Tooltip content="ИИ найдёт реквизиты в ваших анкетах и карточке предприятия и впишет пустые поля." align="end">
                 <Button variant="ai" busy={filling} onClick={() => void fillFromDocuments()} disabled={filling || !profile}>
@@ -423,16 +455,7 @@ export function Profile() {
                 </Button>
               </Tooltip>
             )}
-            {editing ? (
-              <>
-                <Button variant="secondary" onClick={cancelEdit}>
-                  Отмена
-                </Button>
-                <Button onClick={finishEdit}>
-                  <Check className="size-4" /> Сохранить изменения
-                </Button>
-              </>
-            ) : (
+            {!editing && (
               <Button onClick={startEdit} disabled={!profile}>
                 <Pencil className="size-4" /> Редактировать профиль
               </Button>
@@ -528,6 +551,22 @@ export function Profile() {
             </div>
           </>
         )}
+      </TabPanel>
+
+      <TabPanel idPrefix={tabId} tabKey="experience" active={tab}>
+        <ExperiencePanel card={card} onChange={changeCard} />
+      </TabPanel>
+
+      <TabPanel idPrefix={tabId} tabKey="industries" active={tab}>
+        <IndustriesPanel card={card} onChange={changeCard} />
+      </TabPanel>
+
+      <TabPanel idPrefix={tabId} tabKey="licenses" active={tab}>
+        <LicensesPanel card={card} onChange={changeCard} factCount={factCount} onOpenEvidence={() => setTab('evidence')} />
+      </TabPanel>
+
+      <TabPanel idPrefix={tabId} tabKey="certificates" active={tab}>
+        <CertificatesPanel card={card} onChange={changeCard} factCount={factCount} onOpenEvidence={() => setTab('evidence')} />
       </TabPanel>
 
       <TabPanel idPrefix={tabId} tabKey="evidence" active={tab}>
@@ -700,6 +739,14 @@ export function Profile() {
         </Card>
       </TabPanel>
 
+      {barTabs.includes(tab) && (
+        <ProfileBar
+          status={saveText ? { text: saveText, failed: save === 'failed' } : null}
+          editing={editing && tab === 'profile'}
+          onCancel={cancelEdit}
+          onSave={finishEdit}
+        />
+      )}
     </div>
   );
 }

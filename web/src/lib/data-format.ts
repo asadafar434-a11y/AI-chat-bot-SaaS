@@ -28,6 +28,8 @@ const MIGRATIONS = {
   ],
   profile: [],
   profileMeta: [],
+  // Карточка компании: опыт, специализация, лицензии, сертификаты (company-card.ts).
+  companyCard: [],
   // Факты базы доказательств компании (evidence-base.ts).
   fact: [],
 } satisfies Record<string, Migration[]>;

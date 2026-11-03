@@ -447,7 +447,7 @@ test('база доказательств: «что требуют закупк�
     gap({ key: 'k3', kind: 'requisite', label: 'Реквизиты для анкеты', status: 'needs_evidence', reasons: ['не заполнен ИНН'] }),
     gap({ key: 'k4', label: 'Уже подтверждённое', status: 'ok' }),
   ];
-  const out = evidence({ gaps });
+  const out = evidence({ gaps, gapsOpen: true });
   assert.match(out, /Что требуют ваши закупки/);
   assert.match(out, /Нужно внимание: 3 из 4/, 'подтверждённое в список «нужно внимание» не попадает');
   assert.doesNotMatch(out, /Уже подтверждённое/);
@@ -461,6 +461,7 @@ test('база доказательств: «что требуют закупк�
   assert.match(out, /ничего не подставляет/, 'подсказка к статусу «нет доказательства» говорит, что значение не придумывается');
   // Кнопка «Добавить в базу» — у «нет доказательства» по лицензии; у «решает человек» и у реквизитов её нет.
   assert.equal((out.match(/Добавить в базу/g) ?? []).length, 1);
+  assert.match(evidence({ gaps }), /aria-expanded="false"/, 'по умолчанию раздел свёрнут');
   assert.match(evidence({ gaps: [gap({ status: 'ok' })] }), /По закупкам в работе всё подтверждено: 1 требование/);
   assert.match(evidence({ gaps: [] }), /Закупок в работе, которым нужны доказательства, пока нет/);
 });

@@ -20,7 +20,7 @@ export type Dump = {
 export type Backup = Dump & { format: typeof BACKUP_FORMAT; version: number; savedAt: string };
 
 // Из настроек в копию и обратно идут только реквизиты: остальное браузер заведёт сам.
-const SETTING_KINDS: Record<string, RecordKind> = { profile: "profile", "profile-meta": "profileMeta" };
+const SETTING_KINDS: Record<string, RecordKind> = { profile: "profile", "profile-meta": "profileMeta", "company-card": "companyCard" };
 const SETTING_KEYS = new Set(Object.keys(SETTING_KINDS));
 
 export const buildBackup = (dump: Dump, now = new Date()): Backup => ({

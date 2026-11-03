@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useId, useMemo, useState, type ReactNode } from 'react';
 import { dueLine } from '@/lib/deadline';
 import { FACT_KIND_KEYS, FACT_KINDS, findValidity, todayIso, validityAt, type Fact, type FactKind } from '@/lib/evidence-base';
 import { confirmed, draftOf, emptyDraft, factFromDraft, MEASURE_PRESETS, type Draft } from '@/lib/evidence-form';
@@ -14,26 +14,7 @@ import { quoteFound } from '@/lib/quotes';
 import { profileProblems } from '@/lib/requisites-check';
 import { usePurchases } from '@/lib/use-purchases';
 import { useFacts } from '../real/hooks';
-import {
-  AlertTriangle,
-  Briefcase,
-  Building2,
-  Check,
-  FileText,
-  Info,
-  Loader2,
-  Package,
-  Pencil,
-  Plus,
-  ShieldCheck,
-  Sparkles,
-  Star,
-  Trash2,
-  User,
-  UserCheck,
-  Wallet,
-  X,
-} from '../lib/icons';
+import { AlertTriangle, Briefcase, Building2, Check, ChevronDown, FileText, Info, Loader2, Package, Pencil, Plus, ShieldCheck, Sparkles, Star, Trash2, User, UserCheck, Wallet, X } from '../lib/icons';
 import { Badge, Button, Card, HelpTip, IconButton, Tooltip, cx, type Tone } from './ui';
 
 // «База доказательств» — раздел «Профиля компании»: факты о компании — лицензии, сертификаты, документы, опыт, сотрудники, оборудование,
@@ -112,8 +93,7 @@ export function FactForm({
 
   const set = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch });
   const setField = (key: string, value: string) => setDraft({ ...draft, fields: { ...draft.fields, [key]: value } });
-  const setMeasure = (i: number, patch: Partial<Draft['measures'][number]>) =>
-    set({ measures: draft.measures.map((m, k) => (k === i ? { ...m, ...patch } : m)) });
+  const setMeasure = (i: number, patch: Partial<Draft['measures'][number]>) => set({ measures: draft.measures.map((m, k) => (k === i ? { ...m, ...patch } : m)) });
 
   function submit() {
     const result = factFromDraft(draft, docs, editing);
@@ -130,7 +110,10 @@ export function FactForm({
       className="space-y-4 border-t border-border bg-secondary/30 px-4 py-4"
       aria-label={editing ? 'Правка факта' : 'Новый факт'}
     >
-      <p className="text-sm font-medium">{editing ? 'Правка: ' : 'Новый факт: '}{meta.one.toLowerCase()}</p>
+      <p className="text-sm font-medium">
+        {editing ? 'Правка: ' : 'Новый факт: '}
+        {meta.one.toLowerCase()}
+      </p>
 
       {!editing && (
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Вид факта">
@@ -153,7 +136,13 @@ export function FactForm({
       <p className="text-[12px] text-muted-foreground">{meta.hint}</p>
 
       <Field label="Название — что это">
-        <input value={draft.title} onChange={(e) => set({ title: e.target.value })} className={INPUT} autoComplete="off" placeholder="например, Лицензия на образовательную деятельность № Л035-00115-77" />
+        <input
+          value={draft.title}
+          onChange={(e) => set({ title: e.target.value })}
+          className={INPUT}
+          autoComplete="off"
+          placeholder="например, Лицензия на образовательную деятельность № Л035-00115-77"
+        />
       </Field>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -272,21 +261,7 @@ export function FactForm({
 
 // ———— Строка факта ————
 
-export function FactRow({
-  fact,
-  on,
-  showKind,
-  onEdit,
-  onDelete,
-  onConfirm,
-}: {
-  fact: Fact;
-  on: string;
-  showKind: boolean;
-  onEdit: () => void;
-  onDelete: () => void;
-  onConfirm: () => void;
-}) {
+export function FactRow({ fact, on, showKind, onEdit, onDelete, onConfirm }: { fact: Fact; on: string; showKind: boolean; onEdit: () => void; onDelete: () => void; onConfirm: () => void }) {
   const [asking, setAsking] = useState(false);
   const Icon = KIND_ICON[fact.kind];
   const badge = validityBadge(fact, on);
@@ -395,6 +370,52 @@ export type EvidenceSummaryInfo = {
   templates: { label: string; count: number }[];
 };
 
+// Раздел «Что требуют ваши закупки»: свёрнут в одну строку с итогом, разворачивается по нажатию. Когда внимания ничего не требует — короткая строка без списка.
+function GapsPanel({ gaps, attention, defaultOpen, onAdd }: { gaps: Gap[]; attention: Gap[]; defaultOpen: boolean; onAdd: (gap: Gap) => void }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const id = useId();
+  const hint =
+    'По требованиям закупок, которые ещё в работе, система определяет, чем их нужно подтвердить, ищет это в базе и проверяет срок и числа на дату подачи. Нет доказательства — так и написано; система ничего не подставляет.';
+  return (
+    <div className="border-t border-border">
+      <div className="flex items-center gap-2 pr-4">
+        {attention.length === 0 ? (
+          <p className="px-4 py-3 text-sm font-medium">Что требуют ваши закупки</p>
+        ) : (
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls={id}
+            onClick={() => setOpen((v) => !v)}
+            className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium">Что требуют ваши закупки</span>
+              <span className="mt-0.5 block text-[13px] text-warn-foreground">
+                Нужно внимание: {attention.length} из {gaps.length}
+              </span>
+            </span>
+            <ChevronDown className={cx('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
+          </button>
+        )}
+        <HelpTip content={hint} align="end" />
+      </div>
+      {attention.length === 0 ? (
+        <p className="px-4 pb-4 text-[13px] text-muted-foreground">
+          {gaps.length > 0
+            ? `По закупкам в работе всё подтверждено: ${gaps.length} ${plural(gaps.length, 'требование', 'требования', 'требований')}.`
+            : 'Закупок в работе, которым нужны доказательства, пока нет. Когда загрузите документы закупки, здесь появится, чего не хватает.'}
+        </p>
+      ) : (
+        <div id={id} hidden={!open}>
+          <p className="px-4 pb-1 text-[12px] text-muted-foreground">«Нет доказательства» — добавьте документ или факт; «решает человек» — подтвердите найденное или впишите недостающее.</p>
+          <GapList gaps={attention} onAdd={onAdd} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function EvidenceSection({
   facts,
   docs,
@@ -410,6 +431,7 @@ export function EvidenceSection({
   onConfirm,
   initialForm = null,
   initialFilter = 'all',
+  gapsOpen = false,
 }: {
   facts: Fact[];
   docs: EvidenceDoc[];
@@ -426,6 +448,8 @@ export function EvidenceSection({
   onConfirm: (id: string) => void;
   initialForm?: { draft: Draft; editing?: Fact } | null;
   initialFilter?: Filter;
+  // Раздел «Что требуют ваши закупки» по умолчанию свёрнут; тесты и ссылки могут открыть его сразу.
+  gapsOpen?: boolean;
 }) {
   const [filter, setFilter] = useState<Filter>(initialFilter);
   const [form, setForm] = useState<{ draft: Draft; editing?: Fact } | null>(initialForm);
@@ -471,12 +495,10 @@ export function EvidenceSection({
     <Card className="overflow-hidden">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3">
         <div className="min-w-0">
-          <h2 className="text-sm font-medium">
-            База доказательств{facts.length > 0 && <span className="ml-1.5 font-mono text-[11px] text-muted-foreground">{facts.length}</span>}
-          </h2>
+          <h2 className="text-sm font-medium">База доказательств{facts.length > 0 && <span className="ml-1.5 font-mono text-[11px] text-muted-foreground">{facts.length}</span>}</h2>
           <p className="mt-0.5 max-w-[70ch] text-[12px] text-muted-foreground">
-            Что известно о вашей компании и чем это подтверждено: лицензии, сертификаты, договоры, сотрудники, оборудование, финансы. У каждого факта —
-            документ-источник и срок действия. Нет документа — система так и скажет, а не придумает.
+            Что известно о вашей компании и чем это подтверждено: лицензии, сертификаты, договоры, сотрудники, оборудование, финансы. У каждого факта — документ-источник и срок действия. Нет документа
+            — система так и скажет, а не придумает.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -528,7 +550,11 @@ export function EvidenceSection({
         {chip('all', 'Все', facts.length)}
         {chip('requisites', 'Реквизиты', info.requisites.filled)}
         {FACT_KIND_KEYS.map((kind) => chip(kind, FACT_KINDS[kind].title, counts(kind)))}
-        {chip('templates', 'Шаблоны', info.templates.reduce((n, t) => n + t.count, 0))}
+        {chip(
+          'templates',
+          'Шаблоны',
+          info.templates.reduce((n, t) => n + t.count, 0),
+        )}
       </div>
 
       {form && (
@@ -575,7 +601,10 @@ export function EvidenceSection({
                 <p className="text-sm font-medium">Шаблоны и образцы</p>
                 <p className="mt-0.5 break-words text-[12px] text-muted-foreground">
                   {info.templates.some((t) => t.count > 0)
-                    ? info.templates.filter((t) => t.count > 0).map((t) => `${t.label} — ${t.count}`).join(' · ')
+                    ? info.templates
+                        .filter((t) => t.count > 0)
+                        .map((t) => `${t.label} — ${t.count}`)
+                        .join(' · ')
                     : 'пока нет — загрузите прошлые заявки ниже, в «Образцах и документах»'}
                 </p>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">по ним ИИ пишет документы заявки так же, как пишете вы</p>
@@ -590,18 +619,21 @@ export function EvidenceSection({
               : 'В этой группе пока ничего нет.'}
           </p>
         )}
-        {filter !== 'requisites' && filter !== 'templates' &&
-          shown.slice(0, limit).map((fact) => (
-            <FactRow
-              key={fact.id}
-              fact={fact}
-              on={on}
-              showKind={filter === 'all'}
-              onEdit={() => setForm({ draft: draftOf(fact), editing: fact })}
-              onDelete={() => onDelete(fact.id)}
-              onConfirm={() => onConfirm(fact.id)}
-            />
-          ))}
+        {filter !== 'requisites' &&
+          filter !== 'templates' &&
+          shown
+            .slice(0, limit)
+            .map((fact) => (
+              <FactRow
+                key={fact.id}
+                fact={fact}
+                on={on}
+                showKind={filter === 'all'}
+                onEdit={() => setForm({ draft: draftOf(fact), editing: fact })}
+                onDelete={() => onDelete(fact.id)}
+                onConfirm={() => onConfirm(fact.id)}
+              />
+            ))}
       </div>
       {filter !== 'requisites' && filter !== 'templates' && shown.length > limit && (
         <div className="border-t border-border p-3 text-center">
@@ -613,26 +645,7 @@ export function EvidenceSection({
       )}
 
       {/* Требование → доказательство → проверка */}
-      <div className="border-t border-border">
-        <div className="flex items-start gap-2 px-4 pt-3">
-          <p className="text-sm font-medium">Что требуют ваши закупки</p>
-          <HelpTip content="По требованиям закупок, которые ещё в работе, система определяет, чем их нужно подтвердить, ищет это в базе и проверяет срок и числа на дату подачи. Нет доказательства — так и написано; система ничего не подставляет." align="start" />
-        </div>
-        {attention.length === 0 ? (
-          <p className="px-4 pb-4 pt-1 text-[13px] text-muted-foreground">
-            {gaps.length > 0
-              ? `По закупкам в работе всё подтверждено: ${gaps.length} ${plural(gaps.length, 'требование', 'требования', 'требований')}.`
-              : 'Закупок в работе, которым нужны доказательства, пока нет. Когда загрузите документы закупки, здесь появится, чего не хватает.'}
-          </p>
-        ) : (
-          <>
-            <p className="px-4 pb-1 pt-1 text-[12px] text-muted-foreground">
-              Нужно внимание: {attention.length} из {gaps.length}. «Нет доказательства» — добавьте документ или факт; «решает человек» — подтвердите найденное или впишите недостающее.
-            </p>
-            <GapList gaps={attention} onAdd={(gap) => gap.kind !== 'requisite' && setForm({ draft: emptyDraft(gap.kind, { title: gap.label }) })} />
-          </>
-        )}
-      </div>
+      <GapsPanel gaps={gaps} attention={attention} defaultOpen={gapsOpen} onAdd={(gap) => gap.kind !== 'requisite' && setForm({ draft: emptyDraft(gap.kind, { title: gap.label }) })} />
     </Card>
   );
 }
@@ -649,10 +662,7 @@ export function EvidenceBase({ profile, sources, docs }: { profile: ProfileData;
   const on = todayIso();
 
   // Закупки в работе: не пример, не поданные, приём ещё не закончился.
-  const active = useMemo(
-    () => (purchases ?? []).filter((p) => !p.sample && !p.submitted && (dueLine(p.deadline, false)?.days ?? 0) >= 0),
-    [purchases],
-  );
+  const active = useMemo(() => (purchases ?? []).filter((p) => !p.sample && !p.submitted && (dueLine(p.deadline, false)?.days ?? 0) >= 0), [purchases]);
   const gaps = useMemo(() => gapsOf(active, { facts, profile, sources }, on), [active, facts, profile, sources, on]);
   const info = useMemo<EvidenceSummaryInfo>(
     () => ({

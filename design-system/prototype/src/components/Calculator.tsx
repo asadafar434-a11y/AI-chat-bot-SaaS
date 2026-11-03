@@ -222,13 +222,13 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4 p-4 sm:p-6">
+    <div className="flex flex-1 flex-col gap-4">
       <div>
         <h1 className="flex items-center gap-2 text-xl font-semibold"><SectionIcon name="calculator" className="size-8" />Калькулятор</h1>
         <p className="text-[13px] text-muted-foreground">Цена, маржа, обеспечение, срок и риск по правилам сферы</p>
       </div>
 
-      <Card className="space-y-4 p-4">
+      <Card className="flex-1 space-y-4 p-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="space-y-1.5">
             <span className="text-[13px] font-medium">Сфера закупки</span>

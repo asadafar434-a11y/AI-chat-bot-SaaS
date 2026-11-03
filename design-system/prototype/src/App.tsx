@@ -177,7 +177,8 @@ function Product() {
         />
 
         <main tabIndex={-1} className="min-w-0 flex-1 outline-none lg:overflow-y-auto">
-          <div className="mx-auto max-w-6xl pt-2 pb-24 lg:pt-0 lg:pb-4">
+          {/* Калькулятор — на всю ширину и высоту рабочей области (владелец, 03.11.2026); остальные экраны — до max-w-6xl. */}
+          <div className={view === 'calculator' ? 'flex min-h-full flex-col pt-2 pb-24 lg:min-h-[calc(100vh-2rem)] lg:pt-0 lg:pb-0' : 'mx-auto max-w-6xl pt-2 pb-24 lg:pt-0 lg:pb-4'}>
             {view === 'tenders' && (
               <TendersDashboard
                 tenders={tenders}
@@ -286,7 +287,7 @@ function Shell({
   }, [step]);
   return (
     <div className="space-y-6">
-      <div className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="space-y-4 rounded-2xl border border-border bg-card p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <button
@@ -302,7 +303,7 @@ function Shell({
 
         {/* Шаги — отдельной панелью: пройденные с зелёной галочкой, текущий — белой плашкой с синим значком.
             Край размыт всегда — честный намёк, что шаги можно прокрутить: на телефоне их не все видно за кадром. */}
-        <div className="w-fit max-w-full rounded-lg border border-border bg-secondary p-1.5 shadow-sm">
+        <div className="w-fit max-w-full rounded-lg border border-border bg-secondary p-1.5">
           <ol ref={stepsRef} className="flex items-center gap-1 overflow-x-auto">
             {steps.map((s, i) => {
               const state = i === step ? 'active' : done[i] ? 'done' : 'todo';

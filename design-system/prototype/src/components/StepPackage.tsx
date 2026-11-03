@@ -791,7 +791,7 @@ export function StepPackage({
         {open && preview && (
           <div className="bg-secondary/30 p-6">
             {preview.note && <p className="mx-auto mb-3 max-w-lg text-[12px] text-muted-foreground">{preview.note}</p>}
-            <div className="mx-auto max-w-lg rounded-md border border-border bg-card p-8 shadow-sm">
+            <div className="mx-auto max-w-lg rounded-md border border-border bg-card p-8">
               <div className="mb-5 border-b border-border pb-4 text-center">
                 <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{preview.head}</p>
                 {preview.customer && <p className="mt-2 text-xs text-muted-foreground">{preview.customer}</p>}

@@ -156,7 +156,7 @@ export function fieldClass(size: 'md' | 'sm' = 'md', extra = ''): string {
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
   return (
-    <div className={cx('bg-card border border-border rounded-xl shadow-sm', className)}>
+    <div className={cx('bg-card border border-border rounded-xl', className)}>
       {children}
     </div>
   );
