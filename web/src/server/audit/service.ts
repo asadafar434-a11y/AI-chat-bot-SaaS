@@ -49,6 +49,7 @@ export const AUDIT_ACTIONS = [
   "member.role_changed",
   "member.removed",
   "auth.password_reset",
+  "auth.two_factor_changed",
   // S8: события фоновых задач.
   "document.extracted",
   "storage.reconciled",

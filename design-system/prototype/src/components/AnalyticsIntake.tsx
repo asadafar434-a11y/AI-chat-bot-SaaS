@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import type { IntakeFields, Law } from '@/lib/analytics-intake';
 import { AlertTriangle, FileText, Loader2, UploadCloud, X } from '../lib/icons';
-import { Badge, Button, HelpTip, IconButton, Modal, fieldClass } from './ui';
+import { Badge, Button, Chip, HelpTip, IconButton, Modal, fieldClass } from './ui';
 
 // «Загрузить закупку» в разделе «Аналитика»: файлы → название, цена и закон, найденные программой, → открыть расчёт. Чтение файлов без ИИ (lib/analytics-intake.ts): файлы читает сервер как текст,
 // а найденное участник видит и может поправить до сохранения. По «Открыть аналитику» при включённом «ИИ» сразу идут разбор документов (≈55 ₽) и поиск закупочных цен (до 30 ₽) — пока они идут, окно это показывает.
@@ -29,18 +29,7 @@ const ACCEPT = '.pdf,.docx,.doc,.rtf,.xls,.xlsx,.xlsm,.zip,.txt,.md';
 const inputClass = fieldClass('sm');
 
 function Choice({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={`inline-flex h-8 items-center rounded-full border px-3 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-        active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:bg-secondary'
-      }`}
-    >
-      {children}
-    </button>
-  );
+  return <Chip on={active} onClick={onClick} label={children} />;
 }
 
 const LAWS: { id: Law; label: string }[] = [

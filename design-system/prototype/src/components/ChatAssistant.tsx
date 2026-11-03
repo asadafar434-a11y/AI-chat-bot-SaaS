@@ -68,7 +68,7 @@ export function ChatAssistant({
   return (
     <>
       {/* Кнопка чата — робот ИИ-ассистента; при открытом чате — крестик */}
-      <div className="group/fab fixed bottom-5 right-5 z-40">
+      <div className="group/fab fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-40 lg:bottom-5 lg:right-5">
         {!open && (
           <span className="animate-tip pointer-events-none absolute right-full top-1/2 mr-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-1.5 text-[12px] font-medium text-foreground shadow-xl group-hover/fab:block">
             Спросить ИИ
@@ -96,7 +96,7 @@ export function ChatAssistant({
           onKeyDown={(e) => {
             if (e.key === 'Escape' && !e.nativeEvent.isComposing) closeChat();
           }}
-          className="animate-fade-up fixed right-4 top-4 z-40 flex h-[560px] max-h-[calc(100vh-2rem)] w-[360px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
+          className="animate-fade-up fixed right-4 top-4 z-50 flex h-[560px] max-h-[calc(100vh-2rem)] w-[360px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
         >
           {/* Header with explicit close */}
           <div className="flex items-center gap-2.5 border-b border-border px-4 py-3">

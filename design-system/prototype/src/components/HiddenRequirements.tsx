@@ -12,7 +12,7 @@ import {
   type HiddenKind,
   type HiddenRequirementsResult,
 } from '@/lib/hidden-requirements';
-import { Badge, Button, Card, type Tone } from './ui';
+import { Badge, Button, Card, Chip, type Tone } from './ui';
 
 // Скрытые требования, неоднозначности и условия допуска: платная проверка по кнопке (web/src/lib/hidden-requirements.ts).
 // Показываем источник каждой находки, объяснение «почему это риск», готовый вопрос заказчику и фильтры по важности и типу.
@@ -44,21 +44,8 @@ const KIND_CHIP: Record<HiddenKind, string> = {
 
 const keyOf = (f: HiddenFinding) => `${f.title}:${f.source}:${f.quote.slice(0, 40)}`;
 
-function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={`min-h-8 rounded-full border px-2.5 text-[12px] font-medium transition-colors ${
-        active
-          ? 'border-primary bg-primary text-primary-foreground'
-          : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground'
-      }`}
-    >
-      {children}
-    </button>
-  );
+function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return <Chip on={active} onClick={onClick} label={children} />;
 }
 
 function Detail({ title, children }: { title: string; children: ReactNode }) {
@@ -145,25 +132,25 @@ export function HiddenRequirementsBlock({ card }: { card: HiddenRequirementsCard
 
           {criticalityOptions.length > 1 && (
             <div className="flex flex-wrap items-center gap-1.5" aria-label="Фильтр по критичности">
-              <Chip active={criticality === 'all'} onClick={() => setCriticality('all')}>
+              <FilterChip active={criticality === 'all'} onClick={() => setCriticality('all')}>
                 Все · {counts?.total}
-              </Chip>
+              </FilterChip>
               {criticalityOptions.map((c) => (
-                <Chip key={c} active={criticality === c} onClick={() => setCriticality(c)}>
+                <FilterChip key={c} active={criticality === c} onClick={() => setCriticality(c)}>
                   {CRITICALITY_CHIP[c]} · {counts?.[c]}
-                </Chip>
+                </FilterChip>
               ))}
             </div>
           )}
           {kindOptions.length > 1 && (
             <div className="flex flex-wrap items-center gap-1.5" aria-label="Фильтр по типу проблемы">
-              <Chip active={kind === 'all'} onClick={() => setKind('all')}>
+              <FilterChip active={kind === 'all'} onClick={() => setKind('all')}>
                 Любой тип
-              </Chip>
+              </FilterChip>
               {kindOptions.map((k) => (
-                <Chip key={k} active={kind === k} onClick={() => setKind(k)}>
+                <FilterChip key={k} active={kind === k} onClick={() => setKind(k)}>
                   {KIND_CHIP[k]}
-                </Chip>
+                </FilterChip>
               ))}
             </div>
           )}

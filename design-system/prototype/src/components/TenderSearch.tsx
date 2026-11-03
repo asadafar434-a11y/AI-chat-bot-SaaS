@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { eisNumberUrl, SORT_LABELS, type SearchResult, type TenderFilters, type TenderListing, type TenderSort } from '@/lib/tender-search';
 import { plural } from '@/lib/plural';
 import { ArrowUpRight, Copy, Loader2, Plus, Search, Trash2, Upload } from '../lib/icons';
-import { Badge, Button, Card, Checkbox, HelpTip, fieldClass } from './ui';
-import { SectionIcon } from './SectionIcon';
+import { Badge, Button, Card, Checkbox, Chip, HelpTip, fieldClass } from './ui';
+import { ScreenHeader } from './ScreenHeader';
+import { SummaryCard } from './SummaryCard';
 
 // «Поиск закупок»: фильтры (слова и исключения, закон, цена, даты, «приём заявок идёт»), список закупок из выгрузки ЕИС и три шага, как её получить: «Найти в ЕИС» → закладка «Скопировать закупки» → вставить сюда.
 // Закупки — только из выгрузки участника; чего в выгрузке нет, то не показываем (lib/tender-import.ts). Живая лента без выгрузки — «скоро»: нужен доступ к данным ЕИС с нашего сервера.
@@ -13,19 +14,6 @@ const inputClass = fieldClass('sm');
 const rub = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n).replace(/ /g, ' ') + ' ₽';
 const ruDate = (iso: string) => iso.split('-').reverse().join('.');
 const dayDiff = (iso: string, today: string) => Math.round((Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) - Date.UTC(+today.slice(0, 4), +today.slice(5, 7) - 1, +today.slice(8, 10))) / 86_400_000);
-
-function Choice({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={`h-8 rounded-md border px-3 text-[12px] font-medium transition-colors ${active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
-    >
-      {children}
-    </button>
-  );
-}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -183,23 +171,34 @@ export function TenderSearch({
     </>
   );
 
+  // Итог фильтров в одну строку — виден, когда карточка свёрнута.
+  const filterBrief =
+    [filters.query.trim() && `«${filters.query.trim()}»`, filters.customer.trim() && `заказчик: ${filters.customer.trim()}`, filters.law !== 'any' && `${filters.law}-ФЗ`, filters.activeOnly && 'приём заявок идёт'].filter(Boolean).join(' · ') || 'Фильтры не заданы';
+
   return (
     <div className="animate-fade-up space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight"><SectionIcon name="search" className="size-8" />Поиск закупок</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {has ? `В выгрузке ${result.total} ${plural(result.total, 'закупка', 'закупки', 'закупок')}${loadedAt ? ` · загружена ${new Date(loadedAt).toLocaleDateString('ru-RU')}` : ''}` : 'Задайте фильтры, найдите закупки в ЕИС и загрузите их сюда.'}
-          </p>
-        </div>
-        {has && (
-          <Button size="sm" variant="ghost" onClick={onClear}>
-            <Trash2 className="size-3.5" /> Очистить выгрузку
-          </Button>
-        )}
-      </div>
+      <ScreenHeader
+        icon="search"
+        title="Поиск закупок"
+        hint={
+          has ? `В выгрузке ${result.total} ${plural(result.total, 'закупка', 'закупки', 'закупок')}${loadedAt ? ` · загружена ${new Date(loadedAt).toLocaleDateString('ru-RU')}` : ''}` : 'Задайте фильтры, найдите закупки в ЕИС и загрузите их сюда.'
+        }
+        aside={
+          has && (
+            <Button size="sm" variant="ghost" onClick={onClear}>
+              <Trash2 className="size-3.5" /> Очистить выгрузку
+            </Button>
+          )
+        }
+      />
 
-      <Card className="space-y-3 p-4">
+      <SummaryCard
+        lead={<Search className="size-5 shrink-0 text-muted-foreground" />}
+        title="Фильтры поиска"
+        subtitle={filterBrief}
+        defaultOpen
+      >
+      <div className="space-y-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr]">
           <Field label="Слова — товар или услуга (минус исключает, фраза — в кавычках)">
             <input type="text" value={filters.query} onChange={(e) => onFilters({ query: e.target.value })} placeholder="уголь поставка -ремонт" className={inputClass} />
@@ -209,9 +208,9 @@ export function TenderSearch({
           </Field>
         </div>
         <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Закон">
-          <Choice active={filters.law === 'any'} onClick={() => onFilters({ law: 'any' })}>44-ФЗ и 223-ФЗ</Choice>
-          <Choice active={filters.law === '44'} onClick={() => onFilters({ law: '44' })}>44-ФЗ</Choice>
-          <Choice active={filters.law === '223'} onClick={() => onFilters({ law: '223' })}>223-ФЗ</Choice>
+          <Chip on={filters.law === 'any'} onClick={() => onFilters({ law: 'any' })} label="44-ФЗ и 223-ФЗ" />
+          <Chip on={filters.law === '44'} onClick={() => onFilters({ law: '44' })} label="44-ФЗ" />
+          <Chip on={filters.law === '223'} onClick={() => onFilters({ law: '223' })} label="223-ФЗ" />
         </div>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px]">
           <Checkbox checked={filters.activeOnly} onChange={(v) => onFilters({ activeOnly: v })}>
@@ -279,8 +278,9 @@ export function TenderSearch({
         {extension?.available ? (
           <p className="text-[11px] text-muted-foreground">Расширение ищет в фоне: до трёх страниц ЕИС, до 150 закупок за раз. Список заменяется результатом поиска.</p>
         ) : (
-          <p className="text-[11px] text-muted-foreground">
-            Расширение для Chrome «Тендекс — поиск закупок в ЕИС» ищет прямо здесь, без закладки и вставки. Папка <span className="font-mono">extension/eis-bridge</span>: chrome://extensions → «Режим разработчика» → «Загрузить распакованное». ЕИС открывается не в каждом окне (во встроенном окне приложения — нет).
+          <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            Расширение для Chrome ищет прямо здесь, без закладки и вставки.
+            <HelpTip align="start" content={'Расширение для Chrome «Тендекс — поиск закупок в ЕИС» ищет прямо здесь, без закладки и вставки. Папка extension/eis-bridge: chrome://extensions → «Режим разработчика» → «Загрузить распакованное». ЕИС открывается не в каждом окне (во встроенном окне приложения — нет).'} />
           </p>
         )}
         {importNote && (
@@ -288,7 +288,8 @@ export function TenderSearch({
             {importNote.text}
           </p>
         )}
-      </Card>
+      </div>
+      </SummaryCard>
 
       {extension?.available ? (
         <Card className="p-4">

@@ -36,13 +36,76 @@ async function expectOk(res: Response, fallback: string): Promise<void> {
   if (!res.ok) throw new Error(plainText(await errorText(res, fallback)));
 }
 
-export async function loginWithPassword(email: string, password: string): Promise<void> {
+/**
+ * Вход по почте и паролю. Включён второй шаг — сервер пароль принял, но сессию не выдал: возвращается `{ challenge }` (пропуск на 5 минут),
+ * дальше нужен код (`loginWithCode`). `null` — вход выполнен.
+ */
+export async function loginWithPassword(email: string, password: string): Promise<{ challenge: string } | null> {
   try {
-    await expectOk(await fetch("/api/auth/login", json({ email, password })), "Не получилось войти.");
+    const res = await fetch("/api/auth/login", json({ email, password }));
+    await expectOk(res, "Не получилось войти.");
+    if (res.status === 204) return null;
+    const data = (await res.json().catch(() => null)) as { twoFactor?: unknown; challenge?: unknown } | null;
+    return data?.twoFactor === true && typeof data.challenge === "string" ? { challenge: data.challenge } : null;
   } catch (error) {
     throw new Error(errorMessage(error, "Не получилось войти."));
   }
 }
+
+/** Второй шаг входа: код из приложения-аутентификатора или запасной код. */
+export async function loginWithCode(challenge: string, code: string): Promise<void> {
+  try {
+    await expectOk(await fetch("/api/auth/login/2fa", json({ challenge, code })), "Не получилось войти.");
+  } catch (error) {
+    throw new Error(errorMessage(error, "Не получилось войти."));
+  }
+}
+
+export type TwoFactorStatus = { enabled: boolean; recoveryLeft: number };
+
+async function twoFactor<T>(body: unknown, fallback: string, read: (data: unknown) => T): Promise<T> {
+  try {
+    const res = await fetch("/api/auth/2fa", json(body));
+    await expectOk(res, fallback);
+    return read(res.status === 204 ? null : await res.json().catch(() => null));
+  } catch (error) {
+    throw new Error(errorMessage(error, fallback));
+  }
+}
+
+const codesOf = (data: unknown): string[] => {
+  const list = (data as { recoveryCodes?: unknown } | null)?.recoveryCodes;
+  return Array.isArray(list) ? list.filter((c): c is string => typeof c === "string") : [];
+};
+
+/** Включён ли второй шаг у вошедшего и сколько запасных кодов осталось. */
+export async function fetchTwoFactorStatus(): Promise<TwoFactorStatus> {
+  try {
+    const res = await fetch("/api/auth/2fa", { headers: { Accept: "application/json" }, cache: "no-store" });
+    await expectOk(res, "Не удалось узнать состояние двухфакторного входа.");
+    const data = (await res.json().catch(() => null)) as { enabled?: unknown; recoveryLeft?: unknown } | null;
+    return { enabled: data?.enabled === true, recoveryLeft: typeof data?.recoveryLeft === "number" ? data.recoveryLeft : 0 };
+  } catch (error) {
+    throw new Error(errorMessage(error, "Не удалось узнать состояние двухфакторного входа."));
+  }
+}
+
+/** Шаг 1 включения: секрет и ссылка для приложения. Вход пока не меняется. */
+export const startTwoFactor = () =>
+  twoFactor({ action: "setup" }, "Не получилось начать настройку.", (data) => {
+    const d = data as { secret?: unknown; uri?: unknown } | null;
+    if (typeof d?.secret !== "string" || typeof d.uri !== "string") throw new Error("Сервер вернул неполный ответ.");
+    return { secret: d.secret, uri: d.uri };
+  });
+
+/** Шаг 2: первый код из приложения включает защиту; в ответе запасные коды — показываются один раз. */
+export const enableTwoFactor = (code: string) => twoFactor({ action: "enable", code }, "Не получилось включить.", codesOf);
+
+/** Выключить: нужны пароль и код (приложения или запасной). */
+export const disableTwoFactor = (password: string, code: string) => twoFactor({ action: "disable", password, code }, "Не получилось выключить.", () => undefined);
+
+/** Новые запасные коды вместо прежних; нужен код из приложения. */
+export const renewRecoveryCodes = (code: string) => twoFactor({ action: "recovery", code }, "Не получилось выпустить коды.", codesOf);
 
 export async function logout(): Promise<void> {
   await fetch("/api/auth/logout", { method: "POST" }).catch(() => undefined);

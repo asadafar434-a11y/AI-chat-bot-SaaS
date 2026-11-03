@@ -37,7 +37,7 @@ const TABLE_NAMES = [
 
 /** Поля, которые Prisma проставляет по умолчанию и на которые опираются запросы. */
 const DEFAULTS: Record<string, () => Row> = {
-  user: () => ({ name: null, image: null, passwordHash: null, deletedAt: null, emailVerified: null }),
+  user: () => ({ name: null, image: null, passwordHash: null, deletedAt: null, emailVerified: null, totpSecret: null, totpEnabledAt: null, totpLastStep: null, recoveryHashes: "" }),
   organization: () => ({ deletedAt: null, name: "Организация" }),
   invitation: () => ({ acceptedAt: null }),
   userProfile: () => ({ fields: {} }),

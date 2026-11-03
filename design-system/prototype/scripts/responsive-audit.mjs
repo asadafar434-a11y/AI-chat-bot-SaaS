@@ -93,7 +93,7 @@ const MEASURE = `(() => {
 })()`;
 
 const routes = {
-  home: "#/", analytics: "#/analytics", search: "#/search", history: "#/history", tariffs: "#/tariffs", settings: "#/settings",
+  home: "#/", calculator: "#/calculator", profile: "#/profile", analytics: "#/analytics", search: "#/search", history: "#/history", tariffs: "#/tariffs", settings: "#/settings",
   upload: `#/p/${pid}/upload`, analysis: `#/p/${pid}/analysis`, price: `#/p/${pid}/price`, review: `#/p/${pid}/review`, package: `#/p/${pid}/package`,
 };
 const widths = [
@@ -115,6 +115,18 @@ for (const [w, h, mobile] of widths) {
       if (shot.result?.data) writeFileSync(`${OUT}/shots/${name}-${w}.jpg`, Buffer.from(shot.result.data, "base64"));
     }
   }
+}
+// Нижняя панель навигации на телефоне и планшете: снимок и снимок открытого «Ещё».
+for (const [w, h] of [[360, 780], [768, 1024]]) {
+  await device(w, h, true);
+  await evaluate(`location.hash = '#/'; 1`);
+  await sleep(1500);
+  const navInfo = await evaluate(`(() => { const n = document.querySelector('nav[aria-label="Разделы"]'); if (!n) return null; const r = n.getBoundingClientRect(); return { items: n.querySelectorAll('button').length, bottom: Math.round(innerHeight - r.bottom), height: Math.round(r.height), overflow: n.scrollWidth > n.clientWidth }; })()`);
+  const more = await evaluate(`(() => { const b = [...document.querySelectorAll('nav[aria-label="Разделы"] button')].find((x) => x.textContent.includes('Ещё')); if (b) b.click(); return !!b; })()`);
+  await sleep(600);
+  const shot = await cdp("Page.captureScreenshot", { format: "jpeg", quality: 55, captureBeyondViewport: false });
+  if (shot.result?.data) writeFileSync(`${OUT}/shots/more-${w}.jpg`, Buffer.from(shot.result.data, "base64"));
+  results.push({ name: 'bottom-nav', w, navInfo, moreOpened: more });
 }
 // Низкое окно: блоки меню не должны сжиматься (кнопка «Новая закупка» — 36 пикселей, а не 20).
 await device(1280, 520, false);

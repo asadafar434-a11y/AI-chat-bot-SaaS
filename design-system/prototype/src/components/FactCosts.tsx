@@ -3,7 +3,7 @@ import { EMPTY_DELIVERY, type DeliveryInputs, type DeliveryResult } from '@/lib/
 import { EMPTY_FX, FX_CURRENCIES, type FxCode, type FxResult } from '@/lib/fx-risk';
 import type { RegisterData } from '@/lib/hidden-costs';
 import { AlertTriangle } from '../lib/icons';
-import { Button, fieldClass } from './ui';
+import { Button, Chip, fieldClass } from './ui';
 
 // Цифры участника для сумм по фактам: доставка (расстояние найдено по документам и профилю, вписываются тариф и рейсы) и курс валюты (курс ЦБ загружается кнопкой, вписывается сумма в валюте).
 // Сами суммы стоят в списке «Сколько это может стоить» выше; здесь — только то, что вводит человек, и факты, на которых держится число (lib/delivery-cost.ts, lib/fx-risk.ts).
@@ -26,18 +26,7 @@ const pct1 = (n: number) => flat(n.toLocaleString('ru-RU', { minimumFractionDigi
 const dateRu = (iso: string) => iso.split('-').reverse().join('.');
 
 function Choice({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={`inline-flex h-8 items-center rounded-full border px-3 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-        active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:bg-secondary'
-      }`}
-    >
-      {children}
-    </button>
-  );
+  return <Chip on={active} onClick={onClick} label={children} />;
 }
 
 function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {

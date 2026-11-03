@@ -32,7 +32,7 @@ const isHealthPath = (pathname: string) => pathname === "/api/health" || pathnam
 // Запросы, которые тратят бюджет ИИ или силы сервера, — не чаще лимита. Файл Word, PDF или ODT части заявки собирается без ИИ, вход — свой лимит.
 async function tooMany(request: NextRequest): Promise<NextResponse | null> {
   const { pathname } = request.nextUrl;
-  if (request.method !== "POST" || !pathname.startsWith("/api/") || pathname === "/api/login" || pathname === "/api/auth/login" || pathname === "/api/tp/docx" || pathname === "/api/tp/pdf" || pathname === "/api/tp/odt") {
+  if (request.method !== "POST" || !pathname.startsWith("/api/") || pathname === "/api/login" || pathname === "/api/auth/login" || pathname === "/api/auth/login/2fa" || pathname === "/api/auth/2fa" || pathname === "/api/tp/docx" || pathname === "/api/tp/pdf" || pathname === "/api/tp/odt") {
     return null;
   }
   const ip = clientIp(request.headers.get("x-forwarded-for"));

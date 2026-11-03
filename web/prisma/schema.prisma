@@ -84,21 +84,30 @@ model Organization {
 /// Человек. Персональные данные и личные настройки — здесь; корпоративные реквизиты
 /// — в OrganizationProfile (D11a). Смешивать их в одной таблице нельзя.
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique @db.VarChar(320)
-  emailVerified DateTime? @db.Timestamptz(3)
-  name          String?   @db.VarChar(200)
-  image         String?   @db.VarChar(1000)
+  id             String    @id @default(cuid())
+  email          String    @unique @db.VarChar(320)
+  emailVerified  DateTime? @db.Timestamptz(3)
+  name           String?   @db.VarChar(200)
+  image          String?   @db.VarChar(1000)
   /// Хеш пароля. Поле создаётся на S1, чтобы не менять схему на S2; аутентификация
   /// на S1 не реализуется и пароли здесь не проверяются (D13, этап S2).
-  passwordHash  String?   @db.VarChar(255)
+  passwordHash   String?   @db.VarChar(255)
+  /// Двухфакторный вход (код из приложения-аутентификатора). Секрет лежит зашифрованным
+  /// (AES-256-GCM, ключ из AUTH_SECRET); `totpEnabledAt` пуст, пока человек не подтвердил
+  /// настройку кодом — незавершённая настройка вход не меняет.
+  totpSecret     String?   @db.VarChar(255)
+  totpEnabledAt  DateTime? @db.Timestamptz(3)
+  /// Номер шага (30 секунд), по которому код уже принят: тот же код второй раз не проходит.
+  totpLastStep   Int?
+  /// Отпечатки запасных кодов через запятую; использованный код удаляется из списка.
+  recoveryHashes String    @default("") @db.VarChar(1000)
   /// Личные настройки человека, переносимые между устройствами. Настройки устройства
   /// (тема, отметки уведомлений, включённый разбор сканов) сюда НЕ входят: они
   /// остаются в браузере (D11a, риск R11).
-  preferences   Json      @default("{}")
-  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt     DateTime  @updatedAt @db.Timestamptz(3)
-  deletedAt     DateTime? @db.Timestamptz(3)
+  preferences    Json      @default("{}")
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+  deletedAt      DateTime? @db.Timestamptz(3)
 
   memberships     Membership[]
   userProfile     UserProfile?
@@ -616,8 +625,8 @@ model RegistryRecord {
   createdAt          DateTime             @default(now()) @db.Timestamptz(3)
   updatedAt          DateTime             @updatedAt @db.Timestamptz(3)
 
-  firstSeenDataset RegistryDataset @relation("RegistryFirstSeen", fields: [firstSeenDatasetId], references: [id], onDelete: Restrict)
-  lastSeenDataset  RegistryDataset @relation("RegistryLastSeen", fields: [lastSeenDatasetId], references: [id], onDelete: Restrict)
+  firstSeenDataset RegistryDataset  @relation("RegistryFirstSeen", fields: [firstSeenDatasetId], references: [id], onDelete: Restrict)
+  lastSeenDataset  RegistryDataset  @relation("RegistryLastSeen", fields: [lastSeenDatasetId], references: [id], onDelete: Restrict)
   changes          RegistryChange[]
 
   @@unique([registryKind, registryNumber])

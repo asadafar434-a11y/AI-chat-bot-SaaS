@@ -157,7 +157,7 @@ test('«Пакет»: формат файлов — кнопками в шапк
   const out = html(h(pkg.StepPackage, props({ format: 'pdf' })));
   const group = out.slice(out.indexOf('aria-label="Формат файлов"'));
   assert.match(group, /aria-pressed="false"[^>]*>DOCX/);
-  assert.match(group, /aria-pressed="true"[^>]*>PDF/);
+  assert.match(group, /aria-pressed="true"[^>]*>(?:<svg.*?<\/svg>)?PDF/);
   assert.match(group, /aria-pressed="false"[^>]*>ODT/);
   assert.ok(out.indexOf('Состав пакета') < out.indexOf('aria-label="Формат файлов"'));
   assert.equal(out.includes('Формат:'), false);

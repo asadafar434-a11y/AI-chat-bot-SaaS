@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AlertTriangle, CheckCircle2, ChevronRight, HelpCircle, Info, XCircle } from '../lib/icons';
-import { Badge, Button, Card, Tooltip, cx, type Tone } from './ui';
+import { Badge, Button, Card, Chip, Tooltip, cx, type Tone } from './ui';
 
 // Требования заказчика, как их выписал разбор документов: текст, обязательность, тип, срок, числа, как проверить, чем
 // подтвердить — и, если участник уже работает с ТП, что он предлагает. Заказчик и участник — две разные стороны: границу
@@ -105,22 +105,16 @@ export function RequirementsList({
 
       <div className="flex flex-wrap gap-1.5" role="group" aria-label="Группы требований">
         {GROUPS.filter((g) => count(g.key) > 0).map((g) => (
-          <button
+          <Chip
             key={g.key}
-            type="button"
-            aria-pressed={group === g.key}
+            label={g.label}
+            count={count(g.key)}
+            on={group === g.key}
             onClick={() => {
               setGroup(g.key);
               setLimit(PAGE);
             }}
-            className={cx(
-              'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] transition-colors',
-              group === g.key ? 'border-foreground bg-secondary text-foreground' : 'border-border text-muted-foreground hover:bg-secondary hover:text-foreground',
-            )}
-          >
-            {g.label}
-            <span className="font-mono font-semibold tabular-nums text-foreground">{count(g.key)}</span>
-          </button>
+          />
         ))}
       </div>
 

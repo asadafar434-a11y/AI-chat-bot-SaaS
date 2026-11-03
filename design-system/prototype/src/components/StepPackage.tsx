@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { AlertTriangle, Archive, Check, CheckCircle2, Clock, CreditCard, Download, Eye, FileText, Info, Loader2, PenLine, RefreshCw, ShieldCheck, UserCheck, XCircle } from '../lib/icons';
-import { AIDisclaimer, Badge, Button, Card, Checkbox, HelpTip, IconButton, Modal, Soon, TabPanel, Tabs, Tooltip, cx, type Tone } from './ui';
+import { AIDisclaimer, Badge, Button, Card, Checkbox, Chip, HelpTip, IconButton, Modal, Soon, TabPanel, Tabs, Tooltip, cx, type Tone } from './ui';
 import { type AuditReport, type AuditSeverity } from '@/lib/submission-audit';
 import { type ScoringReport } from '@/lib/scoring-engine';
 import { pointsText } from '@/lib/criteria';
@@ -625,20 +625,7 @@ export function StepPackage({
                   <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Формат файлов">
                     {FORMATS.map((f) => (
                       <Tooltip key={f.ext} content={f.label} side="bottom" align="end">
-                        <button
-                          type="button"
-                          disabled={busy}
-                          aria-pressed={f.id === format}
-                          onClick={() => onFormat(f.id)}
-                          className={cx(
-                            'inline-flex h-8 items-center rounded-md border px-3 text-xs font-medium transition-colors',
-                            f.id === format
-                              ? 'border-primary bg-primary text-primary-foreground'
-                              : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-60',
-                          )}
-                        >
-                          {f.ext}
-                        </button>
+                        <Chip label={f.ext} on={f.id === format} disabled={busy} onClick={() => onFormat(f.id)} />
                       </Tooltip>
                     ))}
                   </div>

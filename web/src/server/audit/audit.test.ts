@@ -143,6 +143,7 @@ test("таксономия покрывает все реальные mutation p
     "member.role_changed",
     "member.removed",
     "auth.password_reset",
+    "auth.two_factor_changed",
     "document.extracted",
     "storage.reconciled",
   ]) {

@@ -1,7 +1,7 @@
 // Вход на экране: ссылка-приглашение, проверка «кто вошёл», вход, пароль по ссылке — запросы подменены, сервер не нужен — npm test.
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { acceptInvitation, authRouteOf, fetchSession, loginWithPassword, logout, requestPasswordReset, resetPassword } from "./auth-client.ts";
+import { acceptInvitation, authRouteOf, disableTwoFactor, enableTwoFactor, fetchSession, fetchTwoFactorStatus, loginWithCode, loginWithPassword, logout, renewRecoveryCodes, startTwoFactor, requestPasswordReset, resetPassword } from "./auth-client.ts";
 
 const realFetch = globalThis.fetch;
 afterEach(() => {
@@ -50,7 +50,7 @@ test("кто вошёл: пользователь из ответа; пусто�
 
 test("вход: почта и пароль уходят на /api/auth/login; ответ сервера об ошибке показывается как есть", async () => {
   const calls = stub(() => new Response(null, { status: 204 }));
-  await loginWithPassword("o@example.com", "пароль-для-теста");
+  assert.equal(await loginWithPassword("o@example.com", "пароль-для-теста"), null, "второго шага нет — вход выполнен");
   assert.equal(calls[0].url, "/api/auth/login");
   assert.equal(calls[0].init?.method, "POST");
   assert.deepEqual(JSON.parse(String(calls[0].init?.body)), { email: "o@example.com", password: "пароль-для-теста" });
@@ -124,4 +124,45 @@ test("«забыли пароль»: почта уходит POST-запросо
 
   stub(() => text("Слишком много запросов — попробуйте через 7 мин.", 429));
   await assert.rejects(requestPasswordReset("o@example.com"), /Слишком много запросов/);
+});
+
+test("двухфакторный вход: пароль принят, но нужен код — приходит пропуск; код уходит вместе с ним", async () => {
+  let calls = stub(() => Response.json({ twoFactor: true, challenge: "пропуск.подпись" }));
+  assert.deepEqual(await loginWithPassword("o@example.com", "пароль-для-теста"), { challenge: "пропуск.подпись" });
+
+  calls = stub(() => new Response(null, { status: 204 }));
+  await loginWithCode("пропуск.подпись", "123456");
+  assert.equal(calls[0].url, "/api/auth/login/2fa");
+  assert.deepEqual(JSON.parse(String(calls[0].init?.body)), { challenge: "пропуск.подпись", code: "123456" });
+
+  stub(() => text("Код не подошёл. Введите новый код из приложения или запасной код.", 401));
+  await assert.rejects(loginWithCode("пропуск.подпись", "000000"), /Код не подошёл/);
+  stub(() => text("Время на ввод кода вышло — войдите заново.", 401));
+  await assert.rejects(loginWithCode("старый", "123456"), /Время на ввод кода вышло/);
+});
+
+test("настройка второго шага: состояние, секрет, включение с запасными кодами, выключение, новые коды", async () => {
+  stub(() => Response.json({ enabled: true, recoveryLeft: 7 }));
+  assert.deepEqual(await fetchTwoFactorStatus(), { enabled: true, recoveryLeft: 7 });
+
+  let calls = stub(() => Response.json({ secret: "ABCDEFGH", uri: "otpauth://totp/x?secret=ABCDEFGH" }));
+  assert.deepEqual(await startTwoFactor(), { secret: "ABCDEFGH", uri: "otpauth://totp/x?secret=ABCDEFGH" });
+  assert.equal(calls[0].url, "/api/auth/2fa");
+  assert.deepEqual(JSON.parse(String(calls[0].init?.body)), { action: "setup" });
+
+  stub(() => Response.json({}));
+  await assert.rejects(startTwoFactor(), /неполный ответ/);
+
+  calls = stub(() => Response.json({ recoveryCodes: ["a-b", "c-d"] }));
+  assert.deepEqual(await enableTwoFactor("123456"), ["a-b", "c-d"]);
+  assert.deepEqual(JSON.parse(String(calls[0].init?.body)), { action: "enable", code: "123456" });
+  assert.deepEqual(await renewRecoveryCodes("654321"), ["a-b", "c-d"]);
+  assert.deepEqual(JSON.parse(String(calls[1].init?.body)), { action: "recovery", code: "654321" });
+
+  calls = stub(() => new Response(null, { status: 204 }));
+  await disableTwoFactor("пароль-для-теста", "123456");
+  assert.deepEqual(JSON.parse(String(calls[0].init?.body)), { action: "disable", password: "пароль-для-теста", code: "123456" });
+
+  stub(() => text("Код не подошёл. Проверьте время на телефоне и введите новый код.", 400));
+  await assert.rejects(enableTwoFactor("000000"), /Код не подошёл/);
 });

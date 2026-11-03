@@ -15,7 +15,7 @@ import { profileProblems } from '@/lib/requisites-check';
 import { usePurchases } from '@/lib/use-purchases';
 import { useFacts } from '../real/hooks';
 import { AlertTriangle, Briefcase, Building2, Check, ChevronDown, FileText, Info, Loader2, Package, Pencil, Plus, ShieldCheck, Sparkles, Star, Trash2, User, UserCheck, Wallet, X } from '../lib/icons';
-import { Badge, Button, Card, HelpTip, IconButton, Tooltip, cx, type Tone } from './ui';
+import { Badge, Button, Card, Chip, HelpTip, IconButton, Tooltip, cx, type Tone } from './ui';
 
 // «База доказательств» — раздел «Профиля компании»: факты о компании — лицензии, сертификаты, документы, опыт, сотрудники, оборудование,
 // финансы — и чем каждый подтверждён: документ и место в нём, срок действия. Ниже — что требуют закупки и чего в базе не хватает:
@@ -473,22 +473,16 @@ export function EvidenceSection({
   const attention = gaps.filter((g) => g.status !== 'ok');
 
   const chip = (key: Filter, label: string, n?: number) => (
-    <button
+    <Chip
       key={key}
-      type="button"
-      aria-pressed={filter === key}
+      label={label}
+      count={n}
+      on={filter === key}
       onClick={() => {
         setFilter(key);
         setLimit(PAGE);
       }}
-      className={cx(
-        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] transition-colors',
-        filter === key ? 'border-foreground bg-secondary text-foreground' : 'border-border text-muted-foreground hover:bg-secondary hover:text-foreground',
-      )}
-    >
-      {label}
-      {n !== undefined && <span className="font-mono font-semibold tabular-nums text-foreground">{n}</span>}
-    </button>
+    />
   );
 
   return (

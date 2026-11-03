@@ -6,12 +6,15 @@ import { test } from 'node:test';
 
 const src = (rel) => readFileSync(path.resolve(import.meta.dirname, '..', 'src', rel), 'utf8');
 
-test('заголовки экранов — 20 пикселей (text-xl), заголовки шагов закупки — 24: не вперемешку', () => {
-  for (const file of ['components/TendersDashboard.tsx', 'components/Tariffs.tsx', 'components/BidHistory.tsx', 'components/Settings.tsx', 'components/TenderSearch.tsx']) {
-    const h1 = /<h1 className="([^"]*)"/.exec(src(file));
-    assert.ok(h1, `${file}: нет заголовка h1`);
-    assert.match(h1[1], /\btext-xl\b/, `${file}: заголовок экрана должен быть text-xl, а не ${h1[1]}`);
-    assert.doesNotMatch(h1[1], /text-2xl/, `${file}: text-2xl — размер заголовка шага`);
+test('заголовки экранов — одна общая шапка ScreenHeader, 20 пикселей (text-xl); заголовки шагов закупки — 24: не вперемешку', () => {
+  const header = src('components/ScreenHeader.tsx');
+  const h1 = /<h1 className="([^"]*)"/.exec(header);
+  assert.ok(h1, 'ScreenHeader: нет заголовка h1');
+  assert.match(h1[1], /\btext-xl\b/);
+  assert.doesNotMatch(h1[1], /text-2xl/, 'text-2xl — размер заголовка шага');
+  for (const file of ['components/TendersDashboard.tsx', 'components/Tariffs.tsx', 'components/BidHistory.tsx', 'components/Settings.tsx', 'components/TenderSearch.tsx', 'components/Analytics.tsx', 'components/Calculator.tsx', 'components/Profile.tsx']) {
+    assert.match(src(file), /<ScreenHeader\b/, `${file}: заголовок экрана — через ScreenHeader, без своего h1`);
+    assert.doesNotMatch(src(file), /<h1\b/, `${file}: свой h1 вместо ScreenHeader`);
   }
   for (const file of ['components/StepReview.tsx', 'components/StepPackage.tsx']) {
     assert.match(src(file), /<h1[^>]*text-2xl/, `${file}: заголовок шага — text-2xl`);
@@ -22,7 +25,7 @@ test('шаги закупки на телефоне: строка шагов п�
   const app = src('App.tsx');
   assert.match(app, /data-step-active=\{state === 'active'\}/);
   assert.match(app, /list\.scrollLeft \+= c\.left - l\.left/);
-  assert.match(app, /max-w-6xl pt-2 pb-24 lg:pt-0 lg:pb-4/);
+  assert.match(app, /max-w-6xl pt-2 pb-40 lg:pt-0 lg:pb-4/);
 });
 
 test('шаги закупки: пройденные — зелёная галочка, текущий — синяя плашка с белым значком', () => {
@@ -32,9 +35,11 @@ test('шаги закупки: пройденные — зелёная гало�
   assert.match(app, /bg-primary font-semibold text-primary-foreground shadow-sm/, 'текущий шаг — синяя акцентная плашка');
 });
 
-test('переключатели и фильтры — высота 32 из шкалы 28/32/36, а не подбор отступами', () => {
-  assert.match(src('components/StepPackage.tsx'), /inline-flex h-8 items-center rounded-md border px-3 text-xs font-medium/);
-  assert.match(src('components/TendersDashboard.tsx'), /inline-flex h-8 items-center gap-1\.5 rounded-md border px-3 text-xs font-medium/);
+test('переключатели и фильтры — одна общая плашка Chip высотой 32, а не свои копии', () => {
+  assert.match(src('components/ui.tsx'), /inline-flex min-h-8 items-center gap-1\.5 rounded-full border px-3\.5 text-\[13px\]/);
+  for (const file of ['components/StepPackage.tsx', 'components/TendersDashboard.tsx', 'components/TenderSearch.tsx', 'components/Settings.tsx', 'components/Calculator.tsx']) {
+    assert.match(src(file), /<Chip\b/, `${file}: переключатели — общим Chip`);
+  }
 });
 
 test('смысловой текст в свёрнутых пунктах проверки переносится, а не обрезается многоточием («число, не меньше 150»)', () => {

@@ -364,7 +364,7 @@ export function StepActions({ children, className }: { children: ReactNode; clas
   return (
     <div
       className={cx(
-        'sticky bottom-24 z-30 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card/90 p-2 shadow-[var(--float)] backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-card/50 sm:bottom-4 sm:pr-20',
+        'sticky bottom-36 z-30 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card/90 p-2 shadow-[var(--float)] backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-card/50 lg:bottom-4 lg:pr-20',
         className,
       )}
     >
@@ -393,6 +393,60 @@ export function Checkbox({
       </span>
       <span className="min-w-0 flex-1">{children}</span>
     </label>
+  );
+}
+
+// Плашка-переключатель (общая для всех экранов: фильтры, выбор из вариантов, «Да / Нет»): нажата — залита голубым «Тендекса».
+// count — число на плашке (фильтры со счётчиком). onRemove — у своего пункта справа крестик «Удалить»: нажатие на саму плашку только снимает выбор.
+export function Chip({
+  label,
+  on,
+  onClick,
+  onRemove,
+  count,
+  disabled,
+  className,
+}: {
+  label: ReactNode;
+  on: boolean;
+  onClick: () => void;
+  onRemove?: () => void;
+  count?: number;
+  disabled?: boolean;
+  className?: string;
+}) {
+  const look = on ? 'border-primary bg-primary font-medium text-primary-foreground' : 'border-border bg-background hover:border-foreground/40 hover:bg-secondary';
+  const ring = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+  const body = (
+    <>
+      {on && <Check className="size-3.5 shrink-0" />}
+      {label}
+      {count !== undefined && <span className="font-mono tabular-nums opacity-80">{count}</span>}
+    </>
+  );
+  if (!onRemove) {
+    return (
+      <button type="button" aria-pressed={on} disabled={disabled} onClick={onClick} className={cx('inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3.5 text-[13px] transition-colors disabled:opacity-60', look, ring, className)}>
+        {body}
+      </button>
+    );
+  }
+  const removeLabel = typeof label === 'string' ? `Удалить «${label}»` : 'Удалить';
+  return (
+    <span className={cx('inline-flex min-h-8 items-center rounded-full border text-[13px] transition-colors', look, className)}>
+      <button type="button" aria-pressed={on} onClick={onClick} className={cx('inline-flex min-h-7 items-center gap-1.5 rounded-full pl-3.5 pr-2', ring)}>
+        {body}
+      </button>
+      <button
+        type="button"
+        aria-label={removeLabel}
+        title="Удалить"
+        onClick={onRemove}
+        className={cx('mr-1 flex size-6 shrink-0 items-center justify-center rounded-full', on ? 'hover:bg-white/20' : 'text-muted-foreground hover:bg-secondary hover:text-foreground', ring)}
+      >
+        <X className="size-3.5" />
+      </button>
+    </span>
   );
 }
 

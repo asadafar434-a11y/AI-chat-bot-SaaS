@@ -46,6 +46,9 @@
         "--port",
         "3010"
       ],
+      "env": {
+        "PRODUCT_STORAGE": "browser"
+      },
       "port": 3010
     }
   ]

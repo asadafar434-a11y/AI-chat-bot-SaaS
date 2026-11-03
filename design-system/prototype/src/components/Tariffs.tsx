@@ -4,7 +4,7 @@ import { rubShort } from '@/lib/price-calc';
 import { PLANS, PRICE_EXPERT, RECHECK_PACK, type Plan } from '@/lib/pricing';
 import { Check, UserCheck, RefreshCw, Wallet, Sparkles } from '../lib/icons';
 import { Button, Card, Badge, HelpTip, Soon, cx } from './ui';
-import { SectionIcon } from './SectionIcon';
+import { ScreenHeader } from './ScreenHeader';
 
 // «Тарифы». Вид — прототипа; цены и состав — из приложения (web/src/lib/pricing.ts). Оплаты пока нет — для неё нужен
 // сервер: цены показаны, покупка помечена «скоро», баланса заявок нет. Документы скачиваются бесплатно.
@@ -28,11 +28,8 @@ export function Tariffs() {
   const best = PLANS[PLANS.length - 1];
 
   return (
-    <div className="animate-fade-up space-y-5">
-      <div>
-        <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight"><SectionIcon name="tariffs" className="size-8" />Тарифы</h1>
-        <p className="mt-0.5 text-[13px] text-muted-foreground">Платите за заявку, а не за подписку. Пакет выгоднее, если подаёте часто.</p>
-      </div>
+    <div className="animate-fade-up space-y-4">
+      <ScreenHeader icon="tariffs" title="Тарифы" hint="Платите за заявку, а не за подписку. Пакет выгоднее, если подаёте часто." />
 
       <p className="flex items-start gap-2 rounded-md bg-info/10 px-3 py-2 text-[13px] text-info">
         <Wallet className="mt-0.5 size-4 shrink-0" />

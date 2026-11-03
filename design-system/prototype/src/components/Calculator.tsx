@@ -8,8 +8,8 @@ import { getDocuments } from '@/lib/purchase-store';
 import { forServer, readDocuments, type SentDocument } from '@/lib/read-documents';
 import { AlertTriangle, Calculator as CalculatorIcon, RefreshCw, Upload } from '../lib/icons';
 import { useAiEnabled } from '../lib/use-ai-mode';
-import { AIDisclaimer, Badge, Button, Card, fieldClass } from './ui';
-import { SectionIcon } from './SectionIcon';
+import { AIDisclaimer, Badge, Button, Card, Chip, fieldClass } from './ui';
+import { ScreenHeader } from './ScreenHeader';
 
 const SUB_SPHERE_LABELS: Record<string, string> = { general: 'Общий', device: 'Медизделия', medicine: 'Лекарства' };
 const subSphereLabel = (key: string) => SUB_SPHERE_LABELS[key] ?? key;
@@ -59,19 +59,9 @@ const sphereKeys = Object.keys(calculatorsBySphere);
 
 function BoolToggle({ value, onChange }: { value: boolean | undefined; onChange: (v: boolean) => void }) {
   return (
-    <div className="inline-flex gap-1.5">
+    <div className="flex flex-wrap gap-2">
       {([true, false] as const).map((option) => (
-        <button
-          key={String(option)}
-          type="button"
-          aria-pressed={value === option}
-          onClick={() => onChange(option)}
-          className={`h-9 rounded-md px-4 text-[13px] font-medium transition-colors ${
-            value === option ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:bg-secondary/70'
-          }`}
-        >
-          {option ? 'Да' : 'Нет'}
-        </button>
+        <Chip key={String(option)} label={option ? 'Да' : 'Нет'} on={value === option} onClick={() => onChange(option)} />
       ))}
     </div>
   );
@@ -223,10 +213,7 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
 
   return (
     <div className="animate-fade-up flex flex-1 flex-col gap-4">
-      <div>
-        <h1 className="flex items-center gap-2 text-xl font-semibold"><SectionIcon name="calculator" className="size-8" />Калькулятор</h1>
-        <p className="text-[13px] text-muted-foreground">Цена, маржа, обеспечение, срок и риск по правилам сферы</p>
-      </div>
+      <ScreenHeader icon="calculator" title="Калькулятор" hint="Цена, маржа, обеспечение, срок и риск по правилам сферы" />
 
       <Card className="flex-1 space-y-4 p-4">
         <div className="grid gap-3 sm:grid-cols-2">
@@ -263,25 +250,20 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
 
         <div className="space-y-1.5">
           <span className="text-[13px] font-medium">Как заполнять</span>
-          <div className="inline-flex gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {([
               ['manual', 'Вручную'],
               ['ai', 'С ИИ'],
             ] as const).map(([option, text]) => (
-              <button
+              <Chip
                 key={option}
-                type="button"
-                aria-pressed={mode === option}
+                label={text}
+                on={mode === option}
                 onClick={() => {
                   setMode(option);
                   setAiError('');
                 }}
-                className={`h-9 rounded-md px-4 text-[13px] font-medium transition-colors ${
-                  mode === option ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:bg-secondary/70'
-                }`}
-              >
-                {text}
-              </button>
+              />
             ))}
           </div>
         </div>
@@ -290,23 +272,13 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
           <div className="space-y-3 rounded-md border border-border bg-secondary/30 p-3">
             <div className="space-y-1.5">
               <span className="text-[13px] font-medium">Источник документов</span>
-              <div className="inline-flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-2">
                 {([
                   ['none', 'Без документов'],
                   ['purchase', 'Выбрать закупку'],
                   ['upload', 'Загрузить файл'],
                 ] as const).map(([option, text]) => (
-                  <button
-                    key={option}
-                    type="button"
-                    aria-pressed={docSource === option}
-                    onClick={() => setDocSource(option)}
-                    className={`h-8 rounded-md px-3 text-[12px] font-medium transition-colors ${
-                      docSource === option ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:bg-secondary/70'
-                    }`}
-                  >
-                    {text}
-                  </button>
+                  <Chip key={option} label={text} on={docSource === option} onClick={() => setDocSource(option)} />
                 ))}
               </div>
             </div>

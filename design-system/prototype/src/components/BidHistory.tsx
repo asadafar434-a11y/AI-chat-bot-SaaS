@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Search } from '../lib/icons';
 import { Badge, Card, HelpTip, Soon } from './ui';
-import { SectionIcon } from './SectionIcon';
+import { ScreenHeader } from './ScreenHeader';
+import { SummaryCard } from './SummaryCard';
 import { rub } from '../lib/data';
 import { titleOf, type Purchase } from '@/lib/purchase';
 import { parseRubles } from '@/lib/rub-words';
@@ -39,30 +40,17 @@ export function BidHistory({ purchases }: { purchases: Purchase[] | null }) {
   const sum = priced.reduce((s, p) => s + (p.tpPrice ?? 0), 0);
 
   return (
-    <div className="animate-fade-up space-y-5">
-      <div>
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight"><SectionIcon name="history" className="size-8" />История заявок</h1>
-          <HelpTip
-            align="start"
-            content="Закупки, которые вы отметили поданными. Итоги торгов с площадок — в разработке: статус «Подана» значит, что результат пока не известен, победителя и места здесь нет."
-          />
-        </div>
-        {/* Главное — сколько подано и на какую сумму наших цен: жирно, без отдельных плиток. */}
-        <p className="mt-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[13px] text-muted-foreground">
-          <span>
-            Подано <span className="font-mono text-lg font-bold tabular-nums text-foreground">{submitted.length}</span>
+    <div className="animate-fade-up space-y-4">
+      <ScreenHeader
+        icon="history"
+        title="История заявок"
+        hint={
+          <span className="flex items-center gap-1.5">
+            Закупки, которые вы отметили поданными
+            <HelpTip align="start" content="Закупки, которые вы отметили поданными. Итоги торгов с площадок — в разработке: статус «Подана» значит, что результат пока не известен, победителя и места здесь нет." />
           </span>
-          {priced.length > 0 && (
-            <span>
-              Сумма наших цен <span className="font-mono text-lg font-bold tabular-nums text-foreground">{rub(sum)}</span>
-            </span>
-          )}
-          <span className="inline-flex items-center gap-1.5">
-            Итоги торгов <Soon />
-          </span>
-        </p>
-      </div>
+        }
+      />
 
       {submitted.length === 0 ? (
         <Card className="p-6 text-center text-[13px] text-muted-foreground">
@@ -70,6 +58,23 @@ export function BidHistory({ purchases }: { purchases: Purchase[] | null }) {
         </Card>
       ) : (
         <>
+          {/* Главное — сколько подано и на какую сумму наших цен: жирно, в сводной карточке под шапкой, как «Сила профиля». */}
+          <SummaryCard
+            lead={<span className="font-mono text-2xl font-bold tabular-nums">{submitted.length}</span>}
+            title="Подано заявок"
+            subtitle={
+              <span className="flex flex-wrap items-center gap-x-4 gap-y-0.5">
+                {priced.length > 0 && (
+                  <span>
+                    Сумма наших цен <span className="font-mono font-semibold text-foreground">{rub(sum)}</span>
+                  </span>
+                )}
+                <span className="inline-flex items-center gap-1.5">
+                  Итоги торгов <Soon />
+                </span>
+              </span>
+            }
+          />
           {submitted.length > 5 && (
           <div className="flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 hover:border-foreground/30 focus-within:border-foreground focus-within:ring-2 focus-within:ring-ring/20 focus-within:ring-inset">
             <Search className="size-4 text-muted-foreground" />

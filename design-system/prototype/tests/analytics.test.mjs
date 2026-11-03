@@ -109,14 +109,9 @@ test('раздел: список закупок, «готово» у РИЦ и �
   assert.match(list, /Поставка угля/);
   assert.match(list, /Поставка угля 25 930 002,00 ₽/, 'цена стоит в строке заголовка, напротив названия');
   assert.equal(list.includes('Открыть расчёт'), false, 'строка закупки — кнопка целиком, без лишней подписи');
-  assert.match(list, /РИЦ — расчёт индикативной цены/);
-  assert.match(list, /Расчёт цены у заказчика/);
-  assert.match(list, /Ценовой бейдж/);
-  assert.match(list, /Риски и расходы из договора/);
-  assert.match(list, /Сколько это может стоить/);
-  assert.match(list, /Какую цену ставить/);
-  assert.ok((list.match(/готово/g) ?? []).length >= 5, 'пять шагов готовы');
-  assert.ok((renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: [], onOpen: none, onUpload: none })).match(/скоро/g) ?? []).length >= 3, 'остальное помечено «скоро»');
+  assert.equal(list.includes('Что умеет раздел'), false, 'список «готово» убран: он только занимал место');
+  assert.match(list, /Скоро в разделе/, 'то, чего ещё нет, одной свёрнутой карточкой');
+  assert.match(list, /4 функции/);
   assert.match(text(renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: [], onOpen: none, onUpload: none }))), /Загрузить закупку/);
   assert.match(text(renderToStaticMarkup(h(mods.home.AnalyticsHome, { purchases: null, onOpen: none, onUpload: none }))), /Читаю закупки/);
 });
@@ -971,9 +966,9 @@ test('свои цифры: доставка — расстояние между 
   assert.match(t, /Свои цифры: доставка и курс валюты/);
   assert.match(t, /Доставка: Москва → Севастополь ≈ 1 652 км/);
   assert.match(t, /Дорога длиннее прямой в/);
-  assert.match(out, /aria-pressed="true"[^>]*>Перевозчик</);
+  assert.match(out, /aria-pressed="true"[^>]*>(?:<svg.*?<\/svg>)?Перевозчик</);
   assert.match(out, /aria-pressed="false"[^>]*>Своя машина</);
-  assert.match(out, /aria-pressed="true"[^>]*>Туда и обратно</);
+  assert.match(out, /aria-pressed="true"[^>]*>(?:<svg.*?<\/svg>)?Туда и обратно</);
   assert.match(t, /Тариф, ₽ за км/);
   assert.match(t, /Впишите: тариф перевозчика, ₽ за км\./);
   assert.equal(t.includes('Расход, л на 100 км'), false);
@@ -1002,7 +997,7 @@ test('свои цифры: курс — валюты кнопками, поле 
   const t = text(out);
   assert.match(t, /Свои цифры: курс валюты/, 'доставки нет: регионы не определены');
   assert.equal(t.includes('Доставка:'), false);
-  assert.match(out, /aria-pressed="true"[^>]*>Доллар США</);
+  assert.match(out, /aria-pressed="true"[^>]*>(?:<svg.*?<\/svg>)?Доллар США</);
   assert.match(out, /aria-pressed="false"[^>]*>Евро</);
   assert.match(out, /aria-pressed="false"[^>]*>Юань</);
   assert.match(t, /Закупаете, \$/);
@@ -1089,7 +1084,7 @@ test('загрузить закупку: файлы с описанием и к�
   assert.match(out, /aria-label="Убрать файл Извещение\.docx"/);
   assert.match(out, /value="Поставка угля"/);
   assert.match(out, /value="25 930 002 ₽"/);
-  assert.match(out, /aria-pressed="true"[^>]*>223-ФЗ</);
+  assert.match(out, /aria-pressed="true"[^>]*>(?:<svg.*?<\/svg>)?223-ФЗ</);
   assert.match(out, /aria-pressed="false"[^>]*>44-ФЗ</);
   assert.match(out, /aria-pressed="false"[^>]*>Не указан</);
   assert.match(out, /role="alert"[^>]*>.*?Нет связи с сервером<\/p>/);

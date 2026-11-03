@@ -100,6 +100,76 @@ export function LoginScreen({
   );
 }
 
+/**
+ * Второй шаг входа: пароль уже принят, нужен код. Обычно — шесть цифр из приложения-аутентификатора; если телефона под рукой нет, переключатель
+ * «Запасной код» меняет поле на ввод кода с листка (его выдают при включении). Код не хранится нигде, кроме поля.
+ */
+export function CodeScreen({
+  onSubmit,
+  onBack,
+  busy,
+  error,
+}: {
+  onSubmit: (code: string) => void;
+  onBack: () => void;
+  busy: boolean;
+  error: string | null;
+}) {
+  const [code, setCode] = useState('');
+  const [recovery, setRecovery] = useState(false);
+  const ready = recovery ? code.replace(/[\s-]/g, '').length >= 16 : code.replace(/\D/g, '').length === 6;
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!busy && ready) onSubmit(code);
+  };
+  return (
+    <Shell
+      title="Код подтверждения"
+      lead={recovery ? 'Введите один из запасных кодов. Каждый срабатывает только один раз.' : 'Откройте приложение-аутентификатор на телефоне и введите шесть цифр для «Тендекса».'}
+    >
+      <form onSubmit={submit} className="space-y-3.5">
+        <ErrorLine text={error} />
+        <Field id="auth-code" label={recovery ? 'Запасной код' : 'Код из приложения'}>
+          <input
+            id="auth-code"
+            autoFocus
+            required
+            autoComplete="one-time-code"
+            inputMode={recovery ? 'text' : 'numeric'}
+            spellCheck={false}
+            maxLength={recovery ? 24 : 7}
+            placeholder={recovery ? 'xxxx-xxxx-xxxx-xxxx' : '000 000'}
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            className={`${inputClass} font-mono tracking-widest`}
+          />
+        </Field>
+        <div className="-mt-1.5 flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              setRecovery((v) => !v);
+              setCode('');
+            }}
+            className="rounded text-[13px] text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+          >
+            {recovery ? 'Код из приложения' : 'Нет телефона? Запасной код'}
+          </button>
+        </div>
+        <div className="flex gap-2">
+          <Button type="submit" className="h-10 flex-1" disabled={busy || !ready}>
+            {busy && <Loader2 className="size-4 animate-spin" />}
+            Войти
+          </Button>
+          <Button type="button" variant="secondary" className="h-10" onClick={onBack}>
+            Назад
+          </Button>
+        </div>
+      </form>
+    </Shell>
+  );
+}
+
 /** Задать пароль (invite) или сменить его (reset) по одноразовой ссылке. */
 export function SetPasswordScreen({
   mode,

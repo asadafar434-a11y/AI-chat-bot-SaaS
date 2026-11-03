@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { acceptInvitation, authRouteOf, fetchSession, loginWithPassword, logout, requestPasswordReset, resetPassword, type AuthRoute, type AuthUser } from '@/lib/auth-client';
+import { acceptInvitation, authRouteOf, fetchSession, loginWithCode, loginWithPassword, logout, requestPasswordReset, resetPassword, type AuthRoute, type AuthUser } from '@/lib/auth-client';
 import { errorMessage } from '@/lib/http-error';
 import { serverReadsEnabled } from '@/lib/server-reads';
 import { AccountContext, type Account } from '../lib/account';
-import { AuthWait, ForgotScreen, LoginScreen, SetPasswordScreen } from '../components/AuthScreens';
+import { AuthWait, CodeScreen, ForgotScreen, LoginScreen, SetPasswordScreen } from '../components/AuthScreens';
 
 // Вход. Когда закупки хранятся на сервере (PRODUCT_STORAGE=server), без входа их не видно: экран сначала спрашивает у сервера, кто вошёл.
 // Нет входа — форма «почта и пароль»; ссылка от владельца (#/invite/… или #/reset/…) — экран «задайте пароль». Когда закупки только в
@@ -24,6 +24,8 @@ function ServerAuthGate({ children }: { children: ReactNode }) {
   // «Забыли пароль»: экран ввода почты и ответ сервера (отправляются ли письма).
   const [forgot, setForgot] = useState(false);
   const [resetSent, setResetSent] = useState<{ mail: boolean } | null>(null);
+  // Пароль принят, но включён второй шаг: пропуск от сервера на 5 минут, дальше нужен код.
+  const [challenge, setChallenge] = useState<string | null>(null);
 
   const check = useCallback(async () => {
     try {
@@ -127,6 +129,33 @@ function ServerAuthGate({ children }: { children: ReactNode }) {
     );
   }
 
+  // После входа — всегда «Мои закупки», а не то место, где человек был до выхода (например, «Настройки»). Экран продукта читает адрес при
+  // открытии, поэтому адрес меняем до того, как он появится.
+  const enter = async () => {
+    setNotice(null);
+    setChallenge(null);
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#/`);
+    await check();
+  };
+
+  if (challenge) {
+    return (
+      <CodeScreen
+        busy={busy}
+        error={error}
+        onBack={() => {
+          setChallenge(null);
+          setError(null);
+        }}
+        onSubmit={(code) => {
+          setBusy(true);
+          setError(null);
+          loginWithCode(challenge, code).then(enter, (e: Error) => setError(e.message)).finally(() => setBusy(false));
+        }}
+      />
+    );
+  }
+
   return (
     <LoginScreen
       busy={busy}
@@ -141,13 +170,7 @@ function ServerAuthGate({ children }: { children: ReactNode }) {
         setBusy(true);
         setError(null);
         loginWithPassword(email, password).then(
-          async () => {
-            setNotice(null);
-            // После входа — всегда «Мои закупки», а не то место, где человек был до выхода (например, «Настройки»). Экран продукта
-            // читает адрес при открытии, поэтому адрес меняем до того, как он появится.
-            window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#/`);
-            await check();
-          },
+          (next) => (next ? (setNotice(null), setChallenge(next.challenge)) : enter()),
           (e: Error) => setError(e.message),
         ).finally(() => setBusy(false));
       }}

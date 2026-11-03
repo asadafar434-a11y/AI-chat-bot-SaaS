@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { BarChart2, Briefcase, Calculator, Cog, Plus, Sun, Moon, Search, History, Bell, Clock, ChevronRight, Menu, X, Wallet } from '../lib/icons';
+import { BarChart2, Bell, Briefcase, Building2, Calculator, ChevronRight, Clock, Cog, History, MoreHorizontal, Moon, Plus, Search, Sun, Wallet, X } from '../lib/icons';
 import { useAccount } from '../lib/account';
 import { Button, Soon, Tooltip, IconButton, cx, useDialogFocus } from './ui';
 import { BrandMark } from './BrandMark';
-import { BotMark } from './BotMark';
 import { AiSwitch } from './AiSwitch';
 
 export type View = 'tenders' | 'analytics' | 'calculator' | 'search' | 'history' | 'profile' | 'settings' | 'tariffs' | 'workflow';
@@ -26,7 +25,6 @@ type Props = {
   view: View;
   onNavigate: (v: View) => void;
   onNewTender: () => void;
-  onOpenChat: () => void;
   dark: boolean;
   setDark: (v: boolean) => void;
   notices: Notice[];
@@ -36,84 +34,18 @@ type Props = {
   company: { name: string; inn: string };
 };
 
-// Компьютер — боковая панель; телефон — шапка с бургером и выезжающее меню с тем же содержимым.
+// Компьютер — боковая панель; телефон и планшет — шапка и нижняя панель навигации, как в приложениях: что не помещается — в «Ещё».
 export function Sidebar(props: Props) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuBox = useRef<HTMLDivElement>(null);
-  const unread = props.notices.some((n) => n.status === 'replied' && !n.read);
-  useDialogFocus(menuBox, menuOpen);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false);
-    document.addEventListener('keydown', onKey);
-    // Под открытым меню страница не прокручивается.
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = overflow;
-    };
-  }, [menuOpen]);
-
-  // Любое действие в меню закрывает его.
-  const close =
-    <A extends unknown[]>(fn: (...args: A) => void) =>
-    (...args: A) => {
-      setMenuOpen(false);
-      fn(...args);
-    };
-  const inMenu: Props = {
-    ...props,
-    onNavigate: close(props.onNavigate),
-    onNewTender: close(props.onNewTender),
-    onOpenChat: close(props.onOpenChat),
-    onOpenNotice: close(props.onOpenNotice),
-  };
-
   return (
     <>
-      {/* Телефон: шапка с бургером */}
       <header className="flex items-center justify-between gap-2 rounded-2xl border border-border bg-card px-3 py-2.5 lg:hidden">
         <Logo />
-        <div className="flex items-center gap-1.5">
-          <IconButton label="Новая закупка" onClick={props.onNewTender} side="bottom" align="end" className="size-9 border border-border">
-            <Plus className="size-4" />
-          </IconButton>
-          <button
-            onClick={() => setMenuOpen(true)}
-            aria-label="Меню"
-            aria-expanded={menuOpen}
-            className="relative flex size-9 items-center justify-center rounded-md border border-border text-foreground transition-colors hover:bg-secondary"
-          >
-            <Menu className="size-5" />
-            {unread && <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-danger ring-2 ring-card" />}
-          </button>
-        </div>
+        <IconButton label="Новая закупка" onClick={props.onNewTender} side="bottom" align="end" className="size-9 border border-border">
+          <Plus className="size-4" />
+        </IconButton>
       </header>
 
-      {menuOpen &&
-        createPortal(
-          <div ref={menuBox} tabIndex={-1} className="fixed inset-0 z-50 outline-none lg:hidden" role="dialog" aria-modal="true" aria-label="Меню">
-            <div className="animate-tip absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setMenuOpen(false)} />
-            <div className="animate-slide-in absolute inset-y-0 left-0 flex w-[min(320px,86vw)] flex-col gap-5 overflow-y-auto [&>*]:shrink-0 border-r border-border bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] shadow-2xl">
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-2">
-                  <Logo />
-                  <div className="flex shrink-0 items-center gap-1">
-                    <ThemeButton dark={props.dark} setDark={props.setDark} />
-                    <IconButton label="Закрыть меню" onClick={() => setMenuOpen(false)} side="bottom" align="end">
-                      <X className="size-5" />
-                    </IconButton>
-                  </div>
-                </div>
-                <AiSwitch className="w-full justify-center" />
-              </div>
-              <Body {...inMenu} />
-            </div>
-          </div>,
-          document.body,
-        )}
+      <MobileNav {...props} />
 
       {/* Компьютер: боковая панель */}
       <aside className="hidden shrink-0 flex-col gap-5 rounded-2xl border border-border bg-card p-4 lg:flex lg:h-full lg:w-[248px] lg:overflow-y-auto [&>*]:shrink-0">
@@ -126,6 +58,161 @@ export function Sidebar(props: Props) {
         </div>
         <Body {...props} />
       </aside>
+    </>
+  );
+}
+
+// Нижняя панель: места шириной не меньше SLOT пикселей; все пункты не помещаются — последнее место «Ещё» с остальными.
+const SLOT = 68;
+const bar: { id: View; label: string; icon: typeof Briefcase }[] = [
+  { id: 'tenders', label: 'Закупки', icon: Briefcase },
+  { id: 'analytics', label: 'Аналитика', icon: BarChart2 },
+  { id: 'calculator', label: 'Калькулятор', icon: Calculator },
+  { id: 'search', label: 'Поиск', icon: Search },
+  { id: 'history', label: 'История', icon: History },
+  { id: 'tariffs', label: 'Тарифы', icon: Wallet },
+  { id: 'settings', label: 'Настройки', icon: Cog },
+  { id: 'profile', label: 'Профиль', icon: Building2 },
+];
+
+function MobileNav(props: Props) {
+  const { view, onNavigate } = props;
+  const [open, setOpen] = useState(false);
+  const [slots, setSlots] = useState(5);
+  const barBox = useRef<HTMLElement>(null);
+  const sheet = useRef<HTMLDivElement>(null);
+  const unread = props.notices.some((n) => n.status === 'replied' && !n.read);
+  useDialogFocus(sheet, open);
+
+  // Сколько мест помещается по ширине — считается при каждом изменении размера (поворот телефона, планшет).
+  useEffect(() => {
+    const el = barBox.current;
+    if (!el) return;
+    const measure = () => setSlots(Math.max(3, Math.floor(el.clientWidth / SLOT)));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('keydown', onKey);
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = overflow;
+    };
+  }, [open]);
+
+  const all = slots >= bar.length;
+  // Окно стало шире, и все пункты поместились в панель — «Ещё» закрывается, пустым оно не остаётся.
+  useEffect(() => {
+    if (all) setOpen(false);
+  }, [all]);
+  const shown = all ? bar : bar.slice(0, slots - 1);
+  const rest = all ? [] : bar.slice(slots - 1);
+  // Закупка открыта — подсвечены «Закупки».
+  const current: View = view === 'workflow' ? 'tenders' : view;
+  const moreActive = rest.some((r) => r.id === current);
+
+  const tab = (active: boolean) =>
+    cx(
+      'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-0.5 py-1.5 text-[10px] leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+      active ? 'font-semibold text-primary' : 'text-muted-foreground hover:text-foreground',
+    );
+
+  return (
+    <>
+      <nav
+        ref={barBox}
+        aria-label="Разделы"
+        className="fixed inset-x-0 bottom-0 z-40 flex items-stretch gap-0.5 border-t border-border bg-card/95 px-2 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1 backdrop-blur-xl lg:hidden"
+      >
+        {shown.map((n) => {
+          const Icon = n.icon;
+          return (
+            <button key={n.id} type="button" onClick={() => onNavigate(n.id)} aria-current={current === n.id ? 'page' : undefined} className={tab(current === n.id)}>
+              <Icon className="size-5 shrink-0" />
+              <span className="max-w-full truncate">{n.label}</span>
+            </button>
+          );
+        })}
+        {!all && (
+          <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-expanded={open} className={tab(moreActive || open)}>
+            <MoreHorizontal className="size-5 shrink-0" />
+            <span>Ещё</span>
+            {unread && <span className="absolute right-1/4 top-1 size-2 rounded-full bg-danger ring-2 ring-card" />}
+          </button>
+        )}
+      </nav>
+
+      {open &&
+        createPortal(
+          <div ref={sheet} tabIndex={-1} className="fixed inset-0 z-50 outline-none lg:hidden" role="dialog" aria-modal="true" aria-label="Ещё">
+            <div className="animate-tip absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
+            <div className="animate-fade-up absolute inset-x-0 bottom-0 flex max-h-[85vh] flex-col gap-4 overflow-y-auto rounded-t-2xl border-t border-border bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))] [&>*]:shrink-0">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[15px] font-bold">Ещё</p>
+                <IconButton label="Закрыть" onClick={() => setOpen(false)} side="bottom" align="end">
+                  <X className="size-5" />
+                </IconButton>
+              </div>
+              <ul className="flex flex-col gap-1">
+                {rest.map((n) => {
+                  const Icon = n.icon;
+                  const active = current === n.id;
+                  return (
+                    <li key={n.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpen(false);
+                          onNavigate(n.id);
+                        }}
+                        aria-current={active ? 'page' : undefined}
+                        className={cx(
+                          'flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-medium transition-colors',
+                          active ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground',
+                        )}
+                      >
+                        <Icon className="size-5 shrink-0" />
+                        {n.label}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="flex flex-col gap-2 border-t border-border pt-4">
+                <AiSwitch className="w-full justify-center" />
+                <Button variant="secondary" onClick={() => props.setDark(!props.dark)} className="w-full">
+                  {props.dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+                  {props.dark ? 'Светлая тема' : 'Тёмная тема'}
+                </Button>
+              </div>
+              {props.notices.length > 0 && (
+                <div className="flex flex-col gap-1.5 border-t border-border pt-4">
+                  <p className="px-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Проверка специалистом</p>
+                  {[...props.notices]
+                    .sort((a, b) => rank(a) - rank(b))
+                    .map((n) => (
+                      <NoticeRow
+                        key={n.id}
+                        notice={n}
+                        onOpen={(id) => {
+                          setOpen(false);
+                          props.onOpenNotice(id);
+                        }}
+                      />
+                    ))}
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
@@ -152,7 +239,7 @@ function Logo() {
 }
 
 // Содержимое панели — одно и то же на компьютере и в меню телефона.
-function Body({ view, onNavigate, onNewTender, onOpenChat, notices, onOpenNotice, credits, company }: Props) {
+function Body({ view, onNavigate, onNewTender, notices, onOpenNotice, credits, company }: Props) {
   // Вошедший пользователь — когда закупки хранятся на сервере; в режиме «в браузере» входа нет и блока тоже.
   const account = useAccount();
   // Сначала непрочитанные ответы, потом ожидающие проверки, прочитанные — в конце.
@@ -193,17 +280,6 @@ function Body({ view, onNavigate, onNewTender, onOpenChat, notices, onOpenNotice
           );
         })}
       </nav>
-
-      <button
-        onClick={onOpenChat}
-        className="card-hover flex items-center gap-2.5 rounded-md border border-border bg-secondary/50 px-3 py-2.5 text-left transition-colors hover:bg-secondary"
-      >
-        <BotMark className="size-8 shrink-0" />
-        <div className="min-w-0 leading-tight">
-          <p className="text-[13px] font-medium">Спросить ИИ</p>
-          <p className="truncate font-mono text-[10px] text-muted-foreground">помощь по заявке</p>
-        </div>
-      </button>
 
       <div className="mt-auto flex flex-col gap-2">
         {sorted.length > 0 && (

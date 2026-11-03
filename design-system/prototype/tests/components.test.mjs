@@ -235,7 +235,7 @@ test('требования заказчика: обязательность, т�
     reqRow({ id: 'who-0', group: 'who', text: 'Только малый бизнес', type: 'К участнику', conditions: [], status: 'info', statusText: 'Условие заказчика' }),
   ]);
   assert.match(out, /<h2[^>]*>Требования заказчика<\/h2>/);
-  assert.match(out, /aria-pressed="true"[^>]*>Все<span[^>]*>2<\/span>/);
+  assert.match(out, /aria-pressed="true"[^>]*>(?:<svg.*?<\/svg>)?Все<span[^>]*>2<\/span>/);
   assert.match(out, />Кто участвует<span[^>]*>1<\/span>/);
   assert.match(out, />ТЗ<span[^>]*>1<\/span>/);
   assert.doesNotMatch(out, />Оценка<span/, 'пустой группы нет');
@@ -378,7 +378,7 @@ test('база доказательств: сначала то, что треб�
   assert.match(out, /Ждут подтверждения: <b[^>]*>1<\/b>/);
   assert.doesNotMatch(out, /Без срока/, 'нулевые счётчики не показываются');
   // Группы с числом фактов, «Все» выбрана; реквизиты и шаблоны — сводкой.
-  assert.match(out, /aria-pressed="true"[^>]*>Все<span[^>]*>5<\/span>/);
+  assert.match(out, /aria-pressed="true"[^>]*>(?:<svg.*?<\/svg>)?Все<span[^>]*>5<\/span>/);
   assert.match(out, />Лицензии и допуски<span[^>]*>2<\/span>/);
   assert.match(out, />Сотрудники<span[^>]*>1<\/span>/);
   assert.match(out, />Реквизиты<span[^>]*>12<\/span>/);

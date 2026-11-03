@@ -29,15 +29,14 @@ import {
   Pencil,
   Plus,
   ShieldCheck,
-  Sparkles,
   Trash2,
   Upload,
 } from '../lib/icons';
 import { CertificatesPanel, ExperiencePanel, IndustriesPanel, LicensesPanel, ProfileBar, ProfileHero, ProfileSteps } from './CompanyProfile';
 import { EvidenceBase } from './EvidenceBase';
 import { Notice, type Tone } from './Notice';
-import { Badge, Button, Card, HelpTip, IconButton, TabPanel, Tooltip, cx } from './ui';
-import { SectionIcon } from './SectionIcon';
+import { Badge, Button, Card, Chip, HelpTip, IconButton, TabPanel, Tooltip, cx } from './ui';
+import { ScreenHeader } from './ScreenHeader';
 
 type TabKey = 'profile' | 'experience' | 'industries' | 'licenses' | 'certificates' | 'evidence' | 'docs';
 const TAB_LABELS: Record<TabKey, string> = {
@@ -150,18 +149,7 @@ function KindEditor({ doc, onSave, onCancel }: { doc: MyDocument; onSave: (kinds
       <p className="text-[13px] font-medium">Что в этом файле? Можно выбрать несколько.</p>
       <div className="flex flex-wrap gap-2">
         {DOC_KIND_KEYS.map((kind) => (
-          <button
-            key={kind}
-            type="button"
-            aria-pressed={kinds.includes(kind)}
-            onClick={() => toggle(kind)}
-            className={cx(
-              'rounded-full border px-3 py-1 text-[12px] font-medium transition-colors',
-              kinds.includes(kind) ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-muted-foreground hover:bg-secondary',
-            )}
-          >
-            {DOC_KINDS[kind].group}
-          </button>
+          <Chip key={kind} label={DOC_KINDS[kind].group} on={kinds.includes(kind)} onClick={() => toggle(kind)} />
         ))}
       </div>
       <div className="flex gap-2">
@@ -410,13 +398,8 @@ export function Profile() {
   const saveText = save === 'saving' ? 'Сохраняю…' : save === 'saved' ? 'Сохранено' : save === 'failed' ? 'Не сохранилось — попробуйте ещё раз' : '';
 
   return (
-    <div className="animate-fade-up space-y-6">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight"><SectionIcon name="company" className="size-9" />Профиль компании</h1>
-        <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
-          Реквизиты для заявок, база доказательств компании и образцы прошлых документов. Копия данных и удаление — в «Настройках».
-        </p>
-      </div>
+    <div className="animate-fade-up space-y-4">
+      <ScreenHeader icon="company" title="Профиль компании" hint="Реквизиты для заявок, база доказательств компании и образцы прошлых документов. Копия данных и удаление — в «Настройках»." />
 
       {loadError && <Notice tone="warn">Браузер не дал открыть сохранённые реквизиты. Обновите страницу.</Notice>}
 
@@ -438,10 +421,7 @@ export function Profile() {
           <div>
             {/* Подсказка нужна, пока реквизиты не заполнены целиком — дальше она только занимает место. */}
             {!(profile && filledCount(profile) >= PROFILE_KEYS.length) && (
-              <p className="max-w-2xl text-sm text-muted-foreground">
-                Заполните реквизиты один раз — ИИ будет автоматически подставлять их в каждую заявку, декларацию и контракт. Не придётся
-                вводить одни и те же данные для каждой закупки. В техническое предложение реквизиты не попадают никогда: его подают анонимно.
-              </p>
+              <p className="max-w-2xl text-sm text-muted-foreground">Заполните один раз — реквизиты сами подставятся в каждую заявку. В техническое предложение они не попадают: его подают анонимно.</p>
             )}
             <p className="mt-1 font-mono text-[12px] text-muted-foreground">
               заполнено {profile ? filledCount(profile) : 0} из {PROFILE_KEYS.length}
@@ -474,7 +454,7 @@ export function Profile() {
                 <Building2 className="size-6" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-base font-semibold">{profile.shortName.trim() || profile.fullName.trim() || 'Название компании не указано'}</p>
+                <p className="break-words text-base font-semibold">{profile.shortName.trim() || profile.fullName.trim() || 'Название компании не указано'}</p>
                 <p className="font-mono text-[12px] text-muted-foreground">
                   {profile.inn.trim() ? `ИНН ${profile.inn.trim()}` : 'ИНН не указан'}
                   {profile.kpp.trim() ? ` · КПП ${profile.kpp.trim()}` : ''}
@@ -490,15 +470,6 @@ export function Profile() {
             </Card>
 
             {/* How it works */}
-            <Card className="flex gap-3 bg-secondary/40 p-4">
-              <Sparkles className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-              <p className="text-[13px] leading-snug text-muted-foreground">
-                <span className="font-medium text-foreground">Как это работает: </span>
-                когда ИИ составляет документы заявки, он берёт эти реквизиты и вставляет их в нужные поля автоматически — у каждого поля
-                на шаге «Проверка» видно, что оно взято из профиля. Если данные изменятся (например, новый расчётный счёт) — обновите их
-                здесь один раз, и все будущие заявки подхватят новое значение.
-              </p>
-            </Card>
 
             {meta.suggestions.length > 0 && <Suggestions items={meta.suggestions} onAccept={accept} onDismiss={dismiss} />}
 

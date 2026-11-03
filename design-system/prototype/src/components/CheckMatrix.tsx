@@ -3,7 +3,7 @@ import type { MatrixData } from '@/lib/hidden-costs';
 import { DEFAULT_WEIGHTS, GROUPS, LEVEL_TEXT, type CheckRow, type Level, type ManualResult, type MatrixSummary } from '@/lib/check-matrix';
 import { percent } from '@/lib/analytics-summary';
 import { AlertTriangle, CheckCircle2, HelpCircle, XCircle } from '../lib/icons';
-import { Badge, Button, HelpTip, type Tone, fieldClass } from './ui';
+import { Badge, Button, Chip, HelpTip, type Tone, fieldClass } from './ui';
 
 // «Матрица проверок (27)» (lib/check-matrix.ts). По правилу «мало текста, много фактов, больше кнопок»: сверху итог и кнопки-фильтры со счётчиками, карта из 27 клеток, у строки — название, значок и факт по этой закупке;
 // как проверяется, чего не хватает и запись своего результата — за кнопками. Пояснения — в ⓘ. Это не вероятность победы и не оценка заказчика.
@@ -48,19 +48,8 @@ function lineOf(row: CheckRow): string {
   return '';
 }
 
-function Chip({ active, onClick, tone, children }: { active: boolean; onClick: () => void; tone: string; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-        active ? 'border-primary bg-primary text-primary-foreground' : `border-border bg-card hover:bg-secondary ${tone}`
-      }`}
-    >
-      {children}
-    </button>
-  );
+function MatrixChip({ active, onClick, tone, children }: { active: boolean; onClick: () => void; tone: string; children: React.ReactNode }) {
+  return <Chip on={active} onClick={onClick} label={children} className={active ? undefined : tone} />;
 }
 
 function Detail({ row, data, onChange }: { row: CheckRow; data: MatrixData; onChange: (next: MatrixData) => void }) {
@@ -211,26 +200,26 @@ export function CheckMatrix({ rows, summary, data, onChange }: CheckMatrixProps)
       </div>
 
       <div role="group" aria-label="Фильтр проверок" className="flex flex-wrap gap-1.5">
-        <Chip active={filter === 'all'} onClick={() => setFilter('all')} tone="">
+        <MatrixChip active={filter === 'all'} onClick={() => setFilter('all')} tone="">
           Все {rows.length}
-        </Chip>
-        <Chip active={filter === 'risk'} onClick={() => setFilter(filter === 'risk' ? 'all' : 'risk')} tone="text-danger">
+        </MatrixChip>
+        <MatrixChip active={filter === 'risk'} onClick={() => setFilter(filter === 'risk' ? 'all' : 'risk')} tone="text-danger">
           <XCircle className="size-3.5" />
           Риск {summary.risk}
-        </Chip>
-        <Chip active={filter === 'attention'} onClick={() => setFilter(filter === 'attention' ? 'all' : 'attention')} tone="text-warn-foreground">
+        </MatrixChip>
+        <MatrixChip active={filter === 'attention'} onClick={() => setFilter(filter === 'attention' ? 'all' : 'attention')} tone="text-warn-foreground">
           <AlertTriangle className="size-3.5" />
           Внимание {summary.attention}
-        </Chip>
-        <Chip active={filter === 'ok'} onClick={() => setFilter(filter === 'ok' ? 'all' : 'ok')} tone="text-success">
+        </MatrixChip>
+        <MatrixChip active={filter === 'ok'} onClick={() => setFilter(filter === 'ok' ? 'all' : 'ok')} tone="text-success">
           <CheckCircle2 className="size-3.5" />В порядке {summary.ok}
-        </Chip>
-        <Chip active={filter === 'insufficient'} onClick={() => setFilter(filter === 'insufficient' ? 'all' : 'insufficient')} tone="text-muted-foreground">
+        </MatrixChip>
+        <MatrixChip active={filter === 'insufficient'} onClick={() => setFilter(filter === 'insufficient' ? 'all' : 'insufficient')} tone="text-muted-foreground">
           Нет данных {count('insufficient')}
-        </Chip>
-        <Chip active={filter === 'not_checked'} onClick={() => setFilter(filter === 'not_checked' ? 'all' : 'not_checked')} tone="text-muted-foreground">
+        </MatrixChip>
+        <MatrixChip active={filter === 'not_checked'} onClick={() => setFilter(filter === 'not_checked' ? 'all' : 'not_checked')} tone="text-muted-foreground">
           Ждут источника {count('not_checked')}
-        </Chip>
+        </MatrixChip>
       </div>
 
       <section aria-label="Карта проверок" className="space-y-1.5">

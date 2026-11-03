@@ -11,8 +11,9 @@ import { useAccount } from '../lib/account';
 import { Download, Loader2, LogOut, Moon, Sun, Trash2, Upload } from '../lib/icons';
 import { Notice, type Tone } from './Notice';
 import { PasswordInput } from './PasswordInput';
-import { Button, Card, cx, fieldClass } from './ui';
-import { SectionIcon } from './SectionIcon';
+import { Button, Card, Chip, cx, fieldClass, HelpTip, TabPanel, Tabs } from './ui';
+import { ScreenHeader } from './ScreenHeader';
+import { TwoFactorCard } from './TwoFactorCard';
 
 // «Настройки»: аккаунт (почта, смена пароля, выход), внешний вид (тема) и данные (копия файлом, удаление). Всё, что относится к человеку и его
 // данным, а не к реквизитам компании: реквизиты, база доказательств и образцы остаются в «Профиле компании».
@@ -33,16 +34,26 @@ function contents({ purchases, samples, facts, profile }: { purchases: number; s
 const inputClass = fieldClass();
 
 export function Settings({ dark, setDark }: { dark: boolean; setDark: (v: boolean) => void }) {
+  const account = useAccount();
+  const [tab, setTab] = useState(account ? 'account' : 'general');
+  // Входа нет — вкладки «Аккаунт» тоже нет.
+  const items = [...(account ? [{ key: 'account', label: 'Аккаунт' }] : []), { key: 'general', label: 'Внешний вид и ИИ' }, { key: 'data', label: 'Ваши данные' }];
+  const active = items.some((i) => i.key === tab) ? tab : 'general';
   return (
-    <div className="animate-fade-up space-y-6">
-      <div>
-        <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight"><SectionIcon name="settings" className="size-8" />Настройки</h1>
-        <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">Аккаунт, внешний вид и ваши данные. Реквизиты компании — в «Профиле компании» (карточка внизу меню).</p>
-      </div>
-      <AccountCard />
-      <AppearanceCard dark={dark} setDark={setDark} />
-      <AiCard />
-      <DataCards />
+    <div className="animate-fade-up space-y-4">
+      <ScreenHeader icon="settings" title="Настройки" hint="Аккаунт, внешний вид и ваши данные. Реквизиты компании — в «Профиле компании» (карточка внизу меню)." />
+      <Tabs idPrefix="settings" items={items} active={active} onChange={setTab} />
+      <TabPanel idPrefix="settings" tabKey="account" active={active} className="space-y-4">
+        <AccountCard />
+        <TwoFactorCard />
+      </TabPanel>
+      <TabPanel idPrefix="settings" tabKey="general" active={active} className="space-y-4">
+        <AppearanceCard dark={dark} setDark={setDark} />
+        <AiCard />
+      </TabPanel>
+      <TabPanel idPrefix="settings" tabKey="data" active={active} className="space-y-4">
+        <DataCards />
+      </TabPanel>
     </div>
   );
 }
@@ -146,36 +157,18 @@ function AiCard() {
   ];
   return (
     <Card className="space-y-3 p-5">
-      <div>
+      <div className="flex items-center gap-1.5">
         <span className="text-sm font-medium">ИИ</span>
-        <p className="mt-0.5 text-[12px] text-muted-foreground">Выключен — программа не обращается к языковым моделям. Быстро переключить можно в шапке меню.</p>
+        <HelpTip
+          align="start"
+          content="Выключен — программа не обращается к языковым моделям. Работает без ИИ: аналитика и рейтинг тендера, расчёт цены и рисков, проверки по правилам, реестровые номера, бесплатный поиск, файлы заявки по готовым полям. С ИИ дополнительно: разбор документов и требований, черновики ТП, проверка своей заявки, чат, поиск противоречий, чтение сканов. Каждый платный запрос — только по вашей кнопке."
+        />
       </div>
-      <div role="group" aria-label="Режим ИИ" className="inline-flex gap-1 rounded-md border border-border p-1">
+      <div role="group" aria-label="Режим ИИ" className="flex flex-wrap gap-2">
         {options.map(({ label, value }) => (
-          <button
-            key={label}
-            type="button"
-            aria-pressed={on === value}
-            onClick={() => set(value)}
-            className={cx(
-              'flex items-center gap-2 rounded px-3 py-1.5 text-[13px] transition-colors',
-              on === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
-            )}
-          >
-            {label}
-          </button>
+          <Chip key={label} label={label} on={on === value} onClick={() => set(value)} />
         ))}
       </div>
-      <dl className="grid gap-2 text-[12px] sm:grid-cols-2">
-        <div>
-          <dt className="font-medium">Без ИИ работает</dt>
-          <dd className="mt-0.5 text-muted-foreground">аналитика и рейтинг тендера, расчёт цены и рисков, проверки по правилам, реестровые номера, бесплатный поиск в интернете, файлы заявки по готовым полям</dd>
-        </div>
-        <div>
-          <dt className="font-medium">С ИИ дополнительно</dt>
-          <dd className="mt-0.5 text-muted-foreground">разбор документов и требований, черновики технического предложения, проверка своей заявки, чат, поиск противоречий, чтение сканов. Каждый платный запрос — только по вашей кнопке</dd>
-        </div>
-      </dl>
     </Card>
   );
 }
@@ -189,25 +182,20 @@ function AppearanceCard({ dark, setDark }: { dark: boolean; setDark: (v: boolean
   ];
   return (
     <Card className="space-y-3 p-5">
-      <div>
-        <span className="text-sm font-medium">Внешний вид</span>
-        <p className="mt-0.5 text-[12px] text-muted-foreground">Тема запоминается в этом браузере. Быстро переключить можно значком в шапке меню.</p>
-      </div>
-      <div role="group" aria-label="Тема" className="inline-flex gap-1 rounded-md border border-border p-1">
+      <span className="text-sm font-medium">Тема</span>
+      <div role="group" aria-label="Тема" className="flex flex-wrap gap-2">
         {options.map(({ label, value, icon: Icon }) => (
-          <button
+          <Chip
             key={label}
-            type="button"
-            aria-pressed={dark === value}
+            on={dark === value}
             onClick={() => setDark(value)}
-            className={cx(
-              'flex items-center gap-2 rounded px-3 py-1.5 text-[13px] transition-colors',
-              dark === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
-            )}
-          >
-            <Icon className="size-4" />
-            {label}
-          </button>
+            label={
+              <>
+                <Icon className="size-4" />
+                {label}
+              </>
+            }
+          />
         ))}
       </div>
     </Card>

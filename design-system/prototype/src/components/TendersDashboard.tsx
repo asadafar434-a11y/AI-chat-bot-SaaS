@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Search, Plus, Calendar, FileText, ChevronRight, Trash2 } from '../lib/icons';
-import { Button, Card, Badge, Modal, AIDisclaimer, Tooltip, IconButton, cx } from './ui';
-import { SectionIcon } from './SectionIcon';
+import { Button, Card, Badge, Chip, Modal, AIDisclaimer, Tooltip, IconButton, cx } from './ui';
+import { ScreenHeader } from './ScreenHeader';
 import { statusLabels, procedureMeta, rub, type TenderCard, type TenderStatus } from '../lib/data';
 
 const filters: { id: TenderStatus | 'all'; label: string }[] = [
@@ -61,15 +61,13 @@ export function TendersDashboard({
   const visibleFilters = filters.filter((f) => f.id === 'all' || f.id === filter || countOf(f.id) > 0);
 
   return (
-    <div className="animate-fade-up space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight"><SectionIcon name="cart" className="size-8" />Мои закупки</h1>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">
-            Загрузите документацию — ИИ проведёт до готового пакета.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="animate-fade-up space-y-4">
+      <ScreenHeader
+        icon="cart"
+        title="Мои закупки"
+        hint="Загрузите документацию — ИИ проведёт до готового пакета."
+        aside={
+          <>
           {onOpenSample && !tenders.some((t) => t.sample) && (
             <Tooltip content="Готовая закупка с документами: пройдите все шаги, не загружая своё. Запросов к ИИ нет." align="end">
               <Button variant="secondary" onClick={onOpenSample}>
@@ -77,11 +75,9 @@ export function TendersDashboard({
               </Button>
             </Tooltip>
           )}
-          <Button onClick={onNew}>
-            <Plus className="size-4" /> Новая закупка
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-3">
@@ -97,19 +93,7 @@ export function TendersDashboard({
         </div>
         <div className="flex flex-wrap gap-1.5">
           {visibleFilters.map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setFilter(f.id)}
-              aria-pressed={filter === f.id}
-              className={`inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs font-medium transition-colors ${
-                filter === f.id
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground'
-              }`}
-            >
-              {f.label}
-              <span className="font-mono tabular-nums opacity-80">{countOf(f.id)}</span>
-            </button>
+            <Chip key={f.id} label={f.label} count={countOf(f.id)} on={filter === f.id} onClick={() => setFilter(f.id)} />
           ))}
         </div>
       </div>

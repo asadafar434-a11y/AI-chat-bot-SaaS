@@ -17,7 +17,8 @@ import {
   type StrengthKey,
 } from '@/lib/company-card';
 import { Award, Briefcase, Check, ChevronDown, FileText, Plus, Target, X } from '../lib/icons';
-import { Button, Card, cx, fieldClass, Soon, StepActions, Tabs } from './ui';
+import { Button, Card, Chip, cx, fieldClass, Soon, StepActions, Tabs } from './ui';
+import { SummaryCard } from './SummaryCard';
 
 // Экран «Профиль компании» по образцу конкурентов (владелец, 03.11.2026: «такой профиль как у конкурентов и с нашими микс»): шапка «Сила профиля», вкладки-шаги
 // с состоянием, плашки выбора и нижняя панель. Наше сверху: реквизиты, база доказательств и образцы остаются, а выбранное в плашках — «заявлено вами»,
@@ -27,113 +28,95 @@ import { Button, Card, cx, fieldClass, Soon, StepActions, Tabs } from './ui';
 const tabOf = (key: StrengthKey) => (key === 'requisites' ? 'profile' : key);
 
 export function ProfileHero({ strength, facts, onOpen, defaultOpen = false }: { strength: Strength; facts: number; onOpen: (key: string) => void; defaultOpen?: boolean }) {
-  const [open, setOpen] = useState(defaultOpen);
   const req = strength.parts.find((p) => p.key === 'requisites')!;
   const done = strength.percent >= 100;
   const next = strength.parts.find((p) => !p.done);
-  const benefits: {
-    title: string;
-    ok: boolean;
-    soon?: boolean;
-    tab?: string;
-  }[] = [
+  const benefits: { title: string; ok: boolean; soon?: boolean; tab?: string }[] = [
     { title: 'Заявка заполняется сама', ok: req.share >= 0.7, tab: 'profile' },
     { title: 'Проверка по базе доказательств', ok: facts > 0, tab: 'evidence' },
     { title: 'Подбор тендеров по специализации', ok: false, soon: true },
   ];
   const R = 42;
   const C = 2 * Math.PI * R;
-  const bodyId = 'profile-strength-body';
+  const ring = (
+    <span role="progressbar" aria-label="Сила профиля" aria-valuemin={0} aria-valuemax={100} aria-valuenow={strength.percent} className="relative size-11 shrink-0">
+      <svg viewBox="0 0 100 100" className="size-full -rotate-90" aria-hidden>
+        <circle cx="50" cy="50" r={R} fill="none" strokeWidth="11" className="stroke-muted" />
+        <circle
+          cx="50"
+          cy="50"
+          r={R}
+          fill="none"
+          strokeWidth="11"
+          strokeLinecap="round"
+          className="stroke-primary transition-all duration-500"
+          strokeDasharray={C}
+          strokeDashoffset={C * (1 - strength.percent / 100)}
+        />
+      </svg>
+      <span className="absolute inset-0 flex items-center justify-center font-mono text-[11px] font-bold tabular-nums">{strength.percent}%</span>
+    </span>
+  );
   return (
-    <Card className="px-4 py-3">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-controls={bodyId}
-          onClick={() => setOpen((v) => !v)}
-          className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        >
-          <span role="progressbar" aria-label="Сила профиля" aria-valuemin={0} aria-valuemax={100} aria-valuenow={strength.percent} className="relative size-11 shrink-0">
-            <svg viewBox="0 0 100 100" className="size-full -rotate-90" aria-hidden>
-              <circle cx="50" cy="50" r={R} fill="none" strokeWidth="11" className="stroke-muted" />
-              <circle
-                cx="50"
-                cy="50"
-                r={R}
-                fill="none"
-                strokeWidth="11"
-                strokeLinecap="round"
-                className="stroke-primary transition-all duration-500"
-                strokeDasharray={C}
-                strokeDashoffset={C * (1 - strength.percent / 100)}
-              />
-            </svg>
-            <span className="absolute inset-0 flex items-center justify-center font-mono text-[11px] font-bold tabular-nums">{strength.percent}%</span>
-          </span>
-          <span className="min-w-0">
-            <span className="block text-[15px] font-bold leading-tight">{done ? 'Профиль заполнен' : 'Сила профиля'}</span>
-            <span className="block text-[12px] leading-snug text-muted-foreground">Полнота данных, а не оценка шансов на победу</span>
-          </span>
-          <ChevronDown className={cx('ml-auto size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
-          <span className="sr-only">{open ? 'Свернуть' : 'Развернуть'}</span>
-        </button>
-        {next && (
+    <SummaryCard
+      lead={ring}
+      title={done ? 'Профиль заполнен' : 'Сила профиля'}
+      subtitle="Полнота данных, а не оценка шансов на победу"
+      defaultOpen={defaultOpen}
+      action={
+        next && (
           <Button size="sm" onClick={() => onOpen(tabOf(next.key))}>
             Дальше: {next.label}
           </Button>
-        )}
-      </div>
-      {open && (
-        <div id={bodyId} className="mt-3 border-t border-border pt-3">
-          <ul className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
-            {strength.parts.map((p) => (
-              <li key={p.key} className="min-w-0">
-                <button
-                  type="button"
-                  onClick={() => onOpen(tabOf(p.key))}
-                  className="group block w-full rounded-lg px-2 py-2 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  <span className="flex items-center justify-between gap-2 text-[13px]">
-                    <span className="flex min-w-0 items-center gap-1.5 font-medium">
-                      {p.done && <Check className="size-3.5 shrink-0 text-success" />}
-                      <span className="truncate">{p.label}</span>
-                    </span>
-                    <span className="shrink-0 font-mono text-[12px] text-muted-foreground">до {p.weight}%</span>
-                  </span>
-                  <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-muted">
-                    <span className={cx('block h-full rounded-full transition-all duration-500', p.done ? 'bg-success' : 'bg-primary')} style={{ width: `${Math.round(p.share * 100)}%` }} />
-                  </span>
-                  <span className="mt-1 block text-[12px] text-muted-foreground">{p.detail}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          <ul className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
-            {benefits.map((b) => (
-              <li key={b.title}>
-                {b.tab && !b.soon ? (
-                  <button
-                    type="button"
-                    onClick={() => onOpen(b.tab!)}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[12px] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    <span aria-hidden className={cx('size-2 rounded-full', b.ok ? 'bg-success' : 'bg-muted-foreground/40')} />
-                    {b.title}
-                  </button>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-2.5 py-1 text-[12px] text-muted-foreground">
-                    <span aria-hidden className="size-2 rounded-full bg-muted-foreground/40" />
-                    {b.title}
-                    <span className="text-[10px] font-medium uppercase tracking-wide">скоро</span>
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </Card>
+        )
+      }
+    >
+      <ul className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
+        {strength.parts.map((p) => (
+          <li key={p.key} className="min-w-0">
+            <button
+              type="button"
+              onClick={() => onOpen(tabOf(p.key))}
+              className="group block w-full rounded-lg px-2 py-2 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <span className="flex items-center justify-between gap-2 text-[13px]">
+                <span className="flex min-w-0 items-center gap-1.5 font-medium">
+                  {p.done && <Check className="size-3.5 shrink-0 text-success" />}
+                  <span className="truncate">{p.label}</span>
+                </span>
+                <span className="shrink-0 font-mono text-[12px] text-muted-foreground">до {p.weight}%</span>
+              </span>
+              <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-muted">
+                <span className={cx('block h-full rounded-full transition-all duration-500', p.done ? 'bg-success' : 'bg-primary')} style={{ width: `${Math.round(p.share * 100)}%` }} />
+              </span>
+              <span className="mt-1 block text-[12px] text-muted-foreground">{p.detail}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <ul className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
+        {benefits.map((b) => (
+          <li key={b.title}>
+            {b.tab && !b.soon ? (
+              <button
+                type="button"
+                onClick={() => onOpen(b.tab!)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[12px] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <span aria-hidden className={cx('size-2 rounded-full', b.ok ? 'bg-success' : 'bg-muted-foreground/40')} />
+                {b.title}
+              </button>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-2.5 py-1 text-[12px] text-muted-foreground">
+                <span aria-hidden className="size-2 rounded-full bg-muted-foreground/40" />
+                {b.title}
+                <span className="text-[10px] font-medium uppercase tracking-wide">скоро</span>
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </SummaryCard>
   );
 }
 
@@ -160,37 +143,6 @@ export function ProfileSteps({
     ...extras,
   ];
   return <Tabs idPrefix={idPrefix} items={items} active={active} onChange={onChange} />;
-}
-
-// Плашка-переключатель: нажата — залита голубым «Тендекса». У своего пункта справа крестик «Удалить»: нажатие на саму плашку только снимает выбор, пункт остаётся.
-function Chip({ label, on, onClick, onRemove }: { label: string; on: boolean; onClick: () => void; onRemove?: () => void }) {
-  const look = on ? 'border-primary bg-primary font-medium text-primary-foreground' : 'border-border bg-background hover:border-foreground/40 hover:bg-secondary';
-  const ring = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
-  if (!onRemove) {
-    return (
-      <button type="button" aria-pressed={on} onClick={onClick} className={cx('inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3.5 text-[13px] transition-colors', look, ring)}>
-        {on && <Check className="size-3.5" />}
-        {label}
-      </button>
-    );
-  }
-  return (
-    <span className={cx('inline-flex min-h-8 items-center rounded-full border text-[13px] transition-colors', look)}>
-      <button type="button" aria-pressed={on} onClick={onClick} className={cx('inline-flex min-h-7 items-center gap-1.5 rounded-full pl-3.5 pr-2', ring)}>
-        {on && <Check className="size-3.5" />}
-        {label}
-      </button>
-      <button
-        type="button"
-        aria-label={`Удалить «${label}»`}
-        title="Удалить"
-        onClick={onRemove}
-        className={cx('mr-1 flex size-6 shrink-0 items-center justify-center rounded-full', on ? 'hover:bg-white/20' : 'text-muted-foreground hover:bg-secondary hover:text-foreground', ring)}
-      >
-        <X className="size-3.5" />
-      </button>
-    </span>
-  );
 }
 
 // Набор плашек: готовые варианты, свои пункты (снять выбор — нажатием, удалить — крестиком) и поле «Добавить своё».
@@ -384,17 +336,7 @@ function NoneToggle({ label, on, disabled, onChange }: { label: string; on: bool
 
 // Нижняя панель: сила профиля и состояние сохранения; при правке реквизитов — «Отмена» и «Сохранить».
 // Плавающая полоса — только когда есть что нажать (правка реквизитов) или сказать (не сохранилось); процент и так виден в шапке.
-export function ProfileBar({
-  status,
-  editing,
-  onCancel,
-  onSave,
-}: {
-  status: { text: string; failed: boolean } | null;
-  editing: boolean;
-  onCancel: () => void;
-  onSave: () => void;
-}) {
+export function ProfileBar({ status, editing, onCancel, onSave }: { status: { text: string; failed: boolean } | null; editing: boolean; onCancel: () => void; onSave: () => void }) {
   if (!editing && !status?.failed) return null;
   return (
     <StepActions className="justify-between">

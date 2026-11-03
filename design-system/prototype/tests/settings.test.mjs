@@ -79,12 +79,11 @@ test('настройки: карточка «ИИ» — режим «Включ�
   const out = html(h(settings.Settings, { dark: false, setDark: noop }));
   assert.match(out, />ИИ</);
   assert.match(out, /role="group" aria-label="Режим ИИ"/);
-  assert.match(out, /aria-pressed="true"[^>]*>Включён</, 'по умолчанию ИИ включён — прежняя работа не меняется');
+  assert.match(out, /aria-pressed="true"[^>]*>(?:<svg.*?<\/svg>)?Включён</, 'по умолчанию ИИ включён — прежняя работа не меняется');
   assert.match(out, /aria-pressed="false"[^>]*>Выключен</);
   assert.match(out, /Выключен — программа не обращается к языковым моделям/);
-  assert.match(out, /Без ИИ работает/);
-  assert.match(out, /аналитика и рейтинг тендера/);
-  assert.match(out, /С ИИ дополнительно/);
+  assert.match(out, /Работает без ИИ: аналитика и рейтинг тендера/, 'что работает без ИИ — в подсказке ⓘ, не абзацем');
+  assert.match(out, /С ИИ дополнительно: разбор документов/);
   assert.match(out, /Каждый платный запрос — только по вашей кнопке/);
 });
 

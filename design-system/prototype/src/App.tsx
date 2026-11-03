@@ -167,7 +167,6 @@ function Product() {
             setView(v);
           }}
           onNewTender={newTender}
-          onOpenChat={() => setChatOpen(true)}
           dark={dark}
           setDark={setDark}
           notices={[]}
@@ -178,7 +177,7 @@ function Product() {
 
         <main tabIndex={-1} className="min-w-0 flex-1 outline-none lg:overflow-y-auto">
           {/* Калькулятор — на всю ширину и высоту рабочей области (владелец, 03.11.2026); остальные экраны — до max-w-6xl. */}
-          <div className={view === 'calculator' ? 'flex min-h-full flex-col pt-2 pb-24 lg:min-h-[calc(100vh-2rem)] lg:pt-0 lg:pb-0' : 'mx-auto max-w-6xl pt-2 pb-24 lg:pt-0 lg:pb-4'}>
+          <div className={view === 'calculator' ? 'flex min-h-full flex-col pt-2 pb-40 lg:min-h-[calc(100vh-2rem)] lg:pt-0 lg:pb-0' : 'mx-auto max-w-6xl pt-2 pb-40 lg:pt-0 lg:pb-4'}>
             {view === 'tenders' && (
               <TendersDashboard
                 tenders={tenders}
@@ -399,11 +398,10 @@ function Workflow({
                 <span className="rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium text-foreground">{label}</span>
               </Tooltip>
             )}
-            {purchase.sample && <Badge>пример</Badge>}
+            {purchase.sample && !due && <Badge>пример</Badge>}
             {law && <span className="font-mono text-[11px] text-muted-foreground">{law}</span>}
           </div>
           <p className="mt-1.5 text-sm font-medium">{titleOf(purchase)}</p>
-          {hint && <p className="mt-1 text-[12px] text-muted-foreground">{hint}</p>}
         </div>
       }
       aside={

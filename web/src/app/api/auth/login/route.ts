@@ -5,7 +5,10 @@ import { clientIp, LOGIN_PER_IP, waitText } from "@/lib/rate-limit";
 import { sharedLimiter } from "@/lib/shared-limits";
 import { authenticateWithPassword } from "@/server/auth/credentials";
 import { isSameOrigin } from "@/server/auth/request";
-import { createSession, sessionCookieName, SESSION_MAX_AGE_SECONDS } from "@/server/auth/session";
+import { createSession } from "@/server/auth/session";
+import { sessionResponse } from "@/server/auth/session-response";
+import { signChallenge } from "@/server/auth/totp";
+import { isTwoFactorEnabled } from "@/server/auth/two-factor";
 import { getDb } from "@/server/db/client";
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -18,6 +21,9 @@ const attempts = sharedLimiter("login-ip", LOGIN_PER_IP, hitStoreSource);
  * Ответ на неверные данные одинаков для несуществующего пользователя и для неверного
  * пароля; попытки ограничены тем же счётчиком, что и у входа по общему паролю, а
  * неверный ввод дополнительно задерживается.
+ *
+ * Включён двухфакторный вход — сессия не создаётся: пароль верен, но ответ — 200 и подписанный
+ * «пропуск» (`challenge`) на 5 минут; сессию выдаёт только `/api/auth/login/2fa` после верного кода.
  */
 export async function POST(request: Request) {
   if (!isSameOrigin(request)) {
@@ -40,17 +46,10 @@ export async function POST(request: Request) {
     return new Response("Неверный email или пароль", { status: 401 });
   }
 
+  if (await isTwoFactorEnabled(db, user.userId)) {
+    return NextResponse.json({ twoFactor: true, challenge: signChallenge(user.userId) });
+  }
+
   const { token } = await createSession(db, { userId: user.userId });
-  const secure = new URL(request.url).protocol === "https:";
-  const response = new NextResponse(null, { status: 204 });
-  response.cookies.set({
-    name: sessionCookieName(secure),
-    value: token,
-    httpOnly: true,
-    sameSite: "lax",
-    secure,
-    path: "/",
-    maxAge: SESSION_MAX_AGE_SECONDS,
-  });
-  return response;
+  return sessionResponse(request, token);
 }
