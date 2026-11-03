@@ -327,6 +327,26 @@ select:not(:disabled),
   animation: fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* Проверка контрагента: мягкое «дыхание» световых пятен в шапке отчёта. */
+@keyframes cp-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-14px, 12px) scale(1.12); }
+}
+.cp-float {
+  animation: cp-float 9s ease-in-out infinite;
+}
+.cp-float-slow {
+  animation: cp-float 13s ease-in-out infinite reverse;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-tip,
+  .cp-float,
+  .cp-float-slow {
+    animation: none;
+  }
+}
+
 /* Робот ИИ-ассистента на кнопке чата (BotMark live): мягкое свечение по контуру, экран моргает, антенна мигает. */
 @keyframes bot-glow {
   0%, 100% { filter: drop-shadow(0 8px 12px rgba(79, 70, 229, 0.45)); }

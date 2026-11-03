@@ -1694,7 +1694,7 @@ test('проверка контрагента по ИНН: форма, ошиб�
   const full = renderToStaticMarkup(h(mod.CounterpartyCard, { ...props, inn: '1434031363', report }));
   const t = text(full);
   assert.match(t, /АО (?:"|&quot;)ДГК(?:"|&quot;)/);
-  assert.match(full, /bg-success\/10[^>]*>Действующее</, 'статус «Действующее» — зелёным');
+  assert.match(full, /data-tone=\"good\"[^>]*>(?:<[^>]+>)*Действующее</, 'статус «Действующее» — зелёным');
   assert.match(t, /ИНН 1434031363 · ОГРН 1051401746769 · КПП 272101001/);
   assert.match(t, /Возраст: зарегистрирована 19\.12\.2005, 20 лет/);
   assert.match(t, /Капитал: собственный капитал отрицательный на конец 2025 года/);
@@ -1717,7 +1717,7 @@ test('проверка контрагента по ИНН: форма, ошиб�
   assert.doesNotMatch(full, /Не всё получилось/);
 
   const bankrupt = renderToStaticMarkup(h(mod.CounterpartyCard, { ...props, report: { ...report, name: 'ООО "ВОЗРОЖДЕНИЕ ПЕТЕРБУРГА"', status: { text: 'Юридическое лицо признано несостоятельным (банкротом) и в отношении него открыто конкурсное производство', tone: 'danger' }, facts: [], statements: [] } }));
-  assert.match(bankrupt, /bg-danger\/10[^>]*>Юридическое лицо признано несостоятельным/, 'банкротство — красным, словами реестра');
+  assert.match(bankrupt, /data-tone=\"danger\"[^>]*>(?:<[^>]+>)*Юридическое лицо признано несостоятельным/, 'банкротство — красным, словами реестра');
   assert.doesNotMatch(bankrupt, /Бухгалтерская отчётность/, 'нет отчётности — таблицы нет');
 
   const partial = text(renderToStaticMarkup(h(mod.CounterpartyCard, { ...props, report: { ...report, sources: { egrul: ok, fedresurs: { ok: false, reason: 'Федресурс отказал в доступе (просит подождать)' }, bo: ok } } })));
