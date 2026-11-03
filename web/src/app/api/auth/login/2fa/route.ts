@@ -5,7 +5,7 @@ import { isSameOrigin } from "@/server/auth/request";
 import { createSession } from "@/server/auth/session";
 import { sessionResponse } from "@/server/auth/session-response";
 import { readChallenge } from "@/server/auth/totp";
-import { checkSecondFactor } from "@/server/auth/two-factor";
+import { lockedMessage, verifySecondFactor } from "@/server/auth/two-factor";
 import { getDb } from "@/server/db/client";
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -20,8 +20,8 @@ const tooMany = (later: number) =>
   });
 
 /**
- * Второй шаг входа: POST { challenge, code }. «Пропуск» выдан после верного пароля (`/api/auth/login`), код — из приложения-аутентификатора
- * или запасной. Каждая попытка (даже с неверным пропуском) идёт в счёт и по адресу, и по человеку: шесть цифр иначе подбираются.
+ * Второй шаг входа: POST { challenge, code }. «Пропуск» выдан после верного пароля (`/api/auth/login`), код — из приложения-аутентификатора,
+ * PIN из 4 цифр или запасной. Каждая попытка (даже с неверным пропуском) идёт в счёт и по адресу, и по человеку: шесть цифр иначе подбираются.
  */
 export async function POST(request: Request) {
   if (!isSameOrigin(request)) {
@@ -39,9 +39,13 @@ export async function POST(request: Request) {
   if (userWait) return tooMany(userWait);
 
   const db = getDb();
-  if (!(await checkSecondFactor(db, userId, body?.code))) {
+  const result = await verifySecondFactor(db, userId, body?.code);
+  if (typeof result === "object") {
+    return new Response(lockedMessage(result.locked), { status: 429, headers: { "Content-Type": "text/plain; charset=utf-8", "Retry-After": String(result.locked) } });
+  }
+  if (result !== "ok") {
     await wait(800);
-    return new Response("Код не подошёл. Введите новый код из приложения или запасной код.", { status: 401, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+    return new Response("Код не подошёл. Введите код ещё раз или запасной код.", { status: 401, headers: { "Content-Type": "text/plain; charset=utf-8" } });
   }
 
   const { token } = await createSession(db, { userId });

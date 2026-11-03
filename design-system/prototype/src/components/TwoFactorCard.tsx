@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { disableTwoFactor, enableTwoFactor, fetchTwoFactorStatus, renewRecoveryCodes, startTwoFactor } from '@/lib/auth-client';
+import { disableTwoFactor, enablePin, enableTwoFactor, fetchTwoFactorStatus, renewRecoveryCodes, startTwoFactor, type SecondFactorMethod } from '@/lib/auth-client';
 import { saveFile } from '@/lib/save-file';
 import { useAccount } from '../lib/account';
 import { Copy, Download, Loader2, ShieldCheck } from '../lib/icons';
@@ -8,9 +8,10 @@ import { PasswordInput } from './PasswordInput';
 import { QrCode } from './QrCode';
 import { Badge, Button, Card, fieldClass } from './ui';
 
-// «Настройки» → «Аккаунт» → двухфакторный вход. Кроме пароля при входе спрашивается шестизначный код из приложения-аутентификатора на телефоне
-// (Google Authenticator, Яндекс Ключ, Authy, 1Password). Порядок включения: «Включить» → отсканировать QR (или ввести ключ) → ввести первый код →
-// сохранить запасные коды (показываются один раз). Выключить можно только с паролем и кодом. Весь вид ниже — по состояниям; запросы — auth-client.
+// «Настройки» → «Аккаунт» → двухфакторный вход. Кроме пароля при входе спрашивается второй шаг, на выбор: шестизначный код из приложения-
+// аутентификатора (Google Authenticator, Яндекс Ключ, Authy, 1Password) или PIN из четырёх цифр (проще, но слабее: после 5 ошибок вход блокируется
+// на растущую паузу). Приложение: «Включить» → QR (или ключ) → первый код → запасные коды. PIN: «PIN-код» → PIN дважды и пароль → запасные коды.
+// Запасные коды показываются один раз. Выключить можно только с паролем и вторым шагом. Вид ниже — по состояниям; запросы — auth-client.
 
 const inputClass = fieldClass();
 
@@ -19,10 +20,11 @@ type View =
   | { name: 'error'; message: string }
   | { name: 'off' }
   | { name: 'setup'; secret: string; uri: string }
+  | { name: 'pin' }
   | { name: 'codes'; codes: string[]; renewed: boolean }
-  | { name: 'on'; left: number }
-  | { name: 'renew'; left: number }
-  | { name: 'disable'; left: number };
+  | { name: 'on'; left: number; method: SecondFactorMethod }
+  | { name: 'renew'; left: number; method: SecondFactorMethod }
+  | { name: 'disable'; left: number; method: SecondFactorMethod };
 
 /** Ключ для ручного ввода: группами по четыре знака, как его показывают приложения. */
 export const spacedSecret = (secret: string) => secret.match(/.{1,4}/g)?.join(' ') ?? secret;
@@ -43,7 +45,7 @@ function TwoFactorSection() {
 
   const load = () =>
     fetchTwoFactorStatus().then(
-      (s) => setView(s.enabled ? { name: 'on', left: s.recoveryLeft } : { name: 'off' }),
+      (s) => setView(s.enabled && s.method ? { name: 'on', left: s.recoveryLeft, method: s.method } : { name: 'off' }),
       (e: Error) => setView({ name: 'error', message: e.message }),
     );
   useEffect(() => {
@@ -87,13 +89,21 @@ function TwoFactorSection() {
         </div>
       )}
       {view.name === 'off' && (
-        <Button
-          disabled={busy}
-          onClick={() => run(startTwoFactor(), (s) => setView({ name: 'setup', secret: s.secret, uri: s.uri }))}
-        >
-          {busy && <Loader2 className="size-4 animate-spin" />}
-          Включить
-        </Button>
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={busy} onClick={() => run(startTwoFactor(), (s) => setView({ name: 'setup', secret: s.secret, uri: s.uri }))}>
+              {busy && <Loader2 className="size-4 animate-spin" />}
+              Включить через приложение
+            </Button>
+            <Button variant="secondary" disabled={busy} onClick={() => setView({ name: 'pin' })}>
+              PIN-код из 4 цифр
+            </Button>
+          </div>
+          <p className="text-[12px] text-muted-foreground">PIN проще, но слабее приложения: после 5 ошибок вход блокируется на растущую паузу.</p>
+        </div>
+      )}
+      {view.name === 'pin' && (
+        <PinSetup busy={busy} error={error} onCancel={cancel} onSubmit={(pin, password) => run(enablePin(pin, password), (codes) => setView({ name: 'codes', codes, renewed: false }))} />
       )}
       {view.name === 'setup' && (
         <TwoFactorSetup
@@ -109,13 +119,15 @@ function TwoFactorSection() {
       {view.name === 'on' && (
         <TwoFactorOn
           left={view.left}
-          onRenew={() => setView({ name: 'renew', left: view.left })}
-          onDisable={() => setView({ name: 'disable', left: view.left })}
+          method={view.method}
+          onRenew={() => setView({ name: 'renew', left: view.left, method: view.method })}
+          onDisable={() => setView({ name: 'disable', left: view.left, method: view.method })}
         />
       )}
       {view.name === 'renew' && (
         <CodeForm
-          label="Код из приложения"
+          label={view.method === 'pin' ? 'PIN-код' : 'Код из приложения'}
+          secret={view.method === 'pin'}
           hint="Прежние запасные коды перестанут работать."
           submit="Выпустить новые коды"
           busy={busy}
@@ -126,7 +138,8 @@ function TwoFactorSection() {
       )}
       {view.name === 'disable' && (
         <CodeForm
-          label="Код из приложения или запасной"
+          label={view.method === 'pin' ? 'PIN-код или запасной код' : 'Код из приложения или запасной'}
+          secret={view.method === 'pin'}
           hint="Нужны пароль и код: так защиту не снимет тот, кто просто сел за ваш компьютер."
           submit="Выключить"
           danger
@@ -142,11 +155,11 @@ function TwoFactorSection() {
 }
 
 /** Включено: сколько запасных кодов осталось, обновить их или выключить. */
-export function TwoFactorOn({ left, onRenew, onDisable }: { left: number; onRenew: () => void; onDisable: () => void }) {
+export function TwoFactorOn({ left, method = 'totp', onRenew, onDisable }: { left: number; method?: SecondFactorMethod; onRenew: () => void; onDisable: () => void }) {
   return (
     <div className="space-y-3">
       <p className="text-[13px]">
-        Запасных кодов: <b className="font-mono">{left}</b>
+        Способ: <b>{method === 'pin' ? 'PIN-код' : 'приложение'}</b> · запасных кодов: <b className="font-mono">{left}</b>
         {left <= 2 && <span className="text-warn-foreground"> — осталось мало, выпустите новые</span>}
       </p>
       <div className="flex flex-wrap gap-2">
@@ -158,6 +171,62 @@ export function TwoFactorOn({ left, onRenew, onDisable }: { left: number; onRene
         </Button>
       </div>
     </div>
+  );
+}
+
+/** Включение PIN: PIN дважды (скрытыми точками) и пароль. Слишком простые PIN (0000, 1234) сервер отклонит и объяснит. */
+export function PinSetup({ busy, error, onSubmit, onCancel }: { busy: boolean; error: string | null; onSubmit: (pin: string, password: string) => void; onCancel: () => void }) {
+  const [pin, setPin] = useState('');
+  const [again, setAgain] = useState('');
+  const [password, setPassword] = useState('');
+  const digits = (value: string) => value.replace(/\D/g, '').slice(0, 4);
+  const mismatch = again.length === 4 && pin !== again;
+  const ready = pin.length === 4 && pin === again && password.length > 0;
+  return (
+    <form
+      onSubmit={(e: FormEvent) => {
+        e.preventDefault();
+        if (!busy && ready) onSubmit(pin, password);
+      }}
+      className="max-w-sm space-y-3 border-t border-border pt-3"
+    >
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label htmlFor="tf-pin" className="mb-1 block text-[13px] font-medium">
+            PIN из 4 цифр
+          </label>
+          <input id="tf-pin" type="password" inputMode="numeric" autoComplete="off" maxLength={4} placeholder="••••" value={pin} onChange={(e) => setPin(digits(e.target.value))} className={`${inputClass} font-mono tracking-widest`} />
+        </div>
+        <div>
+          <label htmlFor="tf-pin-again" className="mb-1 block text-[13px] font-medium">
+            Ещё раз
+          </label>
+          <input id="tf-pin-again" type="password" inputMode="numeric" autoComplete="off" maxLength={4} placeholder="••••" value={again} onChange={(e) => setAgain(digits(e.target.value))} className={`${inputClass} font-mono tracking-widest`} />
+        </div>
+      </div>
+      {mismatch && (
+        <p role="alert" className="text-[13px] text-danger">
+          PIN-коды не совпадают.
+        </p>
+      )}
+      <div>
+        <label htmlFor="tf-pin-password" className="mb-1 block text-[13px] font-medium">
+          Пароль от аккаунта
+        </label>
+        <PasswordInput id="tf-pin-password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+        <p className="mt-1 text-[12px] text-muted-foreground">Пароль нужен, чтобы PIN не поставил посторонний.</p>
+      </div>
+      {error && <Notice tone="warn">{error}</Notice>}
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" disabled={busy || !ready}>
+          {busy && <Loader2 className="size-4 animate-spin" />}
+          Включить PIN
+        </Button>
+        <Button type="button" variant="secondary" onClick={onCancel}>
+          Отмена
+        </Button>
+      </div>
+    </form>
   );
 }
 
@@ -275,12 +344,15 @@ function CodeForm({
   submit,
   danger,
   withPassword,
+  secret,
   busy,
   error,
   onSubmit,
   onCancel,
 }: {
   label: string;
+  /** Вводится PIN: поле скрыто точками. */
+  secret?: boolean;
   hint: ReactNode;
   submit: string;
   danger?: boolean;
@@ -292,7 +364,7 @@ function CodeForm({
 }) {
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
-  const ready = code.trim().length >= 6 && (!withPassword || password.length > 0);
+  const ready = code.trim().length >= (secret ? 4 : 6) && (!withPassword || password.length > 0);
   return (
     <form
       onSubmit={(e) => {
@@ -316,7 +388,8 @@ function CodeForm({
         </label>
         <input
           id="tf-form-code"
-          autoComplete="one-time-code"
+          type={secret ? 'password' : 'text'}
+          autoComplete={secret ? 'off' : 'one-time-code'}
           spellCheck={false}
           maxLength={24}
           value={code}

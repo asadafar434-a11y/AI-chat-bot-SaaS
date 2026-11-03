@@ -1,7 +1,7 @@
 // Вход на экране: ссылка-приглашение, проверка «кто вошёл», вход, пароль по ссылке — запросы подменены, сервер не нужен — npm test.
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { acceptInvitation, authRouteOf, disableTwoFactor, enableTwoFactor, fetchSession, fetchTwoFactorStatus, loginWithCode, loginWithPassword, logout, renewRecoveryCodes, startTwoFactor, requestPasswordReset, resetPassword } from "./auth-client.ts";
+import { acceptInvitation, authRouteOf, disableTwoFactor, enablePin, enableTwoFactor, fetchSession, fetchTwoFactorStatus, loginWithCode, loginWithPassword, logout, renewRecoveryCodes, startTwoFactor, requestPasswordReset, resetPassword } from "./auth-client.ts";
 
 const realFetch = globalThis.fetch;
 afterEach(() => {
@@ -127,8 +127,10 @@ test("«забыли пароль»: почта уходит POST-запросо
 });
 
 test("двухфакторный вход: пароль принят, но нужен код — приходит пропуск; код уходит вместе с ним", async () => {
-  let calls = stub(() => Response.json({ twoFactor: true, challenge: "пропуск.подпись" }));
-  assert.deepEqual(await loginWithPassword("o@example.com", "пароль-для-теста"), { challenge: "пропуск.подпись" });
+  let calls = stub(() => Response.json({ twoFactor: true, method: "totp", challenge: "пропуск.подпись" }));
+  assert.deepEqual(await loginWithPassword("o@example.com", "пароль-для-теста"), { challenge: "пропуск.подпись", method: "totp" });
+  stub(() => Response.json({ twoFactor: true, method: "pin", challenge: "пропуск.подпись" }));
+  assert.deepEqual(await loginWithPassword("o@example.com", "пароль-для-теста"), { challenge: "пропуск.подпись", method: "pin" }, "включён PIN — экран спросит PIN");
 
   calls = stub(() => new Response(null, { status: 204 }));
   await loginWithCode("пропуск.подпись", "123456");
@@ -142,8 +144,12 @@ test("двухфакторный вход: пароль принят, но ну�
 });
 
 test("настройка второго шага: состояние, секрет, включение с запасными кодами, выключение, новые коды", async () => {
-  stub(() => Response.json({ enabled: true, recoveryLeft: 7 }));
-  assert.deepEqual(await fetchTwoFactorStatus(), { enabled: true, recoveryLeft: 7 });
+  stub(() => Response.json({ enabled: true, method: "totp", recoveryLeft: 7 }));
+  assert.deepEqual(await fetchTwoFactorStatus(), { enabled: true, method: "totp", recoveryLeft: 7 });
+  stub(() => Response.json({ enabled: true, method: "pin", recoveryLeft: 10 }));
+  assert.deepEqual(await fetchTwoFactorStatus(), { enabled: true, method: "pin", recoveryLeft: 10 });
+  stub(() => Response.json({ enabled: false, method: null, recoveryLeft: 0 }));
+  assert.deepEqual(await fetchTwoFactorStatus(), { enabled: false, method: null, recoveryLeft: 0 });
 
   let calls = stub(() => Response.json({ secret: "ABCDEFGH", uri: "otpauth://totp/x?secret=ABCDEFGH" }));
   assert.deepEqual(await startTwoFactor(), { secret: "ABCDEFGH", uri: "otpauth://totp/x?secret=ABCDEFGH" });
@@ -165,4 +171,15 @@ test("настройка второго шага: состояние, секре
 
   stub(() => text("Код не подошёл. Проверьте время на телефоне и введите новый код.", 400));
   await assert.rejects(enableTwoFactor("000000"), /Код не подошёл/);
+});
+
+test("PIN: включение — пароль и PIN уходят вместе, в ответе запасные коды; ошибка сервера показывается как есть", async () => {
+  const calls = stub(() => Response.json({ recoveryCodes: ["a-b", "c-d"] }));
+  assert.deepEqual(await enablePin("4827", "пароль-для-теста"), ["a-b", "c-d"]);
+  assert.equal(calls[0].url, "/api/auth/2fa");
+  assert.deepEqual(JSON.parse(String(calls[0].init?.body)), { action: "enable-pin", pin: "4827", password: "пароль-для-теста" });
+  stub(() => text("Слишком простой PIN: 0000, 1234 и им подобные угадывают первыми. Придумайте другой.", 400));
+  await assert.rejects(enablePin("1234", "пароль-для-теста"), /Слишком простой PIN/);
+  stub(() => text("Слишком много неверных PIN-кодов подряд. Подождите 15 мин — или войдите по запасному коду.", 429));
+  await assert.rejects(loginWithCode("пропуск.подпись", "0000"), /Подождите 15 мин/);
 });

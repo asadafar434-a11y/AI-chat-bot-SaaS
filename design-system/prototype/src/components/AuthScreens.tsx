@@ -101,44 +101,51 @@ export function LoginScreen({
 }
 
 /**
- * Второй шаг входа: пароль уже принят, нужен код. Обычно — шесть цифр из приложения-аутентификатора; если телефона под рукой нет, переключатель
- * «Запасной код» меняет поле на ввод кода с листка (его выдают при включении). Код не хранится нигде, кроме поля.
+ * Второй шаг входа: пароль уже принят, нужен код. Обычно — шесть цифр из приложения-аутентификатора или PIN из четырёх цифр (что человек
+ * включил); если телефона или PIN под рукой нет, переключатель «Запасной код» меняет поле на ввод кода с листка (его выдают при включении).
+ * Код не хранится нигде, кроме поля; PIN вводится скрытыми точками.
  */
 export function CodeScreen({
   onSubmit,
   onBack,
   busy,
   error,
+  method = 'totp',
 }: {
   onSubmit: (code: string) => void;
   onBack: () => void;
   busy: boolean;
   error: string | null;
+  method?: 'totp' | 'pin';
 }) {
   const [code, setCode] = useState('');
   const [recovery, setRecovery] = useState(false);
-  const ready = recovery ? code.replace(/[\s-]/g, '').length >= 16 : code.replace(/\D/g, '').length === 6;
+  const pin = method === 'pin' && !recovery;
+  const ready = recovery ? code.replace(/[\s-]/g, '').length >= 16 : code.replace(/\D/g, '').length === (pin ? 4 : 6);
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!busy && ready) onSubmit(code);
   };
+  const lead = recovery
+    ? 'Введите один из запасных кодов. Каждый срабатывает только один раз.'
+    : pin
+      ? 'Введите ваш PIN-код из четырёх цифр.'
+      : 'Откройте приложение-аутентификатор на телефоне и введите шесть цифр для «Тендекса».';
   return (
-    <Shell
-      title="Код подтверждения"
-      lead={recovery ? 'Введите один из запасных кодов. Каждый срабатывает только один раз.' : 'Откройте приложение-аутентификатор на телефоне и введите шесть цифр для «Тендекса».'}
-    >
+    <Shell title={pin ? 'PIN-код' : 'Код подтверждения'} lead={lead}>
       <form onSubmit={submit} className="space-y-3.5">
         <ErrorLine text={error} />
-        <Field id="auth-code" label={recovery ? 'Запасной код' : 'Код из приложения'}>
+        <Field id="auth-code" label={recovery ? 'Запасной код' : pin ? 'PIN-код' : 'Код из приложения'}>
           <input
             id="auth-code"
             autoFocus
             required
-            autoComplete="one-time-code"
+            type={pin ? 'password' : 'text'}
+            autoComplete={pin ? 'off' : 'one-time-code'}
             inputMode={recovery ? 'text' : 'numeric'}
             spellCheck={false}
-            maxLength={recovery ? 24 : 7}
-            placeholder={recovery ? 'xxxx-xxxx-xxxx-xxxx' : '000 000'}
+            maxLength={recovery ? 24 : pin ? 4 : 7}
+            placeholder={recovery ? 'xxxx-xxxx-xxxx-xxxx' : pin ? '••••' : '000 000'}
             value={code}
             onChange={(e) => setCode(e.target.value)}
             className={`${inputClass} font-mono tracking-widest`}
@@ -153,7 +160,7 @@ export function CodeScreen({
             }}
             className="rounded text-[13px] text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
           >
-            {recovery ? 'Код из приложения' : 'Нет телефона? Запасной код'}
+            {recovery ? (method === 'pin' ? 'Ввести PIN-код' : 'Код из приложения') : method === 'pin' ? 'Забыли PIN? Запасной код' : 'Нет телефона? Запасной код'}
           </button>
         </div>
         <div className="flex gap-2">

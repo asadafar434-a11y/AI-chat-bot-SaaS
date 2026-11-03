@@ -4,7 +4,7 @@ import { sharedLimiter } from "@/lib/shared-limits";
 import { AuthError } from "@/server/auth/errors";
 import { requireSession } from "@/server/auth/guards";
 import { isSameOrigin } from "@/server/auth/request";
-import { beginSetup, confirmSetup, disableTwoFactor, renewRecoveryCodes, twoFactorStatus } from "@/server/auth/two-factor";
+import { beginSetup, confirmSetup, disableTwoFactor, enablePin, renewRecoveryCodes, twoFactorStatus } from "@/server/auth/two-factor";
 import { getDb } from "@/server/db/client";
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -34,7 +34,8 @@ export async function GET() {
  * Управление вошедшего: POST { action }
  *  - "setup" — выдать секрет и ссылку для приложения (вход пока не меняется);
  *  - "enable", code — подтвердить первым кодом: включается, в ответе запасные коды (показываются один раз);
- *  - "disable", password, code — выключить (нужны и пароль, и код);
+ *  - "enable-pin", pin, password — включить PIN из 4 цифр вместо приложения (нужен пароль; в ответе запасные коды);
+ *  - "disable", password, code — выключить (нужны и пароль, и код, PIN или запасной код);
  *  - "recovery", code — выпустить новые запасные коды вместо прежних.
  * Неверные коды считаются в тот же счётчик, что и при входе.
  */
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
   const ipWait = await perIp(clientIp(request.headers.get("x-forwarded-for")));
   if (ipWait) return plain(`Слишком много попыток — попробуйте ${waitText(ipWait)}.`, 429, { "Retry-After": String(ipWait) });
 
-  const body = (await request.json().catch(() => null)) as { action?: unknown; code?: unknown; password?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as { action?: unknown; code?: unknown; password?: unknown; pin?: unknown } | null;
   const db = getDb();
   try {
     if (body?.action === "setup") {
@@ -57,6 +58,9 @@ export async function POST(request: Request) {
 
     if (body?.action === "enable") {
       return Response.json({ recoveryCodes: await confirmSetup(db, who.userId, body.code) }, { headers: { "Cache-Control": "no-store" } });
+    }
+    if (body?.action === "enable-pin") {
+      return Response.json({ recoveryCodes: await enablePin(db, who.userId, { pin: body.pin, password: body.password }) }, { headers: { "Cache-Control": "no-store" } });
     }
     if (body?.action === "disable") {
       await disableTwoFactor(db, who.userId, { password: body.password, code: body.code });

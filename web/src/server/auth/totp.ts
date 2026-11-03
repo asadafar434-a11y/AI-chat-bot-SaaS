@@ -157,6 +157,42 @@ export function looksLikeRecoveryCode(input: unknown): boolean {
   return /^[a-z0-9]{16}$/.test(normalizeCode(input));
 }
 
+// ── PIN-код ────────────────────────────────────────────────────────────────────────────────────
+
+/** Только четыре цифры; всё остальное — не PIN. */
+export function normalizePin(input: unknown): string | null {
+  const pin = typeof input === "string" ? input.trim() : "";
+  return /^\d{4}$/.test(pin) ? pin : null;
+}
+
+/** Слишком простые PIN (0000, 7777, 1234, 4321, 6789): их угадывают первыми. */
+export function isWeakPin(pin: string): boolean {
+  const digits = [...pin].map(Number);
+  const step = digits[1] - digits[0];
+  return digits.every((d, i) => i === 0 || d - digits[i - 1] === step) && Math.abs(step) <= 1;
+}
+
+/**
+ * Отпечаток PIN: HMAC с ключом сервера и солью человека. Без ключа из AUTH_SECRET 10 000 вариантов по утёкшей базе не перебрать:
+ * простой хеш четырёх цифр вскрывается за долю секунды.
+ */
+export function pinFingerprint(pin: string, salt: string, authSecret?: string): string {
+  return createHmac("sha256", masterKey(authSecret)).update(`pin:${salt}:${pin}`).digest("hex");
+}
+
+export function newPinHash(pin: string, authSecret?: string): string {
+  const salt = randomBytes(8).toString("hex");
+  return `v1.${salt}.${pinFingerprint(pin, salt, authSecret)}`;
+}
+
+export function pinMatches(pin: string, stored: string, authSecret?: string): boolean {
+  const [version, salt, hash] = stored.split(".");
+  if (version !== "v1" || !salt || !hash) return false;
+  const expected = Buffer.from(pinFingerprint(pin, salt, authSecret));
+  const given = Buffer.from(hash);
+  return expected.length === given.length && timingSafeEqual(expected, given);
+}
+
 // ── «Пропуск» между паролем и кодом ─────────────────────────────────────────────────────────────
 
 /** Подписанный пропуск: пароль верен, остался код. Сам по себе вход не даёт и живёт 5 минут. */

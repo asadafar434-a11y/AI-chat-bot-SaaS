@@ -24,8 +24,8 @@ function ServerAuthGate({ children }: { children: ReactNode }) {
   // «Забыли пароль»: экран ввода почты и ответ сервера (отправляются ли письма).
   const [forgot, setForgot] = useState(false);
   const [resetSent, setResetSent] = useState<{ mail: boolean } | null>(null);
-  // Пароль принят, но включён второй шаг: пропуск от сервера на 5 минут, дальше нужен код.
-  const [challenge, setChallenge] = useState<string | null>(null);
+  // Пароль принят, но включён второй шаг: пропуск от сервера на 5 минут и способ (приложение или PIN), дальше нужен код.
+  const [challenge, setChallenge] = useState<{ token: string; method: 'totp' | 'pin' } | null>(null);
 
   const check = useCallback(async () => {
     try {
@@ -141,6 +141,7 @@ function ServerAuthGate({ children }: { children: ReactNode }) {
   if (challenge) {
     return (
       <CodeScreen
+        method={challenge.method}
         busy={busy}
         error={error}
         onBack={() => {
@@ -150,7 +151,7 @@ function ServerAuthGate({ children }: { children: ReactNode }) {
         onSubmit={(code) => {
           setBusy(true);
           setError(null);
-          loginWithCode(challenge, code).then(enter, (e: Error) => setError(e.message)).finally(() => setBusy(false));
+          loginWithCode(challenge.token, code).then(enter, (e: Error) => setError(e.message)).finally(() => setBusy(false));
         }}
       />
     );
@@ -170,7 +171,7 @@ function ServerAuthGate({ children }: { children: ReactNode }) {
         setBusy(true);
         setError(null);
         loginWithPassword(email, password).then(
-          (next) => (next ? (setNotice(null), setChallenge(next.challenge)) : enter()),
+          (next) => (next ? (setNotice(null), setChallenge({ token: next.challenge, method: next.method })) : enter()),
           (e: Error) => setError(e.message),
         ).finally(() => setBusy(false));
       }}

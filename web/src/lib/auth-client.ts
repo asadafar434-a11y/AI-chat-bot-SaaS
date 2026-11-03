@@ -37,22 +37,24 @@ async function expectOk(res: Response, fallback: string): Promise<void> {
 }
 
 /**
- * Вход по почте и паролю. Включён второй шаг — сервер пароль принял, но сессию не выдал: возвращается `{ challenge }` (пропуск на 5 минут),
- * дальше нужен код (`loginWithCode`). `null` — вход выполнен.
+ * Вход по почте и паролю. Включён второй шаг — сервер пароль принял, но сессию не выдал: возвращается `{ challenge, method }` (пропуск на
+ * 5 минут и способ: код приложения или PIN), дальше нужен код (`loginWithCode`). `null` — вход выполнен.
  */
-export async function loginWithPassword(email: string, password: string): Promise<{ challenge: string } | null> {
+export type SecondFactorMethod = "totp" | "pin";
+
+export async function loginWithPassword(email: string, password: string): Promise<{ challenge: string; method: SecondFactorMethod } | null> {
   try {
     const res = await fetch("/api/auth/login", json({ email, password }));
     await expectOk(res, "Не получилось войти.");
     if (res.status === 204) return null;
-    const data = (await res.json().catch(() => null)) as { twoFactor?: unknown; challenge?: unknown } | null;
-    return data?.twoFactor === true && typeof data.challenge === "string" ? { challenge: data.challenge } : null;
+    const data = (await res.json().catch(() => null)) as { twoFactor?: unknown; challenge?: unknown; method?: unknown } | null;
+    return data?.twoFactor === true && typeof data.challenge === "string" ? { challenge: data.challenge, method: data.method === "pin" ? "pin" : "totp" } : null;
   } catch (error) {
     throw new Error(errorMessage(error, "Не получилось войти."));
   }
 }
 
-/** Второй шаг входа: код из приложения-аутентификатора или запасной код. */
+/** Второй шаг входа: код из приложения-аутентификатора, PIN или запасной код. */
 export async function loginWithCode(challenge: string, code: string): Promise<void> {
   try {
     await expectOk(await fetch("/api/auth/login/2fa", json({ challenge, code })), "Не получилось войти.");
@@ -61,7 +63,7 @@ export async function loginWithCode(challenge: string, code: string): Promise<vo
   }
 }
 
-export type TwoFactorStatus = { enabled: boolean; recoveryLeft: number };
+export type TwoFactorStatus = { enabled: boolean; method: SecondFactorMethod | null; recoveryLeft: number };
 
 async function twoFactor<T>(body: unknown, fallback: string, read: (data: unknown) => T): Promise<T> {
   try {
@@ -83,8 +85,9 @@ export async function fetchTwoFactorStatus(): Promise<TwoFactorStatus> {
   try {
     const res = await fetch("/api/auth/2fa", { headers: { Accept: "application/json" }, cache: "no-store" });
     await expectOk(res, "Не удалось узнать состояние двухфакторного входа.");
-    const data = (await res.json().catch(() => null)) as { enabled?: unknown; recoveryLeft?: unknown } | null;
-    return { enabled: data?.enabled === true, recoveryLeft: typeof data?.recoveryLeft === "number" ? data.recoveryLeft : 0 };
+    const data = (await res.json().catch(() => null)) as { enabled?: unknown; method?: unknown; recoveryLeft?: unknown } | null;
+    const method: SecondFactorMethod | null = data?.enabled === true ? (data.method === "pin" ? "pin" : "totp") : null;
+    return { enabled: data?.enabled === true, method, recoveryLeft: typeof data?.recoveryLeft === "number" ? data.recoveryLeft : 0 };
   } catch (error) {
     throw new Error(errorMessage(error, "Не удалось узнать состояние двухфакторного входа."));
   }
@@ -101,10 +104,13 @@ export const startTwoFactor = () =>
 /** Шаг 2: первый код из приложения включает защиту; в ответе запасные коды — показываются один раз. */
 export const enableTwoFactor = (code: string) => twoFactor({ action: "enable", code }, "Не получилось включить.", codesOf);
 
-/** Выключить: нужны пароль и код (приложения или запасной). */
+/** Включить PIN из 4 цифр вместо приложения: нужен пароль; в ответе запасные коды — показываются один раз. */
+export const enablePin = (pin: string, password: string) => twoFactor({ action: "enable-pin", pin, password }, "Не получилось включить PIN.", codesOf);
+
+/** Выключить: нужны пароль и второй фактор (код приложения, PIN или запасной код). */
 export const disableTwoFactor = (password: string, code: string) => twoFactor({ action: "disable", password, code }, "Не получилось выключить.", () => undefined);
 
-/** Новые запасные коды вместо прежних; нужен код из приложения. */
+/** Новые запасные коды вместо прежних; нужен код из приложения или PIN. */
 export const renewRecoveryCodes = (code: string) => twoFactor({ action: "recovery", code }, "Не получилось выпустить коды.", codesOf);
 
 export async function logout(): Promise<void> {
