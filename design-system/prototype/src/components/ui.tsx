@@ -476,6 +476,29 @@ export function Tabs({
   className?: string;
 }) {
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const list = useRef<HTMLDivElement>(null);
+  // Край размывается только там, где ряд правда можно прокрутить: слева — если уже прокрутили, справа — если дальше есть вкладки.
+  const [edges, setEdges] = useState({ start: false, end: false });
+
+  useLayoutEffect(() => {
+    const el = list.current;
+    if (!el) return;
+    const update = () => {
+      const start = el.scrollLeft > 1;
+      const end = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+      setEdges((prev) => (prev.start === start && prev.end === end ? prev : { start, end }));
+    };
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null;
+    observer?.observe(el);
+    return () => {
+      el.removeEventListener('scroll', update);
+      observer?.disconnect();
+    };
+  }, [items.length]);
+
+  const fade = `linear-gradient(to right, ${edges.start ? 'transparent 0, black 14px' : 'black 0'}, ${edges.end ? 'black calc(100% - 14px), transparent 100%' : 'black 100%'})`;
 
   const go = (key: string) => {
     onChange(key);
@@ -502,14 +525,11 @@ export function Tabs({
 
   return (
     <div
+      ref={list}
       role="tablist"
       onKeyDown={onKeyDown}
-      className={cx(
-        'inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-lg border border-border bg-surface-sunken p-1',
-        // Край размыт всегда — честный намёк, что ряд можно прокрутить, даже когда вкладок не видно за кадром не очень очевидно (на телефоне).
-        '[mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)]',
-        className,
-      )}
+      style={edges.start || edges.end ? { maskImage: fade, WebkitMaskImage: fade } : undefined}
+      className={cx('inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-lg border border-border bg-surface-sunken p-1', className)}
     >
       {items.map((item) => {
         const selected = item.key === active;

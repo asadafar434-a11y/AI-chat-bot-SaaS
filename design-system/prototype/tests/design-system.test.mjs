@@ -158,3 +158,14 @@ test('блоки экрана закупки в «Аналитике»: сумм
   assert.equal((execution.match(/<thead className="bg-surface-sunken">/g) ?? []).length, 4, 'у всех четырёх таблиц шапка — «колодец»');
   assert.match(read('CrewCost.tsx'), /<thead className="bg-surface-sunken text-muted-foreground">/);
 });
+
+test('вкладки: край размывается только там, где ряд правда прокручивается (не всегда, как раньше)', () => {
+  const ui = readFileSync(path.join(root, 'src/components/ui.tsx'), 'utf8');
+  assert.doesNotMatch(ui, /\[mask-image:linear-gradient/, 'постоянной маски в классах нет');
+  assert.match(ui, /edges\.start \? 'transparent 0, black 14px'/);
+  assert.match(ui, /edges\.end \? 'black calc\(100% - 14px\), transparent 100%'/);
+  assert.match(ui, /style=\{edges\.start \|\| edges\.end \? \{ maskImage: fade, WebkitMaskImage: fade \} : undefined\}/, 'без прокрутки маски нет совсем');
+  const { Tabs } = mods.ui;
+  const out = html(h(Tabs, { idPrefix: 't', active: 'a', onChange() {}, items: [{ key: 'a', label: 'Реквизиты' }, { key: 'b', label: 'Опыт' }] }));
+  assert.doesNotMatch(out, /mask-image/, 'при первой отрисовке (без замера) размытия нет');
+});
