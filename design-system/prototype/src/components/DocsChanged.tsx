@@ -12,7 +12,7 @@ export function DocsChanged({ changes, onConfirm }: { changes: DocChanges; onCon
         <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warn" />
         <div className="min-w-0">
           <p className="text-sm font-medium">Документы закупки изменились после составления ТП</p>
-          <p className="mt-0.5 break-words text-[13px] text-muted-foreground">
+          <p className="mt-0.5 break-words text-ui text-muted-foreground">
             {changesText(changes)}. Проверьте, что ТП и документы заявки всё ещё соответствуют извещению и ТЗ: если заказчик
             изменил требования, поправьте жёлтые места. Пока вы не подтвердите, закупка не считается готовой.
           </p>

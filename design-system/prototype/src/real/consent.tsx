@@ -49,7 +49,7 @@ export function ConsentGate({ children }: { children: ReactNode }) {
               два согласия.
             </p>
           </div>
-          <div className="space-y-3 text-[13px] leading-snug text-muted-foreground">
+          <div className="space-y-3 text-ui leading-snug text-muted-foreground">
             <Checkbox checked={processing} onChange={setProcessing}>
               Даю {legal('/consent', 'согласие на обработку персональных данных')}
             </Checkbox>
@@ -61,7 +61,7 @@ export function ConsentGate({ children }: { children: ReactNode }) {
           <Button type="submit" className="h-10 w-full" disabled={!processing || !transfer}>
             Продолжить
           </Button>
-          <p className="text-[11px] leading-snug text-muted-foreground">
+          <p className="text-micro leading-snug text-muted-foreground">
             Продолжая, вы принимаете {legal('/terms', 'условия использования')}. Как сервис обращается с данными — в{' '}
             {legal('/privacy', 'политике')}. Владелец сервиса — на странице {legal('/contacts', '«Контакты»')}.
           </p>

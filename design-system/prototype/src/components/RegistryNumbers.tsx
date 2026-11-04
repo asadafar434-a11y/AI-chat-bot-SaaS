@@ -129,10 +129,10 @@ function SignalList({ view }: { view: CandidateView }) {
         if (!list.length) return null;
         return (
           <div key={g.verdict}>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{g.title}</p>
+            <p className="text-micro font-medium uppercase tracking-wide text-muted-foreground">{g.title}</p>
             <ul className="mt-1 space-y-1">
               {list.map((s, i) => (
-                <li key={i} className="flex items-start gap-1.5 text-[12px]">
+                <li key={i} className="flex items-start gap-1.5 text-caption">
                   {g.icon}
                   <span>
                     {s.text}
@@ -216,7 +216,7 @@ function CandidateRow({
               </Badge>
             )}
           </div>
-          <p className="mt-1 text-[13px] font-medium">{view.productName}</p>
+          <p className="mt-1 text-ui font-medium">{view.productName}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Button size="sm" variant={proposed || autoPicked ? 'primary' : 'secondary'} disabled={!can || (selected && !autoPicked)} onClick={onSelect} title={blockReason || undefined}>
@@ -224,7 +224,7 @@ function CandidateRow({
           </Button>
         </div>
       </div>
-      <dl className="grid gap-x-4 gap-y-1 border-t border-border px-3 py-2 text-[12px] sm:grid-cols-2">
+      <dl className="grid gap-x-4 gap-y-1 border-t border-border px-3 py-2 text-caption sm:grid-cols-2">
         <div>
           <dt className="text-muted-foreground">Производитель</dt>
           <dd>
@@ -264,13 +264,13 @@ function CandidateRow({
         </div>
       </dl>
       {blockReason && (
-        <p className="flex items-start gap-1.5 border-t border-border bg-danger/5 px-3 py-1.5 text-[12px] text-danger">
+        <p className="flex items-start gap-1.5 border-t border-border bg-danger/5 px-3 py-1.5 text-caption text-danger">
           <XCircle className="mt-0.5 size-3.5 shrink-0" />
           {blockReason}. Выбрать эту запись нельзя.
         </p>
       )}
       {view.activity.warnings.map((w, i) => (
-        <p key={i} className="flex items-start gap-1.5 border-t border-border bg-warn-surface px-3 py-1.5 text-[12px] text-warn-foreground">
+        <p key={i} className="flex items-start gap-1.5 border-t border-border bg-warn-surface px-3 py-1.5 text-caption text-warn-foreground">
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
           {w}
         </p>
@@ -279,7 +279,7 @@ function CandidateRow({
         type="button"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-1.5 border-t border-border px-3 py-1.5 text-left text-[12px] text-muted-foreground transition-colors hover:bg-secondary/50"
+        className="flex w-full items-center gap-1.5 border-t border-border px-3 py-1.5 text-left text-caption text-muted-foreground transition-colors hover:bg-secondary/50"
       >
         <ChevronDown className={cx('size-3.5 transition-transform', open && 'rotate-180')} />
         {open ? 'Скрыть основания сопоставления' : 'Показать основания сопоставления'}
@@ -287,12 +287,12 @@ function CandidateRow({
       {open && (
         <div className="space-y-3 border-t border-border bg-secondary/30 px-3 py-3">
           {view.conformity && (
-            <p className="text-[12px]">
+            <p className="text-caption">
               <span className="font-medium">О соответствии (из реестра):</span> {view.conformity.length > 600 ? `${view.conformity.slice(0, 600)}…` : view.conformity}
             </p>
           )}
           <SignalList view={view} />
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-micro text-muted-foreground">
             Внесена в реестр: {dateRu(view.addedAt)}. Оснований у записи: {view.basisCount}
             {view.validUntilMin && view.validUntilMin !== view.validUntil && ` (сроки от ${dateRu(view.validUntilMin)} до ${dateRu(view.validUntil)})`}. ТН ВЭД: {view.tnved || '—'}.
           </p>
@@ -324,7 +324,7 @@ function CardForm({ card, onSave, busy }: { card: ProductCard; onSave: (edits: C
     const id = `rg-${card.key}-${f.key}`;
     return (
       <div key={f.key} className={f.wide ? 'sm:col-span-2' : undefined}>
-        <label htmlFor={id} className="mb-1 block text-[12px] font-medium">
+        <label htmlFor={id} className="mb-1 block text-caption font-medium">
           {f.label}
         </label>
         <input
@@ -340,13 +340,13 @@ function CardForm({ card, onSave, busy }: { card: ProductCard; onSave: (edits: C
   };
   return (
     <div className="space-y-3">
-      <p className="text-[12px] text-muted-foreground">
+      <p className="text-caption text-muted-foreground">
         Наименование «{card.name}» взято из ТЗ — это то, что хочет заказчик, а не доказательство, какой товар поставите вы. Чтобы запись реестра можно было
         подтвердить, укажите производителя и модель вашего товара.
       </p>
       <div className="grid gap-3 sm:grid-cols-2">{FIELDS.filter((f) => MAIN_FIELDS.includes(f.key)).map(fieldInput)}</div>
       {/* Остальные поля нужны не всем: сверяют запись точнее, но без них поиск идёт. Заполнено хоть одно — блок раскрыт, чтобы введённое не пряталось. */}
-      <details className="text-[12px]" open={MORE_FIELDS.some((k) => (draft[k] ?? '').trim() !== '')}>
+      <details className="text-caption" open={MORE_FIELDS.some((k) => (draft[k] ?? '').trim() !== '')}>
         <summary className="cursor-pointer text-muted-foreground">Ещё поля: ИНН, артикул, ТУ или ГОСТ, реестровый номер, характеристики</summary>
         <div className="mt-2 grid gap-3 sm:grid-cols-2">{FIELDS.filter((f) => !MAIN_FIELDS.includes(f.key)).map(fieldInput)}</div>
       </details>
@@ -378,7 +378,7 @@ function NumberPicker({ position, onSelect, onSkip }: { position: PositionView; 
   }
   if (position.status === 'searching' && !current) {
     return (
-      <p className="flex items-center gap-1.5 border-t border-border px-3 py-2 text-[12px] text-muted-foreground">
+      <p className="flex items-center gap-1.5 border-t border-border px-3 py-2 text-caption text-muted-foreground">
         <Loader2 className="size-3.5 animate-spin" />
         Ищем варианты номера…
       </p>
@@ -390,12 +390,12 @@ function NumberPicker({ position, onSelect, onSkip }: { position: PositionView; 
   return (
     <div className={cx('space-y-2 border-t px-3 py-2.5', unverified ? 'border-warn/50 bg-warn-surface' : 'border-border')}>
       {choosing && (
-        <p className="text-[12px] text-muted-foreground">
+        <p className="text-caption text-muted-foreground">
           Номер сам не подставлен: совпадения по названию недостаточно, чтобы быть уверенным. Выберите подходящую запись из списка — номер пойдёт в заявку.
         </p>
       )}
       {unverified && (
-        <p className="flex items-start gap-1.5 text-[12px] font-medium text-warn-foreground">
+        <p className="flex items-start gap-1.5 text-caption font-medium text-warn-foreground">
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
           <span>
             Проверьте обязательно: номер подобран автоматически{many ? `, вариантов — ${current?.options ?? found.length}` : ''}. Сверьте с вашим товаром и выберите нужный в списке — пока вы не
@@ -404,13 +404,13 @@ function NumberPicker({ position, onSelect, onSkip }: { position: PositionView; 
         </p>
       )}
       {position.skipped && !current && (
-        <p className="text-[12px] text-muted-foreground">
+        <p className="text-caption text-muted-foreground">
           Вы отметили, что товара нет в реестрах, — номер в заявку не пойдёт. Если он всё-таки есть — выберите его в списке. {BAN_DECLARATION_SHORT}
         </p>
       )}
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-0 flex-1">
-          <label htmlFor={`rg-pick-${card.key}`} className="mb-1 block text-[12px] font-medium">
+          <label htmlFor={`rg-pick-${card.key}`} className="mb-1 block text-caption font-medium">
             Номер реестровой записи{items.length > 1 ? ` (вариантов: ${items.length})` : ''}
           </label>
           <select
@@ -470,8 +470,8 @@ function PositionCard({
         onClick={onToggle}
         className="flex w-full flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-2.5 text-left transition-colors hover:bg-secondary/50"
       >
-        <span className="font-mono text-[11px] text-muted-foreground">{index + 1}</span>
-        <span className="min-w-0 flex-1 text-[13px] font-medium">
+        <span className="font-mono text-micro text-muted-foreground">{index + 1}</span>
+        <span className="min-w-0 flex-1 text-ui font-medium">
           {card.name}
           {card.quantity && <span className="ml-1.5 font-normal text-muted-foreground">· {card.quantity}</span>}
         </span>
@@ -500,7 +500,7 @@ function PositionCard({
       {open && (
         <div className="space-y-4 border-t border-border px-3 py-3">
           {position.error && (
-            <p role="alert" className="rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-[12px] text-danger">
+            <p role="alert" className="rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-caption text-danger">
               {position.error}
             </p>
           )}
@@ -518,15 +518,15 @@ function PositionCard({
                 <section aria-label="Результат поиска" className="space-y-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge status={decision.status} />
-                    {decision.proposed && <span className="text-[12px]">Предложена запись № {decision.proposed}</span>}
+                    {decision.proposed && <span className="text-caption">Предложена запись № {decision.proposed}</span>}
                   </div>
                   <ul className="space-y-1">
                     {decision.reasons.map((r, i) => (
-                      <li key={i} className="text-[12px]">{r}</li>
+                      <li key={i} className="text-caption">{r}</li>
                     ))}
                   </ul>
                   {decision.missing.length > 0 && (
-                    <div className="rounded-md border border-warn/40 bg-warn-surface px-3 py-2 text-[12px] text-warn-foreground">
+                    <div className="rounded-md border border-warn/40 bg-warn-surface px-3 py-2 text-caption text-warn-foreground">
                       <p className="font-medium">Чего не хватает, чтобы подтвердить запись:</p>
                       <ul className="mt-1 list-disc pl-4">
                         {decision.missing.map((m) => (
@@ -536,11 +536,11 @@ function PositionCard({
                     </div>
                   )}
                   {decision.differences.length > 0 && (
-                    <p className="text-[12px] text-muted-foreground">Найденные записи различаются по: {decision.differences.join(', ')}.</p>
+                    <p className="text-caption text-muted-foreground">Найденные записи различаются по: {decision.differences.join(', ')}.</p>
                   )}
                   {decision.candidates.length > 0 && (
                     <>
-                      <p className="text-[12px] text-muted-foreground">
+                      <p className="text-caption text-muted-foreground">
                         Показано записей: {decision.candidates.length}
                         {decision.matchedTotal > decision.candidates.length && ` из ${decision.matchedTotal}`}. Название лишь помогает найти кандидатов — выбор делается по производителю, модели и ТУ.
                       </p>
@@ -558,14 +558,14 @@ function PositionCard({
                         ))}
                       </ul>
                       <div>
-                        <label htmlFor={`rg-note-${card.key}`} className="mb-1 block text-[12px] font-medium">
+                        <label htmlFor={`rg-note-${card.key}`} className="mb-1 block text-caption font-medium">
                           Почему выбрали эту запись (необязательно, сохранится в истории)
                         </label>
                         <input id={`rg-note-${card.key}`} value={note} onChange={(e) => setNote(e.target.value)} className={inputClass} autoComplete="off" />
                       </div>
                     </>
                   )}
-                  <details className="text-[12px]">
+                  <details className="text-caption">
                     <summary className="cursor-pointer text-muted-foreground">Что и где искали, на каких допущениях</summary>
                     <ul className="mt-1.5 space-y-0.5 text-muted-foreground">
                       {decision.search.filters.map((f, i) => (
@@ -584,14 +584,14 @@ function PositionCard({
               )}
             </>
           ) : (
-            <p className="text-[12px] text-muted-foreground">
+            <p className="text-caption text-muted-foreground">
               {position.status === 'unsupported_registry' && 'Для этой закупки нужен реестр, выгрузки которого в системе нет: поиск не выполняется.'}
             </p>
           )}
 
           {choice && (
             <section aria-label="Выбранная запись" className="space-y-2 rounded-lg border border-border bg-secondary/30 px-3 py-2.5">
-              <p className="text-[13px] font-medium">
+              <p className="text-ui font-medium">
                 {autoPicked ? 'Подобрана запись' : 'Выбрана запись'} № {choice.registryNumber} ({REGISTRY_SHORT[choice.registryKind]}) —{' '}
                 {choice.basis === 'auto_picked'
                   ? 'подобрана автоматически, ждёт вашей проверки'
@@ -599,26 +599,26 @@ function PositionCard({
                     ? 'система доказала совпадение, вы подтвердили'
                     : 'выбор участника: объективных подтверждений недостаточно'}
               </p>
-              <p className="text-[12px] text-muted-foreground">
+              <p className="text-caption text-muted-foreground">
                 {choice.record.enterpriseName} · {choice.record.productName}
                 {choice.confirmedAt ? ` · подтверждено ${instantRu(choice.confirmedAt)}` : ''}
                 {choice.note && ` · «${choice.note}»`}
               </p>
-              <p className="text-[12px] text-muted-foreground">
+              <p className="text-caption text-muted-foreground">
                 Из реестра: {scoreText(choice.record.points, choice.record.percent) ?? 'баллы и процентный показатель в записи не указаны'}.
               </p>
               {position.autofill.ok ? (
                 position.autofill.unverified ? (
-                  <p className="flex items-start gap-1.5 text-[12px] text-warn-foreground">
+                  <p className="flex items-start gap-1.5 text-caption text-warn-foreground">
                     <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />В заявку будет вписано, выделено жёлтым и с пометкой «ПРОВЕРЬТЕ»: {position.autofill.line}
                   </p>
                 ) : (
-                  <p className="flex items-start gap-1.5 text-[12px] text-success">
+                  <p className="flex items-start gap-1.5 text-caption text-success">
                     <CheckCircle2 className="mt-0.5 size-3.5 shrink-0" />В заявку будет вписано: {position.autofill.line}
                   </p>
                 )
               ) : (
-                <p className="flex items-start gap-1.5 text-[12px] text-warn-foreground">
+                <p className="flex items-start gap-1.5 text-caption text-warn-foreground">
                   <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
                   Номер в заявку не вписывается: {position.autofill.reason}.
                 </p>
@@ -661,7 +661,7 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
           {demand.status === 'unclear' && <Badge tone="warn">Требуется уточнение реестра</Badge>}
           {demand.status === 'none' && <Badge tone="neutral">В документах о номере не сказано</Badge>}
           {positions.length > 0 && (
-            <span className="font-mono text-[11px] text-muted-foreground">в заявку попадёт номеров: {withNumber} из {positions.length}</span>
+            <span className="font-mono text-micro text-muted-foreground">в заявку попадёт номеров: {withNumber} из {positions.length}</span>
           )}
           {unverifiedCount > 0 && (
             <Badge tone="warn">
@@ -674,7 +674,7 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
 
       <div className="space-y-4 px-4 py-3">
         {unverifiedCount > 0 && (
-          <section aria-label="Нужна проверка" className="flex items-start gap-2 rounded-lg border border-warn/50 bg-warn-surface px-3 py-2.5 text-[13px] text-warn-foreground">
+          <section aria-label="Нужна проверка" className="flex items-start gap-2 rounded-lg border border-warn/50 bg-warn-surface px-3 py-2.5 text-ui text-warn-foreground">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
             <p>
               <b className="font-semibold">Проверьте обязательно.</b> Номера подобраны автоматически у позиций: {unverifiedCount} из {positions.length}. Сверьте каждый с вашим товаром
@@ -682,7 +682,7 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
             </p>
           </section>
         )}
-        <section aria-label="Что требует закупка" className="space-y-2 text-[13px]">
+        <section aria-label="Что требует закупка" className="space-y-2 text-ui">
           {demand.status === 'none' && (
             <p className="text-muted-foreground">
               В документах закупки о номере реестровой записи не сказано, но он нужен у каждого товара. Поиск идёт сразу в обоих реестрах. Если программа
@@ -696,19 +696,19 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
             </p>
           )}
           {demand.notes.map((n, i) => (
-            <p key={i} className="flex items-start gap-1.5 text-[12px] text-muted-foreground">
+            <p key={i} className="flex items-start gap-1.5 text-caption text-muted-foreground">
               <Info className="mt-0.5 size-3.5 shrink-0" />
               {n}
             </p>
           ))}
           {(demand.status !== 'none' || positions.some((p) => p.skipped)) && (
-            <p className="flex items-start gap-1.5 text-[12px] text-muted-foreground">
+            <p className="flex items-start gap-1.5 text-caption text-muted-foreground">
               <Info className="mt-0.5 size-3.5 shrink-0" />
               {BAN_DECLARATION_NOTE}
             </p>
           )}
           {demand.mentions.length > 0 && (
-            <details className="text-[12px]">
+            <details className="text-caption">
               <summary className="cursor-pointer text-muted-foreground">Где в документах об этом сказано ({demand.mentions.length})</summary>
               <ul className="mt-1.5 space-y-2">
                 {demand.mentions.map((m, i) => (
@@ -725,7 +725,7 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
           )}
         </section>
 
-        <section aria-label="Данные реестра" className="rounded-md bg-secondary/40 px-3 py-2 text-[12px]">
+        <section aria-label="Данные реестра" className="rounded-md bg-secondary/40 px-3 py-2 text-caption">
           {props.datasetError ? (
             <p role="alert" className="flex items-start gap-1.5 text-danger">
               <XCircle className="mt-0.5 size-3.5 shrink-0" />
@@ -778,7 +778,7 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
         )}
 
         {positions.length === 0 ? (
-          <p className="text-[13px] text-muted-foreground">В ТП пока нет перечня товаров. Составьте ТП на шаге «Проверка» — позиции появятся здесь.</p>
+          <p className="text-ui text-muted-foreground">В ТП пока нет перечня товаров. Составьте ТП на шаге «Проверка» — позиции появятся здесь.</p>
         ) : (
           <ul className="space-y-2">
             {positions.map((p, i) => (
@@ -795,7 +795,7 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
         )}
 
         {props.log.length > 0 && (
-          <details className="text-[12px]">
+          <details className="text-caption">
             <summary className="flex cursor-pointer items-center gap-1.5 text-muted-foreground">
               <History className="size-3.5" />
               История решений ({props.log.length})
@@ -809,7 +809,7 @@ export function RegistryNumbers(props: RegistryNumbersProps) {
             </ul>
           </details>
         )}
-        <p className="flex items-start gap-2 text-[11px] text-muted-foreground">
+        <p className="flex items-start gap-2 text-micro text-muted-foreground">
           <Info className="mt-0.5 size-3.5 shrink-0" />
           Номер вписывается в файлы заявки, пока сведения о товаре не менялись после выбора. Подобранный автоматически выделен жёлтым и помечен «ПРОВЕРЬТЕ», пока вы
           его не выберете или не подтвердите. Программа не подтверждает юридическую достаточность реестровой записи: проверьте её на сайте ГИСП перед подачей.

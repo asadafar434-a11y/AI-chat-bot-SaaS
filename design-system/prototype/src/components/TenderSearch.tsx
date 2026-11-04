@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { eisNumberUrl, SORT_LABELS, type SearchResult, type TenderFilters, type TenderListing, type TenderSort } from '@/lib/tender-search';
 import { plural } from '@/lib/plural';
 import { ArrowUpRight, Copy, Loader2, Plus, Search, Trash2, Upload } from '../lib/icons';
-import { Badge, Button, Card, Checkbox, Chip, HelpTip, fieldClass } from './ui';
+import { Badge, Button, Card, Checkbox, Chip, HelpTip, fieldClass, fieldBase } from './ui';
 import { ScreenHeader } from './ScreenHeader';
 import { SummaryCard } from './SummaryCard';
 
@@ -18,7 +18,7 @@ const dayDiff = (iso: string, today: string) => Math.round((Date.UTC(+iso.slice(
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block min-w-0 space-y-1">
-      <span className="text-[11px] text-muted-foreground">{label}</span>
+      <span className="text-micro text-muted-foreground">{label}</span>
       {children}
     </label>
   );
@@ -34,8 +34,8 @@ function Row({ l, today, onNew }: { l: TenderListing; today: string; onNew: () =
   return (
     <li className="space-y-1.5 border-b border-border px-4 py-3 last:border-0">
       <div className="flex items-start justify-between gap-x-4">
-        <p className="min-w-0 flex-1 break-words text-[13px] font-medium">{l.title}</p>
-        <span className={l.price !== null ? 'shrink-0 text-right font-mono text-lg font-bold tabular-nums' : 'shrink-0 text-right text-[12px] text-muted-foreground'}>{l.price !== null ? rub(l.price) : 'цена не указана'}</span>
+        <p className="min-w-0 flex-1 break-words text-ui font-medium">{l.title}</p>
+        <span className={l.price !== null ? 'shrink-0 text-right text-lg font-bold tabular-nums' : 'shrink-0 text-right text-caption text-muted-foreground'}>{l.price !== null ? rub(l.price) : 'цена не указана'}</span>
       </div>
       {(l.law || l.method) && (
         <div className="flex flex-wrap items-center gap-1.5">
@@ -43,20 +43,20 @@ function Row({ l, today, onNew }: { l: TenderListing; today: string; onNew: () =
           {l.method && <Badge tone="neutral" wrap>{l.method}</Badge>}
         </div>
       )}
-      {l.customer && <p className="break-words text-[12px] text-muted-foreground">{l.customer}</p>}
+      {l.customer && <p className="break-words text-caption text-muted-foreground">{l.customer}</p>}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         {l.deadline && (
-          <span className={`text-[12px] ${left !== null && left >= 0 && left <= 3 ? 'font-medium text-warn-foreground' : 'text-muted-foreground'}`}>
+          <span className={`text-caption ${left !== null && left >= 0 && left <= 3 ? 'font-medium text-warn-foreground' : 'text-muted-foreground'}`}>
             заявки до {ruDate(l.deadline)}
             {left !== null && left >= 0 && ` · ${left === 0 ? 'сегодня последний день' : `осталось ${left} ${plural(left, 'день', 'дня', 'дней')}`}`}
             {left !== null && left < 0 && ' · приём закончился'}
           </span>
         )}
-        {l.publishedAt && <span className="text-[12px] text-muted-foreground">размещено {ruDate(l.publishedAt)}</span>}
-        <span className="font-mono text-[11px] text-muted-foreground">№ {l.id}</span>
+        {l.publishedAt && <span className="text-caption text-muted-foreground">размещено {ruDate(l.publishedAt)}</span>}
+        <span className="font-mono text-micro text-muted-foreground">№ {l.id}</span>
       </div>
       <div className="flex flex-wrap items-center gap-2 pt-0.5">
-        <a href={l.url ?? eisNumberUrl(l.id)} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-[13px] font-medium hover:bg-secondary">
+        <a href={l.url ?? eisNumberUrl(l.id)} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-ui font-medium hover:bg-secondary">
           Открыть в ЕИС <ArrowUpRight className="size-3.5" />
         </a>
         <Button size="sm" variant="ghost" onClick={onNew}>
@@ -115,20 +115,20 @@ export function TenderSearch({
   const loadBody = (
     <>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[15px] font-bold">Загрузить закупки из ЕИС</span>
+            <span className="text-subtitle font-bold">Загрузить закупки из ЕИС</span>
             <HelpTip
               align="start"
               content="1) Нажмите «Найти в ЕИС». 2) Перетащите кнопку «Скопировать закупки» на панель закладок браузера (один раз). 3) Когда в ЕИС открыты результаты, нажмите эту закладку — таблица на странице (до 50 закупок) скопируется. 4) Вставьте её сюда. Закупки читаются на вашей стороне: наш сервер в ЕИС не ходит. Для следующих страниц ЕИС повторите."
             />
           </div>
-          <ol className="space-y-1 text-[13px] text-muted-foreground">
+          <ol className="space-y-1 text-ui text-muted-foreground">
             <li>1. «Найти в ЕИС» выше — откроются результаты.</li>
             <li>
               2. Нажмите закладку{' '}
-              <a ref={link} onClick={(e) => e.preventDefault()} draggable className="inline-flex h-8 cursor-grab items-center rounded-md border border-dashed border-foreground px-3 text-[12px] font-medium text-foreground">
+              <a ref={link} onClick={(e) => e.preventDefault()} draggable className="inline-flex h-8 cursor-grab items-center rounded-md border border-dashed border-foreground px-3 text-caption font-medium text-foreground">
                 Скопировать закупки
               </a>{' '}
-              <span className="text-[12px]">(перетащите её на панель закладок один раз)</span>.
+              <span className="text-caption">(перетащите её на панель закладок один раз)</span>.
             </li>
             <li>3. Вставьте скопированное:</li>
           </ol>
@@ -138,7 +138,7 @@ export function TenderSearch({
             rows={3}
             aria-label="Таблица закупок из ЕИС"
             placeholder="Вставьте таблицу (Ctrl+V)"
-            className="w-full rounded-md border border-border bg-background px-2 py-1.5 font-mono text-[11px] outline-none placeholder:text-muted-foreground/60 focus:border-foreground"
+            className={`${fieldBase} w-full px-2 py-1.5 text-micro`}
           />
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -167,7 +167,7 @@ export function TenderSearch({
               <Upload className="size-3.5" /> Файл CSV
             </Button>
           </div>
-          <p className="text-[11px] text-muted-foreground">Живая лента без выгрузки — скоро: нужен доступ к данным ЕИС с нашего сервера.</p>
+          <p className="text-micro text-muted-foreground">Живая лента без выгрузки — скоро: нужен доступ к данным ЕИС с нашего сервера.</p>
     </>
   );
 
@@ -212,7 +212,7 @@ export function TenderSearch({
           <Chip on={filters.law === '44'} onClick={() => onFilters({ law: '44' })} label="44-ФЗ" />
           <Chip on={filters.law === '223'} onClick={() => onFilters({ law: '223' })} label="223-ФЗ" />
         </div>
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px]">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-ui">
           <Checkbox checked={filters.activeOnly} onChange={(v) => onFilters({ activeOnly: v })}>
             Только приём заявок идёт
           </Checkbox>
@@ -225,10 +225,10 @@ export function TenderSearch({
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Field label="Цена от, ₽">
-            <input inputMode="numeric" value={filters.priceFrom ?? ''} onChange={(e) => onFilters({ priceFrom: numberOrNull(e.target.value) })} placeholder="0" className={`${inputClass} text-right font-mono`} />
+            <input inputMode="numeric" value={filters.priceFrom ?? ''} onChange={(e) => onFilters({ priceFrom: numberOrNull(e.target.value) })} placeholder="0" className={`${inputClass} text-right tabular-nums`} />
           </Field>
           <Field label="Цена до, ₽">
-            <input inputMode="numeric" value={filters.priceTo ?? ''} onChange={(e) => onFilters({ priceTo: numberOrNull(e.target.value) })} placeholder="без предела" className={`${inputClass} text-right font-mono`} />
+            <input inputMode="numeric" value={filters.priceTo ?? ''} onChange={(e) => onFilters({ priceTo: numberOrNull(e.target.value) })} placeholder="без предела" className={`${inputClass} text-right tabular-nums`} />
           </Field>
           <Field label="Размещено с">
             <input type="date" value={filters.publishedFrom ?? ''} onChange={(e) => onFilters({ publishedFrom: e.target.value || null })} className={inputClass} />
@@ -276,15 +276,15 @@ export function TenderSearch({
           />
         </div>
         {extension?.available ? (
-          <p className="text-[11px] text-muted-foreground">Расширение ищет в фоне: до трёх страниц ЕИС, до 150 закупок за раз. Список заменяется результатом поиска.</p>
+          <p className="text-micro text-muted-foreground">Расширение ищет в фоне: до трёх страниц ЕИС, до 150 закупок за раз. Список заменяется результатом поиска.</p>
         ) : (
-          <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <p className="flex items-center gap-1.5 text-micro text-muted-foreground">
             Расширение для Chrome ищет прямо здесь, без закладки и вставки.
             <HelpTip align="start" content={'Расширение для Chrome «Тендекс — поиск закупок в ЕИС» ищет прямо здесь, без закладки и вставки. Папка extension/eis-bridge: chrome://extensions → «Режим разработчика» → «Загрузить распакованное». ЕИС открывается не в каждом окне (во встроенном окне приложения — нет).'} />
           </p>
         )}
         {importNote && (
-          <p role={importNote.tone === 'danger' ? 'alert' : 'status'} className={`rounded-md px-3 py-2 text-[12px] ${importNote.tone === 'danger' ? 'bg-danger/10 text-danger' : 'bg-info/10 text-info'}`}>
+          <p role={importNote.tone === 'danger' ? 'alert' : 'status'} className={`rounded-md px-3 py-2 text-caption ${importNote.tone === 'danger' ? 'bg-danger/10 text-danger' : 'bg-info/10 text-info'}`}>
             {importNote.text}
           </p>
         )}
@@ -294,7 +294,7 @@ export function TenderSearch({
       {extension?.available ? (
         <Card className="p-4">
           <details>
-            <summary className="cursor-pointer text-[13px] font-medium text-muted-foreground">Загрузка без расширения: закладка или вставка таблицы</summary>
+            <summary className="cursor-pointer text-ui font-medium text-muted-foreground">Загрузка без расширения: закладка или вставка таблицы</summary>
             <div className="mt-3 space-y-3">{loadBody}</div>
           </details>
         </Card>
@@ -305,13 +305,13 @@ export function TenderSearch({
       {has && (
         <Card className="p-0">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-            <span className="text-[15px] font-bold">
+            <span className="text-subtitle font-bold">
               Найдено: {result.items.length}
               {result.items.length > 100 && ' · показаны первые 100'}
             </span>
-            <label className="flex items-center gap-2 text-[12px] text-muted-foreground">
+            <label className="flex items-center gap-2 text-caption text-muted-foreground">
               Сначала
-              <select value={sort} onChange={(e) => onSort(e.target.value as TenderSort)} className="h-8 rounded-md border border-border bg-background px-2 text-[12px] text-foreground">
+              <select value={sort} onChange={(e) => onSort(e.target.value as TenderSort)} className={`${fieldBase} h-8 px-2 text-caption text-foreground`}>
                 {(Object.keys(SORT_LABELS) as TenderSort[]).map((s) => (
                   <option key={s} value={s}>
                     {SORT_LABELS[s]}
@@ -321,7 +321,7 @@ export function TenderSearch({
             </label>
           </div>
           {result.items.length === 0 ? (
-            <p className="px-4 py-6 text-center text-[13px] text-muted-foreground">По этим фильтрам ничего нет. Ослабьте цену, даты или слова.</p>
+            <p className="px-4 py-6 text-center text-ui text-muted-foreground">По этим фильтрам ничего нет. Ослабьте цену, даты или слова.</p>
           ) : (
             <ul>
               {result.items.slice(0, 100).map((l) => (
@@ -330,7 +330,7 @@ export function TenderSearch({
             </ul>
           )}
           {(result.hiddenNoPrice > 0 || result.hiddenNoDate > 0) && (
-            <p className="border-t border-border px-4 py-2.5 text-[11px] text-muted-foreground">
+            <p className="border-t border-border px-4 py-2.5 text-micro text-muted-foreground">
               {result.hiddenNoPrice > 0 && `Скрыто без цены в выгрузке: ${result.hiddenNoPrice}. `}
               {result.hiddenNoDate > 0 && `Скрыто без даты размещения: ${result.hiddenNoDate}.`}
             </p>

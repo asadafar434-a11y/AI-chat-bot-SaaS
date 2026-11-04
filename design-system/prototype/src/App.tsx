@@ -291,7 +291,7 @@ function Shell({
           <div className="min-w-0">
             <button
               onClick={onBackToList}
-              className="mb-3 inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2.5 py-1 text-[12px] font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+              className="mb-3 inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2.5 py-1 text-caption font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
             >
               <ArrowLeft className="size-3" /> Мои закупки
             </button>
@@ -320,7 +320,7 @@ function Shell({
                       disabled={locked}
                       data-step-active={state === 'active'}
                       aria-current={state === 'active' ? 'step' : undefined}
-                      className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-all disabled:cursor-not-allowed ${
+                      className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-ui transition-all disabled:cursor-not-allowed ${
                         state === 'active'
                           ? 'bg-primary font-semibold text-primary-foreground shadow-sm'
                           : state === 'done'
@@ -395,11 +395,11 @@ function Workflow({
           <div className="flex flex-wrap items-center gap-2">
             {label && (
               <Tooltip content={hint || label}>
-                <span className="rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium text-foreground">{label}</span>
+                <span className="rounded-full border border-border bg-secondary px-2 py-0.5 text-micro font-medium text-foreground">{label}</span>
               </Tooltip>
             )}
             {purchase.sample && !due && <Badge>пример</Badge>}
-            {law && <span className="font-mono text-[11px] text-muted-foreground">{law}</span>}
+            {law && <span className="font-mono text-micro text-muted-foreground">{law}</span>}
           </div>
           <p className="mt-1.5 text-sm font-medium">{titleOf(purchase)}</p>
         </div>
@@ -414,7 +414,7 @@ function Workflow({
       }
     >
       {saveError && (
-        <p role="alert" className="mb-4 rounded-md bg-warn-surface/40 px-3 py-2 text-[13px] text-warn-foreground">
+        <p role="alert" className="mb-4 rounded-md bg-warn-surface/40 px-3 py-2 text-ui text-warn-foreground">
           Не получилось сохранить изменения в браузере. Не закрывайте страницу и попробуйте ещё раз.
         </p>
       )}

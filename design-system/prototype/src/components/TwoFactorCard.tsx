@@ -72,7 +72,7 @@ function TwoFactorSection() {
           <span className="flex items-center gap-2 text-sm font-medium">
             <ShieldCheck className="size-4" /> Двухфакторный вход
           </span>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">Кроме пароля — код из приложения на телефоне. Защищает аккаунт, даже если пароль узнали.</p>
+          <p className="mt-0.5 text-caption text-muted-foreground">Кроме пароля — код из приложения на телефоне. Защищает аккаунт, даже если пароль узнали.</p>
         </div>
         {view.name !== 'loading' && view.name !== 'error' && (
           <Badge tone={on ? 'success' : 'neutral'}>{on ? 'Включён' : 'Выключен'}</Badge>
@@ -99,7 +99,7 @@ function TwoFactorSection() {
               PIN-код из 4 цифр
             </Button>
           </div>
-          <p className="text-[12px] text-muted-foreground">PIN проще, но слабее приложения: после 5 ошибок вход блокируется на растущую паузу.</p>
+          <p className="text-caption text-muted-foreground">PIN проще, но слабее приложения: после 5 ошибок вход блокируется на растущую паузу.</p>
         </div>
       )}
       {view.name === 'pin' && (
@@ -158,7 +158,7 @@ function TwoFactorSection() {
 export function TwoFactorOn({ left, method = 'totp', onRenew, onDisable }: { left: number; method?: SecondFactorMethod; onRenew: () => void; onDisable: () => void }) {
   return (
     <div className="space-y-3">
-      <p className="text-[13px]">
+      <p className="text-ui">
         Способ: <b>{method === 'pin' ? 'PIN-код' : 'приложение'}</b> · запасных кодов: <b className="font-mono">{left}</b>
         {left <= 2 && <span className="text-warn-foreground"> — осталось мало, выпустите новые</span>}
       </p>
@@ -192,29 +192,29 @@ export function PinSetup({ busy, error, onSubmit, onCancel }: { busy: boolean; e
     >
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label htmlFor="tf-pin" className="mb-1 block text-[13px] font-medium">
+          <label htmlFor="tf-pin" className="mb-1 block text-ui font-medium">
             PIN из 4 цифр
           </label>
           <input id="tf-pin" type="password" inputMode="numeric" autoComplete="off" maxLength={4} placeholder="••••" value={pin} onChange={(e) => setPin(digits(e.target.value))} className={`${inputClass} font-mono tracking-widest`} />
         </div>
         <div>
-          <label htmlFor="tf-pin-again" className="mb-1 block text-[13px] font-medium">
+          <label htmlFor="tf-pin-again" className="mb-1 block text-ui font-medium">
             Ещё раз
           </label>
           <input id="tf-pin-again" type="password" inputMode="numeric" autoComplete="off" maxLength={4} placeholder="••••" value={again} onChange={(e) => setAgain(digits(e.target.value))} className={`${inputClass} font-mono tracking-widest`} />
         </div>
       </div>
       {mismatch && (
-        <p role="alert" className="text-[13px] text-danger">
+        <p role="alert" className="text-ui text-danger">
           PIN-коды не совпадают.
         </p>
       )}
       <div>
-        <label htmlFor="tf-pin-password" className="mb-1 block text-[13px] font-medium">
+        <label htmlFor="tf-pin-password" className="mb-1 block text-ui font-medium">
           Пароль от аккаунта
         </label>
         <PasswordInput id="tf-pin-password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
-        <p className="mt-1 text-[12px] text-muted-foreground">Пароль нужен, чтобы PIN не поставил посторонний.</p>
+        <p className="mt-1 text-caption text-muted-foreground">Пароль нужен, чтобы PIN не поставил посторонний.</p>
       </div>
       {error && <Notice tone="warn">{error}</Notice>}
       <div className="flex flex-wrap gap-2">
@@ -258,11 +258,11 @@ export function TwoFactorSetup({
       <div className="grid gap-4 sm:grid-cols-[auto_minmax(0,1fr)]">
         <QrCode value={uri} />
         <div className="min-w-0 space-y-3">
-          <p className="text-[13px]">
+          <p className="text-ui">
             <b>1.</b> Откройте на телефоне приложение-аутентификатор (Google Authenticator, Яндекс Ключ, Authy) и отсканируйте код. Не получается — введите ключ:
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            <code className="break-all rounded-md bg-secondary px-2.5 py-1.5 font-mono text-[13px] tracking-wider">{spacedSecret(secret)}</code>
+            <code className="break-all rounded-md bg-secondary px-2.5 py-1.5 font-mono text-ui tracking-wider">{spacedSecret(secret)}</code>
             <Button
               type="button"
               variant="secondary"
@@ -271,13 +271,13 @@ export function TwoFactorSetup({
               <Copy className="size-4" /> {copied ? 'Скопировано' : 'Скопировать'}
             </Button>
           </div>
-          <a href={uri} className="inline-block text-[13px] text-muted-foreground underline underline-offset-2 hover:text-foreground">
+          <a href={uri} className="inline-block text-ui text-muted-foreground underline underline-offset-2 hover:text-foreground">
             Открыть в приложении на этом телефоне
           </a>
         </div>
       </div>
       <div className="max-w-xs">
-        <label htmlFor="tf-code" className="mb-1 block text-[13px] font-medium">
+        <label htmlFor="tf-code" className="mb-1 block text-ui font-medium">
           <b>2.</b> Шесть цифр из приложения
         </label>
         <input
@@ -314,7 +314,7 @@ export function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () =
       <Notice tone="warn">Сохраните запасные коды сейчас — потом они не показываются. Каждый подходит один раз, если телефон потерян.</Notice>
       <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
         {codes.map((code) => (
-          <li key={code} className="rounded-md bg-secondary px-3 py-1.5 font-mono text-[13px] tracking-wider">
+          <li key={code} className="rounded-md bg-secondary px-3 py-1.5 font-mono text-ui tracking-wider">
             {code}
           </li>
         ))}
@@ -373,17 +373,17 @@ function CodeForm({
       }}
       className="max-w-sm space-y-3 border-t border-border pt-3"
     >
-      <p className="text-[12px] text-muted-foreground">{hint}</p>
+      <p className="text-caption text-muted-foreground">{hint}</p>
       {withPassword && (
         <div>
-          <label htmlFor="tf-password" className="mb-1 block text-[13px] font-medium">
+          <label htmlFor="tf-password" className="mb-1 block text-ui font-medium">
             Пароль
           </label>
           <PasswordInput id="tf-password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
         </div>
       )}
       <div>
-        <label htmlFor="tf-form-code" className="mb-1 block text-[13px] font-medium">
+        <label htmlFor="tf-form-code" className="mb-1 block text-ui font-medium">
           {label}
         </label>
         <input

@@ -82,3 +82,36 @@ test("выбранные значки и переключатели — голу
   const bad = walk(src).filter((f) => /border-foreground bg-(?:foreground|primary)/.test(readFileSync(f, "utf8")));
   assert.deepEqual(bad.map((f) => path.relative(src, f)), []);
 });
+
+// Слои дизайн-системы (редизайн 04.11.2026): «колодец» (шапки таблиц, вложенные группы), цвета-плашки статусов, мягкий голубой и поле ввода.
+for (const [theme, selector] of [["светлая", ":root"], ["тёмная", ".dark"]] as const) {
+  test(`${theme} тема: текст читается на «колодце» (surface-sunken), в поле ввода и на мягком голубом`, () => {
+    const t = tokens(selector);
+    for (const text of ["foreground", "foreground-secondary", "muted-foreground"]) {
+      for (const bg of ["surface-sunken", "field", "primary-soft"]) {
+        const r = ratio(t[text], t[bg]);
+        assert.ok(r >= 4.5, `${text} на ${bg}: ${r.toFixed(2)} (нужно 4,5)`);
+      }
+    }
+  });
+
+  test(`${theme} тема: «готово», «ошибка» и «пояснение» читаются на своих цветах-плашках (success-surface, danger-surface, info-surface)`, () => {
+    const t = tokens(selector);
+    for (const color of ["success", "danger", "info"]) {
+      const r = ratio(t[color], t[`${color}-surface`]);
+      assert.ok(r >= 4.5, `${color} на ${color}-surface: ${r.toFixed(2)} (нужно 4,5)`);
+    }
+    assert.ok(ratio(t["foreground-secondary"], t["success-surface"]) >= 4.5, "основной текст предупреждения на зелёной плашке");
+    assert.ok(ratio(t["foreground-secondary"], t["danger-surface"]) >= 4.5, "основной текст предупреждения на красной плашке");
+    assert.ok(ratio(t["foreground-secondary"], t["info-surface"]) >= 4.5, "основной текст предупреждения на синей плашке");
+    assert.ok(ratio(t["foreground-secondary"], t["warn-surface"]) >= 4.5, "основной текст предупреждения на жёлтой плашке");
+  });
+
+  test(`${theme} тема: границы различимы — сильная рамка поля видна на карточке и в поле (не меньше 1,3 : 1), слои холст → карточка → «колодец» отличаются`, () => {
+    const t = tokens(selector);
+    assert.ok(ratio(t["border-strong"], t["card"]) >= 1.3, `border-strong на card: ${ratio(t["border-strong"], t["card"]).toFixed(2)}`);
+    assert.ok(ratio(t["border-strong"], t["field"]) >= 1.3, `border-strong на field: ${ratio(t["border-strong"], t["field"]).toFixed(2)}`);
+    assert.notDeepEqual(t["background"], t["card"], "холст и карточка — разные слои");
+    assert.notDeepEqual(t["card"], t["surface-sunken"], "карточка и «колодец» — разные слои");
+  });
+}

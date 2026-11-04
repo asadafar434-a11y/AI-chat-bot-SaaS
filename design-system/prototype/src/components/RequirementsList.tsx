@@ -63,7 +63,7 @@ const PAGE = 15;
 function Offer({ text }: { text: string }) {
   const parts = text.split(/(\[[^\]]+\])/).filter(Boolean);
   return (
-    <p className="whitespace-pre-wrap break-words rounded-md bg-secondary/60 px-3 py-2 text-[12px] leading-relaxed text-muted-foreground">
+    <p className="whitespace-pre-wrap break-words rounded-md bg-secondary/60 px-3 py-2 text-caption leading-relaxed text-muted-foreground">
       {parts.map((part, i) => (/^\[[^\]]+\]$/.test(part) ? <mark key={i} className="highlight">{part}</mark> : <span key={i}>{part}</span>))}
     </p>
   );
@@ -138,7 +138,7 @@ export function RequirementsList({
                   )}
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block break-words text-[13px] font-medium leading-snug">{r.text}</span>
+                  <span className="block break-words text-ui font-medium leading-snug">{r.text}</span>
                   <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
                     <Badge tone={r.mandatory.tone}>{r.mandatory.text}</Badge>
                     <Badge tone="neutral">{r.type}</Badge>
@@ -147,7 +147,7 @@ export function RequirementsList({
                       <Tooltip key={i} content={CONDITION_HINT[c.kind]} align="start">
                         <span
                           className={cx(
-                            'rounded-md border px-1.5 py-0.5 font-mono text-[11px]',
+                            'rounded-md border px-1.5 py-0.5 text-micro tabular-nums',
                             c.kind === 'choice' ? 'border-info/40 bg-info/10 text-info' : 'border-border bg-secondary/60 text-muted-foreground',
                           )}
                         >
@@ -155,7 +155,7 @@ export function RequirementsList({
                         </span>
                       </Tooltip>
                     ))}
-                    {r.deadline && <span className="break-words text-[11px] text-muted-foreground">срок: {r.deadline}</span>}
+                    {r.deadline && <span className="break-words text-micro text-muted-foreground">срок: {r.deadline}</span>}
                   </span>
                 </span>
                 <span className="flex shrink-0 items-center gap-2">
@@ -169,7 +169,7 @@ export function RequirementsList({
               </button>
 
               {expanded && (
-                <div className="animate-fade-up space-y-2.5 border-t border-border px-3.5 py-3 pl-10 text-[13px] leading-snug">
+                <div className="animate-fade-up space-y-2.5 border-t border-border px-3.5 py-3 pl-10 text-ui leading-snug">
                   {/* На телефоне значок статуса справа скрыт — слово о статусе здесь. */}
                   <p className="break-words text-muted-foreground">
                     <span className="font-medium text-foreground">Статус: </span>
@@ -212,19 +212,19 @@ export function RequirementsList({
                   {r.group === 'scope' && (
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       <div className="min-w-0 rounded-md border border-border p-2.5">
-                        <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">Требует заказчик</p>
+                        <p className="text-micro font-medium uppercase tracking-wider text-muted-foreground">Требует заказчик</p>
                         <p className="mt-1 break-words">
                           {r.conditions.length > 0 ? r.conditions.map((c) => c.text).join('; ') : r.text}
                         </p>
                       </div>
                       <div className="min-w-0 rounded-md border border-border p-2.5">
-                        <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">Предлагаете вы</p>
+                        <p className="text-micro font-medium uppercase tracking-wider text-muted-foreground">Предлагаете вы</p>
                         {r.offer ? (
                           <div className="mt-1 space-y-1.5">
                             <Offer text={r.offer.text} />
-                            <p className="break-words text-[12px] text-muted-foreground">{r.offer.note}</p>
+                            <p className="break-words text-caption text-muted-foreground">{r.offer.note}</p>
                             {r.offer.problems.map((p) => (
-                              <p key={p} className="break-words text-[12px] text-danger">
+                              <p key={p} className="break-words text-caption text-danger">
                                 {p}
                               </p>
                             ))}

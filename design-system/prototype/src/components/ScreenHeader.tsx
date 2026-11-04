@@ -10,7 +10,7 @@ export function ScreenHeader({ icon, title, hint, aside }: { icon: SectionIconNa
           <SectionIcon name={icon} className="size-8" />
           {title}
         </h1>
-        {hint && <div className="mt-1 text-[13px] text-muted-foreground">{hint}</div>}
+        {hint && <div className="mt-1 text-ui text-muted-foreground">{hint}</div>}
       </div>
       {aside && <div className="flex flex-wrap items-center gap-2">{aside}</div>}
     </div>

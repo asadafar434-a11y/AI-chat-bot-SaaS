@@ -9,4 +9,4 @@ export function Frame({ embedded, children }: { embedded?: boolean; children: Re
 export const frameHead = (embedded?: boolean) =>
   embedded ? 'flex flex-wrap items-center gap-2 pb-2' : 'flex flex-wrap items-center gap-2 border-b border-border px-4 py-3';
 
-export const frameBody = (embedded?: boolean, space = 'space-y-3') => (embedded ? `${space} text-[13px]` : `${space} px-4 py-3 text-[13px]`);
+export const frameBody = (embedded?: boolean, space = 'space-y-3') => (embedded ? `${space} text-ui` : `${space} px-4 py-3 text-ui`);

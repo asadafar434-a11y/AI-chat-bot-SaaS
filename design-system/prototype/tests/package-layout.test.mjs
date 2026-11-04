@@ -141,7 +141,7 @@ test('«Пакет»: не всё закрыто — плашка янтарна
   assert.match(out, /border-warn\/50 bg-warn-surface\/30/);
   assert.match(out, /text-2xl font-bold[^"]*text-warn-foreground[^>]*>.*Пакет почти готов/s);
   assert.match(plain(out), /Осталось незакрытых пунктов: 2/);
-  assert.match(out, /text-\[15px\] font-bold text-warn-foreground/);
+  assert.match(out, /text-subtitle font-bold text-warn-foreground/);
   assert.match(plain(out), /Вернуться к проверке .*Всё архивом · ZIP/);
 });
 
@@ -175,8 +175,8 @@ test('«Пакет»: оплата и проверка специалистом 
 test('«Пакет»: заголовки блоков — крупно и жирно; «готово N из M» зелёным, когда всё отмечено', () => {
   const items = [{ text: 'Документ', source: 'Извещение', quote: 'Документ', verified: true, ready: true, required: true }];
   const out = html(h(pkg.StepPackage, props({ items })));
-  assert.match(out, /text-\[15px\] font-bold[^>]*>Состав пакета/);
-  assert.match(out, /text-\[15px\] font-bold[^>]*>.*Что требует заказчик/s);
+  assert.match(out, /text-subtitle font-bold[^>]*>Состав пакета/);
+  assert.match(out, /text-subtitle font-bold[^>]*>.*Что требует заказчик/s);
   assert.match(out, /text-success[^>]*>готово 1 из 1/);
   const half = html(h(pkg.StepPackage, props({ items: [{ ...items[0], ready: false }] })));
   assert.doesNotMatch(half, /text-success[^>]*>готово 0 из 1/);

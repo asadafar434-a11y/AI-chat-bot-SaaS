@@ -33,7 +33,7 @@ function Shell({ title, lead, children }: { title: string; lead: string; childre
 
 function ErrorLine({ text }: { text: string | null }) {
   return text ? (
-    <p role="alert" className="rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-[13px] text-danger">
+    <p role="alert" className="rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-ui text-danger">
       {text}
     </p>
   ) : null;
@@ -42,11 +42,11 @@ function ErrorLine({ text }: { text: string | null }) {
 function Field({ id, label, hint, children }: { id: string; label: string; hint?: string; children: ReactNode }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block text-[13px] font-medium">
+      <label htmlFor={id} className="mb-1 block text-ui font-medium">
         {label}
       </label>
       {children}
-      {hint && <p className="mt-1 text-[12px] text-muted-foreground">{hint}</p>}
+      {hint && <p className="mt-1 text-caption text-muted-foreground">{hint}</p>}
     </div>
   );
 }
@@ -75,7 +75,7 @@ export function LoginScreen({
   return (
     <Shell title="Вход" lead="Закупки хранятся на сервере и видны после входа с любого компьютера.">
       <form onSubmit={submit} className="space-y-3.5">
-        {notice && <p className="rounded-md border border-success/30 bg-success/5 px-3 py-2 text-[13px] text-success">{notice}</p>}
+        {notice && <p className="rounded-md border border-success/30 bg-success/5 px-3 py-2 text-ui text-success">{notice}</p>}
         <ErrorLine text={error} />
         <Field id="auth-email" label="Почта">
           <input id="auth-email" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
@@ -84,7 +84,7 @@ export function LoginScreen({
           <PasswordInput id="auth-password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
         </Field>
         <div className="-mt-1.5 flex justify-end">
-          <button type="button" onClick={onForgot} className="rounded text-[13px] text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline">
+          <button type="button" onClick={onForgot} className="rounded text-ui text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline">
             Забыли пароль?
           </button>
         </div>
@@ -92,7 +92,7 @@ export function LoginScreen({
           {busy && <Loader2 className="size-4 animate-spin" />}
           Войти
         </Button>
-        <p className="text-[12px] leading-snug text-muted-foreground">
+        <p className="text-caption leading-snug text-muted-foreground">
           Аккаунт создаёт владелец сервиса и присылает ссылку, по которой вы задаёте пароль.
         </p>
       </form>
@@ -158,7 +158,7 @@ export function CodeScreen({
               setRecovery((v) => !v);
               setCode('');
             }}
-            className="rounded text-[13px] text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+            className="rounded text-ui text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
           >
             {recovery ? (method === 'pin' ? 'Ввести PIN-код' : 'Код из приложения') : method === 'pin' ? 'Забыли PIN? Запасной код' : 'Нет телефона? Запасной код'}
           </button>
@@ -211,7 +211,7 @@ export function SetPasswordScreen({
         <Field id="auth-again" label="Пароль ещё раз">
           <PasswordInput id="auth-again" autoComplete="new-password" required value={again} onChange={(e) => setAgain(e.target.value)} className={inputClass} />
         </Field>
-        {mismatch && <p role="alert" className="text-[13px] text-danger">Пароли не совпадают.</p>}
+        {mismatch && <p role="alert" className="text-ui text-danger">Пароли не совпадают.</p>}
         <div className="flex gap-2">
           <Button type="submit" className="h-10 flex-1" disabled={busy || !password || password !== again}>
             {busy && <Loader2 className="size-4 animate-spin" />}

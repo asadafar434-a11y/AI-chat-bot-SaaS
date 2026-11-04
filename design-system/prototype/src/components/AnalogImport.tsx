@@ -87,13 +87,13 @@ export function AnalogImportForm({ positionName, defaultVat, onImport, onCancel,
     });
 
   return (
-    <div className="space-y-4 px-5 py-4 text-[13px]">
+    <div className="space-y-4 px-5 py-4 text-ui">
       <div className="space-y-1.5">
         <p className="flex items-center gap-1.5 text-muted-foreground">
           Вставьте таблицу с ценами или карточку контракта ЕИС
           <HelpTip align="start" content="Карточка — вкладка «Платежи и объекты закупки»: цену за единицу, количество, НДС и дату программа найдёт сама. В ЕИС она не ходит — ссылки открываются в вашем браузере." />
         </p>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px]">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-caption">
           {(['44', '223'] as const).map((law) => (
             <a key={law} href={eisSearchUrl(positionName || 'товар', law)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium underline underline-offset-2">
               {law === '44' ? 'Найти в реестре контрактов ЕИС (44-ФЗ)' : 'Найти в реестре договоров ЕИС (223-ФЗ)'}
@@ -103,7 +103,7 @@ export function AnalogImportForm({ positionName, defaultVat, onImport, onCancel,
         </div>
       </div>
 
-      <label className="block text-[12px]">
+      <label className="block text-caption">
         <span className="mb-1 block text-muted-foreground">Таблица с ценами (вставьте или выберите файл)</span>
         <textarea
           aria-label="Таблица с ценами"
@@ -111,15 +111,15 @@ export function AnalogImportForm({ positionName, defaultVat, onImport, onCancel,
           onChange={(e) => load(e.target.value, '')}
           rows={5}
           placeholder={'Реестровый номер\tНаименование\tДата\tЦена за единицу\n1660100000126000012\tУголь ДПК\t15.09.2026\t9 850,00'}
-          className="w-full rounded-md border border-border bg-background p-2 font-mono text-[12px] outline-none placeholder:text-muted-foreground/60 focus:border-foreground"
+          className="w-full rounded-md border border-border bg-background p-2 font-mono text-caption outline-none placeholder:text-muted-foreground/60 focus:border-foreground"
         />
       </label>
-      <label className="block text-[12px]">
+      <label className="block text-caption">
         <span className="mb-1 block text-muted-foreground">Или файл CSV, TSV, TXT</span>
-        <input type="file" accept=".csv,.tsv,.txt,text/csv,text/plain,text/tab-separated-values" onChange={(e) => void onFile(e)} className="block text-[12px]" aria-label="Файл с ценами" />
+        <input type="file" accept=".csv,.tsv,.txt,text/csv,text/plain,text/tab-separated-values" onChange={(e) => void onFile(e)} className="block text-caption" aria-label="Файл с ценами" />
       </label>
       {error && (
-        <p role="alert" className="text-[12px] text-danger">
+        <p role="alert" className="text-caption text-danger">
           {error}
         </p>
       )}
@@ -132,7 +132,7 @@ export function AnalogImportForm({ positionName, defaultVat, onImport, onCancel,
           </p>
           <ul className="space-y-1.5 rounded-lg border border-border p-2">
             {list.slice(0, LIST_SHOWN).map((c) => (
-              <li key={c.regNumber} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[12px]">
+              <li key={c.regNumber} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-caption">
                 <a href={eisCardUrl(c.regNumber)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono font-medium underline underline-offset-2">
                   № {c.regNumber}
                   <ExternalLink className="size-3" />
@@ -142,7 +142,7 @@ export function AnalogImportForm({ positionName, defaultVat, onImport, onCancel,
                 {c.customer && <span className="min-w-0 basis-full break-words text-muted-foreground">{c.customer}</span>}
               </li>
             ))}
-            {list.length > LIST_SHOWN && <li className="text-[12px] text-muted-foreground">…и ещё {list.length - LIST_SHOWN}</li>}
+            {list.length > LIST_SHOWN && <li className="text-caption text-muted-foreground">…и ещё {list.length - LIST_SHOWN}</li>}
           </ul>
         </section>
       )}
@@ -153,13 +153,13 @@ export function AnalogImportForm({ positionName, defaultVat, onImport, onCancel,
             <section className="space-y-2" aria-label="Столбцы таблицы">
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <p className="font-medium">Проверьте, что в каком столбце</p>
-                <label className="flex items-center gap-1.5 text-[12px]">
+                <label className="flex items-center gap-1.5 text-caption">
                   <input type="checkbox" checked={hasHeader} onChange={(e) => (setHeaderOverride(e.target.checked), setOff(new Set()))} />
                   Первая строка — заголовки
                 </label>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[28rem] border-collapse text-[12px]">
+                <table className="w-full min-w-[28rem] border-collapse text-caption">
                   <thead>
                     <tr>
                       {roles.map((role, col) => (
@@ -200,7 +200,7 @@ export function AnalogImportForm({ positionName, defaultVat, onImport, onCancel,
                 {built.truncated > 0 && <span className="font-normal text-muted-foreground"> · за один раз берётся не больше {built.rows.length}, ещё {built.truncated} — загрузите отдельно</span>}
               </p>
               {askVat && (
-                <label className="flex items-center gap-1.5 text-[12px]">
+                <label className="flex items-center gap-1.5 text-caption">
                   <span className="text-muted-foreground">{kind === 'cards' ? 'Где НДС не назван, цена' : 'Цены в таблице'}</span>
                   <select aria-label="НДС в ценах таблицы" value={vat} onChange={(e) => setVat(e.target.value as Vat)} className={`${inputClass} w-auto`}>
                     <option value="with">с НДС</option>
@@ -212,7 +212,7 @@ export function AnalogImportForm({ positionName, defaultVat, onImport, onCancel,
             {built.rows.length > 0 && (
               <ul className="max-h-64 space-y-1.5 overflow-y-auto rounded-lg border border-border p-2">
                 {built.rows.map((r) => (
-                  <li key={r.line} className="flex items-start gap-2 text-[12px]">
+                  <li key={r.line} className="flex items-start gap-2 text-caption">
                     <input type="checkbox" className="mt-0.5" aria-label={`Добавить цену из строки ${r.line}`} checked={!off.has(r.line)} onChange={() => toggle(r.line)} />
                     <div className="min-w-0 flex-1">
                       <p className="break-words">
@@ -233,7 +233,7 @@ export function AnalogImportForm({ positionName, defaultVat, onImport, onCancel,
               </ul>
             )}
             {built.skipped.length > 0 && (
-              <details className="text-[12px] text-muted-foreground">
+              <details className="text-caption text-muted-foreground">
                 <summary className="cursor-pointer">Почему строки пропущены</summary>
                 <ul className="mt-1 space-y-0.5">
                   {built.skipped.slice(0, 10).map((s) => (
@@ -245,7 +245,7 @@ export function AnalogImportForm({ positionName, defaultVat, onImport, onCancel,
                 </ul>
               </details>
             )}
-            <p className="text-[12px] text-muted-foreground">Без даты цена в расчёт не идёт.</p>
+            <p className="text-caption text-muted-foreground">Без даты цена в расчёт не идёт.</p>
           </section>
         </>
       )}

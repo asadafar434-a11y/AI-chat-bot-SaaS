@@ -120,7 +120,7 @@ function MobileNav(props: Props) {
 
   const tab = (active: boolean) =>
     cx(
-      'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-0.5 py-1.5 text-[10px] leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+      'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-0.5 py-1.5 text-nano leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
       active ? 'font-semibold text-primary' : 'text-muted-foreground hover:text-foreground',
     );
 
@@ -155,7 +155,7 @@ function MobileNav(props: Props) {
             <div className="animate-tip absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
             <div className="animate-fade-up absolute inset-x-0 bottom-0 flex max-h-[85vh] flex-col gap-4 overflow-y-auto rounded-t-2xl border-t border-border bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))] [&>*]:shrink-0">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[15px] font-bold">Ещё</p>
+                <p className="text-subtitle font-bold">Ещё</p>
                 <IconButton label="Закрыть" onClick={() => setOpen(false)} side="bottom" align="end">
                   <X className="size-5" />
                 </IconButton>
@@ -194,7 +194,7 @@ function MobileNav(props: Props) {
               </div>
               {props.notices.length > 0 && (
                 <div className="flex flex-col gap-1.5 border-t border-border pt-4">
-                  <p className="px-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Проверка специалистом</p>
+                  <p className="px-1 text-nano font-medium uppercase tracking-wider text-muted-foreground">Проверка специалистом</p>
                   {[...props.notices]
                     .sort((a, b) => rank(a) - rank(b))
                     .map((n) => (
@@ -232,7 +232,7 @@ function Logo() {
       <BrandMark className="size-9 shrink-0" />
       <div className="min-w-0 leading-none">
         <p className="whitespace-nowrap text-sm font-semibold tracking-tight">Тендекс</p>
-        <p className="mt-1 truncate whitespace-nowrap font-mono text-[10px] uppercase tracking-wider text-muted-foreground">AI · 44-ФЗ / 223-ФЗ</p>
+        <p className="mt-1 truncate whitespace-nowrap text-nano font-medium uppercase tracking-wider text-muted-foreground">AI · 44-ФЗ / 223-ФЗ</p>
       </div>
     </div>
   );
@@ -267,7 +267,7 @@ function Body({ view, onNavigate, onNewTender, notices, onOpenNotice, credits, c
               <span className="truncate">{n.label}</span>
               {n.soon && <Soon className="ml-auto" />}
               {n.id === 'tariffs' && credits > 0 && (
-                <span className="ml-auto font-mono text-[11px] tabular-nums text-muted-foreground">{credits}</span>
+                <span className="ml-auto text-micro tabular-nums text-muted-foreground">{credits}</span>
               )}
             </button>
           );
@@ -284,7 +284,7 @@ function Body({ view, onNavigate, onNewTender, notices, onOpenNotice, credits, c
       <div className="mt-auto flex flex-col gap-2">
         {sorted.length > 0 && (
           <div className="flex flex-col gap-1.5">
-            <p className="px-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Проверка специалистом</p>
+            <p className="px-1 text-nano font-medium uppercase tracking-wider text-muted-foreground">Проверка специалистом</p>
             {sorted.map((n) => (
               <NoticeRow key={n.id} notice={n} onOpen={onOpenNotice} />
             ))}
@@ -302,9 +302,9 @@ function Body({ view, onNavigate, onNewTender, notices, onOpenNotice, credits, c
               {(company.name.replace(/[^\p{L}]/gu, '').slice(0, 2) || '—').toUpperCase()}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-[13px] font-medium">{company.name || 'Моя компания'}</p>
+              <p className="truncate text-ui font-medium">{company.name || 'Моя компания'}</p>
               {(company.inn || credits > 0) && (
-                <p className="truncate font-mono text-[10px] text-muted-foreground">
+                <p className="truncate font-mono text-nano text-muted-foreground">
                   {company.inn && `ИНН ${company.inn}`}
                   {credits > 0 && `${company.inn ? ' · ' : ''}заявок на балансе: ${credits}`}
                 </p>
@@ -314,7 +314,7 @@ function Body({ view, onNavigate, onNewTender, notices, onOpenNotice, credits, c
           </button>
           {account && (
             <div className="border-t border-border bg-secondary/30 px-2.5 py-1.5">
-              <p className="truncate font-mono text-[10px] text-muted-foreground" title={account.email ?? undefined}>
+              <p className="truncate font-mono text-nano text-muted-foreground" title={account.email ?? undefined}>
                 {account.email ?? 'Вы вошли'}
               </p>
             </div>
@@ -343,10 +343,10 @@ function NoticeRow({ notice, onOpen }: { notice: Notice; onOpen: (id: string) =>
         <Clock className="mt-0.5 size-3.5 shrink-0 text-warn-foreground" />
       )}
       <div className="min-w-0 flex-1">
-        <p className={cx('text-[12px] font-medium', replied ? 'text-success' : 'text-warn-foreground')}>
+        <p className={cx('text-caption font-medium', replied ? 'text-success' : 'text-warn-foreground')}>
           {replied ? 'Специалист ответил' : 'На проверке у специалиста'}
         </p>
-        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{notice.title}</p>
+        <p className="mt-0.5 truncate text-micro text-muted-foreground">{notice.title}</p>
       </div>
       {replied && !notice.read && <span className="absolute right-2 top-2 size-2 rounded-full bg-danger" />}
       <ChevronRight className="mt-0.5 size-3.5 shrink-0 self-center text-muted-foreground" />

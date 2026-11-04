@@ -76,7 +76,7 @@ function Detail({ row, data, onChange }: { row: CheckRow; data: MatrixData; onCh
   const facts = result.state === 'checked' ? result.facts : [];
   const missing = result.state === 'insufficient' || result.state === 'not_checked' ? result.missing : [];
   return (
-    <div className="space-y-3 border-t border-border px-3 py-3 text-[12px]">
+    <div className="space-y-3 border-t border-border px-3 py-3 text-caption">
       {facts.length > 0 && (
         <ul className="list-disc space-y-1 pl-5">
           {facts.map((f) => (
@@ -112,7 +112,7 @@ function Detail({ row, data, onChange }: { row: CheckRow; data: MatrixData; onCh
             {mine ? 'Моя запись' : 'Записать результат'}
           </Button>
         )}
-        <div role="radiogroup" aria-label={`Проверка ${def.n}: важность`} className="ml-auto inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+        <div role="radiogroup" aria-label={`Проверка ${def.n}: важность`} className="ml-auto inline-flex items-center gap-1 text-micro text-muted-foreground">
           Важность
           {[1, 2, 3].map((w) => (
             <button
@@ -122,7 +122,7 @@ function Detail({ row, data, onChange }: { row: CheckRow; data: MatrixData; onCh
               aria-checked={row.weight === w}
               aria-label={`Важность ${w}`}
               onClick={() => setWeight(w)}
-              className={`size-7 rounded-md border font-mono text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${row.weight === w ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-secondary'}`}
+              className={`size-7 rounded-md border font-mono text-caption transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${row.weight === w ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-secondary'}`}
             >
               {w}
             </button>
@@ -161,7 +161,7 @@ function Detail({ row, data, onChange }: { row: CheckRow; data: MatrixData; onCh
                   setLevel(l);
                   if (mine) save({ level: l });
                 }}
-                className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${level === l ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-secondary'}`}
+                className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-caption font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${level === l ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-secondary'}`}
               >
                 <Icon k={l} />
                 {LEVEL_TEXT[l]}
@@ -188,9 +188,9 @@ export function CheckMatrix({ rows, summary, data, onChange }: CheckMatrixProps)
   const count = (k: Filter) => rows.filter((r) => shownOf(r).key === k).length;
   const none = rows.filter(keep).length === 0;
   return (
-    <div className="space-y-4 text-[13px]">
+    <div className="space-y-4 text-ui">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-[15px] font-semibold tracking-tight">
+        <p className="text-subtitle font-semibold tracking-tight">
           Проверено {summary.program + summary.manual} из {summary.total} <span className="font-normal text-muted-foreground">({percent(summary.coveragePct)})</span>
         </p>
         <HelpTip
@@ -225,7 +225,7 @@ export function CheckMatrix({ rows, summary, data, onChange }: CheckMatrixProps)
       <section aria-label="Карта проверок" className="space-y-1.5">
         {GROUPS.map((g) => (
           <div key={g.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <p className="w-full text-[12px] text-muted-foreground sm:w-48">{g.title}</p>
+            <p className="w-full text-caption text-muted-foreground sm:w-48">{g.title}</p>
             <div className="flex flex-wrap gap-1.5">
               {rows
                 .filter((r) => r.def.group === g.id)
@@ -239,7 +239,7 @@ export function CheckMatrix({ rows, summary, data, onChange }: CheckMatrixProps)
                       onClick={() => show(r.def.n)}
                       title={`${r.def.n}. ${r.def.title}: ${s.text}`}
                       aria-label={`Проверка ${r.def.n}: ${r.def.title}. ${s.text}`}
-                      className={`flex size-7 items-center justify-center rounded-md border font-mono text-[11px] font-medium transition-opacity hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${s.cell} ${dim ? 'opacity-30' : ''} ${r.result.state === 'manual' ? 'underline decoration-2 underline-offset-2' : ''}`}
+                      className={`flex size-7 items-center justify-center rounded-md border font-mono text-micro font-medium transition-opacity hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${s.cell} ${dim ? 'opacity-30' : ''} ${r.result.state === 'manual' ? 'underline decoration-2 underline-offset-2' : ''}`}
                     >
                       {r.def.n}
                     </button>
@@ -252,7 +252,7 @@ export function CheckMatrix({ rows, summary, data, onChange }: CheckMatrixProps)
 
       {filter === 'all' && summary.first.length > 0 && (
         <section aria-label="Что смотреть первым" className="space-y-1.5">
-          <h3 className="text-[13px] font-medium">Смотреть первым</h3>
+          <h3 className="text-ui font-medium">Смотреть первым</h3>
           <ul className="space-y-1.5">
             {summary.first.slice(0, 3).map((r) => {
               const s = shownOf(r);
@@ -263,7 +263,7 @@ export function CheckMatrix({ rows, summary, data, onChange }: CheckMatrixProps)
                       <Icon k={s.key} />
                       {s.text}
                     </Badge>
-                    <span className="min-w-0 flex-1 break-words text-[12px]">
+                    <span className="min-w-0 flex-1 break-words text-caption">
                       <span className="font-medium">
                         {r.def.n}. {r.def.title}
                       </span>
@@ -277,14 +277,14 @@ export function CheckMatrix({ rows, summary, data, onChange }: CheckMatrixProps)
         </section>
       )}
 
-      {none && <p className="text-[12px] text-muted-foreground">Таких проверок нет.</p>}
+      {none && <p className="text-caption text-muted-foreground">Таких проверок нет.</p>}
       {GROUPS.map((g) => {
         const list = rows.filter((r) => r.def.group === g.id && keep(r));
         if (list.length === 0) return null;
         const gs = summary.groups.find((x) => x.id === g.id)!;
         return (
           <section key={g.id} aria-labelledby={`matrix-${g.id}`} className="space-y-1.5">
-            <h3 id={`matrix-${g.id}`} className="text-[13px] font-medium">
+            <h3 id={`matrix-${g.id}`} className="text-ui font-medium">
               {g.title} <span className="font-normal text-muted-foreground">· {gs.done} из {gs.total}</span>
             </h3>
             <ul className="space-y-1.5">
@@ -295,10 +295,10 @@ export function CheckMatrix({ rows, summary, data, onChange }: CheckMatrixProps)
                 return (
                   <li key={r.def.n} id={`check-${r.def.n}`} className="rounded-lg border border-border">
                     <button type="button" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : r.def.n)} className="flex w-full items-start gap-2 px-3 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                      <span className="mt-0.5 w-6 shrink-0 font-mono text-[12px] text-muted-foreground">{r.def.n}</span>
+                      <span className="mt-0.5 w-6 shrink-0 font-mono text-caption text-muted-foreground">{r.def.n}</span>
                       <span className="min-w-0 flex-1">
-                        <span className="block break-words text-[13px] font-medium">{r.def.title}</span>
-                        {line && <span className="mt-0.5 block break-words text-[12px] text-muted-foreground">{line}</span>}
+                        <span className="block break-words text-ui font-medium">{r.def.title}</span>
+                        {line && <span className="mt-0.5 block break-words text-caption text-muted-foreground">{line}</span>}
                       </span>
                       <Badge tone={s.tone}>
                         <Icon k={s.key} />

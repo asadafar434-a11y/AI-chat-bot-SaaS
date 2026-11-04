@@ -11,7 +11,7 @@ export function CustomerQuotesCard({ quotes, nmck, step }: { quotes: CustomerQuo
   return (
     <Card className="space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-[15px] font-bold">Предложения поставщиков у заказчика</p>
+        <p className="text-subtitle font-bold">Предложения поставщиков у заказчика</p>
         <CertaintyBadge kind="confirmed" />
         <HelpTip
           align="start"
@@ -22,13 +22,13 @@ export function CustomerQuotesCard({ quotes, nmck, step }: { quotes: CustomerQuo
         <span className="font-mono text-2xl font-bold tracking-tight">
           {quoteMoney(quotes.min)} – {quoteMoney(quotes.max)}
         </span>
-        <span className="text-[12px] text-muted-foreground">
+        <span className="text-caption text-muted-foreground">
           {quotesCount(quotes.quotes.length)} · разброс {quotePercent(quotes.spreadPct)}
           {quotes.vat === 'without' && ' · без НДС'}
           {quotes.vat === 'with' && ' · с НДС'}
         </span>
       </p>
-      <ul className="divide-y divide-border text-[13px]">
+      <ul className="divide-y divide-border text-ui">
         {quotes.quotes.map((q) => (
           <li key={q.label} className="flex items-baseline justify-between gap-3 py-1.5 first:pt-0 last:pb-0">
             <span className="text-muted-foreground">{q.label}</span>
@@ -37,12 +37,12 @@ export function CustomerQuotesCard({ quotes, nmck, step }: { quotes: CustomerQuo
         ))}
       </ul>
       {basis && (
-        <p className="text-[13px]">
+        <p className="text-ui">
           Начальная цена заказчика {BASIS_TEXT[basis]}
         </p>
       )}
-      {step && <p className="text-[12px] text-muted-foreground">{step}</p>}
-      <p className="text-[12px] text-muted-foreground">{quotes.doc}</p>
+      {step && <p className="text-caption text-muted-foreground">{step}</p>}
+      <p className="text-caption text-muted-foreground">{quotes.doc}</p>
     </Card>
   );
 }

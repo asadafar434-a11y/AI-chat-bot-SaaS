@@ -15,7 +15,7 @@ function Inline({ text }: { text: string }) {
         if (part.startsWith('**') && part.endsWith('**') && part.length > 4) return <strong key={i} className="font-semibold">{part.slice(2, -2)}</strong>;
         if (part.startsWith('`') && part.endsWith('`') && part.length > 2)
           return (
-            <code key={i} className="rounded bg-background/60 px-1 py-px font-mono text-[12px]">
+            <code key={i} className="rounded bg-background/60 px-1 py-px font-mono text-caption">
               {part.slice(1, -1)}
             </code>
           );
@@ -92,7 +92,7 @@ export function Markdown({ text }: { text: string }) {
       while (i < lines.length && isRow(lines[i])) rows.push(cells(lines[i++]));
       blocks.push(
         <div key={key++} className="overflow-x-auto">
-          <table className="w-full border-collapse text-[12px]">
+          <table className="w-full border-collapse text-caption">
             <thead>
               <tr>
                 {head.map((h, c) => (

@@ -93,9 +93,9 @@ function AccountCard() {
     <Card className="space-y-3 p-5">
       <div>
         <span className="text-sm font-medium">Аккаунт</span>
-        <p className="mt-0.5 text-[12px] text-muted-foreground">Вход по почте и паролю: закупки хранятся на сервере и видны после входа с любого компьютера.</p>
+        <p className="mt-0.5 text-caption text-muted-foreground">Вход по почте и паролю: закупки хранятся на сервере и видны после входа с любого компьютера.</p>
       </div>
-      <dl className="grid gap-1 text-[13px] sm:grid-cols-[120px_1fr]">
+      <dl className="grid gap-1 text-ui sm:grid-cols-[120px_1fr]">
         <dt className="text-muted-foreground">Почта</dt>
         <dd className="break-all font-mono">{account.email ?? '—'}</dd>
       </dl>
@@ -110,26 +110,26 @@ function AccountCard() {
       {open && (
         <form onSubmit={submit} className="max-w-sm space-y-3 border-t border-border pt-3">
           <div>
-            <label htmlFor="pw-current" className="mb-1 block text-[13px] font-medium">
+            <label htmlFor="pw-current" className="mb-1 block text-ui font-medium">
               Текущий пароль
             </label>
             <PasswordInput id="pw-current" autoComplete="current-password" required value={current} onChange={(e) => setCurrent(e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label htmlFor="pw-next" className="mb-1 block text-[13px] font-medium">
+            <label htmlFor="pw-next" className="mb-1 block text-ui font-medium">
               Новый пароль
             </label>
             <PasswordInput id="pw-next" autoComplete="new-password" required value={next} onChange={(e) => setNext(e.target.value)} className={inputClass} />
-            <p className="mt-1 text-[12px] text-muted-foreground">Не короче 8 знаков.</p>
+            <p className="mt-1 text-caption text-muted-foreground">Не короче 8 знаков.</p>
           </div>
           <div>
-            <label htmlFor="pw-again" className="mb-1 block text-[13px] font-medium">
+            <label htmlFor="pw-again" className="mb-1 block text-ui font-medium">
               Новый пароль ещё раз
             </label>
             <PasswordInput id="pw-again" autoComplete="new-password" required value={again} onChange={(e) => setAgain(e.target.value)} className={inputClass} />
           </div>
           {mismatch && (
-            <p role="alert" className="text-[13px] text-danger">
+            <p role="alert" className="text-ui text-danger">
               Пароли не совпадают.
             </p>
           )}
@@ -308,9 +308,9 @@ function DataCards() {
       <Card className="space-y-3 p-5">
         <div>
           <span className="text-sm font-medium">Копия данных</span>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">Закупки, документы, реквизиты, образцы и база доказательств</p>
+          <p className="mt-0.5 text-caption text-muted-foreground">Закупки, документы, реквизиты, образцы и база доказательств</p>
         </div>
-        <p className="max-w-[70ch] text-[13px] leading-snug text-muted-foreground">
+        <p className="max-w-[70ch] text-ui leading-snug text-muted-foreground">
           {onServer
             ? 'Данные хранятся на сервере и видны после входа с любого компьютера. Копия файлом — запасной вариант: из неё всё вернётся, если что-то удалили по ошибке. '
             : 'Всё это хранится только в этом браузере. Если очистить браузер — пропадёт, а Safari может стереть данные сам, если сервис не открывать неделю. Сохраняйте копию файлом: из неё всё вернётся, и так же данные переносятся на другой компьютер. '}
@@ -337,7 +337,7 @@ function DataCards() {
         </div>
         {local && (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-border px-3 py-2">
-            <p className="min-w-0 flex-1 text-[13px] leading-snug">В этом браузере есть то, чего нет на сервере: {local}.</p>
+            <p className="min-w-0 flex-1 text-ui leading-snug">В этом браузере есть то, чего нет на сервере: {local}.</p>
             <Button variant="secondary" size="sm" disabled={backupBusy} onClick={() => void moveToServer()}>
               <Upload className="size-4" /> Перенести на сервер
             </Button>
@@ -351,9 +351,9 @@ function DataCards() {
       <Card className="space-y-3 p-5">
         <div>
           <span className="text-sm font-medium">Удалить все данные</span>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">{onServer ? 'На сервере и в этом браузере — всё сразу' : 'Из этого браузера — всё сразу'}</p>
+          <p className="mt-0.5 text-caption text-muted-foreground">{onServer ? 'На сервере и в этом браузере — всё сразу' : 'Из этого браузера — всё сразу'}</p>
         </div>
-        <p className="max-w-[70ch] text-[13px] leading-snug text-muted-foreground">
+        <p className="max-w-[70ch] text-ui leading-snug text-muted-foreground">
           {onServer
             ? 'Удалятся все закупки с документами и черновиками, реквизиты, образцы и база доказательств на сервере: владелец удаляет данные всей организации, участник — только свои. Затем очистятся настройки и отметка о согласии в этом браузере. Журнал изменений остаётся. '
             : 'Удалятся все закупки с документами и черновиками, реквизиты, образцы, база доказательств, настройки и отметка о согласии. '}
@@ -365,7 +365,7 @@ function DataCards() {
         </p>
         {wipe === 'confirm' || wipe === 'wiping' ? (
           <div className="space-y-2.5">
-            <p className="text-[13px] font-medium">Удалить всё? Вернуть данные можно будет только из копии.</p>
+            <p className="text-ui font-medium">Удалить всё? Вернуть данные можно будет только из копии.</p>
             <div className="flex flex-wrap gap-2">
               <Button variant="danger" size="sm" disabled={wipe === 'wiping'} onClick={() => void wipeAllData()}>
                 {wipe === 'wiping' ? 'Удаляю…' : 'Удалить всё'}

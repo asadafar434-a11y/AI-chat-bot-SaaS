@@ -77,12 +77,12 @@ function ComposeCard({ onDone }: { onDone: () => void }) {
         ) : (
           <>
             <p className="text-sm font-medium">Составить документы заявки</p>
-            <p className="max-w-[70ch] text-[13px] text-muted-foreground">
+            <p className="max-w-[70ch] text-ui text-muted-foreground">
               Найду в документах закупки форму заявки и заполню её, как тендерный юрист: техническое предложение с товарами и
               предложением по пунктам ТЗ, а если их требует заказчик — декларацию, цену и анкету. Вам останется вписать то,
               что знаете только вы, — здесь же, по списку.
             </p>
-            <p className="text-[12px] text-muted-foreground">
+            <p className="text-caption text-muted-foreground">
               {purchase.sample
                 ? 'В примере — готовая заготовка, запроса к ИИ не будет.'
                 : samples.length > 0
@@ -90,7 +90,7 @@ function ComposeCard({ onDone }: { onDone: () => void }) {
                   : 'Черновик будет в общем стиле. Загрузите свои прошлые заявки в «Профиле компании» — и ТП будет написано так, как пишете вы.'}
             </p>
             {error && (
-              <p role="alert" className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
+              <p role="alert" className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-ui text-danger">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0" /> <span className="min-w-0 break-words">{error}</span>
               </p>
             )}
@@ -112,7 +112,7 @@ function NoApplication({ onNext, onBack }: { onNext: () => void; onBack: () => v
       </div>
       <Card className="space-y-3 p-5">
         <p className="text-sm font-medium">Документы заявки не составляются</p>
-        <p className="max-w-[70ch] text-[13px] text-muted-foreground">
+        <p className="max-w-[70ch] text-ui text-muted-foreground">
           Закупка у единственного поставщика: заказчик заключает договор с названным поставщиком. Ни технического предложения, ни анкеты, ни цены
           в заявке подавать не нужно. Что от вас требуется — на следующем шаге, в списке «Что подготовить».
         </p>

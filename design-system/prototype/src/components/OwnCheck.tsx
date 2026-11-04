@@ -35,7 +35,7 @@ function Working() {
       <p className="flex items-center gap-2.5 text-sm">
         <Loader2 className="size-4 animate-spin" /> {WORKING_STEPS[i]}
       </p>
-      <p className="mt-1 text-[12px] text-muted-foreground">Проверка занимает до минуты.</p>
+      <p className="mt-1 text-caption text-muted-foreground">Проверка занимает до минуты.</p>
     </div>
   );
 }
@@ -48,7 +48,7 @@ function Finding({ finding: f, open, onToggle, where }: { finding: CheckFinding;
       <span
         aria-hidden
         className={cx(
-          'grid size-6 place-items-center rounded-full text-[12px] font-semibold',
+          'grid size-6 place-items-center rounded-full text-caption font-semibold',
           bad ? 'bg-danger/10 text-danger' : 'bg-warn-surface text-warn-foreground',
         )}
       >
@@ -59,40 +59,40 @@ function Finding({ finding: f, open, onToggle, where }: { finding: CheckFinding;
           <span className="sr-only">{bad ? 'Ошибка: ' : 'Замечание: '}</span>
           {f.what}
         </p>
-        <p className="text-[13px] leading-snug text-muted-foreground">{f.todo}</p>
+        <p className="text-ui leading-snug text-muted-foreground">{f.todo}</p>
         {(f.quote || f.inApplication) && (
           <button
             type="button"
             aria-expanded={open}
             onClick={onToggle}
-            className="inline-flex items-center gap-1 text-[12px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            className="inline-flex items-center gap-1 text-caption text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
           >
             <FileText className="size-3" /> {f.source || 'цитаты'}
           </button>
         )}
         {open && (
-          <div className="space-y-1.5 text-[12px] leading-snug">
+          <div className="space-y-1.5 text-caption leading-snug">
             {f.quote && (
               <blockquote className="rounded-md bg-secondary px-3 py-2 text-muted-foreground">
                 <span className="font-medium">В документах закупки: </span>«{f.quote}»
-                {where && <span className="mt-1 block break-words text-[11px]">{where}</span>}
+                {where && <span className="mt-1 block break-words text-micro">{where}</span>}
               </blockquote>
             )}
             {f.inApplication && (
               <blockquote className="rounded-md bg-secondary px-3 py-2 text-muted-foreground">
                 <span className="font-medium">В заявке: </span>«{f.inApplication}»
-                {f.inApplicationAt && <span className="mt-1 block break-words text-[11px]">{f.inApplicationAt}</span>}
+                {f.inApplicationAt && <span className="mt-1 block break-words text-micro">{f.inApplicationAt}</span>}
               </blockquote>
             )}
           </div>
         )}
         {f.quote && !f.verified && (
-          <p className="flex items-center gap-1.5 text-[12px] text-warn-foreground">
+          <p className="flex items-center gap-1.5 text-caption text-warn-foreground">
             <AlertTriangle className="size-3.5 shrink-0" /> Не нашёл требование в документах закупки дословно — сверьте вручную.
           </p>
         )}
         {f.inApplication && !f.appVerified && (
-          <p className="flex items-center gap-1.5 text-[12px] text-warn-foreground">
+          <p className="flex items-center gap-1.5 text-caption text-warn-foreground">
             <AlertTriangle className="size-3.5 shrink-0" /> Не нашёл этот текст в заявке дословно — сверьте вручную.
           </p>
         )}
@@ -216,7 +216,7 @@ export function OwnCheck() {
         <ListChecks className="size-4 shrink-0 text-muted-foreground" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium">Проверить свою заявку файлом</p>
-          <p className="text-[12px] text-muted-foreground">Готовили заявку сами? Загрузите файл — ИИ сверит её с документами закупки по пунктам.</p>
+          <p className="text-caption text-muted-foreground">Готовили заявку сами? Загрузите файл — ИИ сверит её с документами закупки по пунктам.</p>
         </div>
         {summary && <Badge tone={TONE[summary.tone]}>{summary.text}</Badge>}
         <ChevronDown className={cx('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
@@ -238,7 +238,7 @@ export function OwnCheck() {
           />
 
           {error && (
-            <p role="alert" className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
+            <p role="alert" className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-ui text-danger">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" /> <span className="min-w-0 break-words">{error}</span>
             </p>
           )}
@@ -257,7 +257,7 @@ export function OwnCheck() {
               >
                 <Upload className="size-5 text-muted-foreground" />
                 <span className="text-sm font-medium">Загрузить заявку</span>
-                <span className="text-[12px] text-muted-foreground">
+                <span className="text-caption text-muted-foreground">
                   {purchase.sample
                     ? 'В примере проверится вымышленная заявка — бесплатно и без ИИ.'
                     : 'Перетащите сюда файлы своей заявки — можно сразу несколько. PDF, Word, Excel, ZIP, сканы.'}
@@ -268,8 +268,8 @@ export function OwnCheck() {
             <>
               <div className="space-y-1">
                 <h3 className="text-base font-semibold tracking-tight">{shown.title}</h3>
-                <p className="max-w-[70ch] text-[13px] text-muted-foreground">{shown.lead}</p>
-                <p className="font-mono text-[11px] text-muted-foreground">
+                <p className="max-w-[70ch] text-ui text-muted-foreground">{shown.lead}</p>
+                <p className="font-mono text-micro text-muted-foreground">
                   Проверено: {check.files.join(', ')} · {when(check.checkedAt)}
                 </p>
                 <div className="pt-1.5">
@@ -280,21 +280,21 @@ export function OwnCheck() {
               </div>
 
               {purchase.sample && (
-                <p className="rounded-md bg-info/10 px-3 py-2 text-[13px] text-info">Это пример: проверена вымышленная заявка к вымышленной закупке.</p>
+                <p className="rounded-md bg-info/10 px-3 py-2 text-ui text-info">Это пример: проверена вымышленная заявка к вымышленной закупке.</p>
               )}
               {!purchase.sample && docsChanged && (
-                <p className="flex items-start gap-2 rounded-md bg-warn-surface/50 px-3 py-2 text-[13px] text-warn-foreground">
+                <p className="flex items-start gap-2 rounded-md bg-warn-surface/50 px-3 py-2 text-ui text-warn-foreground">
                   <AlertTriangle className="mt-0.5 size-4 shrink-0" /> После проверки в закупку добавили документы — проверьте заявку заново.
                 </p>
               )}
               {notice && (
-                <p className="flex items-start gap-2 rounded-md bg-warn-surface/50 px-3 py-2 text-[13px] text-warn-foreground">
+                <p className="flex items-start gap-2 rounded-md bg-warn-surface/50 px-3 py-2 text-ui text-warn-foreground">
                   <AlertTriangle className="mt-0.5 size-4 shrink-0" /> <span className="min-w-0 break-words">{notice}</span>
                 </p>
               )}
 
               <div>
-                <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                <p className="mb-1 text-micro font-medium uppercase tracking-wider text-muted-foreground">
                   {check.findings.length ? `Что исправить · ${check.findings.length}` : 'Проверенные пункты'}
                 </p>
                 <ul className="divide-y divide-border">
@@ -306,7 +306,7 @@ export function OwnCheck() {
                       <span aria-hidden className="grid size-6 place-items-center rounded-full bg-success/10 text-success">
                         <Check className="size-3.5" />
                       </span>
-                      <p className="text-[13px] font-medium text-success">
+                      <p className="text-ui font-medium text-success">
                         {check.findings.length ? 'Остальные' : 'Все'} {check.okCount} {plural(check.okCount, 'пункт', 'пункта', 'пунктов')} — в порядке.
                       </p>
                     </li>

@@ -36,7 +36,7 @@ test('шаги закупки: пройденные — зелёная гало�
 });
 
 test('переключатели и фильтры — одна общая плашка Chip высотой 32, а не свои копии', () => {
-  assert.match(src('components/ui.tsx'), /inline-flex min-h-8 items-center gap-1\.5 rounded-full border px-3\.5 text-\[13px\]/);
+  assert.match(src('components/ui.tsx'), /inline-flex min-h-8 items-center gap-1\.5 rounded-full border px-3\.5 text-ui/);
   for (const file of ['components/StepPackage.tsx', 'components/TendersDashboard.tsx', 'components/TenderSearch.tsx', 'components/Settings.tsx', 'components/Calculator.tsx']) {
     assert.match(src(file), /<Chip\b/, `${file}: переключатели — общим Chip`);
   }
@@ -65,7 +65,7 @@ test('поля ввода: стиль берётся из общего fieldClas
   assert.deepEqual(copies, [], `свои копии стиля поля: ${copies.join(', ')} — используйте fieldClass из ui.tsx`);
   const ui = src('components/ui.tsx');
   assert.match(ui, /'h-9 w-full px-3 text-sm'/);
-  assert.match(ui, /'h-8 w-full px-2\.5 text-\[13px\]'/);
+  assert.match(ui, /'h-8 w-full px-2\.5 text-ui'/);
 });
 
 test('«Состав исполнителей» свёрнут по умолчанию; в заголовке — что осталось; кнопка на «Проверке» раскрывает его', () => {
@@ -93,8 +93,8 @@ test('карточки экрана закупки в «Аналитике» в�
   const cards = ['PositionPrices', 'ExecutionCost', 'CustomerQuotes', 'CrewCost', 'ServiceVolume'];
   for (const name of cards) {
     const src = readFileSync(new URL('../src/components/' + name + '.tsx', import.meta.url), 'utf8');
-    assert.ok(src.includes('<p className="text-[15px] font-bold">'), name + ': заголовок карточки — 15 пикселей жирным');
-    assert.equal(src.includes('<p className="text-[14px] font-bold">'), false, name + ': заголовок карточки не 14 пикселей');
+    assert.ok(src.includes('<p className="text-subtitle font-bold">'), name + ': заголовок карточки — 15 пикселей жирным');
+    assert.equal(src.includes('<p className="text-sm font-bold">'), false, name + ': заголовок карточки не 14 пикселей');
     assert.match(src, /<Card className="space-y-\d p-4">/, name + ': карточка с отступом p-4');
   }
 });
@@ -118,7 +118,7 @@ test('кнопки, которые вызывают ИИ, — вариант ai:
 test('карточка закупки: цена в строке заголовка, прогресс зелёный на 100 %, «Отметить поданной» и «Удалить» внизу', () => {
   const card = src('components/TendersDashboard.tsx');
   assert.match(card, /justify-between[^"]*"[^>]*>\s*<p className="min-w-0 flex-1 text-sm font-medium leading-snug">\{t\.title\}<\/p>/);
-  assert.match(card, /progress >= 100 \? 'bg-success' : 'bg-foreground'/);
+  assert.match(card, /progress >= 100 \? 'bg-success' : 'bg-primary'/);
   assert.ok(card.lastIndexOf('Отметить поданной') > card.indexOf('{progress}%'), 'кнопка внизу, рядом с прогрессом');
   for (const file of ['components/Analytics.tsx', 'components/TenderSearch.tsx']) assert.match(src(file), /justify-between gap-x-4/, file);
 });

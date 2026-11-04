@@ -52,9 +52,9 @@ export function AnalyticsHome({ purchases, onOpen, onUpload, extra }: Props) {
       <Card className="p-0">
         <div className="border-b border-border px-4 py-3 text-sm font-medium">Закупки</div>
         {purchases === null ? (
-          <p className="px-4 py-4 text-[13px] text-muted-foreground">Читаю закупки…</p>
+          <p className="px-4 py-4 text-ui text-muted-foreground">Читаю закупки…</p>
         ) : purchases.length === 0 ? (
-          <div className="space-y-3 px-4 py-4 text-[13px]">
+          <div className="space-y-3 px-4 py-4 text-ui">
             <p className="text-muted-foreground">Закупок нет — загрузите первую.</p>
           </div>
         ) : (
@@ -67,10 +67,10 @@ export function AnalyticsHome({ purchases, onOpen, onUpload, extra }: Props) {
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-x-4">
-                      <p className="min-w-0 flex-1 break-words text-[13px] font-medium">{p.title}</p>
-                      {p.price && <span className="shrink-0 text-right font-mono text-base font-bold tabular-nums">{p.price}</span>}
+                      <p className="min-w-0 flex-1 break-words text-ui font-medium">{p.title}</p>
+                      {p.price && <span className="shrink-0 text-right text-base font-bold tabular-nums">{p.price}</span>}
                     </div>
-                    <p className="mt-0.5 text-[12px] text-muted-foreground">
+                    <p className="mt-0.5 text-caption text-muted-foreground">
                       {p.kind}
                       {p.sample && ' · пример'}
                     </p>
@@ -84,7 +84,7 @@ export function AnalyticsHome({ purchases, onOpen, onUpload, extra }: Props) {
       </Card>
 
       <SummaryCard title="Скоро в разделе" subtitle={`${COMING.length} ${plural(COMING.length, 'функция', 'функции', 'функций')}`}>
-        <ul className="divide-y divide-border text-[13px]">
+        <ul className="divide-y divide-border text-ui">
           {COMING.map((c) => (
             <li key={c.title} className="py-2">
               <span className="font-medium">{c.title}</span>

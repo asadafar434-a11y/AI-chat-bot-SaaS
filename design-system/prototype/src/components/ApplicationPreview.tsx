@@ -77,7 +77,7 @@ export function ApplicationText({
   const cast = tp.cast;
 
   return (
-    <div className="space-y-3 text-[13px] leading-relaxed">
+    <div className="space-y-3 text-ui leading-relaxed">
       <p className="font-semibold">{tp.form.title}</p>
       {tp.form.consent && (
         <p className="whitespace-pre-wrap text-muted-foreground">{marked(tp.form.consent, (h) => `tp:consent:${h}`)}</p>
@@ -118,7 +118,7 @@ export function ApplicationText({
         </div>
       )}
       {purchase.tpPrice ? (
-        <p className="border-t border-border pt-3 text-[12px] text-muted-foreground">
+        <p className="border-t border-border pt-3 text-caption text-muted-foreground">
           Цена: <b className="font-mono font-medium text-foreground">{purchase.tpPrice.toLocaleString('ru-RU')} ₽</b>
         </p>
       ) : null}
@@ -139,8 +139,8 @@ export function ApplicationPreview({
   return (
     <Card className="p-0 lg:sticky lg:top-4 lg:h-fit lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-        <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">Заявка · предпросмотр</span>
-        <span className="inline-flex items-center gap-1 font-mono text-[11px] text-muted-foreground">
+        <span className="font-mono text-micro uppercase tracking-wider text-muted-foreground">Заявка · предпросмотр</span>
+        <span className="inline-flex items-center gap-1 font-mono text-micro text-muted-foreground">
           <Eye className="size-3" /> живой
         </span>
       </div>

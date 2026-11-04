@@ -13,7 +13,7 @@ export function CustomerTemplates({ templates }: { templates: CustomerTemplate[]
   return (
     <Card className="p-0">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-        <span className="flex items-center gap-1.5 text-[15px] font-bold">
+        <span className="flex items-center gap-1.5 text-subtitle font-bold">
           Шаблоны заказчика · {templates.length}
           <HelpTip
             align="start"
@@ -25,7 +25,7 @@ export function CustomerTemplates({ templates }: { templates: CustomerTemplate[]
         {templates.map((t) => (
           <li key={t.name} className="flex items-start gap-3 border-b border-border px-4 py-2.5 last:border-0">
             <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-            <p className="min-w-0 flex-1 break-words text-[13px] font-medium">{t.name}</p>
+            <p className="min-w-0 flex-1 break-words text-ui font-medium">{t.name}</p>
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
               <Badge tone="neutral">{t.label}</Badge>
               {t.excel && <Badge tone="info">Excel</Badge>}

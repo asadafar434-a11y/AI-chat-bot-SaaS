@@ -25,7 +25,7 @@ function Snippet({ doc, fragment, where }: { doc: DocHits; fragment: Fragment; w
   const cut = fragment.from > 0 || fragment.to < doc.text.length;
   return (
     <li className="space-y-1 py-2.5">
-      <p className="text-[13px] leading-relaxed">
+      <p className="text-ui leading-relaxed">
         {shown.from > 0 && '… '}
         {piecesOf(doc.text, shown).map((piece, i) =>
           piece.mark ? (
@@ -38,13 +38,13 @@ function Snippet({ doc, fragment, where }: { doc: DocHits; fragment: Fragment; w
         )}
         {shown.to < doc.text.length && ' …'}
       </p>
-      {where && <p className="break-words text-[11px] text-muted-foreground">{where}</p>}
+      {where && <p className="break-words text-micro text-muted-foreground">{where}</p>}
       {cut && (
         <button
           type="button"
           aria-expanded={wide}
           onClick={() => setWide(!wide)}
-          className="text-[12px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          className="text-caption text-muted-foreground underline underline-offset-2 hover:text-foreground"
         >
           {wide ? 'Свернуть' : 'Показать больше текста'}
         </button>
@@ -60,21 +60,21 @@ function DocResults({ doc, whereAt }: { doc: DocHits; whereAt: (name: string, po
   return (
     <div className="border-t border-border px-4 py-3">
       <p className="text-sm font-medium">
-        {doc.name} <span className="ml-1 font-mono text-[11px] text-muted-foreground">{doc.total}</span>
+        {doc.name} <span className="ml-1 font-mono text-micro text-muted-foreground">{doc.total}</span>
       </p>
-      {doc.scan && <p className="text-[12px] text-warn-foreground">распознан со скана — цифры сверьте с оригиналом</p>}
+      {doc.scan && <p className="text-caption text-warn-foreground">распознан со скана — цифры сверьте с оригиналом</p>}
       <ul className="divide-y divide-border">
         {shown.map((f) => (
           <Snippet key={f.from} doc={doc} fragment={f} where={whereAt(doc.name, f.marks[0].start)} />
         ))}
       </ul>
       {fragments.length > FIRST && (
-        <button type="button" onClick={() => setAll(!all)} className="mt-1 text-[13px] font-medium underline underline-offset-4">
+        <button type="button" onClick={() => setAll(!all)} className="mt-1 text-ui font-medium underline underline-offset-4">
           {all ? 'Свернуть' : `Показать все отрывки — ещё ${fragments.length - FIRST}`}
         </button>
       )}
       {doc.total > doc.hits.length && (
-        <p className="mt-1 text-[12px] text-muted-foreground">
+        <p className="mt-1 text-caption text-muted-foreground">
           Показаны первые {places(doc.hits.length)} из {doc.total} — уточните запрос, например, добавьте второе слово.
         </p>
       )}
@@ -107,7 +107,7 @@ export function DocSearch({ documents }: { documents: SentDocument[] }) {
         <Search className="size-4 shrink-0 text-muted-foreground" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium">Поиск по документам закупки</p>
-          <p className="text-[12px] text-muted-foreground">Найти, где в извещении, ТЗ или проекте контракта говорится об обеспечении, сроках, неустойке.</p>
+          <p className="text-caption text-muted-foreground">Найти, где в извещении, ТЗ или проекте контракта говорится об обеспечении, сроках, неустойке.</p>
         </div>
         <ChevronDown className={cx('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
       </button>
@@ -127,7 +127,7 @@ export function DocSearch({ documents }: { documents: SentDocument[] }) {
                 className="h-full min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
               />
             </label>
-            <p aria-live="polite" className="max-w-[80ch] text-[12px] text-muted-foreground">
+            <p aria-live="polite" className="max-w-[80ch] text-caption text-muted-foreground">
               {summary}
             </p>
             {!result && (
@@ -137,7 +137,7 @@ export function DocSearch({ documents }: { documents: SentDocument[] }) {
                     key={q}
                     type="button"
                     onClick={() => setQuery(q)}
-                    className="rounded-full border border-border bg-background px-3 py-1 text-[12px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                    className="rounded-full border border-border bg-background px-3 py-1 text-caption text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                   >
                     {q}
                   </button>

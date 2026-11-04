@@ -18,6 +18,7 @@ import type { MatrixSummary } from '@/lib/check-matrix';
 import type { RicResult } from '@/lib/indicative-price';
 import type { EstimateResult } from '@/lib/risk-estimate';
 import { CertaintyBadge } from './Certainty';
+import { DataTable, TBody, THead, Td, Th, Tr } from './data';
 import { HelpTip, Soon } from './ui';
 
 // Итоговая диаграмма разбора: только проценты и суммы, которые код уже посчитал (lib/analytics-chart.ts). Три картинки: из чего складывается цена, риски в процентах от цены, прибыль при снижении цены.
@@ -44,7 +45,7 @@ function Segmented({ value, onChange }: { value: Scenario; onChange: (s: Scenari
           aria-checked={value === id}
           title={SCENARIO_LABELS[id]}
           onClick={() => onChange(id)}
-          className={`h-7 rounded px-2.5 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+          className={`h-7 rounded px-2.5 text-caption font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
             value === id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
           }`}
         >
@@ -62,9 +63,9 @@ function Facts({ econ, estimate, ric, matrix }: { econ: EconResult; estimate: Es
     <dl className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-2">
       {facts.map((f) => (
         <div key={f.id} className="min-w-0 rounded-lg border border-border px-3 py-2">
-          <dt className="text-[11px] text-muted-foreground">{f.label}</dt>
-          <dd className="mt-0.5 break-words text-[20px] font-semibold leading-tight tracking-tight">{f.value}</dd>
-          <p className="mt-0.5 break-words text-[11px] text-muted-foreground">{f.hint}</p>
+          <dt className="text-micro text-muted-foreground">{f.label}</dt>
+          <dd className="mt-0.5 break-words text-xl font-semibold leading-tight tracking-tight">{f.value}</dd>
+          <p className="mt-0.5 break-words text-micro text-muted-foreground">{f.hint}</p>
         </div>
       ))}
     </dl>
@@ -74,8 +75,8 @@ function Facts({ econ, estimate, ric, matrix }: { econ: EconResult; estimate: Es
 function Amount({ amount, pct }: { amount: number; pct: number }) {
   return (
     <span className="shrink-0 text-right">
-      <span className="block font-mono text-[13px]">{rubles(amount)}</span>
-      <span className="block text-[12px] text-muted-foreground">{percent(pct)}</span>
+      <span className="block tabular-nums text-ui">{rubles(amount)}</span>
+      <span className="block text-caption text-muted-foreground">{percent(pct)}</span>
     </span>
   );
 }
@@ -86,13 +87,13 @@ function PriceSection({ econ }: { econ: EconResult }) {
   return (
     <section aria-labelledby="chart-price" className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 id="chart-price" className="text-[13px] font-medium">
+        <h3 id="chart-price" className="text-ui font-medium">
           Из чего складывается цена{bar ? ` ${rubles(bar.price)}` : ''}
         </h3>
         {bar && <Segmented value={scenario} onChange={setScenario} />}
       </div>
       {!bar ? (
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-ui text-muted-foreground">
           {econ.ready === false && econ.reason === 'nmck'
             ? 'Начальной цены в документах нет — раскладывать нечего.'
             : 'Впишите затраты на исполнение — покажу, из чего складывается цена.'}
@@ -113,7 +114,7 @@ function PriceSection({ econ }: { econ: EconResult }) {
               <>
                 <div className="pointer-events-none absolute bottom-[-2px] top-3 w-px bg-foreground" style={{ left: `${bar.priceAt}%` }} aria-hidden />
                 <span
-                  className={`pointer-events-none absolute top-0 whitespace-nowrap text-[11px] text-muted-foreground ${bar.priceAt > 80 ? '-translate-x-full pr-1' : 'pl-1'}`}
+                  className={`pointer-events-none absolute top-0 whitespace-nowrap text-micro text-muted-foreground ${bar.priceAt > 80 ? '-translate-x-full pr-1' : 'pl-1'}`}
                   style={{ left: `${bar.priceAt}%` }}
                 >
                   цена заявки
@@ -126,9 +127,9 @@ function PriceSection({ econ }: { econ: EconResult }) {
             {bar.parts.map((p) => (
               <li key={p.id} className="flex items-start gap-2.5 py-2">
                 <span className={`mt-1 size-2.5 shrink-0 rounded-sm ${FILL[p.id]}`} aria-hidden />
-                <div className="min-w-0 flex-1 text-[13px]">
+                <div className="min-w-0 flex-1 text-ui">
                   <p>{p.label}</p>
-                  {p.items.length > 1 && <p className="mt-0.5 break-words text-[12px] text-muted-foreground">{p.items.map((i) => `${i.label} ${rubles(i.amount)}`).join(' · ')}</p>}
+                  {p.items.length > 1 && <p className="mt-0.5 break-words text-caption text-muted-foreground">{p.items.map((i) => `${i.label} ${rubles(i.amount)}`).join(' · ')}</p>}
                 </div>
                 <Amount amount={p.amount} pct={p.pct} />
               </li>
@@ -136,9 +137,9 @@ function PriceSection({ econ }: { econ: EconResult }) {
             {bar.loss && (
               <li className="flex items-start gap-2.5 py-2">
                 <span className={`mt-1 size-2.5 shrink-0 rounded-sm ${FILL.loss}`} aria-hidden />
-                <div className="min-w-0 flex-1 text-[13px]">
+                <div className="min-w-0 flex-1 text-ui">
                   <p>Убыток</p>
-                  <p className="mt-0.5 text-[12px] text-muted-foreground">Затраты, налог и риски сверх цены заявки</p>
+                  <p className="mt-0.5 text-caption text-muted-foreground">Затраты, налог и риски сверх цены заявки</p>
                 </div>
                 <Amount amount={bar.loss.amount} pct={bar.loss.pct} />
               </li>
@@ -153,19 +154,19 @@ function PriceSection({ econ }: { econ: EconResult }) {
 function RiskSection({ shares }: { shares: RiskShares }) {
   return (
     <section aria-labelledby="chart-risks" className="space-y-3">
-      <h3 id="chart-risks" className="text-[13px] font-medium">
+      <h3 id="chart-risks" className="text-ui font-medium">
         Риски в процентах от цены
       </h3>
       {shares.shown.length === 0 ? (
-        <p className="text-[13px] text-muted-foreground">Рисков в рублях нет: нужны цена и условия договора.</p>
+        <p className="text-ui text-muted-foreground">Рисков в рублях нет: нужны цена и условия договора.</p>
       ) : (
         <>
           <ul className="space-y-2.5">
             {shares.shown.map((s) => (
               <li key={s.id} title={s.basis}>
-                <div className="flex items-baseline justify-between gap-3 text-[13px]">
+                <div className="flex items-baseline justify-between gap-3 text-ui">
                   <span className="min-w-0 break-words">{s.title}</span>
-                  <span className="shrink-0 font-mono text-[12px]">
+                  <span className="shrink-0 tabular-nums text-caption">
                     {rubles(s.amount)} · {percent(s.pct)}
                   </span>
                 </div>
@@ -175,11 +176,11 @@ function RiskSection({ shares }: { shares: RiskShares }) {
               </li>
             ))}
           </ul>
-          {shares.rest.count > 0 && <p className="text-[12px] text-muted-foreground">И ещё рисков: {shares.rest.count}, на {rubles(shares.rest.amount)}.</p>}
+          {shares.rest.count > 0 && <p className="text-caption text-muted-foreground">И ещё рисков: {shares.rest.count}, на {rubles(shares.rest.amount)}.</p>}
         </>
       )}
       {shares.unknown.length > 0 && (
-        <p className="text-[12px] text-muted-foreground">
+        <p className="text-caption text-muted-foreground">
           Без суммы: {shares.unknown.map((u) => u.title).join('; ')}
         </p>
       )}
@@ -240,10 +241,10 @@ function CurveSection({ curve }: { curve: Curve }) {
   const hasLoss = lo < 0;
   return (
     <section aria-labelledby="chart-curve" className="space-y-3">
-      <h3 id="chart-curve" className="text-[13px] font-medium">
+      <h3 id="chart-curve" className="text-ui font-medium">
         Прибыль при снижении цены
       </h3>
-      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
+      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-caption text-muted-foreground">
         <li className="flex items-center gap-1.5">
           <span className="h-0.5 w-4 rounded-full" style={{ background: 'var(--viz-1)' }} aria-hidden />
           Базовый сценарий
@@ -268,25 +269,25 @@ function CurveSection({ curve }: { curve: Curve }) {
           {ticks.map((t) => (
             <g key={t}>
               <line x1={PAD.l} x2={PAD.l + plotW} y1={y(t)} y2={y(t)} className={t === 0 ? 'stroke-muted-foreground/60' : 'stroke-border'} strokeWidth={1} />
-              <text x={PAD.l - 8} y={y(t) + 4} textAnchor="end" className="fill-muted-foreground text-[11px]">
+              <text x={PAD.l - 8} y={y(t) + 4} textAnchor="end" className="fill-muted-foreground text-micro">
                 {compactRub(t)}
               </text>
             </g>
           ))}
           {points.map((p) => (
-            <text key={p.drop} x={x(p.drop)} y={HEIGHT - 8} textAnchor="middle" className="fill-muted-foreground text-[11px]">
+            <text key={p.drop} x={x(p.drop)} y={HEIGHT - 8} textAnchor="middle" className="fill-muted-foreground text-micro">
               {p.drop}
             </text>
           ))}
           {hasLoss && (
-            <text x={PAD.l + 6} y={PAD.t + plotH - 6} className="fill-muted-foreground text-[11px]">
+            <text x={PAD.l + 6} y={PAD.t + plotH - 6} className="fill-muted-foreground text-micro">
               убыток
             </text>
           )}
           {curve.currentDrop !== null && (
             <g>
               <line x1={x(curve.currentDrop)} x2={x(curve.currentDrop)} y1={PAD.t} y2={PAD.t + plotH} className="stroke-foreground" strokeWidth={1} />
-              <text x={x(curve.currentDrop) + (x(curve.currentDrop) > width / 2 ? -5 : 5)} y={PAD.t + 10} textAnchor={x(curve.currentDrop) > width / 2 ? 'end' : 'start'} className="fill-muted-foreground text-[11px]">
+              <text x={x(curve.currentDrop) + (x(curve.currentDrop) > width / 2 ? -5 : 5)} y={PAD.t + 10} textAnchor={x(curve.currentDrop) > width / 2 ? 'end' : 'start'} className="fill-muted-foreground text-micro">
                 цена заявки
               </text>
             </g>
@@ -298,7 +299,7 @@ function CurveSection({ curve }: { curve: Curve }) {
             <g key={key}>
               <circle cx={x(last.drop)} cy={y(last[key])} r={4} fill={`var(--viz-${n + 1})`} stroke="var(--card)" strokeWidth={2} />
               {direct && (
-                <text x={x(last.drop) + 9} y={y(last[key]) + 4} className="fill-muted-foreground text-[11px]" aria-hidden>
+                <text x={x(last.drop) + 9} y={y(last[key]) + 4} className="fill-muted-foreground text-micro" aria-hidden>
                   {key === 'base' ? 'базовый' : 'стресс'}
                 </text>
               )}
@@ -316,7 +317,7 @@ function CurveSection({ curve }: { curve: Curve }) {
         </svg>
         {hit && (
           <div
-            className="pointer-events-none absolute z-10 min-w-[11rem] rounded-lg border border-border bg-card px-3 py-2 text-[12px] shadow-md"
+            className="pointer-events-none absolute z-10 min-w-[11rem] rounded-lg border border-border bg-card px-3 py-2 text-caption shadow-md"
             style={{ top: PAD.t, left: x(hit.drop), transform: flip ? 'translateX(calc(-100% - 10px))' : 'translateX(10px)' }}
           >
             <p className="text-muted-foreground">
@@ -326,42 +327,47 @@ function CurveSection({ curve }: { curve: Curve }) {
               <p key={key} className="mt-1 flex items-center gap-2">
                 <span className="h-0.5 w-3 rounded-full" style={{ background: `var(--viz-${n + 1})` }} aria-hidden />
                 <span className="text-muted-foreground">{key === 'base' ? 'Базовый' : 'Стресс'}</span>
-                <strong className="ml-auto font-mono font-semibold">{rubles(hit[key])}</strong>
+                <strong className="ml-auto tabular-nums font-semibold">{rubles(hit[key])}</strong>
               </p>
             ))}
           </div>
         )}
       </div>
-      <p className="text-[11px] text-muted-foreground">Снижение от начальной цены ({rubles(points[0].price)}) → прибыль, ₽</p>
+      <p className="text-micro text-muted-foreground">Снижение от начальной цены ({rubles(points[0].price)}) → прибыль, ₽</p>
       {curve.marks.length > 0 && (
-        <p className="text-[12px] text-muted-foreground">
+        <p className="text-caption text-muted-foreground">
           {curve.marks.map((m) => `${m.label} ${rubles(m.price)} (на ${percent(m.drop)} ниже начальной)`).join(' · ')}
         </p>
       )}
-      <details className="text-[12px]">
+      <details className="text-caption">
         <summary className="cursor-pointer text-muted-foreground">Таблица значений</summary>
-        <div className="mt-2 overflow-x-auto">
-          <table className="w-full min-w-[20rem] border-collapse">
-            <thead>
-              <tr className="text-left text-muted-foreground">
-                {['Снижение', 'Цена', 'Базовый', 'Стресс'].map((h) => (
-                  <th key={h} className="border-b border-border px-2 py-1.5 font-medium">
-                    {h}
-                  </th>
-                ))}
+        <div className="mt-2">
+          <DataTable minWidth={320} caption="Прибыль при снижении цены">
+            <THead>
+              <tr>
+                <Th>Снижение</Th>
+                <Th align="right">Цена</Th>
+                <Th align="right">Базовый</Th>
+                <Th align="right">Стресс</Th>
               </tr>
-            </thead>
-            <tbody>
+            </THead>
+            <TBody>
               {points.map((p) => (
-                <tr key={p.drop}>
-                  <td className="px-2 py-1.5">{p.drop} %</td>
-                  <td className="px-2 py-1.5 font-mono">{rubles(p.price)}</td>
-                  <td className={`px-2 py-1.5 font-mono ${p.base < 0 ? 'text-danger' : ''}`}>{rubles(p.base)}</td>
-                  <td className={`px-2 py-1.5 font-mono ${p.stress < 0 ? 'text-danger' : ''}`}>{rubles(p.stress)}</td>
-                </tr>
+                <Tr key={p.drop}>
+                  <Td tone="muted" className="tabular-nums">
+                    {p.drop} %
+                  </Td>
+                  <Td num>{rubles(p.price)}</Td>
+                  <Td num tone={p.base < 0 ? 'danger' : 'neutral'}>
+                    {rubles(p.base)}
+                  </Td>
+                  <Td num tone={p.stress < 0 ? 'danger' : 'neutral'}>
+                    {rubles(p.stress)}
+                  </Td>
+                </Tr>
               ))}
-            </tbody>
-          </table>
+            </TBody>
+          </DataTable>
         </div>
       </details>
     </section>
@@ -372,7 +378,7 @@ export function AnalyticsChart({ econ, estimate, ric, matrix }: { econ: EconResu
   const shares = riskShares(estimate);
   const curve = profitCurve(econ);
   return (
-    <div className="space-y-6 text-[13px]">
+    <div className="space-y-6 text-ui">
       <div className="flex flex-wrap items-center gap-2">
         <CertaintyBadge kind="estimate" />
         <HelpTip
@@ -384,7 +390,7 @@ export function AnalyticsChart({ econ, estimate, ric, matrix }: { econ: EconResu
       <PriceSection econ={econ} />
       <RiskSection shares={shares} />
       {curve && <CurveSection curve={curve} />}
-      <p className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
+      <p className="flex flex-wrap items-center gap-2 text-caption text-muted-foreground">
         Шансы на победу и проверки заказчика — <Soon />
         <HelpTip align="start" content="Процент победы не показываем: для него нужна история торгов." />
       </p>

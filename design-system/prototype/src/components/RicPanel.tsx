@@ -72,19 +72,19 @@ export function RicPanel({ data, result, badge, importSource, importNote, onImpo
         <div className={frameBody(embedded, 'space-y-4')}>
           <Settings data={data} onChange={onChange} />
           {importSource && (
-            <p className="flex items-start gap-1.5 text-[12px] text-muted-foreground">
+            <p className="flex items-start gap-1.5 text-caption text-muted-foreground">
               <Info className="mt-0.5 size-3.5 shrink-0" />
               Позиции — из бланка «{importSource.title}», файл «{importSource.doc}».
             </p>
           )}
           {importNote && (
-            <p className="flex items-start gap-1.5 text-[12px] text-muted-foreground">
+            <p className="flex items-start gap-1.5 text-caption text-muted-foreground">
               <Info className="mt-0.5 size-3.5 shrink-0" />
               {importNote}
             </p>
           )}
           {saveError && (
-            <p role="alert" className="flex items-start gap-1.5 text-[12px] text-danger">
+            <p role="alert" className="flex items-start gap-1.5 text-caption text-danger">
               <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
               {saveError}
             </p>
@@ -128,25 +128,25 @@ function Settings({ data, onChange }: { data: RicData; onChange: (next: RicData)
     return Number.isFinite(n) && n >= 0 ? n : fallback;
   };
   return (
-    <details className="text-[12px]">
+    <details className="text-caption">
       <summary className="cursor-pointer text-muted-foreground">Настройки расчёта: НДС, срок цен, порог бейджа</summary>
       <section aria-label="Настройки расчёта" className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-4">
-      <label className="block text-[12px]">
+      <label className="block text-caption">
         <span className="mb-1 block text-muted-foreground">Начальная цена (НМЦ) указана</span>
         <select value={data.settings.nmckVat} onChange={(e) => set({ nmckVat: e.target.value as Vat })} className={inputClass}>
           <option value="with">с НДС</option>
           <option value="without">без НДС</option>
         </select>
       </label>
-      <label className="block text-[12px]">
+      <label className="block text-caption">
         <span className="mb-1 block text-muted-foreground">Ставка НДС, %</span>
         <input type="text" inputMode="decimal" value={String(data.settings.vatRate)} onChange={(e) => set({ vatRate: Math.min(99, number(e.target.value, data.settings.vatRate)) })} className={numClass} />
       </label>
-      <label className="block text-[12px]">
+      <label className="block text-caption">
         <span className="mb-1 block text-muted-foreground">Цена считается устаревшей через, дней</span>
         <input type="text" inputMode="numeric" value={String(data.settings.staleDays)} onChange={(e) => set({ staleDays: Math.max(1, Math.round(number(e.target.value, data.settings.staleDays))) })} className={numClass} />
       </label>
-      <label className="block text-[12px]">
+      <label className="block text-caption">
         <span className="mb-1 block text-muted-foreground">«Существенно» — отклонение от, %</span>
         <input type="text" inputMode="decimal" value={String(data.settings.badgePct)} onChange={(e) => set({ badgePct: Math.min(99, Math.max(1, number(e.target.value, data.settings.badgePct))) })} className={numClass} />
       </label>
@@ -199,7 +199,7 @@ function PositionCard({
 
       <div className="space-y-2 border-t border-border px-3 py-2.5">
         {result.checks.length > 0 && (
-          <div className="hidden gap-2 px-0.5 text-[11px] text-muted-foreground sm:grid sm:grid-cols-[7rem_6.5rem_minmax(0,1fr)_9rem_5.5rem_1.75rem]">
+          <div className="hidden gap-2 px-0.5 text-micro text-muted-foreground sm:grid sm:grid-cols-[7rem_6.5rem_minmax(0,1fr)_9rem_5.5rem_1.75rem]">
             <span className="text-right">Цена за единицу</span>
             <span>НДС</span>
             <span>Источник (кто назвал цену)</span>
@@ -218,7 +218,7 @@ function PositionCard({
               </select>
               <input type="text" aria-label={`Источник цены: ${label}`} placeholder="Например: КП ООО «Север»" value={c.analog.source} onChange={(e) => onPatchAnalog(c.analog.id, { source: e.target.value })} className={`${inputClass} col-span-2 sm:col-span-1`} />
               <input type="date" aria-label={`Дата цены: ${label}`} value={c.analog.date} onChange={(e) => onPatchAnalog(c.analog.id, { date: e.target.value })} className={inputClass} />
-              <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+              <label className="flex items-center gap-1.5 text-caption text-muted-foreground">
                 <input type="checkbox" checked={c.analog.excluded === true} onChange={(e) => onPatchAnalog(c.analog.id, { excluded: e.target.checked })} />
                 <span className="sm:sr-only">Не учитывать</span>
               </label>
@@ -227,7 +227,7 @@ function PositionCard({
               </IconButton>
             </div>
             {(c.state !== 'used' || c.stale) && (
-              <p className="mt-1 flex items-center gap-1 text-[11px] text-warn-foreground">
+              <p className="mt-1 flex items-center gap-1 text-micro text-warn-foreground">
                 <AlertTriangle className="size-3 shrink-0" />
                 {c.state === 'used' ? 'Цена устарела: считается, но проверьте актуальность' : c.state === 'excluded' ? 'Не учитывается: исключена вами' : `Не учитывается: ${c.reason}`}
               </p>
@@ -257,7 +257,7 @@ function PositionCard({
         />
       </div>
 
-      <div className="space-y-1.5 border-t border-border bg-secondary/30 px-3 py-2.5 text-[12px]">
+      <div className="space-y-1.5 border-t border-border bg-secondary/30 px-3 py-2.5 text-caption">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <Badge tone={status.tone} wrap>
             {result.status === 'ok' ? <CheckCircle2 className="size-3" /> : <AlertTriangle className="size-3" />}
@@ -316,7 +316,7 @@ function Summary({ result, base, badge }: { result: RicResult; base: string; bad
   const Icon = badge.status === 'below' ? TrendingDown : badge.status === 'above' ? TrendingUp : badge.status === 'within' ? CheckCircle2 : Info;
   return (
     <Card className="p-0">
-      <div className="space-y-3 px-4 py-4 text-[13px]">
+      <div className="space-y-3 px-4 py-4 text-ui">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone={tone} wrap>
             <Icon className="size-3" />
@@ -327,20 +327,20 @@ function Summary({ result, base, badge }: { result: RicResult; base: string; bad
 
         <dl className="grid grid-cols-1 gap-3 sm:grid-cols-4">
           <div>
-            <dt className="text-[12px] text-muted-foreground">РИЦ ({base})</dt>
+            <dt className="text-caption text-muted-foreground">РИЦ ({base})</dt>
             <dd className="break-words font-mono text-2xl font-bold tracking-tight">{result.ric !== null ? rub(result.ric) : '—'}</dd>
           </div>
           <div>
-            <dt className="text-[12px] text-muted-foreground">Начальная цена заказчика</dt>
-            <dd className="font-mono text-[13px]">{result.nmck !== null ? rub(result.nmck) : 'не указана'}</dd>
+            <dt className="text-caption text-muted-foreground">Начальная цена заказчика</dt>
+            <dd className="font-mono text-ui">{result.nmck !== null ? rub(result.nmck) : 'не указана'}</dd>
           </div>
           <div>
-            <dt className="text-[12px] text-muted-foreground">Отклонение от РИЦ</dt>
-            <dd className="font-mono text-[15px] font-bold">{dev ? `${signed(dev.abs)}${rub(Math.abs(dev.abs))} (${signed(dev.pct)}${pct(Math.abs(dev.pct))})` : '—'}</dd>
+            <dt className="text-caption text-muted-foreground">Отклонение от РИЦ</dt>
+            <dd className="font-mono text-subtitle font-bold">{dev ? `${signed(dev.abs)}${rub(Math.abs(dev.abs))} (${signed(dev.pct)}${pct(Math.abs(dev.pct))})` : '—'}</dd>
           </div>
           <div>
-            <dt className="text-[12px] text-muted-foreground">Диапазон цен-аналогов</dt>
-            <dd className="font-mono text-[13px]">{result.range ? `${rub(result.range.from)} — ${rub(result.range.to)}` : '—'}</dd>
+            <dt className="text-caption text-muted-foreground">Диапазон цен-аналогов</dt>
+            <dd className="font-mono text-ui">{result.range ? `${rub(result.range.from)} — ${rub(result.range.to)}` : '—'}</dd>
           </div>
         </dl>
 
@@ -369,7 +369,7 @@ function Summary({ result, base, badge }: { result: RicResult; base: string; bad
         )}
 
         {detail && (
-          <details className="text-[12px]">
+          <details className="text-caption">
             <summary className="cursor-pointer text-muted-foreground">Почему такой бейдж</summary>
             <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-[14rem_minmax(0,1fr)]">
               <dt className="text-muted-foreground">Начальная цена</dt>
@@ -410,7 +410,7 @@ function Summary({ result, base, badge }: { result: RicResult; base: string; bad
 
 function Method({ data }: { data: RicData }) {
   return (
-    <details className="rounded-xl border border-border bg-card px-4 py-3 text-[12px] shadow-sm">
+    <details className="rounded-xl border border-border bg-card px-4 py-3 text-caption shadow-sm">
       <summary className="cursor-pointer text-sm font-medium">Как считается РИЦ</summary>
       <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
         <li>Цены-аналоги приводятся к одной основе — без НДС (ставка {data.settings.vatRate} %). Индикативная цена единицы — среднее по учтённым ценам.</li>

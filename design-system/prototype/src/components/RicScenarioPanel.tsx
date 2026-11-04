@@ -27,11 +27,11 @@ function Tile({ title, value, hint, badge }: { title: string; value: string; hin
   return (
     <div className="min-w-0 rounded-lg border border-border px-3 py-2">
       <div className="flex flex-wrap items-center gap-1.5">
-        <p className="text-[11px] text-muted-foreground">{title}</p>
+        <p className="text-micro text-muted-foreground">{title}</p>
         <CertaintyBadge kind={badge} />
       </div>
-      <p className="mt-0.5 break-words font-mono text-[15px] font-semibold">{value}</p>
-      <p className="mt-0.5 break-words text-[11px] text-muted-foreground">{hint}</p>
+      <p className="mt-0.5 break-words font-mono text-subtitle font-semibold">{value}</p>
+      <p className="mt-0.5 break-words text-micro text-muted-foreground">{hint}</p>
     </div>
   );
 }
@@ -63,7 +63,7 @@ function Row({
             <input aria-label="Название поправки" value={entry?.label ?? ''} onChange={(e) => onPatch({ label: e.target.value })} placeholder="Название поправки" className={inputClass} />
           ) : (
             <>
-              <p className="flex items-center gap-1.5 break-words text-[13px] font-medium">
+              <p className="flex items-center gap-1.5 break-words text-ui font-medium">
                 {applied.label}
                 <HelpTip align="start" content={hint} />
               </p>
@@ -77,11 +77,11 @@ function Row({
         )}
       </div>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-[10rem_minmax(0,1fr)]">
-        <label className="block text-[12px]">
+        <label className="block text-caption">
           <span className="mb-1 block text-muted-foreground">
             {unit === 'percent' ? 'Поправка, % (минус — уменьшает)' : `Сумма, ₽ (${vat})`}
             {custom && (
-              <select aria-label="Единица" value={unit} onChange={(e) => onPatch({ unit: e.target.value as Unit })} className="ml-1 rounded border border-border bg-background text-[11px]">
+              <select aria-label="Единица" value={unit} onChange={(e) => onPatch({ unit: e.target.value as Unit })} className="ml-1 rounded border border-border bg-background text-micro">
                 <option value="rub">₽</option>
                 <option value="percent">%</option>
               </select>
@@ -89,18 +89,18 @@ function Row({
           </span>
           <input aria-label={`${applied.label}: значение`} inputMode="decimal" value={entry?.value ?? ''} onChange={(e) => onPatch({ value: e.target.value })} placeholder="0" className={numClass} />
         </label>
-        <label className="block text-[12px]">
+        <label className="block text-caption">
           <span className="mb-1 block text-muted-foreground">Основание</span>
           <input aria-label={`${applied.label}: основание`} value={entry?.basis ?? ''} onChange={(e) => onPatch({ basis: e.target.value })} placeholder="Откуда число: КП, расчёт, источник" className={inputClass} />
         </label>
       </div>
       {applied.counted && applied.effect !== null && (
-        <p className="text-[12px] text-muted-foreground">
+        <p className="text-caption text-muted-foreground">
           Вклад в расчёт: <span className={`font-mono ${applied.effect < 0 ? 'text-success' : ''}`}>{signedRub(applied.effect)}</span>
         </p>
       )}
       {applied.reason && (
-        <p className="flex items-start gap-1.5 text-[12px] text-warn-foreground">
+        <p className="flex items-start gap-1.5 text-caption text-warn-foreground">
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
           <span>{applied.reason}</span>
         </p>
@@ -129,9 +129,9 @@ export function RicScenarioPanel({ data, result, subject, type, onChange }: RicS
   const remove = (id: string) => write((data.adjustments ?? []).filter((a) => a.id !== id));
 
   return (
-    <section aria-labelledby="ric-scenario" className="space-y-3 rounded-lg border border-border p-3 text-[13px]">
+    <section aria-labelledby="ric-scenario" className="space-y-3 rounded-lg border border-border p-3 text-ui">
       <div className="flex flex-wrap items-center gap-2">
-        <h3 id="ric-scenario" className="text-[13px] font-medium">
+        <h3 id="ric-scenario" className="text-ui font-medium">
           Как считается РИЦ для вашей сферы
         </h3>
         <Badge tone="warn">Методика — на проверку юристу</Badge>
@@ -142,7 +142,7 @@ export function RicScenarioPanel({ data, result, subject, type, onChange }: RicS
       </div>
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <label className="flex w-full items-center gap-2 text-[12px] sm:w-auto">
+        <label className="flex w-full items-center gap-2 text-caption sm:w-auto">
           <span className="shrink-0 text-muted-foreground">Сфера</span>
           <select
             aria-label="Сфера закупки"
@@ -158,7 +158,7 @@ export function RicScenarioPanel({ data, result, subject, type, onChange }: RicS
             ))}
           </select>
         </label>
-        <span className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+        <span className="flex items-center gap-1.5 text-caption text-muted-foreground">
           {calc.chosen ? 'Выбрана вами' : 'Определена по предмету закупки'}: {scenario.title}
           <HelpTip align="start" content={scenario.applies} />
         </span>
@@ -166,7 +166,7 @@ export function RicScenarioPanel({ data, result, subject, type, onChange }: RicS
 
       <ul className="space-y-1.5">
         {scenario.methods.map((m, i) => (
-          <li key={`${m.id}-${i}`} className="flex flex-wrap items-start gap-x-2 gap-y-0.5 text-[12px]">
+          <li key={`${m.id}-${i}`} className="flex flex-wrap items-start gap-x-2 gap-y-0.5 text-caption">
             <Badge tone={m.role === 'основной' ? 'info' : 'neutral'}>{m.role}</Badge>
             <span className="min-w-0 flex-1 break-words">
               <span className="font-medium">{METHOD_LABELS[m.id]}.</span>{' '}
@@ -179,7 +179,7 @@ export function RicScenarioPanel({ data, result, subject, type, onChange }: RicS
       </ul>
 
       {scenario.caution && (
-        <p className="flex items-start gap-1.5 rounded-md bg-warn-surface px-2.5 py-2 text-[12px] text-warn-foreground">
+        <p className="flex items-start gap-1.5 rounded-md bg-warn-surface px-2.5 py-2 text-caption text-warn-foreground">
           <Info className="mt-0.5 size-3.5 shrink-0" />
           <span className="break-words">{scenario.caution}</span>
         </p>
@@ -201,12 +201,12 @@ export function RicScenarioPanel({ data, result, subject, type, onChange }: RicS
         />
       </div>
       {calc.deviation && (
-        <p className="text-[12px] text-muted-foreground">
+        <p className="text-caption text-muted-foreground">
           Начальная цена заказчика {calc.deviation.abs >= 0 ? 'выше' : 'ниже'} РИЦ с поправками на {rub(Math.abs(calc.deviation.abs))} ({pct(Math.abs(calc.deviation.pct))}).
         </p>
       )}
 
-      <details className="text-[12px]">
+      <details className="text-caption">
         <summary className="cursor-pointer text-muted-foreground">Как считается и на что опирается</summary>
         <div className="mt-2 space-y-3">
           <ol className="list-decimal space-y-1 pl-5">
@@ -240,7 +240,7 @@ export function RicScenarioPanel({ data, result, subject, type, onChange }: RicS
         </div>
       </details>
 
-      <details className="text-[12px]" open={calc.adjustments.some((a) => a.counted || a.reason !== null)}>
+      <details className="text-caption" open={calc.adjustments.some((a) => a.counted || a.reason !== null)}>
         <summary className="cursor-pointer text-muted-foreground">Поправки на условия вашей закупки</summary>
         <div className="mt-2 space-y-2">
           <p className="text-muted-foreground">% — от РИЦ по методу, ₽ — как есть ({vat}). Без числа и основания не считается.</p>
@@ -273,7 +273,7 @@ export function RicScenarioPanel({ data, result, subject, type, onChange }: RicS
         </div>
       </details>
 
-      <details className="text-[12px]" open={calc.risks.some((a) => a.counted || a.reason !== null)}>
+      <details className="text-caption" open={calc.risks.some((a) => a.counted || a.reason !== null)}>
         <summary className="cursor-pointer text-muted-foreground">Отраслевые риски и резерв на них: {scenario.risks.length}</summary>
         <div className="mt-2 space-y-2">
           <p className="text-muted-foreground">Резерв: % — от РИЦ с поправками, ₽ — как есть. Пусто — риск не считается.</p>
@@ -286,7 +286,7 @@ export function RicScenarioPanel({ data, result, subject, type, onChange }: RicS
         </div>
       </details>
 
-      <details className="text-[12px]">
+      <details className="text-caption">
         <summary className="cursor-pointer text-muted-foreground">Что нужно для надёжного расчёта</summary>
         <ul className="mt-2 space-y-1">
           {checks.map((c) => (

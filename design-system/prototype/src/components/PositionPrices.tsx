@@ -19,30 +19,30 @@ function Row({ r }: { r: PositionPriceRow }) {
   const unit = r.unit ? `/${r.unit}` : '';
   return (
     <li className="space-y-1.5 py-3 first:pt-0 last:pb-0">
-      <p className="break-words text-[13px] font-semibold">
+      <p className="break-words text-ui font-semibold">
         {r.name}
         {r.qty && <span className="font-normal text-muted-foreground"> · {glue(r.qty)}{r.unit ? ` ${r.unit}` : ''}</span>}
       </p>
       {r.state === 'found' && r.median !== null && r.range ? (
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
           <span className="font-mono text-xl font-bold tracking-tight text-success">{rub(r.median)}{unit}</span>
-          <span className="text-[12px] text-muted-foreground">
+          <span className="text-caption text-muted-foreground">
             закупка, без НДС · диапазон {rub(r.range.from)} – {rub(r.range.to)} · цен {r.n}
           </span>
         </div>
       ) : (
-        <p className="text-[13px]">
+        <p className="text-ui">
           <span className="font-mono font-bold">{r.range ? (r.range.from === r.range.to ? rub(r.range.from) : `${rub(r.range.from)} – ${rub(r.range.to)}`) : ''}{unit}</span>
-          <span className="text-[12px] text-muted-foreground"> · найдено цен: {r.n}, для вывода нужно не меньше пяти</span>
+          <span className="text-caption text-muted-foreground"> · найдено цен: {r.n}, для вывода нужно не меньше пяти</span>
         </p>
       )}
       {r.customerUnit !== null && (
-        <p className="text-[12px] text-muted-foreground">
+        <p className="text-caption text-muted-foreground">
           Начальная цена заказчика <span className="font-semibold text-foreground">{rub(r.customerUnit)}{unit}</span>
           {r.gapPct !== null && <> · {signed(r.gapPct)} к закупке</>}
         </p>
       )}
-      <ul className="space-y-0.5 text-[12px] text-muted-foreground">
+      <ul className="space-y-0.5 text-caption text-muted-foreground">
         {r.sources.map((s) => (
           <li key={`${s.host}-${s.price}-${s.date}`} className="break-words">
             {s.url ? (
@@ -84,16 +84,16 @@ function AnalogRow({ rows }: { rows: PositionPriceRow[] }) {
   const names = rows.slice(0, NAMES_SHOWN).map((x) => cleanProductName(x.name)).join('; ');
   return (
     <li className="space-y-1 py-3 first:pt-0 last:pb-0">
-      <p className="break-words text-[13px] font-semibold">
+      <p className="break-words text-ui font-semibold">
         {names}
         {rows.length > NAMES_SHOWN && <span className="font-normal text-muted-foreground"> и ещё {rows.length - NAMES_SHOWN}</span>}
         {rows.length === 1 && r.qty && <span className="font-normal text-muted-foreground"> · {glue(r.qty)}{r.unit ? ` ${r.unit}` : ''}</span>}
       </p>
-      <p className="text-[13px]">
+      <p className="text-ui">
         <span className="font-mono font-bold">{a.range.from === a.range.to ? rub(a.range.from) : `${rub(a.range.from)} – ${rub(a.range.to)}`}{unit}</span>
-        <span className="text-[12px] text-muted-foreground"> · аналогов: {a.n}</span>
+        <span className="text-caption text-muted-foreground"> · аналогов: {a.n}</span>
       </p>
-      <ul className="space-y-0.5 text-[12px] text-muted-foreground">
+      <ul className="space-y-0.5 text-caption text-muted-foreground">
         {a.sources.map((s) => (
           <li key={`${s.host}-${s.price}-${s.product}`} className="break-words">
             {s.url ? (
@@ -121,10 +121,10 @@ export function PositionPricesCard({ prices, total }: { prices: PositionPrices; 
   return (
     <Card className="space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-[15px] font-bold">Товары и закупочные цены</p>
+        <p className="text-subtitle font-bold">Товары и закупочные цены</p>
         <CertaintyBadge kind="unchecked" />
         <HelpTip align="start" content="Цены с сайтов поставщиков, найденные поиском в интернете: цитата со страницы проверена кодом, но это не предложение поставщика — уточните цену и условия поставки у него. Цены контрактов ЕИС не берутся: в них уже заложена прибыль победителя." />
-        {prices.asOf && <span className="text-[12px] text-muted-foreground">цены на {day(prices.asOf)}</span>}
+        {prices.asOf && <span className="text-caption text-muted-foreground">цены на {day(prices.asOf)}</span>}
       </div>
       {shown.length > 0 && (
         <ul className="divide-y divide-border">
@@ -135,9 +135,9 @@ export function PositionPricesCard({ prices, total }: { prices: PositionPrices; 
       )}
       {analogs.length > 0 && (
         <div className="space-y-2 border-t border-border pt-3 first:border-t-0 first:pt-0">
-          <p className="flex flex-wrap items-center gap-x-2 text-[13px] font-semibold">
+          <p className="flex flex-wrap items-center gap-x-2 text-ui font-semibold">
             Ближайшие аналоги
-            <span className="text-[12px] font-normal text-muted-foreground">по {analogs.length} {analogs.length === 1 ? 'позиции' : 'позициям'} точной цены нет</span>
+            <span className="text-caption font-normal text-muted-foreground">по {analogs.length} {analogs.length === 1 ? 'позиции' : 'позициям'} точной цены нет</span>
             <HelpTip align="start" content="Тот же вид товара, но другие размер или характеристики (например, стол 120×60 вместо «стола на 1 рабочее место»). Это реальные закупочные цены с сайтов поставщиков, но не цена вашей позиции: в расчёт цены, рейтинг и «закупку по найденным ценам» они не входят — только ориентир." />
           </p>
           <ul className="divide-y divide-border">
@@ -147,8 +147,8 @@ export function PositionPricesCard({ prices, total }: { prices: PositionPrices; 
           </ul>
         </div>
       )}
-      {rows.length > shown.length && <p className="text-[12px] text-muted-foreground">и ещё {rows.length - shown.length} с ценами — в отчёте</p>}
-      <div className="space-y-2 border-t border-border pt-3 text-[12px] text-muted-foreground">
+      {rows.length > shown.length && <p className="text-caption text-muted-foreground">и ещё {rows.length - shown.length} с ценами — в отчёте</p>}
+      <div className="space-y-2 border-t border-border pt-3 text-caption text-muted-foreground">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
           {/* Цены не по всем позициям — красным бейджем (владелец, 23.10.2026: «это заметнее красным цветом или бейджик»): итог закупки по найденным ценам тогда неполный. */}
           <Badge tone={complete ? 'success' : 'danger'} wrap>

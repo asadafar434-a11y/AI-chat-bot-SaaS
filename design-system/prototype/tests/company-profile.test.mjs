@@ -60,7 +60,7 @@ test('шапка по умолчанию свёрнута: процент, «Д�
   assert.ok(out.includes('aria-expanded="false"'));
   assert.ok(out.includes('Дальше: Реквизиты'));
   assert.equal(out.includes('до 40%'), false, 'разделы спрятаны');
-  assert.equal(out.includes('shadow'), false, 'карточка без тени: на неё нельзя нажать');
+  assert.doesNotMatch(out, /card-hover|shadow-(sm|md|lg|xl|2xl)/, 'карточка без тени: на неё нельзя нажать');
 });
 
 test('шаги: пять карточек с состоянием и две наши вкладки — в одной полосе вкладок', () => {
@@ -76,7 +76,7 @@ test('шаги: пять карточек с состоянием и две на
   assert.equal(out.split('role="tab"').length - 1, 7);
   assert.ok(out.includes('заполнено'), 'у шага есть точка состояния');
   assert.ok(out.includes('id="p-tab-profile"'), 'реквизиты по-прежнему называются profile');
-  assert.ok(out.includes('bg-secondary text-foreground'), 'выбранный шаг — как в общем Tabs');
+  assert.ok(out.includes('bg-card text-foreground shadow-sm'), 'выбранный шаг — как в общем Tabs');
   assert.ok(out.includes('aria-controls="p-panel-industries"'));
 });
 

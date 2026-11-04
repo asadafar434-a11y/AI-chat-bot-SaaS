@@ -12,10 +12,10 @@ const SHOWN = 8;
 function Item({ risk }: { risk: ContractRisk }) {
   const mine = risk.party === 'you';
   return (
-    <li className="rounded-lg border border-border px-3 py-2.5 text-[12px]">
+    <li className="rounded-lg border border-border px-3 py-2.5 text-caption">
       <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
         {risk.level === 'warn' ? <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warn-foreground" /> : <Info className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />}
-        <p className="min-w-[12rem] flex-1 break-words text-[13px] font-medium">{risk.title}</p>
+        <p className="min-w-[12rem] flex-1 break-words text-ui font-medium">{risk.title}</p>
         <Badge tone="neutral">{GROUP[risk.kind]}</Badge>
         {risk.kind === 'penalty' && <Badge tone={mine ? 'warn' : 'info'}>{mine ? 'платите вы' : 'платит заказчик'}</Badge>}
         {risk.heavy && <Badge tone="danger">крупная</Badge>}
@@ -24,7 +24,7 @@ function Item({ risk }: { risk: ContractRisk }) {
         <summary className="cursor-pointer">Цитата</summary>
         <p className="mt-1 break-words">
           «{risk.quote}»
-          <span className="ml-1 font-mono text-[11px]">
+          <span className="ml-1 font-mono text-micro">
             {risk.clause && `п. ${risk.clause} · `}
             {risk.doc}
           </span>
@@ -67,9 +67,9 @@ export function ContractRisks({ risks, hasContract, embedded }: { risks: Contrac
                 ))}
               </ul>
             )}
-            {attention.length > SHOWN && <p className="text-[12px] text-muted-foreground">…и ещё {attention.length - SHOWN}</p>}
+            {attention.length > SHOWN && <p className="text-caption text-muted-foreground">…и ещё {attention.length - SHOWN}</p>}
             {rest.length > 0 && (
-              <details className="text-[12px]">
+              <details className="text-caption">
                 <summary className="cursor-pointer text-muted-foreground">Остальные условия: {rest.length}</summary>
                 <ul className="mt-2 space-y-2">
                   {rest.slice(0, 20).map((r, i) => (

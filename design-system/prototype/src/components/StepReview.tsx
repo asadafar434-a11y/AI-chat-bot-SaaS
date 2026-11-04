@@ -41,7 +41,7 @@ function Snippet({ text, hole }: { text: string; hole: number }) {
   // Порядковый номер каждого жёлтого места среди всех: считаем заранее, а не во время отрисовки.
   const holeNo = isHole.map((hole, i) => (hole ? isHole.slice(0, i + 1).filter(Boolean).length - 1 : -1));
   return (
-    <p className="whitespace-pre-wrap rounded-md bg-secondary/60 px-3 py-2 text-[12px] leading-relaxed text-muted-foreground">
+    <p className="whitespace-pre-wrap rounded-md bg-secondary/60 px-3 py-2 text-caption leading-relaxed text-muted-foreground">
       {parts.map((part, i) => {
         if (!isHole[i]) return <span key={i}>{part}</span>;
         return (
@@ -64,7 +64,7 @@ export function DocSnippetToggle({ snippet, where }: { snippet?: DocSnippet; whe
     <div className="space-y-1">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
         {where && (
-          <p className="break-words text-[11px] text-muted-foreground">
+          <p className="break-words text-micro text-muted-foreground">
             Место в файле: <span className="font-mono">{where}</span>
           </p>
         )}
@@ -72,15 +72,15 @@ export function DocSnippetToggle({ snippet, where }: { snippet?: DocSnippet; whe
           <button
             type="button"
             onClick={() => setOpen(!open)}
-            className="inline-flex min-h-7 shrink-0 items-center whitespace-nowrap text-[11px] text-info underline-offset-2 hover:underline"
+            className="inline-flex min-h-7 shrink-0 items-center whitespace-nowrap text-micro text-info underline-offset-2 hover:underline"
           >
             {open ? 'Скрыть ↑' : 'Показать в тексте ↓'}
           </button>
         )}
       </div>
       {open && snippet && (
-        <div className="rounded-md bg-secondary/60 px-3 py-2 text-[12px] leading-relaxed">
-          <p className="mb-1 text-[11px] font-medium text-muted-foreground">{snippet.name}</p>
+        <div className="rounded-md bg-secondary/60 px-3 py-2 text-caption leading-relaxed">
+          <p className="mb-1 text-micro font-medium text-muted-foreground">{snippet.name}</p>
           <p className="whitespace-pre-wrap break-words text-muted-foreground">
             {snippet.before}
             <mark className="highlight">{snippet.match}</mark>
@@ -129,14 +129,14 @@ const badgeOf = (f: ApplicationField): { tone: Tone; text: string } =>
 // Причины риска: замечания финальной проверки с тем, что сделать и откуда требование. Первые 12, остальное — на шаге «Пакет».
 export function RiskReasons({ audit }: { audit: AuditReport }) {
   return (
-    <div className="space-y-2.5 px-4 py-3 text-[12px]">
+    <div className="space-y-2.5 px-4 py-3 text-caption">
       {audit.findings.length === 0 ? (
         <p className="text-success">Замечаний нет — по правилам закона и требованиям закупки заявку не за что отклонить.</p>
       ) : (
         audit.findings.slice(0, 12).map((x) => (
           <div key={x.id} className="space-y-0.5">
             <div className="flex items-start gap-2">
-              <span className="min-w-0 flex-1 text-[13px]">{x.what}</span>
+              <span className="min-w-0 flex-1 text-ui">{x.what}</span>
               <Badge tone={FINDING[x.severity].tone}>{FINDING[x.severity].label}</Badge>
             </div>
             <p className="text-muted-foreground">
@@ -167,15 +167,15 @@ export function RiskBlock({ audit }: { audit: AuditReport }) {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           {allClear ? <ShieldCheck className="size-7 text-success" /> : <ShieldAlert className={cx('size-7', audit.risk === 'high' ? 'text-danger' : 'text-warn-foreground')} />}
           <div>
-            <p className="text-[12px] font-semibold text-muted-foreground">Риск отклонения</p>
+            <p className="text-caption font-semibold text-muted-foreground">Риск отклонения</p>
             <p className={cx('text-2xl font-bold tracking-tight', RISK_TEXT[audit.risk])}>{RISK_NAME[audit.risk]}</p>
           </div>
-          <span className="max-w-[46ch] text-[13px] font-medium">{riskReason(audit)}</span>
+          <span className="max-w-[46ch] text-ui font-medium">{riskReason(audit)}</span>
         </div>
         <button
           onClick={() => setWhy(!why)}
           aria-expanded={why}
-          className="inline-flex min-h-7 items-center gap-1 text-[12px] font-medium text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground"
+          className="inline-flex min-h-7 items-center gap-1 text-caption font-medium text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground"
         >
           <HelpCircle className="size-3.5" /> Почему такой риск?
         </button>
@@ -293,9 +293,9 @@ export function StepReview({
         {audit && <RiskBlock audit={audit} />}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3">
           <div className="min-w-[200px] flex-1">
-            <div className="flex items-baseline justify-between text-[13px]">
+            <div className="flex items-baseline justify-between text-ui">
               <span className="font-medium">Подготовка заявки</span>
-              <span className="font-mono tabular-nums text-muted-foreground">
+              <span className="tabular-nums text-muted-foreground">
                 <span className="text-lg font-bold text-foreground">
                   {summary.done} из {summary.total}
                 </span>{' '}
@@ -332,7 +332,7 @@ export function StepReview({
           {warnings.length > 0 && (
             <div className="space-y-1.5 rounded-lg border border-warn/40 bg-warn-surface/30 px-3 py-2.5">
               {warnings.map((w) => (
-                <p key={w} className="flex items-start gap-2 text-[13px] leading-snug text-warn-foreground">
+                <p key={w} className="flex items-start gap-2 text-ui leading-snug text-warn-foreground">
                   <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warn" />
                   <span>{w}</span>
                 </p>
@@ -368,15 +368,15 @@ export function StepReview({
                 <div className="rounded-lg border border-border bg-card px-3 py-2.5">
                   <div className="flex items-start gap-2.5">
                     <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warn" />
-                    <div className="min-w-0 flex-1 text-[13px]">
+                    <div className="min-w-0 flex-1 text-ui">
                       <p className="font-medium">
                         Реквизиты компании: не хватает {profileLeft.length} {profileLeft.length === 1 ? 'поля' : 'полей'}
                       </p>
-                      <p className="mt-0.5 text-[12px] text-muted-foreground">
+                      <p className="mt-0.5 text-caption text-muted-foreground">
                         {profileLeft.slice(0, 4).map((f) => f.label).join(', ')}
                         {profileLeft.length > 4 ? ` и ещё ${profileLeft.length - 4}` : ''} · подставятся в документы
                       </p>
-                      <button onClick={onOpenProfile} className="mt-1 inline-flex min-h-7 items-center text-[12px] font-medium underline underline-offset-4 hover:text-foreground">
+                      <button onClick={onOpenProfile} className="mt-1 inline-flex min-h-7 items-center text-caption font-medium underline underline-offset-4 hover:text-foreground">
                         Вписать в «Профиле компании»
                       </button>
                     </div>
@@ -384,10 +384,10 @@ export function StepReview({
                 </div>
               )}
               {filter !== 'all' && shown.length === 0 && (
-                <p className="rounded-lg border border-border bg-card px-3 py-3 text-[13px] text-muted-foreground">Здесь пусто.</p>
+                <p className="rounded-lg border border-border bg-card px-3 py-3 text-ui text-muted-foreground">Здесь пусто.</p>
               )}
               {filter === 'all' && own.length === 0 && profileLeft.length === 0 && (
-                <p className="flex items-center gap-2 rounded-lg border border-success/40 bg-success/5 px-3 py-3 text-[13px] text-success">
+                <p className="flex items-center gap-2 rounded-lg border border-success/40 bg-success/5 px-3 py-3 text-ui text-success">
                   <CheckCircle2 className="size-4" /> Всё заполнено. Осталось подписать заявку электронной подписью и подать на площадке.
                 </p>
               )}
@@ -427,13 +427,13 @@ function KindChip({ kind, n, active, onClick }: { kind: FieldKind; n: number; ac
       <button
         onClick={onClick}
         className={cx(
-          'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] transition-colors',
+          'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-caption transition-colors',
           active ? 'border-foreground bg-secondary text-foreground' : 'border-border text-muted-foreground hover:bg-secondary hover:text-foreground',
         )}
       >
         <span className={cx('size-2 rounded-full', dot[meta.tone])} />
         {meta.label}
-        <span className="font-mono font-semibold tabular-nums text-foreground">{n}</span>
+        <span className="font-semibold tabular-nums text-foreground">{n}</span>
       </button>
     </Tooltip>
   );
@@ -484,11 +484,11 @@ function FieldRow({
         {stateIcon(field)}
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
-            {where && <span className="max-w-[45%] shrink-0 break-words font-mono text-[11px] text-muted-foreground">{where}</span>}
-            <span className="min-w-0 break-words text-[13px] font-medium">{field.label}</span>
+            {where && <span className="max-w-[45%] shrink-0 break-words font-mono text-micro text-muted-foreground">{where}</span>}
+            <span className="min-w-0 break-words text-ui font-medium">{field.label}</span>
           </div>
-          {field.status === 'filled' && field.value && <p className="mt-0.5 break-words text-[12px] text-success">{field.value}</p>}
-          {field.problem && <p className={cx('mt-0.5 break-words text-[12px]', field.status === 'invalid' ? 'text-danger' : 'text-warn-foreground')}>{field.problem}</p>}
+          {field.status === 'filled' && field.value && <p className="mt-0.5 break-words text-caption text-success">{field.value}</p>}
+          {field.problem && <p className={cx('mt-0.5 break-words text-caption', field.status === 'invalid' ? 'text-danger' : 'text-warn-foreground')}>{field.problem}</p>}
         </div>
         <span className="hidden sm:inline-flex">
           <Badge tone={badge.tone}>{badge.text}</Badge>
@@ -498,7 +498,7 @@ function FieldRow({
       {expanded && (
         <div className="animate-fade-up space-y-2.5 border-t border-border px-3 pb-3 pt-2.5">
           {field.source && (
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-micro text-muted-foreground">
               Откуда: <span className="font-mono">{field.source}</span>
             </p>
           )}
@@ -538,7 +538,7 @@ function Control({
       <div className="space-y-2">
         {snippet && <Snippet {...snippet} />}
         {hint && (
-          <p className="flex flex-wrap items-center gap-x-1.5 text-[12px] leading-snug text-muted-foreground">
+          <p className="flex flex-wrap items-center gap-x-1.5 text-caption leading-snug text-muted-foreground">
             <span>
               Заказчик назвал границу: <span className="font-mono font-semibold text-foreground">{f.label.replace(/^(?:число|размер), /, '')}</span>. Сколько предложить — решаете вы.
             </span>
@@ -591,7 +591,7 @@ function Control({
   if (f.status === 'needs_confirmation') {
     return (
       <div className="flex flex-wrap items-center gap-2">
-        {f.value && <span className="text-[13px] text-muted-foreground">{f.value}</span>}
+        {f.value && <span className="text-ui text-muted-foreground">{f.value}</span>}
         <Button size="sm" onClick={() => onSave(f.key, '')}>
           <Check className="size-3.5" /> Подтверждаю
         </Button>
@@ -655,8 +655,8 @@ function AutoList({ fields, collapsed, whereOf, snippetOf }: { fields: Applicati
     <div className="card-hover rounded-lg border border-border bg-card">
       <button onClick={() => setOpen(!open)} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left">
         <Sparkles className="size-4 shrink-0 text-success" />
-        <span className="min-w-0 flex-1 text-[13px] font-medium">Заполнено автоматически · {fields.length}</span>
-        <span className="hidden text-[12px] text-muted-foreground sm:inline">с источниками</span>
+        <span className="min-w-0 flex-1 text-ui font-medium">Заполнено автоматически · {fields.length}</span>
+        <span className="hidden text-caption text-muted-foreground sm:inline">с источниками</span>
         <ChevronDown className={cx('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
       </button>
       {open && (
@@ -664,14 +664,14 @@ function AutoList({ fields, collapsed, whereOf, snippetOf }: { fields: Applicati
           {fields.slice(0, 40).map((f) => (
             <div key={f.key} className="px-3 py-2">
               <div className="flex items-baseline justify-between gap-3">
-                <span className="text-[12px] text-muted-foreground">{f.label}</span>
-                <span className="max-w-[55%] break-words text-right font-mono text-[12px]">{f.value}</span>
+                <span className="text-caption text-muted-foreground">{f.label}</span>
+                <span className="max-w-[55%] break-words text-right font-mono text-caption">{f.value}</span>
               </div>
-              {f.source && <p className="mt-0.5 text-[11px] text-muted-foreground">Источник: {f.source}</p>}
+              {f.source && <p className="mt-0.5 text-micro text-muted-foreground">Источник: {f.source}</p>}
               {f.quote && <DocSnippetToggle where={whereOf?.(f.quote)} snippet={snippetOf?.(f.quote)} />}
             </div>
           ))}
-          {fields.length > 40 && <p className="px-3 py-2 text-[11px] text-muted-foreground">И ещё {fields.length - 40} — все видны в документах пакета.</p>}
+          {fields.length > 40 && <p className="px-3 py-2 text-micro text-muted-foreground">И ещё {fields.length - 40} — все видны в документах пакета.</p>}
         </div>
       )}
     </div>
@@ -682,9 +682,9 @@ function SignRow() {
   return (
     <div className="flex items-start gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5">
       <PenLine className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-      <div className="text-[13px]">
+      <div className="text-ui">
         <p className="font-medium">Подписать заявку электронной подписью и подать на площадке</p>
-        <p className="mt-0.5 text-[12px] text-muted-foreground">Только вы: сервис не ставит подпись и не подаёт заявку за вас.</p>
+        <p className="mt-0.5 text-caption text-muted-foreground">Только вы: сервис не ставит подпись и не подаёт заявку за вас.</p>
       </div>
     </div>
   );
@@ -703,7 +703,7 @@ export function FinalCheck({ final, compact }: { final: Completeness; compact?: 
       {!compact && (
         <p
           className={cx(
-            'flex items-start gap-2 rounded-md px-3 py-2.5 text-[15px] font-bold',
+            'flex items-start gap-2 rounded-md px-3 py-2.5 text-subtitle font-bold',
             final.ready ? 'bg-success/10 text-success' : 'bg-warn-surface/50 text-warn-foreground',
           )}
         >
@@ -712,16 +712,16 @@ export function FinalCheck({ final, compact }: { final: Completeness; compact?: 
         </p>
       )}
       <div className={cx('flex items-center gap-2', !compact && 'mt-3')}>
-        <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">Итоговая проверка</span>
+        <span className="text-micro font-medium uppercase tracking-wider text-muted-foreground">Итоговая проверка</span>
         <HelpTip content="Перед скачиванием система проходит по всей заявке: ни одного пустого обязательного поля." />
       </div>
       <div className="mt-2 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
         {rows.map(([label, value, hint]) => (
-          <div key={label} className="flex items-center justify-between gap-3 text-[12px]">
+          <div key={label} className="flex items-center justify-between gap-3 text-caption">
             <Tooltip content={hint} align="start">
               <span className="cursor-help text-muted-foreground">{label}</span>
             </Tooltip>
-            <span className="font-mono font-semibold tabular-nums">{value}</span>
+            <span className="font-semibold tabular-nums">{value}</span>
           </div>
         ))}
       </div>

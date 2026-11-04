@@ -39,7 +39,7 @@ export function Collapsible({
         >
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-medium">{title}</span>
-            {brief && <span className={`mt-0.5 block break-words text-[13px] ${BRIEF_TONE[tone]}`}>{brief}</span>}
+            {brief && <span className={`mt-0.5 block break-words text-ui ${BRIEF_TONE[tone]}`}>{brief}</span>}
           </span>
           <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>

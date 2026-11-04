@@ -28,7 +28,7 @@ export function StepNotAnalyzed({ running, error, onRun, onBack }: { running: bo
           <Sparkles className="mt-0.5 size-5 shrink-0" />
           <div className="min-w-0">
             <p className="text-lg font-bold">ИИ ещё не разбирал эту закупку</p>
-            <p className="mt-1 text-[13px] text-muted-foreground">Выпишет требования заказчика — появится «Что подать».</p>
+            <p className="mt-1 text-ui text-muted-foreground">Выпишет требования заказчика — появится «Что подать».</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -41,9 +41,9 @@ export function StepNotAnalyzed({ running, error, onRun, onBack }: { running: bo
             Назад
           </Button>
         </div>
-        {running && <p className="text-[12px] text-muted-foreground">Это может занять минуту.</p>}
+        {running && <p className="text-caption text-muted-foreground">Это может занять минуту.</p>}
         {error && (
-          <p role="alert" className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
+          <p role="alert" className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-ui text-danger">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" /> <span className="min-w-0 break-words">{error}</span>
           </p>
         )}
@@ -63,7 +63,7 @@ function ContradictionsBlock({ card }: { card: ContradictionsCard }) {
           <p className="flex items-center gap-2 text-sm font-medium">
             <AlertTriangle className="size-4 shrink-0" /> Противоречия в документах заказчика
           </p>
-          <p className="mt-0.5 max-w-[70ch] text-[13px] text-muted-foreground">
+          <p className="mt-0.5 max-w-[70ch] text-ui text-muted-foreground">
             ИИ перечитает все документы и найдёт места, которые противоречат друг другу или оставляют вопрос. Это повод спросить заказчика
             или оспорить требование. Платный запрос к ИИ — только по кнопке.
           </p>
@@ -72,19 +72,19 @@ function ContradictionsBlock({ card }: { card: ContradictionsCard }) {
           {running ? 'ИИ читает документы…' : result ? 'Проверить заново' : 'Найти противоречия'}
         </Button>
       </div>
-      {running && <p className="text-[12px] text-muted-foreground">Это занимает до двух минут.</p>}
+      {running && <p className="text-caption text-muted-foreground">Это занимает до двух минут.</p>}
       {error && (
-        <p role="alert" className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
+        <p role="alert" className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-ui text-danger">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" /> <span className="min-w-0 break-words">{error}</span>
         </p>
       )}
       {result && (
         <>
-          <p className="text-[13px] font-medium">{contradictionsSummary(result)}</p>
-          {stale && <p className="text-[12px] text-warn">Документы изменились после проверки — результат мог устареть.</p>}
+          <p className="text-ui font-medium">{contradictionsSummary(result)}</p>
+          {stale && <p className="text-caption text-warn">Документы изменились после проверки — результат мог устареть.</p>}
           <ul className="space-y-3">
             {result.findings.map((f, i) => (
-              <li key={`${i}:${f.what}`} className="min-w-0 space-y-1.5 rounded-md border border-border p-3 text-[13px]">
+              <li key={`${i}:${f.what}`} className="min-w-0 space-y-1.5 rounded-md border border-border p-3 text-ui">
                 <p className="flex flex-wrap items-center gap-2">
                   <Badge tone={f.kind === 'conflict' ? 'danger' : 'warn'}>{f.kind === 'conflict' ? 'Противоречие' : 'Неясность'}</Badge>
                   <span className="min-w-0 break-words font-medium">{f.what}</span>
@@ -108,12 +108,12 @@ function ContradictionsBlock({ card }: { card: ContradictionsCard }) {
 function Quote({ label, at, quote, verified }: { label: string; at?: string; quote: string; verified: boolean }) {
   return (
     <div className="min-w-0 break-words rounded bg-secondary/50 px-2.5 py-1.5">
-      <p className="font-mono text-[11px] text-muted-foreground">
+      <p className="font-mono text-micro text-muted-foreground">
         {label || 'Документы закупки'}
         {at ? ` · ${at}` : ''}
       </p>
       <p>«{quote}»</p>
-      {!verified && <p className="text-[12px] text-warn">Цитата не найдена в документах дословно — сверьте вручную.</p>}
+      {!verified && <p className="text-caption text-warn">Цитата не найдена в документах дословно — сверьте вручную.</p>}
     </div>
   );
 }
@@ -232,7 +232,7 @@ export function StepAnalysis({
               >
                 {n}
               </p>
-              <p className="mt-1 text-[11px] leading-tight text-muted-foreground sm:text-[12px]">{label}</p>
+              <p className="mt-1 text-micro leading-tight text-muted-foreground sm:text-caption">{label}</p>
             </div>
           </div>
         ))}
@@ -283,8 +283,8 @@ export function StepAnalysis({
                       </Tooltip>
                     )}
                   </div>
-                  <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{doc.ref}</p>
-                  <p className="mt-1.5 text-[13px] leading-snug text-muted-foreground">{doc.note}</p>
+                  <p className="mt-0.5 font-mono text-micro text-muted-foreground">{doc.ref}</p>
+                  <p className="mt-1.5 text-ui leading-snug text-muted-foreground">{doc.note}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <div className="hidden sm:block">
@@ -298,7 +298,7 @@ export function StepAnalysis({
 
               {expanded && (
                 <div className="animate-fade-up border-t border-border px-4 py-3 pl-11">
-                  <div className="space-y-2 text-[13px] leading-snug">
+                  <div className="space-y-2 text-ui leading-snug">
                     <p className="text-muted-foreground">
                       <span className="font-medium text-foreground">Где это написано: </span>
                       {doc.source || 'в документах закупки'}
@@ -339,13 +339,13 @@ export function StepAnalysis({
       </div>
 
       {hidden > 0 && (
-        <p className="text-[12px] text-muted-foreground">
+        <p className="text-caption text-muted-foreground">
           Для вашей заявки не требуется: {hidden} {hidden === 1 ? 'пункт' : hidden < 5 ? 'пункта' : 'пунктов'} из документов закупки.
         </p>
       )}
 
       {platformNote && (
-        <p className="flex items-start gap-1.5 text-[12px] text-muted-foreground">
+        <p className="flex items-start gap-1.5 text-caption text-muted-foreground">
           <Info className="mt-0.5 size-3.5 shrink-0" />
           {platformNote}
         </p>
@@ -356,8 +356,8 @@ export function StepAnalysis({
           <p className="flex items-center gap-2 text-sm font-medium">
             <AlertTriangle className="size-4 shrink-0 text-warn" /> Расхождения в цене в документах заказчика
           </p>
-          <p className="text-[13px] text-muted-foreground">Стоит спросить заказчика запросом разъяснений до подачи заявки.</p>
-          <ul className="space-y-1 text-[13px]">
+          <p className="text-ui text-muted-foreground">Стоит спросить заказчика запросом разъяснений до подачи заявки.</p>
+          <ul className="space-y-1 text-ui">
             {discrepancies.map((d) => (
               <li key={d} className="min-w-0 break-words">
                 {d}
@@ -376,14 +376,14 @@ export function StepAnalysis({
           <p className="flex items-center gap-2 text-sm font-medium">
             <Clock className="size-4 shrink-0" /> Что потребуется после победы
           </p>
-          <p className="text-[13px] text-muted-foreground">Из проекта договора: в заявку это не входит, но влияет на решение участвовать.</p>
-          <ul className="space-y-1.5 text-[13px]">
+          <p className="text-ui text-muted-foreground">Из проекта договора: в заявку это не входит, но влияет на решение участвовать.</p>
+          <ul className="space-y-1.5 text-ui">
             {afterWin.duties.map((d) => {
               // Срок или периодичность выделены в самой фразе договора; нет в тексте (сокращён) — стоят впереди.
               const at = d.text.toLowerCase().indexOf(d.term.toLowerCase());
               return (
                 <li key={`${d.clause}:${d.text}`} className="min-w-0 break-words">
-                  {d.clause && <span className="font-mono text-[12px] text-muted-foreground">п. {d.clause} · </span>}
+                  {d.clause && <span className="font-mono text-caption text-muted-foreground">п. {d.clause} · </span>}
                   {at >= 0 ? (
                     <>
                       {d.text.slice(0, at)}
@@ -400,7 +400,7 @@ export function StepAnalysis({
             })}
           </ul>
           {afterWin.more && (
-            <p className="text-[12px] text-muted-foreground">
+            <p className="text-caption text-muted-foreground">
               Ещё {afterWin.more.count} {plural(afterWin.more.count, 'обязанность', 'обязанности', 'обязанностей')} предоставить документы без срока
               {afterWin.more.range ? ` — ${afterWin.more.range}` : ''}.
             </p>

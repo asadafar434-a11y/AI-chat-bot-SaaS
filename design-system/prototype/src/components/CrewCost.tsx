@@ -45,7 +45,7 @@ function Table({ title, lines, unit }: { title: string; lines: CrewLine[]; unit:
   if (lines.length === 0) return null;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[560px] text-[12px]">
+      <table className="w-full min-w-[560px] text-caption">
         <caption className="pb-1 text-left text-muted-foreground">{title}</caption>
         <thead className="text-muted-foreground">
           <tr className="border-b border-border">
@@ -83,7 +83,7 @@ export function CrewCostCard({ need, cost, state, saved, error, perUnitLabel }: 
   return (
     <Card className="space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-[15px] font-bold">Себестоимость по составу работ</p>
+        <p className="text-subtitle font-bold">Себестоимость по составу работ</p>
         <CertaintyBadge kind="unchecked" />
         <HelpTip
           align="start"
@@ -92,13 +92,13 @@ export function CrewCostCard({ need, cost, state, saved, error, perUnitLabel }: 
       </div>
 
       {state === 'searching' && !found && (
-        <p role="status" className="text-[12px] text-muted-foreground">
+        <p role="status" className="text-caption text-muted-foreground">
           Ищу зарплаты и аренду техники в интернете: {people} {plural(people, 'человек', 'человека', 'человек')}, {need.staff.length} {plural(need.staff.length, 'должность', 'должности', 'должностей')}, {need.equipment.length} {plural(need.equipment.length, 'вид техники', 'вида техники', 'видов техники')} — обычно пара минут…
         </p>
       )}
-      {state === 'off' && !found && <p className="text-[12px] text-muted-foreground">ИИ выключен — зарплаты и аренда в интернете не искались. Состав из документов виден ниже.</p>}
+      {state === 'off' && !found && <p className="text-caption text-muted-foreground">ИИ выключен — зарплаты и аренда в интернете не искались. Состав из документов виден ниже.</p>}
       {state === 'failed' && !found && (
-        <p role="alert" className="text-[12px] text-danger">
+        <p role="alert" className="text-caption text-danger">
           Не удалось найти зарплаты: {error}. Повторю через десять минут.
         </p>
       )}
@@ -112,7 +112,7 @@ export function CrewCostCard({ need, cost, state, saved, error, perUnitLabel }: 
               <span className="font-mono text-2xl font-bold tracking-tight">≈ {rub(cost.monthTotal)} в месяц</span>
             )}
           </p>
-          <p className="text-[12px] text-muted-foreground">
+          <p className="text-caption text-muted-foreground">
             {rub(cost.monthTotal)} в месяц
             {cost.termTotal !== null && cost.months !== null && ` · ${rub(cost.termTotal)} за ${cost.months} ${plural(cost.months, 'месяц', 'месяца', 'месяцев')}`} · из них взносы {cost.contributionsPct.toLocaleString('ru-RU')} % — {rub(cost.contributionsMonth)}
           </p>
@@ -128,7 +128,7 @@ export function CrewCostCard({ need, cost, state, saved, error, perUnitLabel }: 
       <Table title="Персонал (зарплата до налогов)" lines={cost.staff} unit="чел." />
       <Table title="Техника (аренда как оценка стоимости владения)" lines={cost.equipment} unit="ед." />
 
-      <p className="border-t border-border pt-3 text-[12px] text-muted-foreground">
+      <p className="border-t border-border pt-3 text-caption text-muted-foreground">
         Не включено: накладные расходы, прибыль, обучение, форма, расходные материалы{saved ? ` · цифры из интернета на ${day(saved.at)}` : ''}.
       </p>
     </Card>

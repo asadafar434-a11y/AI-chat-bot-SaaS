@@ -22,25 +22,25 @@ export function ServiceVolumeCard({ volume, nmck, costs }: { volume: ServiceVolu
   return (
     <Card className="space-y-2 p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-[15px] font-bold">Объём закупки</p>
+        <p className="text-subtitle font-bold">Объём закупки</p>
         <CertaintyBadge kind="confirmed" />
       </div>
       <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <span className="font-mono text-2xl font-bold tracking-tight">
           {num(volume.total)} {volume.unitsLabel}
         </span>
-        <span className="text-[12px] text-muted-foreground">
+        <span className="text-caption text-muted-foreground">
           {volume.people !== null && `${num(volume.people)} чел. · `}
           {volume.rows.length} {volume.rowsLabel ?? rowsWord(volume.rows.length, volume.people !== null)} · {volume.doc}
         </span>
       </p>
       {perUnit !== null && (
-        <p className="text-[13px]">
+        <p className="text-ui">
           Заказчик закладывает ≈ <span className="font-mono font-bold">{rub2(perUnit)}</span> за {volume.unit} (начальная цена ÷ объём).
         </p>
       )}
       {ownUnit !== null ? (
-        <p className="text-[13px]">
+        <p className="text-ui">
           Ваша себестоимость: <span className="font-mono font-bold">{rub2(ownUnit)}</span> за {volume.unit}
           {perUnit !== null && (
             <span className={perUnit >= ownUnit ? 'text-muted-foreground' : 'font-semibold text-danger'}>
@@ -49,7 +49,7 @@ export function ServiceVolumeCard({ volume, nmck, costs }: { volume: ServiceVolu
           )}
         </p>
       ) : (
-        <p className="text-[12px] text-muted-foreground">Впишите себестоимость {volume.one} {volume.unitOf} на шаге «Цена» — программа сама посчитает общую себестоимость и цену, ниже которой нельзя участвовать.</p>
+        <p className="text-caption text-muted-foreground">Впишите себестоимость {volume.one} {volume.unitOf} на шаге «Цена» — программа сама посчитает общую себестоимость и цену, ниже которой нельзя участвовать.</p>
       )}
     </Card>
   );

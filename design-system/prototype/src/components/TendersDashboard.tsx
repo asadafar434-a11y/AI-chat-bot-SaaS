@@ -113,21 +113,21 @@ export function TendersDashboard({
                         <Badge tone={st.tone}>{st.label}</Badge>
                       </Tooltip>
                       <Tooltip content={procedureMeta[t.procedure].hint}>
-                        <span className="rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium text-foreground empty:hidden">
+                        <span className="rounded-full border border-border bg-secondary px-2 py-0.5 text-micro font-medium text-foreground empty:hidden">
                           {t.procedureLabel ?? procedureMeta[t.procedure].label}
                         </span>
                       </Tooltip>
                       {t.sample && <Badge>пример</Badge>}
-                      <span className="font-mono text-[11px] text-muted-foreground">{t.law}</span>
+                      <span className="font-mono text-micro text-muted-foreground">{t.law}</span>
                     </div>
                     {/* Цена — сразу после названия и крупнее остального текста (владелец, 29.10.2026: «цена должна быть рядом с названием и побольше») */}
                     <div className="mt-2 flex items-start justify-between gap-x-4 gap-y-0.5">
                       <p className="min-w-0 flex-1 text-sm font-medium leading-snug">{t.title}</p>
                       <Tooltip content="НМЦК — начальная (максимальная) цена контракта. Выше неё цену предложить нельзя." align="start">
-                        <span className={cx('shrink-0 text-right font-mono tabular-nums', t.nmck ? 'text-lg font-bold text-foreground' : 'text-[13px] text-muted-foreground')}>{t.nmck ? rub(t.nmck) : 'цена не указана'}</span>
+                        <span className={cx('shrink-0 text-right tabular-nums', t.nmck ? 'text-lg font-bold text-foreground' : 'text-ui text-muted-foreground')}>{t.nmck ? rub(t.nmck) : 'цена не указана'}</span>
                       </Tooltip>
                     </div>
-                    <p className="mt-0.5 text-[13px] text-muted-foreground">{t.customer}</p>
+                    <p className="mt-0.5 text-ui text-muted-foreground">{t.customer}</p>
 
                     <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-muted-foreground">
                       <span
@@ -158,16 +158,16 @@ export function TendersDashboard({
                   <div className="mt-3 flex items-center gap-3">
                     <Tooltip content="Готовность заявки: доля заполненных и подтверждённых полей." side="bottom" align="start" className="flex min-w-0 flex-1">
                       <div className="flex w-full items-center gap-3">
-                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
-                          <div className={cx('h-full rounded-full transition-all', progress >= 100 ? 'bg-success' : 'bg-foreground')} style={{ width: `${progress}%` }} />
+                        <div role="progressbar" aria-label="Готовность заявки" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-sunken ring-1 ring-inset ring-border">
+                          <div className={cx('h-full rounded-full transition-all motion-reduce:transition-none', progress >= 100 ? 'bg-success' : 'bg-primary')} style={{ width: `${progress}%` }} />
                         </div>
-                        <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{progress}%</span>
+                        <span className="text-micro tabular-nums text-muted-foreground">{progress}%</span>
                       </div>
                     </Tooltip>
                     <div className="flex shrink-0 items-center gap-1">
                       <button
                         onClick={() => onToggleSubmitted(t.id)}
-                        className="inline-flex min-h-7 shrink-0 items-center text-[12px] text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                        className="inline-flex min-h-7 shrink-0 items-center text-caption text-muted-foreground underline underline-offset-4 hover:text-foreground"
                       >
                         {t.status === 'submitted' ? 'Снять отметку «Подана»' : 'Отметить поданной'}
                       </button>
@@ -229,7 +229,7 @@ export function TendersDashboard({
         }
       >
         <div className="px-5 py-6">
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-ui text-muted-foreground">
             Закупка «<span className="font-medium text-foreground">{deleteTarget?.title}</span>» будет удалена из
             списка. Это действие нельзя отменить.
           </p>

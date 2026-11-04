@@ -14,7 +14,7 @@ export function PriceBadgeChip({ badge, market = [] }: { badge: PriceBadge; /** 
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
       <Badge tone={TONE[badge.status]}>{badge.title}</Badge>
       {d && (
-        <span className="text-[12px] text-muted-foreground">
+        <span className="text-caption text-muted-foreground">
           цен-аналогов {d.observations.total} · {pct(d.pct)} к РИЦ · источников: {d.sources.length}
         </span>
       )}

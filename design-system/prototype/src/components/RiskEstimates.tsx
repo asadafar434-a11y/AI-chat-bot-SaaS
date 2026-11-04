@@ -65,7 +65,7 @@ function AssumptionsEditor({ data, onChange }: Pick<RiskEstimatesProps, 'data' |
     onChange({ ...data, assumptions: { ...data.assumptions, [key]: n } });
   };
   return (
-    <details className="text-[12px]">
+    <details className="text-caption">
       <summary className="cursor-pointer text-muted-foreground">Допущения расчёта — можно поменять</summary>
       <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
         {ASSUMPTIONS.map((a) => (
@@ -84,7 +84,7 @@ function Sensitivity({ data, sens, defaultDrivers, priceHint, onChange, total }:
   const set = (patch: Partial<RegisterData['sens']>) => onChange({ ...data, sens: { ...s, ...patch } });
   const patchDriver = (id: string, patch: Partial<Driver>) => set({ drivers: s.drivers.map((d) => (d.id === id ? { ...d, ...patch } : d)) });
   return (
-    <details className="text-[12px]">
+    <details className="text-caption">
       <summary className="cursor-pointer text-muted-foreground">Проверить на своих цифрах: хватит ли прибыли</summary>
       <div className="mt-3 space-y-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -212,23 +212,23 @@ export function RiskEstimates({ result, price, priceNote, hypotheses, data, sens
         ) : (
           <>
             <div>
-              <p className="text-[12px] text-muted-foreground">Если сработают все риски с оценкой ({priceNote} {rub(price)})</p>
+              <p className="text-caption text-muted-foreground">Если сработают все риски с оценкой ({priceNote} {rub(price)})</p>
               <p className="font-mono text-lg font-semibold">
                 {result.total > 0 ? rub(result.total) : '—'}
-                {result.totalPct !== null && <span className="ml-2 text-[13px] font-normal text-muted-foreground">{pct(result.totalPct)} цены</span>}
+                {result.totalPct !== null && <span className="ml-2 text-ui font-normal text-muted-foreground">{pct(result.totalPct)} цены</span>}
               </p>
-              {result.unknown > 0 && <p className="text-[12px] text-muted-foreground">Без суммы: {result.unknown} — нужны данные</p>}
+              {result.unknown > 0 && <p className="text-caption text-muted-foreground">Без суммы: {result.unknown} — нужны данные</p>}
             </div>
             {sorted.length === 0 ? (
               <p className="text-muted-foreground">Условий для расчёта в договоре не найдено.</p>
             ) : (
               <ul className="space-y-2">
                 {sorted.map((e) => (
-                  <li key={e.id} className="rounded-lg border border-border px-3 py-2.5 text-[12px]">
+                  <li key={e.id} className="rounded-lg border border-border px-3 py-2.5 text-caption">
                     <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
-                      <p className="min-w-0 flex-1 break-words text-[13px] font-medium">{e.title}</p>
+                      <p className="min-w-0 flex-1 break-words text-ui font-medium">{e.title}</p>
                       {e.amount !== null ? (
-                        <p className="flex flex-wrap items-center justify-end gap-x-2 font-mono text-[13px] font-semibold">
+                        <p className="flex flex-wrap items-center justify-end gap-x-2 font-mono text-ui font-semibold">
                           <span>
                             {rub(e.amount)} <span className="font-normal text-muted-foreground">· {pct(e.pct!)}</span>
                           </span>
@@ -249,7 +249,7 @@ export function RiskEstimates({ result, price, priceNote, hypotheses, data, sens
               </ul>
             )}
             {sorted.length > 0 && (
-              <details className="text-[12px]">
+              <details className="text-caption">
                 <summary className="cursor-pointer text-muted-foreground">На чём держатся числа</summary>
                 <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
                   {sorted.map((e) => (
@@ -275,12 +275,12 @@ export function RiskEstimates({ result, price, priceNote, hypotheses, data, sens
           </div>
         )}
         {allError && (
-          <p role="alert" className="text-[12px] text-danger">
+          <p role="alert" className="text-caption text-danger">
             {allError}
           </p>
         )}
         {rest.length > 0 && (
-          <details className="text-[12px]" open={restOpen} onToggle={(e) => setRestOpen(e.currentTarget.open)}>
+          <details className="text-caption" open={restOpen} onToggle={(e) => setRestOpen(e.currentTarget.open)}>
             <summary className="cursor-pointer text-muted-foreground">Ещё риски для такой закупки без оценки: {rest.length}{queries.size > 0 && ` · можно проверить поиском: ${queries.size}`}</summary>
             <ul className="mt-2 space-y-1.5">
               {rest.map((h) => (

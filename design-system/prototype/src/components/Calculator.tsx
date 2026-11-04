@@ -94,7 +94,7 @@ function ResultView({ result }: { result: CalculatorResult }) {
   return (
     <div className="space-y-3">
       {result.needsInput.length > 0 && (
-        <div className="flex items-start gap-2 rounded-md bg-warn/10 px-3 py-2.5 text-[13px] text-warn">
+        <div className="flex items-start gap-2 rounded-md bg-warn/10 px-3 py-2.5 text-ui text-warn">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
           <span>Не хватает данных: {result.needsInput.map((f) => f.label).join(', ')}</span>
         </div>
@@ -103,8 +103,8 @@ function ResultView({ result }: { result: CalculatorResult }) {
         <div className="grid gap-3 sm:grid-cols-2">
           {groups.map(({ section, items }) => (
             <div key={section} className="space-y-2 rounded-md border border-border p-3">
-              <h4 className="text-[13px] font-semibold">{sectionLabel(section)}</h4>
-              <div className="space-y-1 text-[13px]">
+              <h4 className="text-ui font-semibold">{sectionLabel(section)}</h4>
+              <div className="space-y-1 text-ui">
                 {items.map((item) => (
                   <ValueRow key={item.key} item={item} />
                 ))}
@@ -113,7 +113,7 @@ function ResultView({ result }: { result: CalculatorResult }) {
           ))}
         </div>
       )}
-      {result.explanation && <p className="text-[12px] text-muted-foreground">{result.explanation}</p>}
+      {result.explanation && <p className="text-caption text-muted-foreground">{result.explanation}</p>}
     </div>
   );
 }
@@ -218,7 +218,7 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
       <Card className="flex-1 space-y-4 p-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="space-y-1.5">
-            <span className="text-[13px] font-medium">Сфера закупки</span>
+            <span className="text-ui font-medium">Сфера закупки</span>
             <select value={sphereKey} onChange={(e) => onSphereChange(e.target.value)} className={fieldClass()}>
               {sphereKeys.map((key) => (
                 <option key={key} value={key}>
@@ -229,7 +229,7 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
           </label>
           {subSphereKeys.length > 1 && (
             <label className="space-y-1.5">
-              <span className="text-[13px] font-medium">Вид</span>
+              <span className="text-ui font-medium">Вид</span>
               <select
                 value={subSphereKey}
                 onChange={(e) => {
@@ -249,7 +249,7 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
         </div>
 
         <div className="space-y-1.5">
-          <span className="text-[13px] font-medium">Как заполнять</span>
+          <span className="text-ui font-medium">Как заполнять</span>
           <div className="flex flex-wrap gap-2">
             {([
               ['manual', 'Вручную'],
@@ -271,7 +271,7 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
         {mode === 'ai' && descriptor && (
           <div className="space-y-3 rounded-md border border-border bg-secondary/30 p-3">
             <div className="space-y-1.5">
-              <span className="text-[13px] font-medium">Источник документов</span>
+              <span className="text-ui font-medium">Источник документов</span>
               <div className="flex flex-wrap gap-2">
                 {([
                   ['none', 'Без документов'],
@@ -301,17 +301,17 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
                   Выбрать файлы
                 </Button>
                 <input ref={fileInput} type="file" multiple hidden onChange={(e) => onUpload(e.target.files)} />
-                {uploaded.length > 0 && <p className="text-[12px] text-muted-foreground">Загружено: {uploaded.map((d) => d.name).join(', ')}</p>}
+                {uploaded.length > 0 && <p className="text-caption text-muted-foreground">Загружено: {uploaded.map((d) => d.name).join(', ')}</p>}
               </div>
             )}
 
-            <p className="text-[12px] text-muted-foreground">
+            <p className="text-caption text-muted-foreground">
               С документами ИИ сначала ищет цифры и скрытые расходы в них самих; без документов — оценивает по рыночным ориентирам.
             </p>
             <Button type="button" variant="ai" size="sm" busy={aiBusy} onClick={fillWithAi} disabled={aiBusy || !aiOn}>
               {aiBusy ? 'Запрашиваю ИИ…' : 'Подставить значения с ИИ'}
             </Button>
-            <p className="text-[12px] text-muted-foreground">
+            <p className="text-caption text-muted-foreground">
               {aiOn
                 ? `Платно: ${docSource === 'none' ? 'без документов — около 2–5 ₽' : 'с документами — от 5 до 50 ₽, зависит от их объёма'}. Режим «Вручную» бесплатный.`
                 : 'ИИ выключен: включите переключатель «ИИ» в шапке меню или считайте вручную.'}
@@ -324,11 +324,11 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
             <div className="space-y-4">
               {groupBySection(descriptor.inputSchema, (field) => field.section ?? '').map(({ section, items }) => (
                 <div key={section || '_'} className="space-y-2">
-                  {section && <h4 className="text-[13px] font-semibold text-muted-foreground">{sectionLabel(section)}</h4>}
+                  {section && <h4 className="text-ui font-semibold text-muted-foreground">{sectionLabel(section)}</h4>}
                   <div className="grid gap-3 sm:grid-cols-2">
                     {items.map((field) => (
                       <label key={field.key} className="space-y-1.5">
-                        <span className="text-[13px] font-medium">
+                        <span className="text-ui font-medium">
                           {field.label}
                           {field.required && <span className="text-danger"> *</span>}
                         </span>
@@ -346,7 +346,7 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
                               className={fieldClass()}
                             />
                             {field.unit && (
-                              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-muted-foreground">
+                              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-caption text-muted-foreground">
                                 {field.unit}
                               </span>
                             )}
@@ -367,7 +367,7 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
         )}
 
         {aiError && (
-          <div className="flex items-start gap-2 rounded-md bg-warn/10 px-3 py-2.5 text-[13px] text-warn">
+          <div className="flex items-start gap-2 rounded-md bg-warn/10 px-3 py-2.5 text-ui text-warn">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
             <span>{aiError}</span>
           </div>
@@ -377,8 +377,8 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
 
         {hiddenCosts.length > 0 && (
           <div className="space-y-1.5 rounded-md border border-warn/40 bg-warn/10 p-3">
-            <h4 className="text-[13px] font-semibold text-warn">Скрытые расходы в документах</h4>
-            <ul className="list-disc space-y-0.5 pl-4 text-[13px]">
+            <h4 className="text-ui font-semibold text-warn">Скрытые расходы в документах</h4>
+            <ul className="list-disc space-y-0.5 pl-4 text-ui">
               {hiddenCosts.map((item, i) => (
                 <li key={i}>{item}</li>
               ))}
@@ -388,7 +388,7 @@ export function CalculatorScreen({ purchases }: { purchases: Purchase[] | null }
 
         {aiFilled && (
           <div className="space-y-1">
-            {aiNote && <p className="text-[12px] text-muted-foreground">{aiNote}</p>}
+            {aiNote && <p className="text-caption text-muted-foreground">{aiNote}</p>}
             <AIDisclaimer />
           </div>
         )}

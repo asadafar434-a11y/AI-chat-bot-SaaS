@@ -60,13 +60,13 @@ function Detail({ title, children }: { title: string; children: ReactNode }) {
 function Quote({ finding }: { finding: HiddenFinding }) {
   return (
     <div className="min-w-0 break-words rounded bg-secondary/50 px-2.5 py-1.5">
-      <p className="font-mono text-[11px] text-muted-foreground">
+      <p className="font-mono text-micro text-muted-foreground">
         {finding.source || 'Документы закупки'}
         {finding.at ? ` · ${finding.at}` : ''}
       </p>
       <p>«{finding.quote}»</p>
       {!finding.verified && (
-        <p className="text-[12px] text-warn">Цитата не найдена в документах дословно — сверьте вручную.</p>
+        <p className="text-caption text-warn">Цитата не найдена в документах дословно — сверьте вручную.</p>
       )}
     </div>
   );
@@ -105,7 +105,7 @@ export function HiddenRequirementsBlock({ card }: { card: HiddenRequirementsCard
           <p className="flex items-center gap-2 text-sm font-medium">
             <ShieldAlert className="size-4 shrink-0" /> Скрытые требования и неоднозначности
           </p>
-          <p className="mt-0.5 max-w-[70ch] text-[13px] text-muted-foreground">
+          <p className="mt-0.5 max-w-[70ch] text-ui text-muted-foreground">
             ИИ перечитает извещение, ТЗ, договор и приложения: найдёт требования, которые легко пропустить, и места, которые можно понять
             двояко. Платный запрос к ИИ — только по кнопке.
           </p>
@@ -114,18 +114,18 @@ export function HiddenRequirementsBlock({ card }: { card: HiddenRequirementsCard
           {running ? 'ИИ читает документы…' : result ? 'Проверить заново' : 'Найти скрытые требования'}
         </Button>
       </div>
-      {running && <p className="text-[12px] text-muted-foreground">Это занимает до двух минут.</p>}
+      {running && <p className="text-caption text-muted-foreground">Это занимает до двух минут.</p>}
       {error && (
-        <p role="alert" className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
+        <p role="alert" className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-ui text-danger">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" /> <span className="min-w-0 break-words">{error}</span>
         </p>
       )}
       {result && (
         <>
-          <p className="text-[13px] font-medium">{hiddenRequirementsSummary(result)}</p>
-          {stale && <p className="text-[12px] text-warn">Документы изменились после проверки — результат мог устареть.</p>}
+          <p className="text-ui font-medium">{hiddenRequirementsSummary(result)}</p>
+          {stale && <p className="text-caption text-warn">Документы изменились после проверки — результат мог устареть.</p>}
           {counts && counts.withQuestion > 0 && (
-            <p className="text-[12px] text-muted-foreground">
+            <p className="text-caption text-muted-foreground">
               {counts.withQuestion} из {counts.total} — с готовым вопросом заказчику.
             </p>
           )}
@@ -156,7 +156,7 @@ export function HiddenRequirementsBlock({ card }: { card: HiddenRequirementsCard
           )}
 
           {shown.length === 0 ? (
-            <p className="text-[13px] text-muted-foreground">
+            <p className="text-ui text-muted-foreground">
               {result.findings.length === 0 ? 'ИИ не нашёл обоснованных проблем — проверьте документы на месте.' : 'Под выбранный фильтр ничего не подходит.'}
             </p>
           ) : (
@@ -165,7 +165,7 @@ export function HiddenRequirementsBlock({ card }: { card: HiddenRequirementsCard
                 const key = keyOf(f);
                 const open = activeId === key;
                 return (
-                  <li key={key} className="card-hover min-w-0 space-y-1.5 rounded-md border border-border p-3 text-[13px]">
+                  <li key={key} className="card-hover min-w-0 space-y-1.5 rounded-md border border-border p-3 text-ui">
                     <button
                       type="button"
                       aria-expanded={open}

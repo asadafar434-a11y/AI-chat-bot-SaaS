@@ -671,8 +671,8 @@ test('шаг «Загрузка»: в распознанной закупке ц
   assert.match(out, /text-lg font-bold[^>]*>Поставка угля/);
   assert.match(out, /text-2xl font-bold[^>]*>25 930 002 ₽/);
   assert.match(out, /text-2xl font-bold[^>]*>30 октября 2026/);
-  assert.match(out, /text-\[12px\] text-foreground[^>]*>МУП «Тепло»/);
-  assert.match(out, /text-\[12px\] text-foreground[^>]*>223-ФЗ · аукцион/);
+  assert.match(out, /text-caption text-foreground[^>]*>МУП «Тепло»/);
+  assert.match(out, /text-caption text-foreground[^>]*>223-ФЗ · аукцион/);
 });
 
 test('шаг «Загрузка»: рядом с платным ИИ-разбором — бесплатная кнопка «Только аналитика»; недоступна, пока нет файлов и пока идёт работа', () => {

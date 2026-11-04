@@ -25,8 +25,8 @@ export function SummaryCard({
     <>
       {lead}
       <span className="min-w-0">
-        <span className="block text-[15px] font-bold leading-tight">{title}</span>
-        {subtitle && <span className="block text-[12px] leading-snug text-muted-foreground">{subtitle}</span>}
+        <span className="block text-subtitle font-bold leading-tight">{title}</span>
+        {subtitle && <span className="block text-caption leading-snug text-muted-foreground">{subtitle}</span>}
       </span>
     </>
   );

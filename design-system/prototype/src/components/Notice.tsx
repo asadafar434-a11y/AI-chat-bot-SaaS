@@ -12,7 +12,7 @@ export function Notice({ tone, children }: { tone: Tone; children: ReactNode }) 
     <p
       role={tone === 'warn' ? 'alert' : 'status'}
       className={cx(
-        'flex items-start gap-2 rounded-md px-3 py-2 text-[13px] leading-snug',
+        'flex items-start gap-2 rounded-md px-3 py-2 text-ui leading-snug',
         tone === 'ok' && 'bg-success/10 text-success',
         tone === 'warn' && 'bg-warn-surface/50 text-warn-foreground',
         tone === 'info' && 'bg-info/10 text-info',

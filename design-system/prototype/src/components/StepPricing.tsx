@@ -94,7 +94,7 @@ export function StepPricing({
             <HelpTip align="start" content={priceIntro(kind)} />
           </p>
         </div>
-        <p className="mt-3 flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground">
+        <p className="mt-3 flex items-center gap-1.5 text-ui font-semibold text-muted-foreground">
           {fixed ? 'Что останется вам' : 'До какой цены снижаться'}
           <HelpTip
             content={
@@ -107,8 +107,8 @@ export function StepPricing({
         </p>
         {floorPrice ? (
           <>
-            <p className="mt-1 break-words font-mono text-3xl font-bold tabular-nums tracking-tight text-success">{rub(floorPrice)}</p>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
+            <p className="mt-1 break-words text-3xl font-bold tabular-nums tracking-tight text-success">{rub(floorPrice)}</p>
+            <p className="mt-0.5 text-caption text-muted-foreground">
               нижняя цена{floorDrop !== null && !fixed ? ` · −${pctText(floorDrop)}% от НМЦК` : ''}
             </p>
           </>
@@ -116,10 +116,10 @@ export function StepPricing({
           <p className="mt-2 text-sm font-medium">Впишите расходы — посчитаем нижнюю цену.</p>
         )}
         {profit !== null && (
-          <p className={cx('mt-3 flex flex-wrap items-center gap-x-2 text-[14px] font-semibold', loss ? 'text-danger' : 'text-success')}>
+          <p className={cx('mt-3 flex flex-wrap items-center gap-x-2 text-sm font-semibold', loss ? 'text-danger' : 'text-success')}>
             {loss ? <AlertTriangle className="size-4 shrink-0" /> : <CheckCircle2 className="size-4 shrink-0" />}
             {loss ? 'Убыток при вашей цене: ' : 'Прибыль при вашей цене: '}
-            <span className="font-mono text-xl font-bold tabular-nums">{rub(Math.abs(profit))}</span>
+            <span className="text-xl font-bold tabular-nums">{rub(Math.abs(profit))}</span>
           </p>
         )}
       </Card>
@@ -127,10 +127,10 @@ export function StepPricing({
       <div className="space-y-4">
         {fixed ? (
           <Card className="p-5">
-            <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">Цена договора</p>
+            <p className="text-micro font-medium uppercase tracking-wider text-muted-foreground">Цена договора</p>
             {nmck > 0 ? (
               <>
-                <p className="mt-3 font-mono text-3xl font-bold tabular-nums">{rub(nmck)}</p>
+                <p className="mt-3 text-3xl font-bold tabular-nums">{rub(nmck)}</p>
                 <p className="mt-1 text-xs text-muted-foreground">названа заказчиком в извещении · торгов нет</p>
               </>
             ) : (
@@ -145,12 +145,12 @@ export function StepPricing({
                   Снижение от НМЦК
                   <HelpTip content="НМЦК — начальная (максимальная) цена контракта. Двигайте ползунок: справа от отметки «нижняя цена» контракт в убыток. Вероятность победы не показываем: без истории торгов заказчика её нечем честно посчитать." />
                 </label>
-                <p className="mt-1 break-words font-mono text-2xl font-bold tabular-nums tracking-tight">{nmck > 0 ? rub(shownPrice) : '—'}</p>
-                <p className="text-[12px] text-muted-foreground">ваша цена</p>
+                <p className="mt-1 break-words text-2xl font-bold tabular-nums tracking-tight">{nmck > 0 ? rub(shownPrice) : '—'}</p>
+                <p className="text-caption text-muted-foreground">ваша цена</p>
               </div>
               <span
                 className={cx(
-                  'rounded-lg px-2.5 py-1 font-mono text-xl font-bold tabular-nums',
+                  'rounded-lg px-2.5 py-1 text-xl font-bold tabular-nums',
                   loss ? 'bg-danger/10 text-danger' : 'bg-secondary text-foreground',
                 )}
               >
@@ -172,7 +172,7 @@ export function StepPricing({
             />
 
             {/* Отметки под дорожкой: нижняя цена и антидемпинг. Позиция — по центру бегунка (24 px). */}
-            <div className="relative mt-1 h-9 font-mono text-[11px] text-muted-foreground">
+            <div className="relative mt-1 h-9 text-micro tabular-nums text-muted-foreground">
               <span className="absolute left-0 top-0">0%</span>
               {floorDrop !== null && floorDrop < MAX && (
                 <div className="absolute top-0 -translate-x-1/2" style={{ left: at_(floorDrop) }}>
@@ -195,7 +195,7 @@ export function StepPricing({
               <span className="absolute right-0 top-0">{MAX}%</span>
             </div>
 
-            <div className="mt-3 space-y-2 text-[13px]">
+            <div className="mt-3 space-y-2 text-ui">
               <Row label="НМЦК" value={nmck > 0 ? rub(nmck) : 'не указана — впишите в «Моих расходах»'} muted />
               {unitBid && (
                 <>
@@ -214,14 +214,14 @@ export function StepPricing({
             </div>
 
             {above && (
-              <p className="mt-4 flex items-start gap-1.5 rounded-md bg-danger/10 px-2.5 py-2 text-[13px] font-semibold leading-snug text-danger">
+              <p className="mt-4 flex items-start gap-1.5 rounded-md bg-danger/10 px-2.5 py-2 text-ui font-semibold leading-snug text-danger">
                 <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
                 Цена выше начальной — заявку отклонят.
               </p>
             )}
 
             {discount >= ANTI_DUMPING && (
-              <p className="mt-4 flex items-start gap-1.5 rounded-md bg-danger/10 px-2.5 py-2 text-[13px] font-semibold leading-snug text-danger">
+              <p className="mt-4 flex items-start gap-1.5 rounded-md bg-danger/10 px-2.5 py-2 text-ui font-semibold leading-snug text-danger">
                 <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
                 <span>
                   Антидемпинг (снижение от 25%): обеспечение исполнения ×1,5, не меньше 10%, или сведения о добросовестности.
@@ -234,7 +234,7 @@ export function StepPricing({
             {price !== null && price > 0 && (
               <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border pt-4">
                 {tpPrice === price ? (
-                  <p className="flex items-center gap-1.5 text-[13px] font-semibold text-success">
+                  <p className="flex items-center gap-1.5 text-ui font-semibold text-success">
                     <CheckCircle2 className="size-4" /> Эта цена стоит в заявке
                   </p>
                 ) : (
@@ -242,7 +242,7 @@ export function StepPricing({
                     <Button size="sm" disabled={above} onClick={() => onPutPrice(price)}>
                       Поставить цену в заявку
                     </Button>
-                    <span className="text-[12px] text-muted-foreground">
+                    <span className="text-caption text-muted-foreground">
                       {above ? 'Выше начальной цены ставить нельзя' : tpPrice ? `Сейчас в заявке: ${rub(tpPrice)}` : 'Попадёт в ТП и предложение о цене'}
                     </span>
                   </>
@@ -256,7 +256,7 @@ export function StepPricing({
         <Card className="p-4">
           <button
             onClick={() => setShowCosts(!showCosts)}
-            className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-left text-[13px] font-medium transition-colors hover:bg-secondary"
+            className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-left text-ui font-medium transition-colors hover:bg-secondary"
           >
             Мои расходы
             <ChevronDown className={cx('size-4 text-muted-foreground transition-transform', showCosts && 'rotate-180')} />
@@ -284,7 +284,7 @@ export function StepPricing({
             </div>
           )}
 
-          <div className="space-y-1 pt-3 font-mono text-[11px] text-muted-foreground">
+          <div className="space-y-1 pt-3 text-caption text-muted-foreground">
             {notes.map((n) => (
               <p key={n}>{n}</p>
             ))}
@@ -314,7 +314,7 @@ function Field({
   hint: string;
 }) {
   return (
-    <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+    <label className="flex flex-col gap-1 text-caption text-muted-foreground">
       <span className="flex items-center gap-1">
         {label}
         <HelpTip content={hint} />
@@ -323,7 +323,7 @@ function Field({
         inputMode="decimal"
         defaultValue={value === null || value === undefined ? '' : value.toLocaleString('ru-RU')}
         onChange={onChange}
-        className="h-8 w-full rounded-md border border-border bg-background px-2.5 font-mono text-[13px] text-foreground outline-none transition-colors focus:border-foreground focus:ring-2 focus:ring-ring/20"
+        className="h-8 w-full rounded-md border border-border bg-background px-2.5 font-mono text-ui text-foreground outline-none transition-colors focus:border-foreground focus:ring-2 focus:ring-ring/20"
       />
     </label>
   );
@@ -343,7 +343,7 @@ function Row({
   return (
     <div className="flex items-center justify-between gap-3">
       <span className={muted ? 'text-muted-foreground' : 'text-foreground'}>{label}</span>
-      <span className={`text-right font-mono tabular-nums ${strong ? 'text-base font-semibold' : muted ? 'text-muted-foreground' : ''}`}>{value}</span>
+      <span className={`text-right tabular-nums ${strong ? 'text-base font-semibold' : muted ? 'text-muted-foreground' : ''}`}>{value}</span>
     </div>
   );
 }

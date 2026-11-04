@@ -70,7 +70,7 @@ export function ChatAssistant({
       {/* Кнопка чата — робот ИИ-ассистента; при открытом чате — крестик */}
       <div className="group/fab fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-40 lg:bottom-5 lg:right-5">
         {!open && (
-          <span className="animate-tip pointer-events-none absolute right-full top-1/2 mr-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-1.5 text-[12px] font-medium text-foreground shadow-xl group-hover/fab:block">
+          <span className="animate-tip pointer-events-none absolute right-full top-1/2 mr-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-1.5 text-caption font-medium text-foreground shadow-xl group-hover/fab:block">
             Спросить ИИ
           </span>
         )}
@@ -103,7 +103,7 @@ export function ChatAssistant({
             <BotMark className="size-8 shrink-0" />
             <div className="min-w-0 flex-1 leading-none">
               <p className="text-sm font-semibold">ИИ-ассистент</p>
-              <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">{place}</p>
+              <p className="mt-0.5 truncate font-mono text-nano text-muted-foreground">{place}</p>
             </div>
             <IconButton label="Закрыть чат" onClick={closeChat} side="bottom" align="end">
               <X className="size-4" />
@@ -122,7 +122,7 @@ export function ChatAssistant({
             {chat.messages.length === 0 && (
               <div className="flex items-end justify-start gap-2">
                 <BotMark className="size-6 shrink-0" />
-                <div className="max-w-[85%] rounded-2xl rounded-bl-sm bg-secondary px-3.5 py-2 text-[13px] leading-snug text-foreground">
+                <div className="max-w-[85%] rounded-2xl rounded-bl-sm bg-secondary px-3.5 py-2 text-ui leading-snug text-foreground">
                   {chat.purchase
                     ? 'Здравствуйте! Спросите о чём угодно в этой закупке — отвечу по её документам со ссылкой на пункт и статью закона.'
                     : 'Здравствуйте! Спросите о чём угодно, не только про тендеры — отвечу на вопрос по 44-ФЗ и 223-ФЗ со ссылкой на статью закона, а если нужны актуальные данные (цены, организации, новости) — поищу в интернете. Можно приложить файл любого вида — прочитаю, если пойму формат.'}
@@ -137,14 +137,14 @@ export function ChatAssistant({
                 <div key={m.id} className={`flex items-end gap-2 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   {m.role === 'assistant' && <BotMark className="size-6 shrink-0" />}
                   <div
-                    className={`max-w-[85%] break-words rounded-2xl px-3.5 py-2 text-[13px] leading-snug ${
+                    className={`max-w-[85%] break-words rounded-2xl px-3.5 py-2 text-ui leading-snug ${
                       m.role === 'user' ? 'rounded-br-sm bg-primary text-primary-foreground' : 'rounded-bl-sm bg-secondary text-foreground'
                     }`}
                   >
                     {m.files && m.files.length > 0 && (
                       <div className="mb-1.5 space-y-1">
                         {m.files.map((name) => (
-                          <div key={name} className="flex items-center gap-1.5 rounded-md border border-current/20 bg-current/10 px-2 py-1 text-[11px]">
+                          <div key={name} className="flex items-center gap-1.5 rounded-md border border-current/20 bg-current/10 px-2 py-1 text-micro">
                             <FileText className="size-3.5 shrink-0" />
                             <span className="max-w-[170px] truncate">{name}</span>
                           </div>
@@ -159,14 +159,14 @@ export function ChatAssistant({
             })}
 
             {notes.map((n) => (
-              <div key={n.id} className="break-words rounded-2xl rounded-bl-sm border border-info/40 bg-info/5 px-3.5 py-2.5 text-[13px] leading-snug">
-                <p className="flex items-center gap-1.5 text-[12px] font-medium text-info">
+              <div key={n.id} className="break-words rounded-2xl rounded-bl-sm border border-info/40 bg-info/5 px-3.5 py-2.5 text-ui leading-snug">
+                <p className="flex items-center gap-1.5 text-caption font-medium text-info">
                   <UserCheck className="size-3.5" /> Тендерный юрист · ответ по заявке
                 </p>
-                <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{n.title}</p>
+                <p className="mt-0.5 truncate text-micro text-muted-foreground">{n.title}</p>
                 <p className="mt-1.5 whitespace-pre-line text-foreground">{n.text}</p>
                 {onOpenNote && (
-                  <button onClick={() => onOpenNote(n.id)} className="mt-2 text-[12px] font-medium underline underline-offset-2">
+                  <button onClick={() => onOpenNote(n.id)} className="mt-2 text-caption font-medium underline underline-offset-2">
                     Открыть заявку
                   </button>
                 )}
@@ -183,13 +183,13 @@ export function ChatAssistant({
                     ))}
                   </span>
                   <span className="sr-only">{chat.status === 'reading' ? 'Читаю файлы…' : 'ИИ отвечает…'}</span>
-                  {chat.status === 'reading' && <span className="text-[12px] text-muted-foreground">Читаю файлы…</span>}
+                  {chat.status === 'reading' && <span className="text-caption text-muted-foreground">Читаю файлы…</span>}
                 </div>
               </div>
             )}
 
             {chat.error && (
-              <p className="flex items-start gap-2 rounded-lg bg-danger/10 px-3 py-2 text-[12px] leading-snug text-danger">
+              <p className="flex items-start gap-2 rounded-lg bg-danger/10 px-3 py-2 text-caption leading-snug text-danger">
                 <AlertTriangle className="mt-0.5 size-3.5 shrink-0" /> <span className="min-w-0 break-words">{chat.error}</span>
               </p>
             )}
@@ -200,7 +200,7 @@ export function ChatAssistant({
                   <button
                     key={s}
                     onClick={() => ask(s)}
-                    className="block w-full rounded-lg border border-border bg-background px-3 py-2 text-left text-[12px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                    className="block w-full rounded-lg border border-border bg-background px-3 py-2 text-left text-caption text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                   >
                     {s}
                   </button>
@@ -213,7 +213,7 @@ export function ChatAssistant({
           {chat.mode === 'general' && (chat.documents.length > 0 || attached.length > 0) && (
             <div className="space-y-1 border-t border-border px-3 py-2">
               {chat.documents.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-1.5 text-micro text-muted-foreground">
                   <span>В разговоре:</span>
                   {chat.documents.map((d) => (
                     <span key={d.name} className="inline-flex max-w-full items-center gap-1 rounded-md border border-border bg-secondary px-2 py-1">
@@ -227,7 +227,7 @@ export function ChatAssistant({
                 </div>
               )}
               {attached.map((f) => (
-                <div key={f.name} className="flex items-center gap-2 rounded-md border border-border bg-secondary px-2.5 py-1.5 text-[12px]">
+                <div key={f.name} className="flex items-center gap-2 rounded-md border border-border bg-secondary px-2.5 py-1.5 text-caption">
                   <FileText className="size-3.5 shrink-0 text-muted-foreground" />
                   <span className="flex-1 truncate text-muted-foreground">{f.name}</span>
                   <button aria-label={`Убрать ${f.name}`} onClick={() => setAttached((a) => a.filter((x) => x !== f))} className="text-muted-foreground hover:text-foreground">
@@ -237,7 +237,7 @@ export function ChatAssistant({
               ))}
             </div>
           )}
-          {chat.notice && <p className="break-words border-t border-border px-3 py-2 text-[12px] text-warn-foreground">{chat.notice}</p>}
+          {chat.notice && <p className="break-words border-t border-border px-3 py-2 text-caption text-warn-foreground">{chat.notice}</p>}
 
           {/* Input bar */}
           <form

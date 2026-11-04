@@ -162,19 +162,35 @@ export type BarRow = { label: string; values: (number | null)[] };
  * Столбики по годам, до двух рядов: ниже нуля — вниз (убыток); столбики вырастают от нулевой линии, при наведении или фокусе —
  * подсказка со всеми значениями года. Тонкие столбики, скруглённый конец от нуля, у каждого ряда своя подпись в легенде над графиком.
  */
-export function GroupedBars({ rows, series, format, axisFormat = format, label }: { rows: BarRow[]; series: BarSeries[]; format: (n: number | null) => string; axisFormat?: (n: number | null) => string; label: string }) {
+/** «Круглые» деления шкалы: шаг 1, 2, 2,5 или 5 × 10ⁿ (для целых — без 2,5). Шкала расширяется до ближайших делений, чтобы верхний и нижний край были подписаны. */
+export function niceTicks(min: number, max: number, integer = false, target = 4): { ticks: number[]; lo: number; hi: number } {
+  const span = max - min || Math.abs(max) || 1;
+  const rough = span / target;
+  const pow = 10 ** Math.floor(Math.log10(rough));
+  const f = rough / pow;
+  const options = integer ? [1, 2, 5, 10] : [1, 2, 2.5, 5, 10];
+  let step = (options.find((o) => f <= o) ?? 10) * pow;
+  if (integer && step < 1) step = 1;
+  const lo = Math.floor(min / step) * step;
+  const hi = Math.ceil(max / step) * step;
+  const ticks: number[] = [];
+  for (let v = lo; v <= hi + step / 2; v += step) ticks.push(Math.round(v / step) * step);
+  return { ticks, lo, hi };
+}
+
+export function GroupedBars({ rows, series, format, axisFormat = format, label, integer = false }: { rows: BarRow[]; series: BarSeries[]; format: (n: number | null) => string; axisFormat?: (n: number | null) => string; label: string; /** Значения целые (число дел): деления только целые. */ integer?: boolean }) {
   const [ref, on] = useReveal<HTMLDivElement>();
   const [hover, setHover] = useState<number | null>(null);
   const all = rows.flatMap((r) => r.values).filter((v): v is number => v !== null);
-  const max = Math.max(0, ...all);
-  const min = Math.min(0, ...all);
-  const range = max - min || 1;
-  const zero = (-min / range) * 100; // положение нулевой линии снизу, %
+  const { ticks, lo, hi } = niceTicks(Math.min(0, ...all), Math.max(0, ...all), integer);
+  const range = hi - lo || 1;
+  const zero = (-lo / range) * 100; // положение нулевой линии снизу, %
+  const at = (v: number) => ((v - lo) / range) * 100; // положение деления снизу, %
   const tip = hover === null ? null : rows[hover];
   const tipLeft = hover === null ? 0 : Math.min(82, Math.max(18, ((hover + 0.5) / rows.length) * 100));
   return (
     <div className="space-y-3">
-      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
+      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-caption text-muted-foreground">
         {series.map((s) => (
           <li key={s.name} className="flex items-center gap-1.5">
             <span className="size-2.5 rounded-sm" style={{ background: s.color }} aria-hidden />
@@ -183,17 +199,17 @@ export function GroupedBars({ rows, series, format, axisFormat = format, label }
         ))}
       </ul>
       <div className="flex gap-2">
-        <div className="relative w-16 shrink-0 text-right font-mono text-[10px] text-muted-foreground" aria-hidden>
-          <span className="absolute right-0 top-0 -translate-y-1/2">{max > 0 ? axisFormat(max) : ''}</span>
-          <span className="absolute right-0 -translate-y-1/2" style={{ bottom: `${zero}%` }}>
-            0
-          </span>
-          <span className="absolute bottom-0 right-0 translate-y-1/2">{min < 0 ? axisFormat(min) : ''}</span>
+        <div className="relative w-16 shrink-0 text-right text-nano tabular-nums text-muted-foreground" aria-hidden>
+          {ticks.map((t) => (
+            <span key={t} className="absolute right-0 translate-y-1/2" style={{ bottom: `${at(t)}%` }}>
+              {t === 0 ? '0' : axisFormat(t)}
+            </span>
+          ))}
         </div>
         <div ref={ref} className="relative h-52 min-w-0 flex-1" role="img" aria-label={label}>
-          <div className="absolute inset-x-0 top-0 border-t border-dashed border-border/70" aria-hidden />
-          <div className="absolute inset-x-0 border-t border-border" style={{ bottom: `${zero}%` }} aria-hidden />
-          {min < 0 && <div className="absolute inset-x-0 bottom-0 border-t border-dashed border-border/70" aria-hidden />}
+          {ticks.map((t) => (
+            <div key={t} className={cx('absolute inset-x-0 border-t', t === 0 ? 'border-border-strong' : 'border-dashed border-border/70')} style={{ bottom: `${at(t)}%` }} aria-hidden />
+          ))}
           <div className="absolute inset-0 flex">
             {rows.map((row, i) => (
               <div
@@ -208,11 +224,11 @@ export function GroupedBars({ rows, series, format, axisFormat = format, label }
               >
                 {series.map((s, k) => {
                   const v = row.values[k];
-                  if (v === null || v === undefined) return <span key={s.name} className="w-full max-w-5" />;
+                  if (v === null || v === undefined) return <span key={s.name} className="w-full max-w-6" />;
                   const positive = v >= 0;
                   const height = `${(Math.abs(v) / range) * 100}%`;
                   return (
-                    <span key={s.name} className="relative w-full max-w-5">
+                    <span key={s.name} className="relative w-full max-w-6">
                       <span
                         className="absolute inset-x-0 min-h-[2px]"
                         style={{
@@ -230,7 +246,7 @@ export function GroupedBars({ rows, series, format, axisFormat = format, label }
             ))}
           </div>
           {tip && (
-            <div className="animate-tip pointer-events-none absolute top-0 z-10 w-max max-w-[220px] -translate-x-1/2 rounded-lg border border-border bg-card px-3 py-2 text-[12px] shadow-[var(--hover-shadow)]" style={{ left: `${tipLeft}%` }} role="status">
+            <div className="animate-tip pointer-events-none absolute top-0 z-10 w-max max-w-[220px] -translate-x-1/2 rounded-lg border border-border bg-card px-3 py-2 text-caption shadow-md" style={{ left: `${tipLeft}%` }} role="status">
               <p className="mb-1 font-semibold">{tip.label}</p>
               {series.map((s, k) => (
                 <p key={s.name} className="flex items-center justify-between gap-3">
@@ -238,7 +254,7 @@ export function GroupedBars({ rows, series, format, axisFormat = format, label }
                     <span className="size-2 rounded-sm" style={{ background: s.color }} aria-hidden />
                     {s.name}
                   </span>
-                  <span className={cx('font-mono', (tip.values[k] ?? 0) < 0 && 'text-danger')}>{format(tip.values[k] ?? null)}</span>
+                  <span className={cx('tabular-nums', (tip.values[k] ?? 0) < 0 && 'text-danger')}>{format(tip.values[k] ?? null)}</span>
                 </p>
               ))}
             </div>
@@ -249,7 +265,7 @@ export function GroupedBars({ rows, series, format, axisFormat = format, label }
         <span className="w-16 shrink-0" />
         <div className="flex min-w-0 flex-1">
           {rows.map((row, i) => (
-            <span key={row.label} className={cx('min-w-0 flex-1 text-center font-mono text-[11px] transition-colors', hover === i ? 'font-semibold text-foreground' : 'text-muted-foreground')}>
+            <span key={row.label} className={cx('min-w-0 flex-1 text-center text-micro tabular-nums transition-colors', hover === i ? 'font-semibold text-foreground' : 'text-muted-foreground')}>
               {row.label}
             </span>
           ))}

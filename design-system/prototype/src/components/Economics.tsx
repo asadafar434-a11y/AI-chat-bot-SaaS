@@ -43,15 +43,15 @@ export function CostsInputs({ data, fromStep, onChange }: Pick<EconomicsProps, '
   const set = (patch: Partial<RegisterData['econ']>) => onChange({ ...data, econ: { ...e, ...patch } });
   return (
   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-    <label className="block text-[12px]">
+    <label className="block text-caption">
       <span className="mb-1 block text-muted-foreground">Затраты на исполнение, ₽</span>
       <input type="text" inputMode="decimal" placeholder={stepText(fromStep.costs)} value={e.costs} onChange={(ev) => set({ costs: ev.target.value })} className={numClass} />
     </label>
-    <label className="block text-[12px]">
+    <label className="block text-caption">
       <span className="mb-1 block text-muted-foreground">Расходы на участие, ₽</span>
       <input type="text" inputMode="decimal" placeholder={stepText(fromStep.extra)} value={e.extra} onChange={(ev) => set({ extra: ev.target.value })} className={numClass} />
     </label>
-    <label className="block text-[12px]">
+    <label className="block text-caption">
       <span className="mb-1 block text-muted-foreground">Налог с выручки, %</span>
       <input type="text" inputMode="decimal" placeholder={stepText(fromStep.taxPct)} value={e.taxPct} onChange={(ev) => set({ taxPct: ev.target.value })} className={numClass} />
     </label>
@@ -89,11 +89,11 @@ export function Economics({ result, nmck, priceNote, fromStep, targetMarginPct, 
               <PriceTile title="Целевая" hint={`Маржа ${pct(targetMarginPct)} в базовом сценарии`} price={result.target} nmck={result.nmck} tone="text-success" strong />
             </div>
 
-            <p className="pb-1 text-[12px] text-muted-foreground">
+            <p className="pb-1 text-caption text-muted-foreground">
               Прибыль по сценариям при {priceNote} {rub(result.price)}
             </p>
             <div className="overflow-x-auto">
-              <table aria-label="Прибыль по сценариям" className="w-full min-w-[22rem] border-collapse text-[12px]">
+              <table aria-label="Прибыль по сценариям" className="w-full min-w-[22rem] border-collapse text-caption">
                 <thead>
                   <tr className="text-left text-muted-foreground">
                     {SCENARIOS.map((s) => (
@@ -109,7 +109,7 @@ export function Economics({ result, nmck, priceNote, fromStep, targetMarginPct, 
                       const r = result.scenarios[s.key];
                       return (
                         <td key={s.key} className={`px-2 py-2 align-top ${r.profit < 0 ? 'text-danger' : ''}`}>
-                          <span className="block font-mono text-[13px] font-semibold">{rub(r.profit)}</span>
+                          <span className="block font-mono text-ui font-semibold">{rub(r.profit)}</span>
                           <span className="block text-muted-foreground">маржа {pct(r.margin)}</span>
                         </td>
                       );
@@ -119,7 +119,7 @@ export function Economics({ result, nmck, priceNote, fromStep, targetMarginPct, 
               </table>
             </div>
 
-            <details className="text-[12px]">
+            <details className="text-caption">
               <summary className="cursor-pointer text-muted-foreground">Снижение цены: что будет с прибылью</summary>
               <div className="mt-2 overflow-x-auto">
                 <table className="w-full min-w-[22rem] border-collapse">
@@ -145,7 +145,7 @@ export function Economics({ result, nmck, priceNote, fromStep, targetMarginPct, 
               </div>
             </details>
 
-            <details className="text-[12px]">
+            <details className="text-caption">
               <summary className="cursor-pointer text-muted-foreground">Как посчитано</summary>
               <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
                 {result.scenarios.base.lines.map((l) => (
@@ -167,13 +167,13 @@ export function Economics({ result, nmck, priceNote, fromStep, targetMarginPct, 
 function PriceTile({ title, hint, price, nmck, strong, tone }: { title: string; hint: string; price: number | null; nmck: number; strong?: boolean; tone: string }) {
   return (
     <div className={`rounded-lg border px-3 py-2.5 ${strong ? 'border-foreground/40 bg-secondary/50' : 'border-border'}`} title={hint}>
-      <p className="text-[12px] text-muted-foreground">{title}</p>
+      <p className="text-caption text-muted-foreground">{title}</p>
       {price === null ? (
-        <p className="text-[13px] text-muted-foreground">не достижима</p>
+        <p className="text-ui text-muted-foreground">не достижима</p>
       ) : (
         <>
           <p className={`break-words font-mono text-xl font-bold tracking-tight ${tone}`}>{rub(price)}</p>
-          <p className="text-[11px] text-muted-foreground">{pct(dropOf(price, nmck))} от начальной</p>
+          <p className="text-micro text-muted-foreground">{pct(dropOf(price, nmck))} от начальной</p>
         </>
       )}
     </div>
@@ -199,7 +199,7 @@ function Verdict({ result, nmck, targetMarginPct }: { result: Extract<EconResult
     );
   }
   return (
-    <p className="flex items-start gap-1.5 text-[14px] font-semibold">
+    <p className="flex items-start gap-1.5 text-sm font-semibold">
       <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
       <span>
         Ставьте не ниже <span className="font-mono font-bold text-success">{rub(result.target)}</span> ({pct(dropOf(result.target, nmck))} от начальной): маржа {pct(targetMarginPct)} в базовом сценарии.

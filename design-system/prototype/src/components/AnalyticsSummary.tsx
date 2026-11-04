@@ -71,22 +71,22 @@ export function AnalyticsSummary({
 
         {headline ? (
           <div className="mt-4 border-t border-foreground/10 pt-3">
-            <p className="text-[12px] font-semibold text-muted-foreground">{headline.label}</p>
-            <p className={`mt-0.5 break-words font-mono text-3xl font-bold tracking-tight ${TONE_TEXT[headline.tone]}`}>{headline.value}</p>
-            {headline.note && <p className="mt-0.5 text-[12px] text-muted-foreground">{headline.note}</p>}
+            <p className="text-caption font-semibold text-muted-foreground">{headline.label}</p>
+            <p className={`mt-0.5 break-words tabular-nums text-3xl font-bold tracking-tight ${TONE_TEXT[headline.tone]}`}>{headline.value}</p>
+            {headline.note && <p className="mt-0.5 text-caption text-muted-foreground">{headline.note}</p>}
             {headline.extras.length > 0 && (
               <dl className="mt-3 flex flex-wrap gap-x-8 gap-y-2">
                 {headline.extras.map((x) => (
                   <div key={x.label} className="min-w-0">
-                    <dt className="text-[11px] font-medium text-muted-foreground">{x.label}</dt>
-                    <dd className={`mt-0.5 break-words font-mono text-lg font-bold tracking-tight ${TONE_TEXT[x.tone]}`}>{x.value}</dd>
+                    <dt className="text-micro font-medium text-muted-foreground">{x.label}</dt>
+                    <dd className={`mt-0.5 break-words tabular-nums text-lg font-bold tracking-tight ${TONE_TEXT[x.tone]}`}>{x.value}</dd>
                   </div>
                 ))}
               </dl>
             )}
             {costNote && (
               <div className="mt-3 space-y-2">
-                <p className="text-[12px] text-muted-foreground">{costNote}</p>
+                <p className="text-caption text-muted-foreground">{costNote}</p>
                 {action && (
                   <Button size="sm" variant="secondary" onClick={action.onClick}>
                     {action.label}
@@ -113,19 +113,19 @@ export function AnalyticsSummary({
       {topRisks.length > 0 && (
         <Card className="space-y-3 p-4">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <p className="text-[14px] font-bold">Главные риски</p>
+            <p className="text-sm font-bold">Главные риски</p>
             {risksTotal && (
-              <p className="text-[13px] text-muted-foreground">
-                Если сработают все: <span className="font-mono text-base font-bold text-danger">{risksTotal.value}</span>
+              <p className="text-ui text-muted-foreground">
+                Если сработают все: <span className="tabular-nums text-base font-bold text-danger">{risksTotal.value}</span>
               </p>
             )}
           </div>
           <ul className="space-y-2.5">
             {topRisks.map((r) => (
               <li key={r.title} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                <span className={`font-mono text-lg font-bold tracking-tight ${TONE_TEXT[r.tone]}`}>{r.amount}</span>
-                <span className={`text-[13px] font-semibold ${TONE_TEXT[r.tone]}`}>{r.pct}</span>
-                <span className="min-w-0 basis-full break-words text-[13px] text-muted-foreground sm:flex-1 sm:basis-auto">{r.title}</span>
+                <span className={`tabular-nums text-lg font-bold tracking-tight ${TONE_TEXT[r.tone]}`}>{r.amount}</span>
+                <span className={`text-ui font-semibold ${TONE_TEXT[r.tone]}`}>{r.pct}</span>
+                <span className="min-w-0 basis-full break-words text-ui text-muted-foreground sm:flex-1 sm:basis-auto">{r.title}</span>
               </li>
             ))}
           </ul>
@@ -137,8 +137,8 @@ export function AnalyticsSummary({
           <dl className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-x-6 gap-y-2">
             {tiles.map((fact) => (
               <div key={fact.label} className="min-w-0">
-                <dt className="text-[11px] text-muted-foreground">{fact.label}</dt>
-                <dd className="mt-0.5 break-words font-mono text-[13px] font-medium">{fact.value}</dd>
+                <dt className="text-micro text-muted-foreground">{fact.label}</dt>
+                <dd className="mt-0.5 break-words tabular-nums text-ui font-medium">{fact.value}</dd>
               </div>
             ))}
           </dl>
@@ -155,7 +155,7 @@ export function AnalyticsSummary({
           <HelpTip align="start" content="Полный отчёт со всеми разделами, цитатами и допущениями. Собирается в вашем браузере, на сервер не уходит. PDF: откроется окно печати — выберите «Сохранить как PDF»." />
         </div>
         {error && (
-          <p role="alert" className="text-[12px] text-danger">
+          <p role="alert" className="text-caption text-danger">
             {error}
           </p>
         )}
@@ -163,7 +163,7 @@ export function AnalyticsSummary({
 
       {summary.recommendations.length > 0 && (
         <Collapsible title={`Рекомендации (${summary.recommendations.length})`} open={adviceOpen} onToggle={() => setAdviceOpen((v) => !v)}>
-          <ul className="list-disc space-y-1.5 pl-5 text-[13px]">
+          <ul className="list-disc space-y-1.5 pl-5 text-ui">
             {summary.recommendations.map((text) => (
               <li key={text} className="break-words">
                 {text}

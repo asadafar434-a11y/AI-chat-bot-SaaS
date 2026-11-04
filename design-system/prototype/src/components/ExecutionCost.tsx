@@ -16,9 +16,9 @@ export type SpecIssue = { position: string; text: string; host: string | null; u
 const TONE = { good: 'success', warn: 'warn', danger: 'danger' } as const;
 const restClass = (n: number | null) => (n === null ? 'text-muted-foreground' : n >= 0 ? 'text-success' : 'text-danger');
 const num = 'px-2 py-1.5 text-right font-mono';
-const head = 'px-2 pb-1.5 text-right text-[11px] font-medium text-muted-foreground';
-const headLeft = 'px-2 pb-1.5 text-left text-[11px] font-medium text-muted-foreground';
-const note = 'text-[12px] text-muted-foreground';
+const head = 'px-2 pb-1.5 text-right text-micro font-medium text-muted-foreground';
+const headLeft = 'px-2 pb-1.5 text-left text-micro font-medium text-muted-foreground';
+const note = 'text-caption text-muted-foreground';
 const SHEET_ROWS = 10;
 // Три цены вверху блока — всегда цветные плашки (владелец, 29.10.2026: «делай акцентно всегда этот блок в плашке цветно»): минимум зелёным, средняя — главным голубым цветом, максимум — жёлтым. Цвета — токены темы, читаются в обеих темах.
 const PRICE_TONE = {
@@ -36,7 +36,7 @@ const joinAnd = (list: string[]) => (list.length <= 1 ? list.join('') : `${list.
 function Section({ n, title, children }: { n?: number; title: string; children: ReactNode }) {
   return (
     <section className="space-y-1.5">
-      <p className="text-[13px] font-semibold">{n ? `${n}. ${title}` : title}</p>
+      <p className="text-ui font-semibold">{n ? `${n}. ${title}` : title}</p>
       {children}
     </section>
   );
@@ -76,7 +76,7 @@ export function ExecutionCostCard({
   return (
     <Card className="space-y-4 p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-[15px] font-bold">Сколько стоит исполнение</p>
+        <p className="text-subtitle font-bold">Сколько стоит исполнение</p>
         <CertaintyBadge kind={web ? 'unchecked' : 'confirmed'} />
         <HelpTip
           align="start"
@@ -85,7 +85,7 @@ export function ExecutionCostCard({
       </div>
 
       {/* Откуда цены в разделах 1–4: без этой строки не понять, что это цены поставщиков из документов заказчика, а не из интернета (владелец 29.10.2026: «откуда ты их взял?!»). */}
-      <p className="break-words text-[12px] text-muted-foreground">
+      <p className="break-words text-caption text-muted-foreground">
         {src
           ? `Цены разделов 1–4: из интернета — ${src.found} поз., из документов заказчика — ${src.filled}, по аналогам — ${src.analogs}, без цены — ${src.missing}. Источник каждой позиции — в разделе 5.`
           : `Цены разделов 1–4 — из документов заказчика: таблица его поставщиков в файле «${table.doc}».`}
@@ -96,12 +96,12 @@ export function ExecutionCostCard({
           {cost.verdict.title}
         </Badge>
         {incomplete && (
-          <span className="text-[13px] text-muted-foreground">
+          <span className="text-ui text-muted-foreground">
             цены найдены по {rowsPriced} из {rowsTotal} позиций — итоги ниже неполные, остаток при НМЦ не считается
           </span>
         )}
         {!incomplete && low.atNmck !== null && base.atNmck !== null && (
-          <span className="text-[13px]">
+          <span className="text-ui">
             при НМЦ: экономный <span className={`font-mono font-semibold ${restClass(low.atNmck)}`}>{signedRub(low.atNmck)}</span> · базовый{' '}
             <span className={`font-mono font-semibold ${restClass(base.atNmck)}`}>{signedRub(base.atNmck)}</span>
           </span>
@@ -116,9 +116,9 @@ export function ExecutionCostCard({
             { label: 'Максимум по позициям', value: cost.max, hint: 'самая высокая цена каждой позиции', tone: 'max' as const },
           ].map((k) => (
             <div key={k.label} className={`rounded-lg border p-3 ${PRICE_TONE[k.tone].box}`}>
-              <p className={`text-[12px] font-medium ${PRICE_TONE[k.tone].label}`}>{k.label}</p>
+              <p className={`text-caption font-medium ${PRICE_TONE[k.tone].label}`}>{k.label}</p>
               <p className={`font-mono text-2xl font-bold tracking-tight ${PRICE_TONE[k.tone].value}`}>{rubText(k.value)}</p>
-              <p className={`text-[12px] ${PRICE_TONE[k.tone].label}`}>{k.hint}</p>
+              <p className={`text-caption ${PRICE_TONE[k.tone].label}`}>{k.hint}</p>
             </div>
           ))}
         </div>
@@ -126,7 +126,7 @@ export function ExecutionCostCard({
       </Section>
 
       <Section n={2} title="Самые дорогие позиции">
-        <table className="w-full table-fixed text-[12px]">
+        <table className="w-full table-fixed text-caption">
           <thead>
             <tr>
               <th className={headLeft}>Позиция</th>
@@ -154,12 +154,12 @@ export function ExecutionCostCard({
       </Section>
 
       <Section n={3} title="Сколько реально может стоить исполнение">
-        {contract && <p className="text-[13px]">{contract}</p>}
+        {contract && <p className="text-ui">{contract}</p>}
         <p className={note}>
           В таблице цен доставка и сборка не выделены — добавлен резерв {pct.low.toLocaleString('ru-RU')} / {pct.base.toLocaleString('ru-RU')} / {pct.high.toLocaleString('ru-RU')} % от товаров. Это оценка, а не
           предложения перевозчиков.
         </p>
-        <table className="w-full table-fixed text-[12px]">
+        <table className="w-full table-fixed text-caption">
           <thead>
             <tr>
               <th className={`${headLeft} w-24`}>Сценарий</th>
@@ -190,7 +190,7 @@ export function ExecutionCostCard({
         </Section>
       ) : (
       <Section n={4} title="По какой цене участвовать">
-        <table className="w-full table-fixed text-[12px]">
+        <table className="w-full table-fixed text-caption">
           <thead>
             <tr>
               <th className={`${headLeft} w-24`}>Сценарий</th>
@@ -215,7 +215,7 @@ export function ExecutionCostCard({
       <Section n={5} title="Цены по позициям">
         {sheet && sheet.rows.length > 0 ? (
           <>
-            <table className="w-full table-fixed text-[12px]">
+            <table className="w-full table-fixed text-caption">
               <thead>
                 <tr>
                   <th className={headLeft}>Позиция</th>
@@ -231,7 +231,7 @@ export function ExecutionCostCard({
                       {r.name}
                       {r.qty !== null && <span className="font-normal text-muted-foreground"> · {r.qty.toLocaleString('ru-RU')} шт.</span>}
                       {r.web && (
-                        <span className="block text-[11px] text-muted-foreground">
+                        <span className="block text-micro text-muted-foreground">
                           {r.web.kind === 'analog' ? `аналог: другие размеры · ${r.web.n}` : `цен: ${r.web.n}`}
                           {r.web.host && ` · ${r.web.host}`}
                           {r.webDiffers && <span className="font-medium text-warn-foreground"> · цена в интернете сильно отличается — проверьте, тот ли товар; взята цена из документа</span>}
@@ -240,7 +240,7 @@ export function ExecutionCostCard({
                     </td>
                     <td className={`${num} hidden sm:table-cell`}>{r.doc ? range(r.doc.min, r.doc.mean) : '—'}</td>
                     <td className={num}>{r.web ? range(r.web.from, r.web.to) : '—'}</td>
-                    <td className={`px-2 py-1.5 text-right text-[11px] font-medium ${SOURCE_CLASS[r.used]}`}>{SOURCE_LABEL[r.used]}</td>
+                    <td className={`px-2 py-1.5 text-right text-micro font-medium ${SOURCE_CLASS[r.used]}`}>{SOURCE_LABEL[r.used]}</td>
                   </tr>
                 ))}
               </tbody>
@@ -258,7 +258,7 @@ export function ExecutionCostCard({
 
       {specIssues.length > 0 && (
         <Section title="Технические риски">
-          <ul className="space-y-1 text-[13px]">
+          <ul className="space-y-1 text-ui">
             {specIssues.map((s) => (
               <li key={`${s.position}-${s.text}`} className="break-words">
                 <span className="font-semibold">{s.position}:</span> {s.text}
@@ -282,13 +282,13 @@ export function ExecutionCostCard({
       )}
 
       <Section title="Вывод">
-        <p className="text-[13px]">{cost.verdict.text}</p>
-        <p className="text-[13px]">
+        <p className="text-ui">{cost.verdict.text}</p>
+        <p className="text-ui">
           Перед участием подтвердите цены и сроки на {joinAnd(confirm)}, а также стоимость {joinAnd(services)}.
         </p>
       </Section>
 
-      <p className="break-words text-[12px] text-muted-foreground">
+      <p className="break-words text-caption text-muted-foreground">
         {table.doc} · позиций {cost.rows}
         {table.fromPicture && ' · таблица распознана со снимка, каждая строка сверена арифметикой'}
         {cost.unchecked > 0 && ` · у ${cost.unchecked} поз. цены поставщиков не прочитались — взята средняя`}

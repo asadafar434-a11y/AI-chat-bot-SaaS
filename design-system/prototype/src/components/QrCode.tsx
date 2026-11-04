@@ -19,7 +19,7 @@ export function QrCode({ value, size = 176 }: { value: string; size?: number }) 
     };
   }, [value, size]);
 
-  if (failed) return <p className="text-[13px] text-muted-foreground">Не получилось нарисовать QR-код — введите ключ вручную.</p>;
+  if (failed) return <p className="text-ui text-muted-foreground">Не получилось нарисовать QR-код — введите ключ вручную.</p>;
   return src ? (
     <img src={src} width={size} height={size} alt="QR-код для приложения-аутентификатора" className="rounded-md border border-border bg-white" />
   ) : (

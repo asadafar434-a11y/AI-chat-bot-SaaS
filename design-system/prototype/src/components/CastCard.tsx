@@ -87,7 +87,7 @@ export function CastCard({
   };
 
   const quoteBlock = (which: 'cast' | 'replace', source: string, text: string, verified: boolean, what: string) => (
-    <div className="text-[12px]">
+    <div className="text-caption">
       <button
         type="button"
         aria-expanded={quote === which}
@@ -99,7 +99,7 @@ export function CastCard({
       {quote === which && (
         <blockquote className="mt-1 rounded-md bg-secondary px-3 py-2 leading-snug text-muted-foreground">
           «{text}»
-          {whereOf?.(text) && <span className="mt-1 block break-words text-[11px]">{whereOf(text)}</span>}
+          {whereOf?.(text) && <span className="mt-1 block break-words text-micro">{whereOf(text)}</span>}
         </blockquote>
       )}
       {!verified && (
@@ -118,7 +118,7 @@ export function CastCard({
           {todo ? <AlertTriangle className="size-4 shrink-0 text-warn" /> : <CheckCircle2 className="size-4 shrink-0 text-success" />}
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium">Состав исполнителей</p>
-            <p className="break-words text-[12px] text-muted-foreground">{todo ? pending[0]?.text : 'Состав указан и совпадает с ТЗ'}</p>
+            <p className="break-words text-caption text-muted-foreground">{todo ? pending[0]?.text : 'Состав указан и совпадает с ТЗ'}</p>
           </div>
           <Badge tone={todo ? 'warn' : 'success'}>{todo ? `осталось: ${pending.length}` : 'готово'}</Badge>
           <ChevronDown className={cx('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
@@ -126,9 +126,9 @@ export function CastCard({
 
         {open && (
           <div className="animate-fade-up space-y-3 border-t border-border px-4 pb-4 pt-3">
-            <p className="text-[12px] text-muted-foreground">Кто выступит в этот раз, знаете только вы. ИИ фамилий не видит и не придумывает.</p>
+            <p className="text-caption text-muted-foreground">Кто выступит в этот раз, знаете только вы. ИИ фамилий не видит и не придумывает.</p>
             <div className="space-y-1.5">
-              <p className="text-[13px] text-muted-foreground">
+              <p className="text-ui text-muted-foreground">
                 В ТЗ{cast.clause ? `, п. ${cast.clause}` : ''}: {cast.requirement}
               </p>
               {quoteBlock('cast', 'цитата из ТЗ', cast.quote, cast.verified, 'состав')}
@@ -142,7 +142,7 @@ export function CastCard({
 
             {paste !== null && (
               <div className="space-y-2 rounded-lg bg-secondary/60 p-3">
-                <label htmlFor="cast-paste" className="text-[13px] font-medium">
+                <label htmlFor="cast-paste" className="text-ui font-medium">
                   Список исполнителей: по человеку в строке — ФИО, через запятую роль и звание
                 </label>
                 <textarea
@@ -161,7 +161,7 @@ export function CastCard({
                     Отмена
                   </Button>
                   {sample && (
-                    <button type="button" onClick={() => setPaste(sample)} className="text-[12px] text-muted-foreground underline underline-offset-4 hover:text-foreground">
+                    <button type="button" onClick={() => setPaste(sample)} className="text-caption text-muted-foreground underline underline-offset-4 hover:text-foreground">
                       Вставить пример
                     </button>
                   )}
@@ -169,14 +169,14 @@ export function CastCard({
               </div>
             )}
             {status && (
-              <p role="status" className={cx('text-[13px] font-medium', status.ok ? 'text-success' : 'text-warn-foreground')}>
+              <p role="status" className={cx('text-ui font-medium', status.ok ? 'text-success' : 'text-warn-foreground')}>
                 {status.text}
               </p>
             )}
 
             <ul aria-label="Сверка с ТЗ" className="space-y-1">
               {checks.map((c, i) => (
-                <li key={cast.groups[i].key} className={cx('flex items-start gap-1.5 text-[13px] font-medium', c.ok ? 'text-success' : 'text-warn-foreground')}>
+                <li key={cast.groups[i].key} className={cx('flex items-start gap-1.5 text-ui font-medium', c.ok ? 'text-success' : 'text-warn-foreground')}>
                   {c.ok ? <Check className="mt-0.5 size-4 shrink-0" /> : <AlertTriangle className="mt-0.5 size-4 shrink-0" />}
                   <span>{c.text}</span>
                 </li>
@@ -191,7 +191,7 @@ export function CastCard({
                     <h4 id={`cast-${g.key}`} className="text-sm font-medium">
                       {g.title}
                     </h4>
-                    <span className="text-[12px] text-muted-foreground">{needLine(g)}</span>
+                    <span className="text-caption text-muted-foreground">{needLine(g)}</span>
                   </div>
                   {rows.length > 0 && (
                     <ol className="space-y-2">
@@ -200,7 +200,7 @@ export function CastCard({
                         const note = castNote(g, row, checks[gi].rankFail);
                         return (
                           <li key={row.id} className="grid grid-cols-[16px_minmax(0,1fr)_28px] items-start gap-x-2 gap-y-1.5">
-                            <span aria-hidden className="pt-2 text-right font-mono text-[11px] text-muted-foreground">
+                            <span aria-hidden className="pt-2 text-right font-mono text-micro text-muted-foreground">
                               {i + 1}
                             </span>
                             <div className="grid min-w-0 gap-1.5 sm:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
@@ -245,7 +245,7 @@ export function CastCard({
                               <X className="size-4" />
                             </IconButton>
                             {note && (
-                              <p className="col-span-2 col-start-2 flex items-start gap-1.5 text-[12px] text-warn-foreground">
+                              <p className="col-span-2 col-start-2 flex items-start gap-1.5 text-caption text-warn-foreground">
                                 <AlertTriangle className="mt-px size-3.5 shrink-0" />
                                 {note}
                               </p>
@@ -259,7 +259,7 @@ export function CastCard({
                     id={`cast-add-${g.key}`}
                     type="button"
                     onClick={() => addRow(g.key)}
-                    className="ml-6 inline-flex min-h-8 items-center gap-1 text-[13px] font-medium text-foreground underline-offset-4 hover:underline"
+                    className="ml-6 inline-flex min-h-8 items-center gap-1 text-ui font-medium text-foreground underline-offset-4 hover:underline"
                   >
                     <Plus className="size-4" />
                     Добавить {g.acc}
@@ -270,7 +270,7 @@ export function CastCard({
 
             {cast.replace.rule && (
               <div className="space-y-1.5 border-t border-border pt-3">
-                <p className="text-[13px] text-muted-foreground">Состав поменяется после подачи? {cast.replace.rule}</p>
+                <p className="text-ui text-muted-foreground">Состав поменяется после подачи? {cast.replace.rule}</p>
                 {quoteBlock('replace', cast.replace.source || 'цитата из проекта контракта', cast.replace.quote, cast.replace.verified, 'условие')}
               </div>
             )}

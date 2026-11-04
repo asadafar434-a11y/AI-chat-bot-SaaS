@@ -26,7 +26,7 @@ export function RiskFactForm({ hypothesisId, fact, price, onChange }: RiskFactFo
   };
   const calc = riskFactAmount(f);
   return (
-    <div className="mt-2 space-y-2 rounded-lg border border-border px-3 py-2.5 pl-5 text-[12px]" aria-label={`Сумма по факту: ${hypothesisId}`}>
+    <div className="mt-2 space-y-2 rounded-lg border border-border px-3 py-2.5 pl-5 text-caption" aria-label={`Сумма по факту: ${hypothesisId}`}>
       <div className="grid grid-cols-2 gap-3 sm:max-w-md">
         <label className="block">
           <span className="mb-1 block text-muted-foreground">{cfg.base}</span>
@@ -58,7 +58,7 @@ export function RiskFactForm({ hypothesisId, fact, price, onChange }: RiskFactFo
               открыть <ExternalLink className="size-3" />
             </a>
           )}
-          <span className="rounded-full border border-border px-2 py-0.5 text-[11px]">Не проверено</span>
+          <span className="rounded-full border border-border px-2 py-0.5 text-micro">Не проверено</span>
         </p>
       )}
       {f.quote && <p className="break-words rounded-md bg-secondary/50 px-2.5 py-1.5 text-muted-foreground">«{f.quote}»</p>}

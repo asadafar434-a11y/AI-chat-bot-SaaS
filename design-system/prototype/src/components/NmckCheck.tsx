@@ -13,8 +13,8 @@ const pct = (n: number) => `${n.toLocaleString('ru-RU', { minimumFractionDigits:
 
 function Row({ calc }: { calc: NmckCalc }) {
   return (
-    <li className="rounded-lg border border-border px-3 py-2.5 text-[12px]">
-      <p className="break-words text-[13px] font-medium">{calc.name}</p>
+    <li className="rounded-lg border border-border px-3 py-2.5 text-caption">
+      <p className="break-words text-ui font-medium">{calc.name}</p>
       <p className="mt-1 break-words font-mono text-muted-foreground">
         цены поставщиков: {calc.offers.map(num).join(' · ')} → средняя {num(calc.mean)}, вариация {pct(calc.stats.cv * 100)}
       </p>
@@ -63,9 +63,9 @@ export function NmckCheck({ calcs, embedded }: { calcs: NmckCalc[]; embedded?: b
                 ))}
               </ul>
             )}
-            {flagged.length > SHOWN && <p className="text-[12px] text-muted-foreground">…и ещё {flagged.length - SHOWN}</p>}
+            {flagged.length > SHOWN && <p className="text-caption text-muted-foreground">…и ещё {flagged.length - SHOWN}</p>}
             {rest.length > 0 && (
-              <details className="text-[12px]">
+              <details className="text-caption">
                 <summary className="cursor-pointer text-muted-foreground">
                   {flagged.length > 0 ? 'Остальные позиции' : 'Позиции расчёта'}: {rest.length}
                 </summary>

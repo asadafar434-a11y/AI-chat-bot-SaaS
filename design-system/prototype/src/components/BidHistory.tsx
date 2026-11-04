@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Search } from '../lib/icons';
+import { History, Search } from '../lib/icons';
+import { DataTable, EmptyState, TBody, THead, Td, Th, Tr } from './data';
 import { Badge, Card, HelpTip, Soon } from './ui';
 import { ScreenHeader } from './ScreenHeader';
 import { SummaryCard } from './SummaryCard';
@@ -53,20 +54,20 @@ export function BidHistory({ purchases }: { purchases: Purchase[] | null }) {
       />
 
       {submitted.length === 0 ? (
-        <Card className="p-6 text-center text-[13px] text-muted-foreground">
-          Пока ни одной поданной заявки. Отметьте закупку поданной в «Мои закупки» — она появится здесь.
-        </Card>
+        <EmptyState icon={<History className="size-5" />} title="Пока ни одной поданной заявки.">
+          Отметьте закупку поданной в «Мои закупки» — она появится здесь.
+        </EmptyState>
       ) : (
         <>
           {/* Главное — сколько подано и на какую сумму наших цен: жирно, в сводной карточке под шапкой, как «Сила профиля». */}
           <SummaryCard
-            lead={<span className="font-mono text-2xl font-bold tabular-nums">{submitted.length}</span>}
+            lead={<span className="text-2xl font-bold tabular-nums">{submitted.length}</span>}
             title="Подано заявок"
             subtitle={
               <span className="flex flex-wrap items-center gap-x-4 gap-y-0.5">
                 {priced.length > 0 && (
                   <span>
-                    Сумма наших цен <span className="font-mono font-semibold text-foreground">{rub(sum)}</span>
+                    Сумма наших цен <span className="font-semibold tabular-nums text-foreground">{rub(sum)}</span>
                   </span>
                 )}
                 <span className="inline-flex items-center gap-1.5">
@@ -91,56 +92,56 @@ export function BidHistory({ purchases }: { purchases: Purchase[] | null }) {
           <Card>
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <span className="text-sm font-medium">Поданные заявки</span>
-              <span className="font-mono text-[11px] text-muted-foreground">
+              <span className="text-micro tabular-nums text-muted-foreground">
                 {rows.length === submitted.length ? `${submitted.length} записей` : `${rows.length} из ${submitted.length}`}
               </span>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-                    <th className="px-4 py-2.5 font-medium">Закупка</th>
-                    <th className="whitespace-nowrap px-4 py-2.5 font-medium">Срок подачи</th>
-                    <th className="px-4 py-2.5 text-right font-medium">
-                      <span className="inline-flex items-center gap-1">
-                        Наша цена
-                        <HelpTip content="Цена, которую вы вписали в заявку." side="bottom" />
-                      </span>
-                    </th>
-                    <th className="px-4 py-2.5 text-right font-medium">НМЦК</th>
-                    <th className="px-4 py-2.5 text-right font-medium">Статус</th>
+            <DataTable bare minWidth={640} caption="Поданные заявки">
+              <THead>
+                <tr>
+                  <Th>Закупка</Th>
+                  <Th>Срок подачи</Th>
+                  <Th align="right">
+                    <span className="inline-flex items-center gap-1">
+                      Наша цена
+                      <HelpTip content="Цена, которую вы вписали в заявку." side="bottom" />
+                    </span>
+                  </Th>
+                  <Th align="right">НМЦК</Th>
+                  <Th align="right">Статус</Th>
+                </tr>
+              </THead>
+              <TBody>
+                {rows.map((p) => (
+                  <Tr key={p.id}>
+                    <Td className="px-4 py-3">
+                      <p className="max-w-[280px] font-medium leading-snug">{titleOf(p)}</p>
+                      <p className="mt-0.5 text-caption text-muted-foreground">{p.customer || '—'}</p>
+                      <p className="mt-1 text-micro text-muted-foreground">{p.kind}</p>
+                    </Td>
+                    <Td className="whitespace-nowrap px-4 py-3 tabular-nums">{dateText(p.deadline.date)}</Td>
+                    <Td num className="px-4 py-3">
+                      {typeof p.tpPrice === 'number' ? rub(p.tpPrice) : '—'}
+                    </Td>
+                    <Td num tone="muted" className="px-4 py-3">
+                      {priceText(p.price)}
+                    </Td>
+                    <Td className="px-4 py-3 text-right">
+                      <Badge tone="success" dot>
+                        Подана
+                      </Badge>
+                    </Td>
+                  </Tr>
+                ))}
+                {rows.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-ui text-muted-foreground">
+                      Ничего не найдено. Измените запрос.
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {rows.map((p) => (
-                    <tr key={p.id} className="border-b border-border align-top transition-colors last:border-0 hover:bg-secondary/30">
-                      <td className="px-4 py-3">
-                        <p className="max-w-[280px] font-medium leading-snug">{titleOf(p)}</p>
-                        <p className="mt-0.5 text-[12px] text-muted-foreground">{p.customer || '—'}</p>
-                        <p className="mt-1 font-mono text-[11px] text-muted-foreground">{p.kind}</p>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 font-mono tabular-nums">{dateText(p.deadline.date)}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right font-mono tabular-nums">
-                        {typeof p.tpPrice === 'number' ? rub(p.tpPrice) : '—'}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right font-mono tabular-nums text-muted-foreground">
-                        {priceText(p.price)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Badge tone="neutral">Подана</Badge>
-                      </td>
-                    </tr>
-                  ))}
-                  {rows.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-[13px] text-muted-foreground">
-                        Ничего не найдено. Измените запрос.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                )}
+              </TBody>
+            </DataTable>
           </Card>
         </>
       )}

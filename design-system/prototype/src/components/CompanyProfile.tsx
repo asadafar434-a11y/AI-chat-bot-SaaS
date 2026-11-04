@@ -54,7 +54,7 @@ export function ProfileHero({ strength, facts, onOpen, defaultOpen = false }: { 
           strokeDashoffset={C * (1 - strength.percent / 100)}
         />
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center font-mono text-[11px] font-bold tabular-nums">{strength.percent}%</span>
+      <span className="absolute inset-0 flex items-center justify-center text-micro font-bold tabular-nums">{strength.percent}%</span>
     </span>
   );
   return (
@@ -79,17 +79,17 @@ export function ProfileHero({ strength, facts, onOpen, defaultOpen = false }: { 
               onClick={() => onOpen(tabOf(p.key))}
               className="group block w-full rounded-lg px-2 py-2 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              <span className="flex items-center justify-between gap-2 text-[13px]">
+              <span className="flex items-center justify-between gap-2 text-ui">
                 <span className="flex min-w-0 items-center gap-1.5 font-medium">
                   {p.done && <Check className="size-3.5 shrink-0 text-success" />}
                   <span className="truncate">{p.label}</span>
                 </span>
-                <span className="shrink-0 font-mono text-[12px] text-muted-foreground">до {p.weight}%</span>
+                <span className="shrink-0 font-mono text-caption text-muted-foreground">до {p.weight}%</span>
               </span>
               <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-muted">
                 <span className={cx('block h-full rounded-full transition-all duration-500', p.done ? 'bg-success' : 'bg-primary')} style={{ width: `${Math.round(p.share * 100)}%` }} />
               </span>
-              <span className="mt-1 block text-[12px] text-muted-foreground">{p.detail}</span>
+              <span className="mt-1 block text-caption text-muted-foreground">{p.detail}</span>
             </button>
           </li>
         ))}
@@ -101,16 +101,16 @@ export function ProfileHero({ strength, facts, onOpen, defaultOpen = false }: { 
               <button
                 type="button"
                 onClick={() => onOpen(b.tab!)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[12px] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-caption hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <span aria-hidden className={cx('size-2 rounded-full', b.ok ? 'bg-success' : 'bg-muted-foreground/40')} />
                 {b.title}
               </button>
             ) : (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-2.5 py-1 text-[12px] text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-2.5 py-1 text-caption text-muted-foreground">
                 <span aria-hidden className="size-2 rounded-full bg-muted-foreground/40" />
                 {b.title}
-                <span className="text-[10px] font-medium uppercase tracking-wide">скоро</span>
+                <span className="text-nano font-medium uppercase tracking-wide">скоро</span>
               </span>
             )}
           </li>
@@ -170,7 +170,7 @@ function ChipGroup({
   };
   return (
     <div className="space-y-3">
-      {title && <p className="text-[13px] font-medium text-muted-foreground">{title}</p>}
+      {title && <p className="text-ui font-medium text-muted-foreground">{title}</p>}
       <div className="flex flex-wrap gap-2">
         {options.map((o) => (
           <Chip key={o} label={o} on={value.includes(o)} onClick={() => onChange({ ...card, [group]: toggleItem(value, o) })} />
@@ -207,11 +207,11 @@ function PanelCard({ icon, title, note, children }: { icon: ReactNode; title: st
   return (
     <Card className="space-y-5 p-5">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-[15px] font-bold">
+        <h2 className="flex items-center gap-2 text-subtitle font-bold">
           <span className="text-primary">{icon}</span>
           {title}
         </h2>
-        <span className="rounded-full border border-border px-2.5 py-0.5 text-[11px] text-muted-foreground">{note}</span>
+        <span className="rounded-full border border-border px-2.5 py-0.5 text-micro text-muted-foreground">{note}</span>
       </div>
       {children}
     </Card>
@@ -221,7 +221,7 @@ function PanelCard({ icon, title, note, children }: { icon: ReactNode; title: st
 // «Заявлено вами»: выбор в плашках — слова участника. Что есть в базе доказательств с документом — рядом, чтобы видеть разрыв.
 function EvidenceNote({ facts, onOpen, what }: { facts: number; onOpen: () => void; what: string }) {
   return (
-    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-secondary/60 px-3 py-2 text-[12px] text-muted-foreground">
+    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-secondary/60 px-3 py-2 text-caption text-muted-foreground">
       <span>
         Выбранное — ваши слова. Подтверждает его документ в базе доказательств
         {facts > 0 ? ` (сейчас там ${facts} ${what})` : ''}.
@@ -257,7 +257,7 @@ export function ExperiencePanel({ card, onChange }: Pick<PanelProps, 'card' | 'o
           const value = card.experience[f.key];
           return (
             <div key={f.key} className="min-w-0 space-y-1.5">
-              <label htmlFor={`exp-${f.key}`} className="text-[13px] text-muted-foreground">
+              <label htmlFor={`exp-${f.key}`} className="text-ui text-muted-foreground">
                 {f.label}
               </label>
               <input
@@ -267,14 +267,14 @@ export function ExperiencePanel({ card, onChange }: Pick<PanelProps, 'card' | 'o
                 inputMode="numeric"
                 autoComplete="off"
                 placeholder="0"
-                className={cx(fieldClass('md'), 'font-mono tabular-nums')}
+                className={cx(fieldClass('md'), 'tabular-nums')}
               />
-              {money && value && <p className="font-mono text-[12px] text-muted-foreground">{rublesText(value)}</p>}
+              {money && value && <p className="font-mono text-caption text-muted-foreground">{rublesText(value)}</p>}
             </div>
           );
         })}
       </div>
-      <p className="text-[12px] text-muted-foreground">Эти цифры помогают сверить, по силам ли вам закупка по размеру контракта и оборота. Подтверждением они не служат.</p>
+      <p className="text-caption text-muted-foreground">Эти цифры помогают сверить, по силам ли вам закупка по размеру контракта и оборота. Подтверждением они не служат.</p>
     </PanelCard>
   );
 }
@@ -283,7 +283,7 @@ export function IndustriesPanel({ card, onChange }: Pick<PanelProps, 'card' | 'o
   return (
     <PanelCard icon={<Target className="size-4" />} title="Специализация" note="выберите отрасли">
       <ChipGroup options={INDUSTRY_OPTIONS} group="industries" card={card} onChange={onChange} addLabel="Добавить свою отрасль…" />
-      <p className="flex items-center gap-2 text-[12px] text-muted-foreground">
+      <p className="flex items-center gap-2 text-caption text-muted-foreground">
         Подбор тендеров по отраслям <Soon />
       </p>
     </PanelCard>
@@ -324,7 +324,7 @@ function NoneToggle({ label, on, disabled, onChange }: { label: string; on: bool
       aria-checked={on}
       disabled={disabled}
       onClick={() => onChange(!on)}
-      className="inline-flex min-h-8 items-center gap-2 rounded-lg text-[13px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="inline-flex min-h-8 items-center gap-2 rounded-lg text-ui text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <span className={cx('flex size-4 items-center justify-center rounded-sm border', on ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background')}>
         {on && <Check className="size-3" />}
@@ -340,7 +340,7 @@ export function ProfileBar({ status, editing, onCancel, onSave }: { status: { te
   if (!editing && !status?.failed) return null;
   return (
     <StepActions className="justify-between">
-      <p className="min-w-0 text-[13px] text-muted-foreground">
+      <p className="min-w-0 text-ui text-muted-foreground">
         {status && (
           <span aria-live="polite" className={cx('inline-flex items-center gap-1', status.failed ? 'text-warn-foreground' : 'text-success')}>
             {!status.failed && <Check className="size-3.5" />} {status.text}

@@ -35,7 +35,7 @@ import {
 import { CertificatesPanel, ExperiencePanel, IndustriesPanel, LicensesPanel, ProfileBar, ProfileHero, ProfileSteps } from './CompanyProfile';
 import { EvidenceBase } from './EvidenceBase';
 import { Notice, type Tone } from './Notice';
-import { Badge, Button, Card, Chip, HelpTip, IconButton, TabPanel, Tooltip, cx } from './ui';
+import { Badge, Button, Card, Chip, HelpTip, IconButton, TabPanel, Tooltip, cx, fieldClass } from './ui';
 import { ScreenHeader } from './ScreenHeader';
 
 type TabKey = 'profile' | 'experience' | 'industries' | 'licenses' | 'certificates' | 'evidence' | 'docs';
@@ -112,7 +112,7 @@ function Suggestions({ items, onAccept, onDismiss }: { items: FoundField[]; onAc
       </p>
       <ul className="space-y-3">
         {groupSuggestions(items).map((group, i) => (
-          <li key={i} className="space-y-1.5 break-words text-[13px]">
+          <li key={i} className="space-y-1.5 break-words text-ui">
             <p>
               {group.length > 1 ? (
                 <>
@@ -146,7 +146,7 @@ function KindEditor({ doc, onSave, onCancel }: { doc: MyDocument; onSave: (kinds
   const toggle = (kind: DocKind) => setKinds(kinds.includes(kind) ? kinds.filter((k) => k !== kind) : [...kinds, kind]);
   return (
     <div className="space-y-2.5 pl-7">
-      <p className="text-[13px] font-medium">Что в этом файле? Можно выбрать несколько.</p>
+      <p className="text-ui font-medium">Что в этом файле? Можно выбрать несколько.</p>
       <div className="flex flex-wrap gap-2">
         {DOC_KIND_KEYS.map((kind) => (
           <Chip key={kind} label={DOC_KINDS[kind].group} on={kinds.includes(kind)} onClick={() => toggle(kind)} />
@@ -423,7 +423,7 @@ export function Profile() {
             {!(profile && filledCount(profile) >= PROFILE_KEYS.length) && (
               <p className="max-w-2xl text-sm text-muted-foreground">Заполните один раз — реквизиты сами подставятся в каждую заявку. В техническое предложение они не попадают: его подают анонимно.</p>
             )}
-            <p className="mt-1 font-mono text-[12px] text-muted-foreground">
+            <p className="mt-1 text-caption tabular-nums text-muted-foreground">
               заполнено {profile ? filledCount(profile) : 0} из {PROFILE_KEYS.length}
             </p>
           </div>
@@ -455,7 +455,7 @@ export function Profile() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="break-words text-base font-semibold">{profile.shortName.trim() || profile.fullName.trim() || 'Название компании не указано'}</p>
-                <p className="font-mono text-[12px] text-muted-foreground">
+                <p className="text-caption tabular-nums text-muted-foreground">
                   {profile.inn.trim() ? `ИНН ${profile.inn.trim()}` : 'ИНН не указан'}
                   {profile.kpp.trim() ? ` · КПП ${profile.kpp.trim()}` : ''}
                 </p>
@@ -479,17 +479,17 @@ export function Profile() {
                 <Card key={section.title} className="overflow-hidden">
                   <div className="flex items-center justify-between border-b border-border px-4 py-3">
                     <span className="text-sm font-medium">{section.title}</span>
-                    <span className="hidden font-mono text-[11px] text-muted-foreground sm:block">{section.hint}</span>
+                    <span className="hidden text-micro text-muted-foreground sm:block">{section.hint}</span>
                   </div>
-                  <div className="divide-y divide-border">
+                  <div className="grid grid-cols-1 gap-px bg-border lg:grid-cols-2">
                     {PROFILE_GROUPS.filter((g) => section.groups.includes(g.title))
                       .flatMap((g) => g.fields)
                       .map((field) => {
                         const value = profile[field.key];
                         const hint = focused === field.key ? undefined : problems[field.key];
                         return (
-                          <div key={field.key} className="grid grid-cols-1 gap-1 px-4 py-3 sm:grid-cols-[220px_1fr] sm:items-start sm:gap-4">
-                            <span className="flex items-start gap-1 text-[13px] text-muted-foreground">
+                          <div key={field.key} className="min-w-0 space-y-1 bg-card px-4 py-3 last:odd:lg:col-span-2">
+                            <span className="flex items-start gap-1 text-caption font-medium text-muted-foreground">
                               <label htmlFor={`pf-${field.key}`}>{field.label}</label>
                               {field.help && <HelpTip content={field.help} />}
                             </span>
@@ -505,13 +505,13 @@ export function Profile() {
                                   autoComplete="off"
                                   aria-invalid={hint ? true : undefined}
                                   aria-describedby={hint ? `pf-${field.key}-hint` : undefined}
-                                  className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground focus:ring-2 focus:ring-ring/20"
+                                  className={fieldClass()}
                                 />
                               ) : (
-                                <span className={cx('break-words font-mono text-[13px] tabular-nums', !value.trim() && 'text-muted-foreground')}>{value.trim() || '—'}</span>
+                                <span className={cx('break-words text-ui tabular-nums', !value.trim() && 'text-muted-foreground')}>{value.trim() || '—'}</span>
                               )}
-                              {hint && <p id={`pf-${field.key}-hint`} className="mt-1 text-[12px] text-warn-foreground">{hint}</p>}
-                              {meta.sources[field.key] && <p className="mt-1 text-[11px] text-muted-foreground">из «{meta.sources[field.key]}»</p>}
+                              {hint && <p id={`pf-${field.key}-hint`} className="mt-1 text-caption text-warn-foreground">{hint}</p>}
+                              {meta.sources[field.key] && <p className="mt-1 text-micro text-muted-foreground">из «{meta.sources[field.key]}»</p>}
                             </div>
                           </div>
                         );
@@ -551,9 +551,9 @@ export function Profile() {
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
             <div>
               <span className="text-sm font-medium">
-                Образцы и документы{docs.length > 0 && <span className="ml-1.5 font-mono text-[11px] text-muted-foreground">{docs.length}</span>}
+                Образцы и документы{docs.length > 0 && <span className="ml-1.5 font-mono text-micro text-muted-foreground">{docs.length}</span>}
               </span>
-              <p className="mt-0.5 text-[12px] text-muted-foreground">
+              <p className="mt-0.5 text-caption text-muted-foreground">
                 Прошлые заявки, анкеты, карточка предприятия, исполненные договоры. По ним ИИ пишет новые документы так же, как ваши, и заполняет реквизиты.
               </p>
             </div>
@@ -612,7 +612,7 @@ export function Profile() {
               <p className="flex items-center gap-2 text-sm font-medium">
                 <Loader2 className="size-4 animate-spin" /> {STAGE_TEXT[stage]}
               </p>
-              <p className="mt-1 text-[12px] text-muted-foreground">Сканы и фото распознаются дольше — примерно минута на каждые 10 страниц.</p>
+              <p className="mt-1 text-caption text-muted-foreground">Сканы и фото распознаются дольше — примерно минута на каждые 10 страниц.</p>
             </div>
           )}
 
@@ -633,8 +633,8 @@ export function Profile() {
                     <FileText className={cx('mt-0.5 size-4 shrink-0', d.scan ? 'text-warn' : 'text-muted-foreground')} />
                     <div className="min-w-0 flex-1">
                       <p className="break-words text-sm font-medium">{d.name}</p>
-                      {d.about && <p className="mt-0.5 text-[12px] text-muted-foreground">{d.about}</p>}
-                      <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{meta}</p>
+                      {d.about && <p className="mt-0.5 text-caption text-muted-foreground">{d.about}</p>}
+                      <p className="mt-0.5 font-mono text-micro text-muted-foreground">{meta}</p>
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
                       <Badge>{DOC_KINDS[first].few}</Badge>
@@ -665,7 +665,7 @@ export function Profile() {
                   </div>
                   {editingDoc === d.id && <KindEditor doc={d} onSave={(kinds) => void saveKinds(d, kinds)} onCancel={() => setEditingDoc(null)} />}
                   {confirmDoc === d.id && (
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pl-7 text-[13px]">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pl-7 text-ui">
                       <span>{others.length ? 'Удалить файл целиком, из всех групп?' : 'Удалить документ?'}</span>
                       <Button size="sm" variant="danger" onClick={() => void removeDoc(d.id)}>
                         Удалить
@@ -700,7 +700,7 @@ export function Profile() {
               >
                 <Upload className="size-5 text-muted-foreground" />
                 <span className="text-sm font-medium">{docs.length ? 'Добавить документы' : 'Загрузить документы'}</span>
-                <span className="max-w-[60ch] text-[12px] text-muted-foreground">
+                <span className="max-w-[60ch] text-caption text-muted-foreground">
                   {docs.length === 0 && 'Документов пока нет — загрузите прошлые заявки и карточку предприятия. '}
                   Перетащите сюда свои документы — PDF, Word, Excel, ZIP, сканы и фото. Можно сразу все.
                 </span>

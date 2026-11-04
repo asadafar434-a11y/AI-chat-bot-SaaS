@@ -33,7 +33,7 @@ export type ExcelFormsProps = {
 };
 
 const SHOWN = 40;
-const inputClass = `h-8 w-28 px-2.5 text-right font-mono text-[13px] ${fieldBase}`;
+const inputClass = `h-8 w-28 px-2.5 text-right font-mono text-ui ${fieldBase}`;
 
 const rub = (n: number) => `${n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽`;
 
@@ -41,7 +41,7 @@ const rub = (n: number) => `${n.toLocaleString('ru-RU', { minimumFractionDigits:
 function Totals({ totals }: { totals: CheckedTotal[] }) {
   if (totals.length === 0) return null;
   return (
-    <section aria-label="Итоги по формулам файла" className="border-t border-border px-3 py-2 text-[12px]">
+    <section aria-label="Итоги по формулам файла" className="border-t border-border px-3 py-2 text-caption">
       <p className="font-medium">Итоги по формулам файла</p>
       <ul className="mt-1.5 space-y-1">
         {totals.map((t) => (
@@ -49,7 +49,7 @@ function Totals({ totals }: { totals: CheckedTotal[] }) {
             <span className="min-w-0 flex-1 break-words text-muted-foreground">
               <span className="font-mono">{t.ref}</span> · {t.label}
             </span>
-            <span className="font-mono text-[13px] font-medium">{rub(t.value)}</span>
+            <span className="font-mono text-ui font-medium">{rub(t.value)}</span>
             {t.samePrice && (
               <Badge tone="success">
                 <CheckCircle2 className="size-3" />
@@ -75,7 +75,7 @@ function PriceRows({ form, onPrice }: { form: ExcelFormView; onPrice?: (key: str
   if (rows.length === 0) return null;
   const typed = rows.filter((r) => r.value.trim() !== '').length;
   return (
-    <details className="border-t border-border px-3 py-2 text-[12px]">
+    <details className="border-t border-border px-3 py-2 text-caption">
       <summary className="cursor-pointer font-medium">
         Цены по строкам: введено {typed} из {rows.length}
       </summary>
@@ -84,7 +84,7 @@ function PriceRows({ form, onPrice }: { form: ExcelFormView; onPrice?: (key: str
         введёте здесь, останется пустым в файле.
       </p>
       <div className="mt-2 max-h-80 overflow-auto rounded-md border border-border">
-        <table className="w-full table-fixed border-collapse text-[12px]">
+        <table className="w-full table-fixed border-collapse text-caption">
           <thead className="sticky top-0 bg-secondary text-left text-muted-foreground">
             <tr>
               <th className="px-2 py-1.5 font-medium">Строка</th>
@@ -133,7 +133,7 @@ function FormRow({
     <li className="rounded-lg border border-border">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5">
         <FileSpreadsheet className="size-4 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1 break-words text-[13px] font-medium">{form.name}</span>
+        <span className="min-w-0 flex-1 break-words text-ui font-medium">{form.name}</span>
         {ready && (
           <Badge tone={form.filled.length > 0 ? 'success' : 'neutral'}>
             {form.filled.length > 0 ? <CheckCircle2 className="size-3" /> : <Info className="size-3" />}
@@ -157,7 +157,7 @@ function FormRow({
         </IconButton>
       </div>
       {!ready && (
-        <p role="alert" className="flex items-start gap-1.5 border-t border-border px-3 py-2 text-[12px] text-warn-foreground">
+        <p role="alert" className="flex items-start gap-1.5 border-t border-border px-3 py-2 text-caption text-warn-foreground">
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
           {form.message}
         </p>
@@ -165,13 +165,13 @@ function FormRow({
       {ready && <PriceRows form={form} onPrice={onPrice} />}
       {ready && <Totals totals={form.totals ?? []} />}
       {ready && form.filled.length === 0 && (form.manual ?? []).length === 0 && (
-        <p className="flex items-start gap-1.5 border-t border-border px-3 py-2 text-[12px] text-muted-foreground">
+        <p className="flex items-start gap-1.5 border-t border-border px-3 py-2 text-caption text-muted-foreground">
           <Info className="mt-0.5 size-3.5 shrink-0" />
           Пока вписывать нечего: заполните «Реквизиты» в карточке компании внизу меню и сведения о товарах в блоке «Реестровые номера» — они появятся в этом файле.
         </p>
       )}
       {ready && (form.filled.length > 0 || form.left.length > 0) && (
-        <details className="border-t border-border px-3 py-2 text-[12px]">
+        <details className="border-t border-border px-3 py-2 text-caption">
           <summary className="cursor-pointer text-muted-foreground">Что вписано и что остаётся вам</summary>
           {form.filled.length > 0 && (
             <ul className="mt-2 space-y-1">
@@ -236,7 +236,7 @@ export function ExcelForms({ forms, error, note, onAdd, onDownload, onRemove, on
           </Button>
         </div>
       </div>
-      <div className="space-y-3 px-4 py-3 text-[13px]">
+      <div className="space-y-3 px-4 py-3 text-ui">
         {forms.length === 0 ? (
           <p className="text-muted-foreground">Бланка в Excel нет. Если заказчик его требует, добавьте файл.</p>
         ) : (
@@ -247,13 +247,13 @@ export function ExcelForms({ forms, error, note, onAdd, onDownload, onRemove, on
           </ul>
         )}
         {note && (
-          <p className="flex items-start gap-1.5 text-[12px] text-muted-foreground">
+          <p className="flex items-start gap-1.5 text-caption text-muted-foreground">
             <Info className="mt-0.5 size-3.5 shrink-0" />
             {note}
           </p>
         )}
         {error && (
-          <p role="alert" className="flex items-start gap-1.5 text-[12px] text-danger">
+          <p role="alert" className="flex items-start gap-1.5 text-caption text-danger">
             <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
             {error}
           </p>

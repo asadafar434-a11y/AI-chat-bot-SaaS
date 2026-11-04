@@ -47,7 +47,7 @@ function Notice({ tone, children }: { tone: Outcome['tone']; children: ReactNode
     <p
       role={tone === 'warn' ? 'alert' : 'status'}
       className={cx(
-        'flex items-start gap-2 rounded-md px-3 py-2 text-[13px] leading-snug',
+        'flex items-start gap-2 rounded-md px-3 py-2 text-ui leading-snug',
         tone === 'ok' && 'bg-success/10 text-success',
         tone === 'warn' && 'bg-warn-surface/50 text-warn-foreground',
         tone === 'info' && 'bg-info/10 text-info',
@@ -63,7 +63,7 @@ function Notice({ tone, children }: { tone: Outcome['tone']; children: ReactNode
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label className="grid gap-1 text-[12px] text-muted-foreground">
+    <label className="grid gap-1 text-caption text-muted-foreground">
       {label}
       {children}
     </label>
@@ -124,7 +124,7 @@ export function FactForm({
               aria-pressed={draft.kind === kind}
               onClick={() => set({ kind, fields: {}, measures: [] })}
               className={cx(
-                'rounded-full border px-3 py-1 text-[12px] font-medium transition-colors',
+                'rounded-full border px-3 py-1 text-caption font-medium transition-colors',
                 draft.kind === kind ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-muted-foreground hover:bg-secondary',
               )}
             >
@@ -133,7 +133,7 @@ export function FactForm({
           ))}
         </div>
       )}
-      <p className="text-[12px] text-muted-foreground">{meta.hint}</p>
+      <p className="text-caption text-muted-foreground">{meta.hint}</p>
 
       <Field label="Название — что это">
         <input
@@ -162,8 +162,8 @@ export function FactForm({
 
       {meta.validity !== 'none' && (
         <fieldset className="space-y-2">
-          <legend className="text-[12px] text-muted-foreground">Срок действия{meta.validity === 'required' ? ' — нужен: без него система не скажет, действует ли документ' : ''}</legend>
-          <label className="flex items-center gap-2 text-[13px]">
+          <legend className="text-caption text-muted-foreground">Срок действия{meta.validity === 'required' ? ' — нужен: без него система не скажет, действует ли документ' : ''}</legend>
+          <label className="flex items-center gap-2 text-ui">
             <input type="checkbox" checked={draft.perpetual} onChange={(e) => set({ perpetual: e.target.checked })} className="size-4" />
             Бессрочно
           </label>
@@ -178,7 +178,7 @@ export function FactForm({
             </div>
           )}
           {found.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-2 text-caption text-muted-foreground">
               <span>В документе есть срок:</span>
               {found.map((v) => (
                 <button
@@ -196,7 +196,7 @@ export function FactForm({
       )}
 
       <div className="space-y-2">
-        <p className="text-[12px] text-muted-foreground">Числа — по ним факт сверяется с требованием заказчика («зал не менее 150 мест»)</p>
+        <p className="text-caption text-muted-foreground">Числа — по ним факт сверяется с требованием заказчика («зал не менее 150 мест»)</p>
         {draft.measures.map((m, i) => (
           <div key={i} className="grid grid-cols-[1fr_110px_90px_28px] items-center gap-2">
             <input aria-label="Название числа" value={m.what} onChange={(e) => setMeasure(i, { what: e.target.value })} className={INPUT} placeholder="вместимость" />
@@ -232,18 +232,18 @@ export function FactForm({
             <Field label="Фраза из документа, на которой основан факт (по желанию)">
               <input value={draft.quote} onChange={(e) => set({ quote: e.target.value })} className={INPUT} autoComplete="off" placeholder="дословно, например: Лицензия действительна до 12.05.2027" />
             </Field>
-            {quoteMissing && <p className="text-[12px] text-warn-foreground">Такой фразы в документе нет — проверьте, что вписано дословно.</p>}
+            {quoteMissing && <p className="text-caption text-warn-foreground">Такой фразы в документе нет — проверьте, что вписано дословно.</p>}
           </>
         ) : (
           <Field label="Откуда это известно (по желанию)">
             <input value={draft.note} onChange={(e) => set({ note: e.target.value })} className={INPUT} autoComplete="off" placeholder="например, со слов директора" />
           </Field>
         )}
-        {!doc && <p className="text-[12px] text-muted-foreground">Без документа это только ваши слова: там, где заказчик просит копию документа, система напишет «нет доказательства».</p>}
+        {!doc && <p className="text-caption text-muted-foreground">Без документа это только ваши слова: там, где заказчик просит копию документа, система напишет «нет доказательства».</p>}
       </div>
 
       {error && (
-        <p role="alert" className="rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
+        <p role="alert" className="rounded-md bg-danger/10 px-3 py-2 text-ui text-danger">
           {error}
         </p>
       )}
@@ -278,8 +278,8 @@ export function FactRow({ fact, on, showKind, onEdit, onDelete, onConfirm }: { f
             {showKind && <Badge>{FACT_KINDS[fact.kind].one}</Badge>}
             {badge && <Badge tone={badge.tone}>{badge.text}</Badge>}
           </div>
-          {lines.length > 0 && <p className="mt-1 break-words text-[12px] text-muted-foreground">{lines.join(' · ')}</p>}
-          <p className="mt-0.5 break-words text-[11px] text-muted-foreground">{sourceLine(fact)}</p>
+          {lines.length > 0 && <p className="mt-1 break-words text-caption text-muted-foreground">{lines.join(' · ')}</p>}
+          <p className="mt-0.5 break-words text-micro text-muted-foreground">{sourceLine(fact)}</p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <IconButton label="Изменить" onClick={onEdit}>
@@ -291,7 +291,7 @@ export function FactRow({ fact, on, showKind, onEdit, onDelete, onConfirm }: { f
         </div>
       </div>
       {waiting && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pl-7 text-[13px]">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pl-7 text-ui">
           <span className="text-warn-foreground">Нашёл ИИ в документе — сверьте с ним и подтвердите. Пока не подтверждено, это не доказательство.</span>
           <Button size="sm" onClick={onConfirm}>
             <Check className="size-3.5" /> Подтверждаю
@@ -299,7 +299,7 @@ export function FactRow({ fact, on, showKind, onEdit, onDelete, onConfirm }: { f
         </div>
       )}
       {asking && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pl-7 text-[13px]">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pl-7 text-ui">
           <span>Удалить факт из базы?</span>
           <Button size="sm" variant="danger" onClick={onDelete}>
             Удалить
@@ -337,14 +337,14 @@ export function GapList({ gaps, onAdd }: { gaps: Gap[]; onAdd: (gap: Gap) => voi
                 )}
               </div>
               {gapFrom(gap).map((line) => (
-                <p key={line} className="mt-1 break-words text-[12px] text-muted-foreground">
+                <p key={line} className="mt-1 break-words text-caption text-muted-foreground">
                   {line}
                 </p>
               ))}
-              <p className="mt-0.5 break-words text-[12px] text-muted-foreground">{gapPurchases(gap)}</p>
+              <p className="mt-0.5 break-words text-caption text-muted-foreground">{gapPurchases(gap)}</p>
             </div>
             {gap.reasons.slice(0, 3).map((r) => (
-              <p key={r} className="break-words text-[12px] text-muted-foreground">
+              <p key={r} className="break-words text-caption text-muted-foreground">
                 {r}
               </p>
             ))}
@@ -391,7 +391,7 @@ function GapsPanel({ gaps, attention, defaultOpen, onAdd }: { gaps: Gap[]; atten
           >
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-medium">Что требуют ваши закупки</span>
-              <span className="mt-0.5 block text-[13px] text-warn-foreground">
+              <span className="mt-0.5 block text-ui text-warn-foreground">
                 Нужно внимание: {attention.length} из {gaps.length}
               </span>
             </span>
@@ -401,14 +401,14 @@ function GapsPanel({ gaps, attention, defaultOpen, onAdd }: { gaps: Gap[]; atten
         <HelpTip content={hint} align="end" />
       </div>
       {attention.length === 0 ? (
-        <p className="px-4 pb-4 text-[13px] text-muted-foreground">
+        <p className="px-4 pb-4 text-ui text-muted-foreground">
           {gaps.length > 0
             ? `По закупкам в работе всё подтверждено: ${gaps.length} ${plural(gaps.length, 'требование', 'требования', 'требований')}.`
             : 'Закупок в работе, которым нужны доказательства, пока нет. Когда загрузите документы закупки, здесь появится, чего не хватает.'}
         </p>
       ) : (
         <div id={id} hidden={!open}>
-          <p className="px-4 pb-1 text-[12px] text-muted-foreground">«Нет доказательства» — добавьте документ или факт; «решает человек» — подтвердите найденное или впишите недостающее.</p>
+          <p className="px-4 pb-1 text-caption text-muted-foreground">«Нет доказательства» — добавьте документ или факт; «решает человек» — подтвердите найденное или впишите недостающее.</p>
           <GapList gaps={attention} onAdd={onAdd} />
         </div>
       )}
@@ -489,8 +489,8 @@ export function EvidenceSection({
     <Card className="overflow-hidden">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3">
         <div className="min-w-0">
-          <h2 className="text-sm font-medium">База доказательств{facts.length > 0 && <span className="ml-1.5 font-mono text-[11px] text-muted-foreground">{facts.length}</span>}</h2>
-          <p className="mt-0.5 max-w-[70ch] text-[12px] text-muted-foreground">
+          <h2 className="text-sm font-medium">База доказательств{facts.length > 0 && <span className="ml-1.5 font-mono text-micro text-muted-foreground">{facts.length}</span>}</h2>
+          <p className="mt-0.5 max-w-[70ch] text-caption text-muted-foreground">
             Что известно о вашей компании и чем это подтверждено: лицензии, сертификаты, договоры, сотрудники, оборудование, финансы. У каждого факта — документ-источник и срок действия. Нет документа
             — система так и скажет, а не придумает.
           </p>
@@ -514,7 +514,7 @@ export function EvidenceSection({
         {notice && <Notice tone={notice.tone}>{notice.text}</Notice>}
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-4 pt-3 text-[12px] text-muted-foreground" aria-label="Сводка">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-4 pt-3 text-caption text-muted-foreground" aria-label="Сводка">
         <span>
           Действуют: <b className="font-mono tabular-nums text-foreground">{summary.valid}</b>
         </span>
@@ -572,14 +572,14 @@ export function EvidenceSection({
               <Building2 className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">Реквизиты компании</p>
-                <p className="mt-0.5 break-words text-[12px] text-muted-foreground">
+                <p className="mt-0.5 break-words text-caption text-muted-foreground">
                   заполнено {info.requisites.filled} из {info.requisites.total} · правятся выше, в разделах «Организация», «Банковские реквизиты» и «Руководитель и контакты»
                 </p>
-                <p className="mt-0.5 break-words text-[11px] text-muted-foreground">
+                <p className="mt-0.5 break-words text-micro text-muted-foreground">
                   {info.requisites.sources.length > 0 ? `из ${info.requisites.sources.map((s) => `«${s}»`).join(', ')}` : 'вписаны вручную'}
                 </p>
                 {info.requisites.problems.map((p) => (
-                  <p key={p} className="mt-0.5 break-words text-[12px] text-warn-foreground">
+                  <p key={p} className="mt-0.5 break-words text-caption text-warn-foreground">
                     {p}
                   </p>
                 ))}
@@ -593,7 +593,7 @@ export function EvidenceSection({
               <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">Шаблоны и образцы</p>
-                <p className="mt-0.5 break-words text-[12px] text-muted-foreground">
+                <p className="mt-0.5 break-words text-caption text-muted-foreground">
                   {info.templates.some((t) => t.count > 0)
                     ? info.templates
                         .filter((t) => t.count > 0)
@@ -601,13 +601,13 @@ export function EvidenceSection({
                         .join(' · ')
                     : 'пока нет — загрузите прошлые заявки ниже, в «Образцах и документах»'}
                 </p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">по ним ИИ пишет документы заявки так же, как пишете вы</p>
+                <p className="mt-0.5 text-micro text-muted-foreground">по ним ИИ пишет документы заявки так же, как пишете вы</p>
               </div>
             </div>
           </div>
         )}
         {filter !== 'requisites' && filter !== 'templates' && shown.length === 0 && (
-          <p className="px-4 py-4 text-[13px] text-muted-foreground">
+          <p className="px-4 py-4 text-ui text-muted-foreground">
             {facts.length === 0
               ? 'База пока пуста. Загрузите документы компании ниже — ИИ найдёт в них лицензии, договоры и сотрудников, — или добавьте факт вручную.'
               : 'В этой группе пока ничего нет.'}

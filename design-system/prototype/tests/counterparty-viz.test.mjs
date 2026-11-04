@@ -50,14 +50,15 @@ const report = {
   enforcements: { total: 1, debtSum: 2400000, outstandingSum: 1650000, items: [{ number: '1-ИП', date: '2024-05-12', subject: 'Долг', debt: 2400000, outstanding: 1650000 }] },
 };
 
-test('отчёт: кольцо надёжности в шапке, столбики по годам, переключатель «Активы и капитал», таблица остаётся под графиком', () => {
+test('отчёт: кольцо надёжности в шапке, столбики по годам, переключатель «Активы и капитал», таблица всегда видна под графиком', () => {
   const out = html(h(mods.view.CounterpartyReportView, { report }));
   assert.match(out, /role="img" aria-label="Факторы надёжности по Checko: положительных 64%, требующих внимания 28%, негативных 8%"/);
   assert.match(out, />64%</, 'в центре кольца — доля положительных факторов');
   assert.match(out, /role="img" aria-label="Выручка и Чистая прибыль по годам, 2023–2025"/);
   assert.match(text(out), /Активы и капитал/);
   assert.match(out, /aria-label="2025: Выручка 412,3 млн ₽, Чистая прибыль −13,1 млн ₽"/, 'у каждого года — подпись для чтения с экрана');
-  assert.match(out, /<details[^>]*>[\s\S]*Бухгалтерская отчётность \(ГИР БО ФНС\)/, 'таблица со всеми цифрами — рядом с графиком');
+  assert.match(out, /<caption class="sr-only">Бухгалтерская отчётность \(ГИР БО ФНС\)<\/caption>/, 'таблица со всеми цифрами — всегда видна под графиком');
+  assert.match(text(out), /Год Выручка к прошлому году Чистая прибыль Рентабельность Активы Капитал Капитал \/ активы/, 'в таблице — динамика и показатели структуры');
   assert.equal(out.includes('role="status"'), false, 'подсказка графика показывается только при наведении');
 });
 
@@ -110,4 +111,65 @@ test('РНП: проверка показана всегда — «не вклю
   const bad = text(html(h(mods.view.CounterpartyReportView, { report: { ...report, rnp: { included: true, records: [{ number: '1', date: '2025-06-01', customer: 'ГБУ "Школа"', purchase: null }] } } })));
   assert.match(bad, /РНП \(реестр недобросовестных поставщиков\): включена в реестр: 1 зап\.; последняя от 01\.06\.2025, заказчик ГБУ "Школа"/);
   assert.doesNotMatch(text(html(h(mods.view.CounterpartyReportView, { report: { ...report, rnp: null, efrsb: null, sanctions: null, reliability: null, courts: null, enforcements: null } }))), /РНП \(реестр/);
+});
+
+test('шкала графика: круглые деления с подписями, нуль и минус на месте; целые значения — целые деления; верх шкалы не ниже максимума', () => {
+  const { niceTicks } = mods.viz;
+  const t = niceTicks(0, 842000);
+  assert.deepEqual(t.ticks, [0, 250000, 500000, 750000, 1000000]);
+  assert.equal(t.hi, 1000000);
+  const neg = niceTicks(-31000, 241000);
+  assert.ok(neg.ticks.includes(0) && neg.lo <= -31000 && neg.hi >= 241000, 'минус и максимум внутри шкалы');
+  for (let i = 1; i < neg.ticks.length; i++) assert.ok(Math.abs(neg.ticks[i] - neg.ticks[i - 1] - (neg.ticks[1] - neg.ticks[0])) < 1e-6, 'шаг ровный');
+  const ints = niceTicks(0, 3, true);
+  assert.ok(ints.ticks.every(Number.isInteger), 'число дел — только целые деления');
+  assert.ok(niceTicks(0, 10, true).ticks.every(Number.isInteger));
+  const out = html(h(mods.viz.GroupedBars, { rows: [{ label: '2025', values: [842000] }], series: [{ name: 'Выручка', color: 'blue' }], format: (n) => String(n), axisFormat: (n) => `${n / 1000} тыс.`, label: 'график' }));
+  for (const label of ['250 тыс.', '500 тыс.', '750 тыс.', '1000 тыс.']) assert.match(text(out), new RegExp(label), `подпись деления ${label}`);
+  assert.equal((out.match(/border-dashed/g) ?? []).length, 4, 'линии сетки на каждом делении, кроме нуля');
+});
+
+test('таблица отчётности всегда видна: рост выручки, рентабельность, капитал к активам; минус красным с настоящим знаком; последний год выделен', () => {
+  const out = html(h(mods.view.CounterpartyReportView, { report }));
+  const t = text(out);
+  assert.match(t, /Год Выручка к прошлому году Чистая прибыль Рентабельность Активы Капитал Капитал \/ активы/);
+  assert.match(t, /2025 412,3 млн ₽ \+5,8 % −13,1 млн ₽ −3,2 % 301 млн ₽ 48,2 млн ₽ 16 %/, '2025: рост +5,8 %, рентабельность −3,2 %, капитал к активам 16 %');
+  assert.match(out, /tabular-nums text-danger">−13,1/);
+  assert.match(out, /bg-primary-soft/, 'последний год выделен');
+  assert.equal(out.includes('<details class="group'), false, 'таблица не спрятана в раскрывашку');
+});
+
+test('суды и приставы — таблицы: дело со вторым рядом «с кем», роль плашкой, «рассматривается», иск справа; приставы — остаток красным', () => {
+  const out = html(h(mods.view.CounterpartyReportView, { report }));
+  const t = text(out);
+  assert.match(t, /Дело Дата Роль Иск/);
+  assert.match(t, /А40-1\/2023 ООО "А" 01\.02\.2023 ответчик рассматривается 1 млн ₽/);
+  assert.match(t, /Производство Дата Остаток долга/);
+  assert.match(t, /1-ИП Долг 12\.05\.2024 1,7 млн ₽/);
+  assert.match(out, /text-danger">1,7 млн ₽/, 'остаток долга красным');
+  assert.match(out, /<caption class="sr-only">Арбитражные дела<\/caption>/);
+});
+
+test('критичные находки — красная плашка наверху, не в общей сетке фактов; без них плашки нет', () => {
+  const facts = [{ id: 'rnp', label: 'РНП', text: 'в реестре недобросовестных поставщиков', tone: 'danger' }, { id: 'age', label: 'Возраст', text: '12 лет', tone: 'muted' }];
+  const out = html(h(mods.view.CounterpartyReportView, { report: { ...report, facts } }));
+  assert.match(out, /role="alert"[^>]*bg-danger-surface/);
+  assert.match(text(out), /Критичные находки: 1 РНП: в реестре недобросовестных поставщиков/);
+  assert.equal((text(out).match(/РНП: в реестре недобросовестных поставщиков/g) ?? []).length, 1, 'находка не дублируется в сетке фактов');
+  assert.match(text(out), /Возраст: 12 лет/);
+  assert.equal(text(html(h(mods.view.CounterpartyReportView, { report }))).includes('Критичные находки'), false);
+});
+
+test('реестры и риски: у каждой строки статус плашкой (Чисто / Внимание / Риск) — читается и без цвета', () => {
+  const out = html(h(mods.view.CounterpartyReportView, { report: { ...report, rnp: { included: true, records: [] }, efrsb: [], sanctions: { included: false, countries: [], founderLinked: false } } }));
+  const t = text(out);
+  assert.match(t, /РНП \(реестр недобросовестных поставщиков\): включена в реестр Риск/);
+  assert.match(t, /ЕФРСБ \(реестр банкротств\): нет сообщений о банкротстве Чисто/);
+  assert.match(t, /Санкции: не входит в санкционные списки Чисто/);
+});
+
+test('на телефоне колонки суды/реестры не шире экрана: сетка с одной колонкой minmax(0, 1fr), а не по содержимому таблицы', () => {
+  const src = readFileSync(path.join(root, 'src/components/Counterparty.tsx'), 'utf8');
+  assert.match(src, /grid grid-cols-1 items-start gap-3', hasCases && hasChecks && 'lg:grid-cols-2'/);
+  assert.match(src, /<Td strong className="whitespace-nowrap">\{s\.year\}/, 'год в таблице не ломается по цифрам');
 });

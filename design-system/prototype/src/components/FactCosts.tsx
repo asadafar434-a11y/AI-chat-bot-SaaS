@@ -44,7 +44,7 @@ function DeliveryCard({ data, delivery, onChange }: Pick<FactCostsProps, 'data' 
   const set = (patch: Partial<DeliveryInputs>) => onChange({ ...data, delivery: { ...d, ...patch } });
   return (
     <section aria-label="Доставка" className="space-y-2.5 rounded-lg border border-border px-3 py-2.5">
-      <p className="text-[13px] font-medium">
+      <p className="text-ui font-medium">
         Доставка: {leg.from.center} → {leg.to.center}
         {leg.road !== null && <span className="ml-2 font-mono font-normal text-muted-foreground">≈ {ru(leg.road, 0)} км</span>}
       </p>
@@ -80,7 +80,7 @@ function DeliveryCard({ data, delivery, onChange }: Pick<FactCostsProps, 'data' 
             <Field label="Дорога длиннее прямой в" value={d.factor} placeholder="1,3" onChange={(v) => set({ factor: v })} />
           </div>
           {delivery.cost !== null ? (
-            <p className="font-mono text-[12px]">
+            <p className="font-mono text-caption">
               = {rub(delivery.cost)} <span className="font-sans text-muted-foreground">· {delivery.formula}</span>
             </p>
           ) : (
@@ -113,7 +113,7 @@ function FxCard({ data, fx, onChange, onLoadFx }: Pick<FactCostsProps, 'data' | 
   };
   return (
     <section aria-label="Курс валюты" className="space-y-2.5 rounded-lg border border-border px-3 py-2.5">
-      <p className="text-[13px] font-medium">Курс валюты</p>
+      <p className="text-ui font-medium">Курс валюты</p>
       <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Валюта">
         {(Object.keys(FX_CURRENCIES) as FxCode[]).map((code) => (
           <Choice key={code} active={f.code === code} onClick={() => pick(code)}>
@@ -158,7 +158,7 @@ export function FactCosts({ data, delivery, fx, onChange, onLoadFx }: FactCostsP
   // Раскрыт сразу, если без ввода сумм нет; дальше — как решил человек: блок не должен схлопываться посреди набора, когда появилась первая сумма.
   const [open, setOpen] = useState(needsInput);
   return (
-    <details className="text-[12px]" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+    <details className="text-caption" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary className="cursor-pointer text-muted-foreground">
         Свои цифры: {delivery.leg ? 'доставка и ' : ''}курс валюты
       </summary>

@@ -31,6 +31,7 @@ import {
 } from '../lib/icons';
 import { CertaintyBadge } from './Certainty';
 import { CountUp, GroupedBars, Ring, SegmentBar, Spark, VIZ, type BarRow } from './CounterpartyViz';
+import { Alert, DataTable, TBody, THead, Td, Th, Tr } from './data';
 import { Badge, Button, Card, Chip, cx, Dot, HelpTip, Tooltip, type Tone, fieldBase } from './ui';
 
 // «Проверка контрагента» (ИНН, ОГРН, название, ФИО) в «Аналитике»: организация, статус и отчётность из открытых реестров или Checko API.
@@ -39,7 +40,7 @@ import { Badge, Button, Card, Chip, cx, Dot, HelpTip, Tooltip, type Tone, fieldB
 // графики рисуются в CounterpartyViz.tsx и оживают, когда попадают на экран (при «уменьшить движение» — сразу готовые).
 
 const TONE: Record<ReportTone, Tone> = { good: 'success', warn: 'warn', danger: 'danger', muted: 'neutral' };
-const inputClass = `h-9 w-full px-3 font-mono text-[13px] placeholder:font-sans ${fieldBase}`;
+const inputClass = `h-9 w-full px-3 font-mono text-ui placeholder:font-sans ${fieldBase}`;
 const ROLE: Record<'plaintiff' | 'defendant' | 'other', string> = { plaintiff: 'истец', defendant: 'ответчик', other: 'участник' };
 
 const when = (iso: string) => {
@@ -59,7 +60,7 @@ const pct = (current: number | null, previous: number | null): number | null => 
 const rise = (index: number): CSSProperties => ({ animationDelay: `${index * 70}ms` });
 
 function Money({ valueK }: { valueK: number | null }) {
-  return <span className={cx('font-mono', valueK !== null && valueK < 0 && 'text-danger')}>{thousandsText(valueK)}</span>;
+  return <span className={cx('tabular-nums', valueK !== null && valueK < 0 && 'text-danger')}>{thousandsText(valueK)}</span>;
 }
 
 // Шапка отчёта: стеклянные плашки на тёмном фоне. Статус — цветная точка и слова (у «Действующее» точка пульсирует), цвет — не единственный признак.
@@ -74,7 +75,7 @@ const STATUS_LOOK: Record<ReportTone, { pill: string; dot: string }> = {
 function StatusPill({ tone, children }: { tone: ReportTone; children: ReactNode }) {
   const look = STATUS_LOOK[tone];
   return (
-    <span data-tone={tone} className={cx('inline-flex max-w-full items-center gap-2 rounded-full px-3 py-1 text-[12px] font-medium leading-snug ring-1 ring-inset backdrop-blur-sm', look.pill)}>
+    <span data-tone={tone} className={cx('inline-flex max-w-full items-center gap-2 rounded-full px-3 py-1 text-caption font-medium leading-snug ring-1 ring-inset backdrop-blur-sm', look.pill)}>
       <span className="relative flex size-2 shrink-0" aria-hidden>
         {tone === 'good' && <span className={cx('absolute inline-flex size-full animate-ping rounded-full opacity-60 motion-reduce:animate-none', look.dot)} />}
         <span className={cx('relative inline-flex size-2 rounded-full', look.dot)} />
@@ -87,7 +88,7 @@ function StatusPill({ tone, children }: { tone: ReportTone; children: ReactNode 
 function ConfirmedPill() {
   return (
     <Tooltip content="Сведения взяты из реестров на дату проверки, не выведены программой." side="bottom" align="start">
-      <span className={cx('inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-medium text-white/85', GLASS)}>
+      <span className={cx('inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-caption font-medium text-white/85', GLASS)}>
         <CheckCircle2 className="size-3.5 text-[#8cc8ff]" />
         Подтверждено
       </span>
@@ -96,7 +97,7 @@ function ConfirmedPill() {
 }
 
 function HeroChip({ children }: { children: ReactNode }) {
-  return <span className={cx('rounded-full px-2.5 py-1 text-[11px] text-white/80', GLASS)}>{children}</span>;
+  return <span className={cx('rounded-full px-2.5 py-1 text-micro text-white/80', GLASS)}>{children}</span>;
 }
 
 function Metric({ icon, label, value, hint, delta, danger, spark, accent }: { icon: ReactNode; label: string; value: ReactNode; hint?: string; delta?: number | null; danger?: boolean; spark?: ReactNode; accent: string }) {
@@ -104,36 +105,44 @@ function Metric({ icon, label, value, hint, delta, danger, spark, accent }: { ic
     <div className="relative overflow-hidden rounded-xl border border-border bg-card p-4">
       <span aria-hidden className="absolute inset-x-0 top-0 h-0.5" style={{ background: accent }} />
       <div className="flex items-center justify-between gap-2">
-        <p className="flex min-w-0 items-center gap-1.5 text-[12px] font-medium text-muted-foreground">
+        <p className="flex min-w-0 items-center gap-1.5 text-caption font-medium text-muted-foreground">
           <span className="flex size-6 shrink-0 items-center justify-center rounded-md" style={{ background: `color-mix(in srgb, ${accent} 14%, transparent)`, color: accent }}>
             {icon}
           </span>
           <span className="truncate">{label}</span>
         </p>
         {delta !== null && delta !== undefined && (
-          <span className={cx('shrink-0 rounded-full px-1.5 py-0.5 font-mono text-[11px]', delta >= 0 ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger')}>
+          <span className={cx('shrink-0 rounded-full px-1.5 py-0.5 text-micro font-medium tabular-nums', delta >= 0 ? 'bg-success-surface text-success' : 'bg-danger-surface text-danger')}>
             {delta >= 0 ? '▲ +' : '▼ −'}
             {Math.abs(delta).toLocaleString('ru-RU')}%
           </span>
         )}
       </div>
       <p className={cx('mt-2 break-words text-2xl font-semibold tracking-tight', danger && 'text-danger')}>{value}</p>
-      {hint && <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p>}
+      {hint && <p className="mt-0.5 text-micro text-muted-foreground">{hint}</p>}
       {spark && <div className="mt-2">{spark}</div>}
     </div>
   );
 }
 
+const CHECK_BADGE: Record<ReportTone, { tone: Tone; text: string }> = { danger: { tone: 'danger', text: 'Риск' }, warn: { tone: 'warn', text: 'Внимание' }, good: { tone: 'success', text: 'Чисто' }, muted: { tone: 'neutral', text: '—' } };
+
 function CheckRow({ icon, label, text, tone, index }: { icon: ReactNode; label: string; text: string; tone: ReportTone; index: number }) {
-  const circle = tone === 'danger' ? 'bg-danger/10 text-danger' : tone === 'warn' ? 'bg-warn-surface text-warn-foreground' : 'bg-success/10 text-success';
-  const border = tone === 'danger' ? 'border-danger/40' : tone === 'warn' ? 'border-warn/40' : 'border-border';
+  const circle = tone === 'danger' ? 'bg-danger-surface text-danger' : tone === 'warn' ? 'bg-warn-surface text-warn-foreground' : 'bg-success-surface text-success';
+  const box = tone === 'danger' ? 'border-danger/40 bg-danger-surface/50' : tone === 'warn' ? 'border-warn/40' : 'border-border';
+  const badge = CHECK_BADGE[tone];
   return (
-    <li className={cx('animate-fade-up flex items-start gap-2.5 rounded-lg border bg-background/40 p-3', border)} style={rise(index)}>
+    <li className={cx('animate-fade-up flex items-start gap-2.5 rounded-lg border p-3', box)} style={rise(index)}>
       <span className={cx('flex size-7 shrink-0 items-center justify-center rounded-full', circle)}>{icon}</span>
-      <p className="min-w-0 break-words text-[12px]">
+      <p className="min-w-0 flex-1 break-words text-caption">
         <span className="text-muted-foreground">{label}: </span>
         <span className={cx(tone === 'danger' && 'font-semibold text-danger', tone === 'warn' && 'font-medium')}>{text}</span>
       </p>
+      <span className="shrink-0">
+        <Badge tone={badge.tone} dot>
+          {badge.text}
+        </Badge>
+      </span>
     </li>
   );
 }
@@ -148,8 +157,8 @@ function FinanceChart({ byYear, sorted }: { byYear: CounterpartyReport['statemen
     <div className="overflow-hidden rounded-xl border border-border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
         <div>
-          <p className="text-[13px] font-semibold">Финансовая отчётность</p>
-          <p className="text-[12px] text-muted-foreground">
+          <p className="text-ui font-semibold">Финансовая отчётность</p>
+          <p className="text-caption text-muted-foreground">
             ГИР БО ФНС · {sorted[sorted.length - 1].year}–{sorted[0].year}
           </p>
         </div>
@@ -165,46 +174,62 @@ function FinanceChart({ byYear, sorted }: { byYear: CounterpartyReport['statemen
           <GroupedBars rows={rows} series={series} format={thousandsText} axisFormat={axis} label={`${series.map((s) => s.name).join(' и ')} по годам, ${shown[0].year}–${shown[shown.length - 1].year}`} />
         </div>
       )}
-      <details className="group border-t border-border">
-        <summary className="cursor-pointer px-4 py-2.5 text-[12px] text-muted-foreground transition-colors hover:text-foreground">Таблица по годам</summary>
-        <div className="overflow-x-auto px-4 pb-4">
-          <table className="w-full min-w-[520px] whitespace-nowrap text-[12px]">
-            <caption className="pb-2 text-left text-muted-foreground">Бухгалтерская отчётность (ГИР БО ФНС)</caption>
-            <thead className="text-muted-foreground">
-              <tr className="border-b border-border">
-                <th className="py-1 pr-2 text-left font-medium">Год</th>
-                <th className="px-2 py-1 text-right font-medium">Выручка</th>
-                <th className="px-2 py-1 text-right font-medium">Чистая прибыль</th>
-                <th className="px-2 py-1 text-right font-medium">Активы</th>
-                <th className="py-1 pl-2 text-right font-medium">Капитал</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((s) => (
-                <tr key={s.year} className="border-b border-border/60 last:border-0">
-                  <td className="py-1 pr-2 font-mono">{s.year}</td>
-                  <td className="px-2 py-1 text-right">
+      <div className="border-t border-border">
+        <DataTable bare minWidth={760} caption="Бухгалтерская отчётность (ГИР БО ФНС)">
+          <THead>
+            <tr>
+              <Th>Год</Th>
+              <Th align="right">Выручка</Th>
+              <Th align="right">к прошлому году</Th>
+              <Th align="right">Чистая прибыль</Th>
+              <Th align="right">Рентабельность</Th>
+              <Th align="right">Активы</Th>
+              <Th align="right">Капитал</Th>
+              <Th align="right">Капитал / активы</Th>
+            </tr>
+          </THead>
+          <TBody>
+            {sorted.map((s, i) => {
+              const growth = pct(s.revenue, sorted[i + 1]?.revenue ?? null);
+              const margin = s.revenue !== null && s.revenue !== 0 && s.netProfit !== null ? Math.round((s.netProfit / s.revenue) * 1000) / 10 : null;
+              const cover = s.assets !== null && s.assets !== 0 && s.equity !== null ? Math.round((s.equity / s.assets) * 1000) / 10 : null;
+              return (
+                <Tr key={s.year} selected={i === 0}>
+                  <Td strong className="whitespace-nowrap">{s.year}</Td>
+                  <Td num>
                     <Money valueK={s.revenue} />
-                  </td>
-                  <td className="px-2 py-1 text-right">
+                  </Td>
+                  <Td num tone={growth === null || growth === 0 ? 'muted' : growth > 0 ? 'success' : 'danger'}>
+                    {signedPct(growth)}
+                  </Td>
+                  <Td num>
                     <Money valueK={s.netProfit} />
-                  </td>
-                  <td className="px-2 py-1 text-right">
+                  </Td>
+                  <Td num tone={margin === null ? 'muted' : margin < 0 ? 'danger' : 'neutral'}>
+                    {margin === null ? '—' : percentText(margin)}
+                  </Td>
+                  <Td num>
                     <Money valueK={s.assets} />
-                  </td>
-                  <td className="py-1 pl-2 text-right">
+                  </Td>
+                  <Td num>
                     <Money valueK={s.equity} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </details>
+                  </Td>
+                  <Td num tone={cover === null ? 'muted' : cover < 0 ? 'danger' : 'neutral'}>
+                    {cover === null ? '—' : percentText(cover)}
+                  </Td>
+                </Tr>
+              );
+            })}
+          </TBody>
+        </DataTable>
+      </div>
     </div>
   );
 }
 
+/** Процент с настоящим минусом «−» (toLocaleString даёт дефис). */
+const percentText = (v: number) => `${v < 0 ? '−' : ''}${Math.abs(v).toLocaleString('ru-RU')} %`;
+const signedPct = (v: number | null) => (v === null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toLocaleString('ru-RU')} %`);
 const yearOf = (iso: string | null) => (iso ? iso.slice(0, 4) : null);
 
 export function CounterpartyReportView({ report }: { report: CounterpartyReport }) {
@@ -227,6 +252,8 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
   const courts = report.courts && report.courts.cases.length > 0 ? report.courts : null;
   const enforcements = report.enforcements && report.enforcements.items.length > 0 ? report.enforcements : null;
   const hasCases = Boolean(courts || enforcements);
+  const criticalFacts = report.facts.filter((f) => f.tone === 'danger');
+  const otherFacts = report.facts.filter((f) => f.tone !== 'danger');
   const hasChecks = Boolean(report.rnp || report.efrsb || report.sanctions || blocking);
   const factors = rel ? [...rel.factors].sort((a, b) => ({ danger: 0, warn: 1, good: 2, muted: 3 })[a.tone] - { danger: 0, warn: 1, good: 2, muted: 3 }[b.tone]) : [];
 
@@ -244,7 +271,7 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
   return (
     <div className="space-y-3">
       {empty ? (
-        <p className="text-[13px]">
+        <p className="text-ui">
           <span className="font-semibold">Организации с ИНН {report.inn} в реестрах не нашлось.</span> Проверьте цифры ИНН: контрольная сумма сходится, но такой записи нет.
         </p>
       ) : (
@@ -261,7 +288,7 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
             <div aria-hidden className="cp-float-slow pointer-events-none absolute -bottom-24 left-1/3 size-48 rounded-full bg-[#7a4dff]/20 blur-3xl" />
             <div className="relative flex flex-col gap-5 sm:flex-row sm:items-stretch sm:justify-between">
               <div className="min-w-0 flex-1 space-y-3.5">
-                <div className="flex flex-wrap items-center gap-2 text-[11px] text-white/60">
+                <div className="flex flex-wrap items-center gap-2 text-micro text-white/60">
                   <span className={cx('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium text-white/85', GLASS)}>
                     <ShieldCheck className="size-3.5 text-[#8cc8ff]" />
                     Проверка контрагента
@@ -273,7 +300,7 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
                   {report.status && <StatusPill tone={report.status.tone}>{report.status.text}</StatusPill>}
                   <ConfirmedPill />
                 </div>
-                <p className="break-words font-mono text-[12px] text-white/55">
+                <p className="break-words font-mono text-caption text-white/55">
                   ИНН <span className="text-white/90">{report.inn}</span>
                   {report.identity?.ogrn && (
                     <>
@@ -288,7 +315,7 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
                     </>
                   )}
                 </p>
-                {(report.address || report.identity?.region) && <p className="break-words text-[12px] leading-relaxed text-white/60">{report.address ?? report.identity?.region}</p>}
+                {(report.address || report.identity?.region) && <p className="break-words text-caption leading-relaxed text-white/60">{report.address ?? report.identity?.region}</p>}
                 {(report.msp || report.staff !== null || report.taxes || rel) && (
                   <div className="flex flex-wrap gap-1.5">
                     {report.msp && <HeroChip>{report.msp.category}</HeroChip>}
@@ -311,13 +338,13 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
                     <span className="font-mono text-3xl font-semibold leading-none">
                       <CountUp to={rel.balance.good} format={(n) => `${Math.round(n ?? 0)}%`} />
                     </span>
-                    <span className="mt-1 text-[10px] leading-tight text-white/70">
+                    <span className="mt-1 text-nano leading-tight text-white/70">
                       положительных
                       <br />
                       факторов
                     </span>
                   </Ring>
-                  <ul className="flex gap-3 text-[11px] text-white/80">
+                  <ul className="flex gap-3 text-micro text-white/80">
                     <li className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-[#4ade80]" aria-hidden /><span className="sr-only">положительные </span>{rel.balance.good}%</li>
                     <li className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-[#facc15]" aria-hidden /><span className="sr-only">внимание </span>{rel.balance.warn}%</li>
                     <li className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-[#f87171]" aria-hidden /><span className="sr-only">негативные </span>{rel.balance.bad}%</li>
@@ -327,9 +354,24 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
             </div>
           </div>
 
-          {report.facts.length > 0 && (
-            <div className="animate-fade-up grid gap-x-4 gap-y-1.5 rounded-xl border border-border bg-card p-3 text-[13px] sm:grid-cols-2" style={rise(1)}>
-              {report.facts.map((f) => (
+          {criticalFacts.length > 0 && (
+            <div className="animate-fade-up" style={rise(1)}>
+              <Alert tone="danger" title={`Критичные находки: ${criticalFacts.length}`}>
+                <ul className="space-y-0.5">
+                  {criticalFacts.map((f) => (
+                    <li key={f.id} className="break-words">
+                      <span className="font-semibold text-danger">{f.label}: </span>
+                      {f.text}
+                    </li>
+                  ))}
+                </ul>
+              </Alert>
+            </div>
+          )}
+
+          {otherFacts.length > 0 && (
+            <div className="animate-fade-up grid gap-x-4 gap-y-1.5 rounded-xl border border-border bg-card p-3 text-ui sm:grid-cols-2" style={rise(1)}>
+              {otherFacts.map((f) => (
                 <div key={f.id} className="flex items-start gap-2">
                   <span className="flex h-5 shrink-0 items-center">
                     <Dot tone={TONE[f.tone]} />
@@ -369,21 +411,21 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
 
           {rel && (
             <div className="animate-fade-up rounded-xl border border-border bg-card p-4" style={rise(4)}>
-              <p className="flex items-center gap-2 text-[13px] font-semibold">
+              <p className="flex items-center gap-2 text-ui font-semibold">
                 <ShieldCheck className="size-4 text-[#2F5BFF]" />
                 <span>
                   Оценка надёжности <span className="font-normal text-muted-foreground">— расчёт Checko, не наше заключение</span>
                 </span>
               </p>
-              <div className="mt-3 grid gap-2 text-[12px] sm:grid-cols-3">
-                <p className="rounded-lg bg-secondary/60 p-3">
-                  Масштаб бизнеса: <b className="font-mono text-foreground">{rel.scale ?? '—'}</b> из 100
+              <div className="mt-3 grid gap-2 text-caption sm:grid-cols-3">
+                <p className="rounded-lg bg-surface-sunken p-3">
+                  <span className="block text-muted-foreground">Масштаб бизнеса:</span> <b className="text-subtitle tabular-nums text-foreground">{rel.scale ?? '—'}</b> из 100
                 </p>
-                <p className="rounded-lg bg-secondary/60 p-3">
-                  Риск номинальности: <b className={cx(nominalTone === 'danger' && 'text-danger', nominalTone === 'warn' && 'text-warn-foreground', nominalTone === 'success' && 'text-success')}>{rel.nominality.text ?? '—'}</b>
+                <p className="rounded-lg bg-surface-sunken p-3">
+                  <span className="block text-muted-foreground">Риск номинальности:</span> <b className={cx(nominalTone === 'danger' && 'text-danger', nominalTone === 'warn' && 'text-warn-foreground', nominalTone === 'success' && 'text-success')}>{rel.nominality.text ?? '—'}</b>
                 </p>
-                <p className="rounded-lg bg-secondary/60 p-3">
-                  Финансовые риски: <b className={cx(financialTone === 'danger' && 'text-danger', financialTone === 'warn' && 'text-warn-foreground', financialTone === 'success' && 'text-success')}>{rel.financial.text ?? '—'}</b>
+                <p className="rounded-lg bg-surface-sunken p-3">
+                  <span className="block text-muted-foreground">Финансовые риски:</span> <b className={cx(financialTone === 'danger' && 'text-danger', financialTone === 'warn' && 'text-warn-foreground', financialTone === 'success' && 'text-success')}>{rel.financial.text ?? '—'}</b>
                 </p>
               </div>
               <div className="mt-3 space-y-1.5">
@@ -396,12 +438,12 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
                     { value: rel.balance.bad, color: VIZ.bad, label: 'негативные' },
                   ]}
                 />
-                <p className="text-[12px] text-muted-foreground">
+                <p className="text-caption text-muted-foreground">
                   Полож {rel.balance.good}% · Внимание {rel.balance.warn}% · Негатив {rel.balance.bad}%
                 </p>
               </div>
               {factors.length > 0 && (
-                <details className="mt-2 text-[12px]" open={factors.length <= 6}>
+                <details className="mt-2 text-caption" open={factors.length <= 6}>
                   <summary className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground">Факторы: {factors.length}</summary>
                   <ul className="mt-2 grid gap-x-4 gap-y-1.5 sm:grid-cols-2">
                     {factors.map((f, i) => (
@@ -419,17 +461,17 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
           )}
 
           {(hasCases || hasChecks) && (
-            <div className={cx('animate-fade-up grid items-start gap-3', hasCases && hasChecks && 'lg:grid-cols-2')} style={rise(5)}>
+            <div className={cx('animate-fade-up grid grid-cols-1 items-start gap-3', hasCases && hasChecks && 'lg:grid-cols-2')} style={rise(5)}>
               {hasCases && (
                 <div className="space-y-3">
                   {courts && (
                     <div className="overflow-hidden rounded-xl border border-border bg-card">
                       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2.5">
-                        <p className="flex items-center gap-2 text-[13px] font-semibold">
+                        <p className="flex items-center gap-2 text-ui font-semibold">
                           <Scale className="size-4 text-[#2F5BFF]" />
                           Арбитражные дела
                         </p>
-                        <p className="text-[12px] text-muted-foreground">
+                        <p className="text-caption text-muted-foreground">
                           КАД: {courts.total}, ответчик — {courts.defendant}
                         </p>
                       </div>
@@ -442,7 +484,7 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
                             { value: Math.max(0, courts.cases.length - courts.defendant - courts.plaintiff), color: 'var(--muted-foreground)', label: 'участник' },
                           ]}
                         />
-                        <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                        <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-micro text-muted-foreground">
                           <span className="flex items-center gap-1.5"><span className="size-2 rounded-sm" style={{ background: VIZ.warn }} />ответчик {courts.defendant}</span>
                           <span className="flex items-center gap-1.5"><span className="size-2 rounded-sm" style={{ background: VIZ.revenue }} />истец {courts.plaintiff}</span>
                           {courts.active > 0 && <span>рассматривается: {courts.active}</span>}
@@ -450,38 +492,63 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
                         </p>
                         {casesByYear.length > 1 && (
                           <div className="pt-1">
-                            <GroupedBars rows={casesByYear} series={[{ name: 'Дел в году', color: VIZ.revenue }]} format={(n) => String(n ?? 0)} label="Число арбитражных дел по годам" />
+                            <GroupedBars rows={casesByYear} series={[{ name: 'Дел в году', color: VIZ.revenue }]} format={(n) => String(n ?? 0)} label="Число арбитражных дел по годам" integer />
                           </div>
                         )}
                       </div>
-                      <ul className="mt-2 divide-y divide-border/60 border-t border-border text-[12px]">
-                        {courts.cases.slice(0, 5).map((c) => (
-                          <li key={`${c.number}-${c.date ?? ''}`} className="break-words px-3 py-1.5">
-                            {c.url ? (
-                              <a href={c.url} target="_blank" rel="noopener noreferrer" className="font-mono font-medium underline underline-offset-2 hover:no-underline">
-                                {c.number}
-                              </a>
-                            ) : (
-                              <span className="font-mono font-medium">{c.number}</span>
-                            )}
-                            {c.date && ` от ${day(c.date)}`} — {ROLE[c.role]}
-                            {c.opponent && `, ${c.opponent}`}
-                            {c.claimSum !== null && `, иск ${rub(c.claimSum)}`}
-                            {c.active && ', рассматривается'}
-                          </li>
-                        ))}
-                      </ul>
-                      {courts.cases.length > 5 && <p className="px-3 pb-2.5 text-[12px] text-muted-foreground">Ещё {courts.cases.length - 5} — в картотеке.</p>}
+                      <div className="mt-2 border-t border-border">
+                        <DataTable bare minWidth={420} caption="Арбитражные дела">
+                          <THead>
+                            <tr>
+                              <Th>Дело</Th>
+                              <Th>Дата</Th>
+                              <Th>Роль</Th>
+                              <Th align="right">Иск</Th>
+                            </tr>
+                          </THead>
+                          <TBody>
+                            {courts.cases.slice(0, 5).map((c) => (
+                              <Tr key={`${c.number}-${c.date ?? ''}`}>
+                                <Td className="break-words">
+                                  {c.url ? (
+                                    <a href={c.url} target="_blank" rel="noopener noreferrer" className="font-medium underline underline-offset-2 hover:no-underline">
+                                      {c.number}
+                                    </a>
+                                  ) : (
+                                    <span className="font-medium">{c.number}</span>
+                                  )}
+                                  {c.opponent && <span className="block text-caption text-muted-foreground">{c.opponent}</span>}
+                                </Td>
+                                <Td tone="muted" className="whitespace-nowrap tabular-nums">
+                                  {c.date ? day(c.date) : '—'}
+                                </Td>
+                                <Td>
+                                  <span className="flex flex-wrap gap-1">
+                                    <Badge tone={c.role === 'defendant' ? 'warn' : c.role === 'plaintiff' ? 'info' : 'neutral'}>{ROLE[c.role]}</Badge>
+                                    {c.active && (
+                                      <Badge tone="neutral" dot>
+                                        рассматривается
+                                      </Badge>
+                                    )}
+                                  </span>
+                                </Td>
+                                <Td num>{c.claimSum !== null ? rub(c.claimSum) : '—'}</Td>
+                              </Tr>
+                            ))}
+                          </TBody>
+                        </DataTable>
+                      </div>
+                      {courts.cases.length > 5 && <p className="px-3 pb-2.5 text-caption text-muted-foreground">Ещё {courts.cases.length - 5} — в картотеке.</p>}
                     </div>
                   )}
                   {enforcements && (
                     <div className="overflow-hidden rounded-xl border border-border bg-card">
                       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2.5">
-                        <p className="flex items-center gap-2 text-[13px] font-semibold">
+                        <p className="flex items-center gap-2 text-ui font-semibold">
                           <Wallet className="size-4 text-[#2F5BFF]" />
                           Исполнительные производства
                         </p>
-                        <p className="text-[12px] text-muted-foreground">
+                        <p className="text-caption text-muted-foreground">
                           ФССП: {enforcements.total}, остаток долга {rub(enforcements.outstandingSum)}
                         </p>
                       </div>
@@ -494,23 +561,40 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
                               { value: Math.max(0, enforcements.debtSum - enforcements.outstandingSum), color: VIZ.good, label: 'погашено' },
                             ]}
                           />
-                          <p className="flex flex-wrap gap-x-3 text-[11px] text-muted-foreground">
+                          <p className="flex flex-wrap gap-x-3 text-micro text-muted-foreground">
                             <span className="flex items-center gap-1.5"><span className="size-2 rounded-sm" style={{ background: VIZ.bad }} />остаток {rub(enforcements.outstandingSum)}</span>
                             <span className="flex items-center gap-1.5"><span className="size-2 rounded-sm" style={{ background: VIZ.good }} />погашено {rub(Math.max(0, enforcements.debtSum - enforcements.outstandingSum))}</span>
                           </p>
                         </div>
                       )}
-                      <ul className="mt-2 divide-y divide-border/60 border-t border-border text-[12px]">
-                        {enforcements.items.slice(0, 5).map((e) => (
-                          <li key={`${e.number ?? ''}-${e.date ?? ''}`} className="break-words px-3 py-1.5">
-                            <span className="font-mono font-medium">{e.number ?? '№ не указан'}</span>
-                            {e.date && ` от ${day(e.date)}`}
-                            {e.subject && ` — ${e.subject}`}
-                            {e.outstanding !== null && `, остаток ${rub(e.outstanding)}`}
-                          </li>
-                        ))}
-                      </ul>
-                      {enforcements.items.length > 5 && <p className="px-3 pb-2.5 text-[12px] text-muted-foreground">Ещё {enforcements.items.length - 5}.</p>}
+                      <div className="mt-2 border-t border-border">
+                        <DataTable bare minWidth={420} caption="Исполнительные производства">
+                          <THead>
+                            <tr>
+                              <Th>Производство</Th>
+                              <Th>Дата</Th>
+                              <Th align="right">Остаток долга</Th>
+                            </tr>
+                          </THead>
+                          <TBody>
+                            {enforcements.items.slice(0, 5).map((e) => (
+                              <Tr key={`${e.number ?? ''}-${e.date ?? ''}`}>
+                                <Td className="break-words">
+                                  <span className="font-medium">{e.number ?? '№ не указан'}</span>
+                                  {e.subject && <span className="block text-caption text-muted-foreground">{e.subject}</span>}
+                                </Td>
+                                <Td tone="muted" className="whitespace-nowrap tabular-nums">
+                                  {e.date ? day(e.date) : '—'}
+                                </Td>
+                                <Td num tone={e.outstanding !== null && e.outstanding > 0 ? 'danger' : 'neutral'}>
+                                  {e.outstanding !== null ? rub(e.outstanding) : '—'}
+                                </Td>
+                              </Tr>
+                            ))}
+                          </TBody>
+                        </DataTable>
+                      </div>
+                      {enforcements.items.length > 5 && <p className="px-3 pb-2.5 text-caption text-muted-foreground">Ещё {enforcements.items.length - 5}.</p>}
                     </div>
                   )}
                 </div>
@@ -519,7 +603,7 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
               {hasChecks && (
                 <div className="overflow-hidden rounded-xl border border-border bg-card">
                   <div className="border-b border-border px-3 py-2.5">
-                    <p className="text-[13px] font-semibold">Реестры и риски</p>
+                    <p className="text-ui font-semibold">Реестры и риски</p>
                   </div>
                   <ul className="grid gap-2 p-3">
                     {report.rnp && (
@@ -575,24 +659,24 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
 
           {report.contacts && (report.contacts.phones.length > 0 || report.contacts.emails.length > 0 || report.contacts.website) && (
             <div className="animate-fade-up rounded-xl border border-border bg-card p-4" style={rise(6)}>
-              <p className="text-[13px] font-semibold">
+              <p className="text-ui font-semibold">
                 Контакты <span className="font-normal text-muted-foreground">— из открытых источников</span>
               </p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {report.contacts.phones.map((p) => (
-                  <a key={p} href={`tel:${p.replace(/[^\d+]/g, '')}`} className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-[12px] transition-colors hover:bg-secondary">
+                  <a key={p} href={`tel:${p.replace(/[^\d+]/g, '')}`} className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-caption transition-colors hover:bg-secondary">
                     <Phone className="size-3.5 text-muted-foreground" />
                     <span className="font-mono">{p}</span>
                   </a>
                 ))}
                 {report.contacts.emails.map((e) => (
-                  <a key={e} href={`mailto:${e}`} className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-[12px] transition-colors hover:bg-secondary">
+                  <a key={e} href={`mailto:${e}`} className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-caption transition-colors hover:bg-secondary">
                     <Mail className="size-3.5 text-muted-foreground" />
                     <span>{e}</span>
                   </a>
                 ))}
                 {report.contacts.website && (
-                  <a href={report.contacts.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-[12px] transition-colors hover:bg-secondary">
+                  <a href={report.contacts.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-caption transition-colors hover:bg-secondary">
                     <Globe className="size-3.5 text-muted-foreground" />
                     <span>{report.contacts.website}</span>
                   </a>
@@ -604,14 +688,14 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
       )}
 
       {failed.length > 0 && (
-        <p role="alert" className="text-[12px] text-danger">
-          Не всё получилось: {failed.join('; ')}. Повторите проверку позже.
-        </p>
+        <Alert tone="warn" title={`Не всё получилось: ${failed.join('; ')}.`}>
+          Повторите проверку позже.
+        </Alert>
       )}
 
       {report.links.length > 0 && (
         <div className="animate-fade-up rounded-xl border border-border bg-card p-4" style={rise(7)}>
-          <p className="text-[13px] font-semibold">
+          <p className="text-ui font-semibold">
             Проверить вручную <span className="font-normal text-muted-foreground">— без капчи эти реестры не отдают</span>
           </p>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -621,7 +705,7 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
                   href={l.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex h-full items-start gap-2.5 rounded-lg border border-border p-3 text-[12px] transition-colors hover:border-[#2F5BFF]/50 hover:bg-secondary/60"
+                  className="group flex h-full items-start gap-2.5 rounded-lg border border-border p-3 text-caption transition-colors hover:border-[#2F5BFF]/50 hover:bg-secondary/60"
                 >
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#2F5BFF]/10 text-[#2F5BFF] transition-transform group-hover:scale-110">
                     <ExternalLink className="size-3.5" />
@@ -636,7 +720,7 @@ export function CounterpartyReportView({ report }: { report: CounterpartyReport 
           </ul>
         </div>
       )}
-      <p className="text-[12px] text-muted-foreground">
+      <p className="text-caption text-muted-foreground">
         Данные {sourceNames} на {when(report.at)}. Это сведения реестров, а не заключение о надёжности.
       </p>
     </div>
@@ -673,14 +757,14 @@ function HitRow({ hit, onPick, disabled }: { hit: SearchHit; onPick: () => void;
         className="card-hover flex w-full flex-wrap items-start justify-between gap-x-3 gap-y-1 rounded-md border bg-card px-3 py-2.5 text-left transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
       >
         <span className="min-w-0 flex-1">
-          <span className="block text-[14px] font-bold leading-snug">{hit.name}</span>
-          <span className="mt-0.5 block text-[12px] text-muted-foreground">
+          <span className="block text-sm font-bold leading-snug">{hit.name}</span>
+          <span className="mt-0.5 block text-caption text-muted-foreground">
             <span className="font-mono">ИНН {hit.inn}</span>
             {hit.ogrn && <span className="font-mono"> · {hit.kind === 'ent' ? 'ОГРНИП' : 'ОГРН'} {hit.ogrn}</span>}
             {hit.registered && <> · с {day(hit.registered)}</>}
             {hit.region && <> · регион {hit.region}</>}
           </span>
-          {hit.address && <span className="mt-0.5 block text-[12px] text-muted-foreground">{hit.address}</span>}
+          {hit.address && <span className="mt-0.5 block text-caption text-muted-foreground">{hit.address}</span>}
         </span>
         <span className="flex shrink-0 items-center gap-2">
           {status && hit.status && (
@@ -688,7 +772,7 @@ function HitRow({ hit, onPick, disabled }: { hit: SearchHit; onPick: () => void;
               {hit.terminated ? `${hit.status} · ${day(hit.terminated)}` : hit.status}
             </Badge>
           )}
-          <span className="text-[13px] font-medium text-primary">Проверить</span>
+          <span className="text-ui font-medium text-primary">Проверить</span>
         </span>
       </button>
     </li>
@@ -701,7 +785,7 @@ export function CounterpartyCard({ inn, onInn, onCheck, busy, error, report, mod
     <Card className="space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
         <Search className="size-4" />
-        <p className="text-[14px] font-bold">Проверка контрагента</p>
+        <p className="text-sm font-bold">Проверка контрагента</p>
         <Badge tone="success">Бесплатно: без ИИ</Badge>
         <HelpTip
           align="start"
@@ -715,7 +799,7 @@ export function CounterpartyCard({ inn, onInn, onCheck, busy, error, report, mod
           if (!busy) onCheck();
         }}
       >
-        <label className="min-w-[200px] flex-1 text-[12px]">
+        <label className="min-w-[200px] flex-1 text-caption">
           <span className="sr-only">ИНН, ОГРН, название организации или фамилия</span>
           <input
             type="text"
@@ -737,27 +821,27 @@ export function CounterpartyCard({ inn, onInn, onCheck, busy, error, report, mod
           {SEARCH_MODES.map((m) => (
             <Chip key={m.id} label={m.label} on={mode === m.id} onClick={() => onMode(m.id)} />
           ))}
-          <span className="text-[12px] text-muted-foreground">{SEARCH_MODES.find((m) => m.id === mode)?.hint}</span>
+          <span className="text-caption text-muted-foreground">{SEARCH_MODES.find((m) => m.id === mode)?.hint}</span>
         </div>
       )}
       {error && (
-        <p role="alert" className="text-[12px] text-danger">
+        <p role="alert" className="text-caption text-danger">
           {error}
         </p>
       )}
       {busy && !report && (
-        <p role="status" className="text-[12px] text-muted-foreground">
+        <p role="status" className="text-caption text-muted-foreground">
           {text ? 'Ищу в реестрах — обычно пара секунд…' : 'Спрашиваю ЕГРЮЛ, Федресурс и ГИР БО — обычно несколько секунд…'}
         </p>
       )}
       {hits && hits.length === 0 && !busy && (
-        <p role="status" className="text-[13px] text-muted-foreground">
+        <p role="status" className="text-ui text-muted-foreground">
           Ничего не нашли. Проверьте написание — или впишите ИНН либо ОГРН.
         </p>
       )}
       {hits && hits.length > 0 && onPick && (
         <div className="space-y-2">
-          <p className="text-[12px] text-muted-foreground">
+          <p className="text-caption text-muted-foreground">
             Найдено: <span className="font-mono font-medium text-foreground">{hits.length}</span>. Выберите нужную — проверю по её ИНН.
             {more && ' Показаны первые, остальные скрыты — уточните запрос.'}
           </p>

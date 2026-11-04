@@ -103,7 +103,7 @@ function AuditPanel({ report }: { report: AuditReport }) {
     return (
       <Card className="flex items-center gap-2.5 p-4">
         <CheckCircle2 className="size-4 shrink-0 text-success" />
-        <p className="text-[13px] text-muted-foreground">Нарушений перед подачей не обнаружено.</p>
+        <p className="text-ui text-muted-foreground">Нарушений перед подачей не обнаружено.</p>
       </Card>
     );
   }
@@ -119,14 +119,14 @@ function AuditPanel({ report }: { report: AuditReport }) {
           ) : (
             <CheckCircle2 className="size-4 text-success" />
           )}
-          <span className="text-[15px] font-bold">Финальная проверка</span>
+          <span className="text-subtitle font-bold">Финальная проверка</span>
           <HelpTip align="start" content="Критичные нарушения — вероятное отклонение заявки. Предупреждения — нужна проверка человека." />
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           {report.critical > 0 && <Badge tone="danger">{report.critical} {plural(report.critical, 'критичное', 'критичных', 'критичных')}</Badge>}
           {report.warnings > 0 && <Badge tone="warn">{report.warnings} {plural(report.warnings, 'предупреждение', 'предупреждения', 'предупреждений')}</Badge>}
           {report.info > 0 && <Badge tone="neutral">{report.info} инфо</Badge>}
-          <span className={cx('text-[14px] font-bold', RISK_TEXT[report.risk])}>{RISK_LABEL[report.risk]}</span>
+          <span className={cx('text-sm font-bold', RISK_TEXT[report.risk])}>{RISK_LABEL[report.risk]}</span>
         </div>
       </div>
       <ul className="divide-y divide-border">
@@ -141,11 +141,11 @@ function AuditPanel({ report }: { report: AuditReport }) {
                 className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary/50"
               >
                 {AUDIT_ICON[f.severity]}
-                <span className="min-w-0 flex-1 text-[13px]">{f.what}</span>
+                <span className="min-w-0 flex-1 text-ui">{f.what}</span>
                 <Badge tone={AUDIT_TONE[f.severity]}>{AUDIT_LABEL[f.severity]}</Badge>
               </button>
               {isOpen && (
-                <dl className="border-t border-border bg-secondary/30 px-4 py-3 space-y-1.5 text-[12px]">
+                <dl className="border-t border-border bg-secondary/30 px-4 py-3 space-y-1.5 text-caption">
                   <div className="flex gap-2">
                     <dt className="shrink-0 text-muted-foreground w-24">Требование</dt>
                     <dd>{f.requirement}</dd>
@@ -171,7 +171,7 @@ function AuditPanel({ report }: { report: AuditReport }) {
         })}
       </ul>
       {report.findings.length > AUDIT_SHOWN && (
-        <button type="button" onClick={() => setAll(!all)} className="w-full border-t border-border px-4 py-2.5 text-center text-[13px] font-medium text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground">
+        <button type="button" onClick={() => setAll(!all)} className="w-full border-t border-border px-4 py-2.5 text-center text-ui font-medium text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground">
           {all ? 'Свернуть' : `Показать ещё ${report.findings.length - AUDIT_SHOWN}`}
         </button>
       )}
@@ -189,7 +189,7 @@ function ScoringPanel({ report }: { report: ScoringReport }) {
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <Info className="size-4 text-muted-foreground" />
-          <span className="text-[15px] font-bold">Оценка по критериям</span>
+          <span className="text-subtitle font-bold">Оценка по критериям</span>
           <HelpTip align="start" content="Баллы рассчитаны по базе доказательств. ИИ не участвует — только код. Цена считается площадкой." />
         </div>
         <div className="flex items-center gap-1.5">
@@ -206,12 +206,12 @@ function ScoringPanel({ report }: { report: ScoringReport }) {
         {report.groups.map((group) => (
           <div key={group.name}>
             <div className="flex items-center justify-between gap-2 bg-secondary/40 px-4 py-2">
-              <span className="min-w-0 break-words text-[13px] font-medium">{group.name}</span>
+              <span className="min-w-0 break-words text-ui font-medium">{group.name}</span>
               {group.weightText && (
-                <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{group.weightText}</span>
+                <span className="shrink-0 font-mono text-micro text-muted-foreground">{group.weightText}</span>
               )}
             </div>
-            <table className="w-full table-fixed text-[12px]">
+            <table className="w-full table-fixed text-caption">
               <colgroup>
                 <col />
                 <col className="w-[5.5rem]" />
@@ -236,7 +236,7 @@ function ScoringPanel({ report }: { report: ScoringReport }) {
                     <tr key={i}>
                       <td className="break-words px-4 py-2 leading-snug">
                         <p>{label}</p>
-                        {c.gap && <p className="mt-0.5 text-[11px] text-muted-foreground">{c.gap}</p>}
+                        {c.gap && <p className="mt-0.5 text-micro text-muted-foreground">{c.gap}</p>}
                       </td>
                       <td className="px-2 py-2 text-right text-muted-foreground whitespace-nowrap">
                         {c.maxPoints !== null ? pointsText(c.maxPoints) : '?'}
@@ -279,7 +279,7 @@ function BlankRow({ form, onDownload }: { form: DetectedForm; onDownload: () => 
             </Badge>
           )}
         </div>
-        {sub && <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{sub}</p>}
+        {sub && <p className="mt-0.5 text-micro leading-snug text-muted-foreground">{sub}</p>}
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <IconButton label="Скачать бланк" onClick={onDownload}>
@@ -320,7 +320,7 @@ function FileRow({
             {row.badge.text}
           </Badge>
         </div>
-        <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{row.sub}</p>
+        <p className="mt-0.5 text-micro leading-snug text-muted-foreground">{row.sub}</p>
       </div>
     </>
   );
@@ -366,11 +366,11 @@ function ChecklistItem({ item, onToggle, whereOf }: { item: SubmitItem; onToggle
   return (
     <li className="border-b border-border px-4 py-3 last:border-0">
       <Checkbox checked={item.ready} onChange={onToggle}>
-        <span className={cx('text-[13px] leading-snug', item.ready && 'text-muted-foreground line-through')}>{item.text}</span>
+        <span className={cx('text-ui leading-snug', item.ready && 'text-muted-foreground line-through')}>{item.text}</span>
       </Checkbox>
       {/* Площадка передаст сама, «не требуется», «по желанию» — подаче не мешает, отметка не обязательна. */}
-      {!item.required && item.note && <p className="mt-1 pl-[26px] text-[12px] text-muted-foreground">Не мешает подаче: {item.note}</p>}
-      <div className="mt-1 pl-[26px] text-[12px]">
+      {!item.required && item.note && <p className="mt-1 pl-[26px] text-caption text-muted-foreground">Не мешает подаче: {item.note}</p>}
+      <div className="mt-1 pl-[26px] text-caption">
         <button
           type="button"
           aria-expanded={open}
@@ -382,7 +382,7 @@ function ChecklistItem({ item, onToggle, whereOf }: { item: SubmitItem; onToggle
         {open && (
           <blockquote className="mt-1 rounded-md bg-secondary px-3 py-2 leading-snug text-muted-foreground">
             «{item.quote}»
-            {whereOf?.(item.quote) && <span className="mt-1 block break-words text-[11px]">{whereOf(item.quote)}</span>}
+            {whereOf?.(item.quote) && <span className="mt-1 block break-words text-micro">{whereOf(item.quote)}</span>}
           </blockquote>
         )}
         {!item.verified && (
@@ -530,7 +530,7 @@ export function StepPackage({
               />
             </p>
             {hasTp && !noApplication && openCount > 0 && (
-              <p className="mt-2 flex items-center gap-1.5 text-[15px] font-bold text-warn-foreground">
+              <p className="mt-2 flex items-center gap-1.5 text-subtitle font-bold text-warn-foreground">
                 Осталось незакрытых пунктов: {openCount}
                 <HelpTip align="start" content="Скачать можно и так, но риск отклонения выше. В файлах незаполненное — жёлтым." />
               </p>
@@ -555,7 +555,7 @@ export function StepPackage({
           )}
         </div>
         {!noApplication && !hasTp && (
-          <p className="mt-3 flex items-center gap-1.5 text-[13px] font-medium">
+          <p className="mt-3 flex items-center gap-1.5 text-ui font-medium">
             Документы заявки ещё не составлены
             <HelpTip align="start" content="Составьте их на шаге «Проверка» — форму заявки беру из документов закупки. Тогда здесь появятся файлы." />
           </p>
@@ -567,17 +567,17 @@ export function StepPackage({
       {hasTp && !noApplication && <FinalCheck final={final} compact />}
 
       {error && (
-        <p role="alert" className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
+        <p role="alert" className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-ui text-danger">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" /> <span className="min-w-0 break-words">{error}</span>
         </p>
       )}
-      {note && <p role="status" className="rounded-md bg-info/10 px-3 py-2 text-[13px] text-info">{note}</p>}
+      {note && <p role="status" className="rounded-md bg-info/10 px-3 py-2 text-ui text-info">{note}</p>}
 
       {/* Оплата и проверка специалистом пока не работают («скоро»): тонкие строки над документами (решение владельца 17.10.2026), пояснения — в подсказках. */}
       {!noApplication && (
         <>
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-2.5">
-            <p className="flex flex-wrap items-center gap-2 text-[13px] font-medium">
+            <p className="flex flex-wrap items-center gap-2 text-ui font-medium">
               <CreditCard className="size-4" />
               Заявка под ключ · {rubShort(PRICE_APP)} <Soon />
               <HelpTip align="start" content="Оплаты пока нет — документы скачиваются бесплатно. Пакет 5 или 10 заявок будет дешевле." />
@@ -593,7 +593,7 @@ export function StepPackage({
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-2.5">
-            <p className="flex flex-wrap items-center gap-2 text-[13px] font-medium">
+            <p className="flex flex-wrap items-center gap-2 text-ui font-medium">
               <UserCheck className="size-4" />
               Проверка специалистом <Soon />
               <HelpTip
@@ -621,7 +621,7 @@ export function StepPackage({
               {(!noApplication || (detectedForms?.length ?? 0) > 0) && (
               <Card className="p-0">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-                  <span className="text-[15px] font-bold">Состав пакета · {count} док.</span>
+                  <span className="text-subtitle font-bold">Состав пакета · {count} док.</span>
                   <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Формат файлов">
                     {FORMATS.map((f) => (
                       <Tooltip key={f.ext} content={f.label} side="bottom" align="end">
@@ -666,7 +666,7 @@ export function StepPackage({
               {/* Что требует заказчик */}
               <Card className="p-0">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-                  <span className="flex items-center gap-1.5 text-[15px] font-bold">
+                  <span className="flex items-center gap-1.5 text-subtitle font-bold">
                     Что требует заказчик
                     <HelpTip
                       align="start"
@@ -678,13 +678,13 @@ export function StepPackage({
                     />
                   </span>
                   {items.length > 0 && (
-                    <span className={cx('font-mono text-[13px] font-bold tabular-nums', needed.length > 0 && ready === needed.length ? 'text-success' : 'text-foreground')}>
+                    <span className={cx('text-ui font-bold tabular-nums', needed.length > 0 && ready === needed.length ? 'text-success' : 'text-foreground')}>
                       {needed.length ? `готово ${ready} из ${needed.length}` : 'отмечать нечего'}
                     </span>
                   )}
                 </div>
                 {items.length === 0 ? (
-                  <p className="px-4 py-3 text-[13px] text-muted-foreground">
+                  <p className="px-4 py-3 text-ui text-muted-foreground">
                     Перечня документов в документах закупки не нашлось — сверьтесь с извещением: что подать, обычно сказано в требованиях
                     к заявке.
                   </p>
@@ -725,7 +725,7 @@ export function StepPackage({
           open && preview ? (
             redo ? (
               <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
-                <p className="flex-1 text-[12px] text-muted-foreground">
+                <p className="flex-1 text-caption text-muted-foreground">
                   ИИ напишет документ ещё раз и скачает новый файл {NAME[format]}. Всё, что вы поправили в прежнем файле, не сохранится.
                 </p>
                 <div className="flex shrink-0 gap-2">
@@ -777,25 +777,25 @@ export function StepPackage({
       >
         {open && preview && (
           <div className="bg-secondary/30 p-6">
-            {preview.note && <p className="mx-auto mb-3 max-w-lg text-[12px] text-muted-foreground">{preview.note}</p>}
+            {preview.note && <p className="mx-auto mb-3 max-w-lg text-caption text-muted-foreground">{preview.note}</p>}
             <div className="mx-auto max-w-lg rounded-md border border-border bg-card p-8">
               <div className="mb-5 border-b border-border pb-4 text-center">
-                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{preview.head}</p>
+                <p className="text-nano font-medium uppercase tracking-widest text-muted-foreground">{preview.head}</p>
                 {preview.customer && <p className="mt-2 text-xs text-muted-foreground">{preview.customer}</p>}
               </div>
               {downloading === open.part ? (
-                <p className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                <p className="flex items-center gap-2 text-ui text-muted-foreground">
                   <Loader2 className="size-4 animate-spin" /> {writing === open.part ? 'ИИ составляет документ заново — около минуты…' : 'Собираю файл…'}
                 </p>
               ) : (
                 preview.body
               )}
-              <div className="mt-6 flex items-center justify-between gap-3 border-t border-border pt-4 text-[11px] text-muted-foreground">
+              <div className="mt-6 flex items-center justify-between gap-3 border-t border-border pt-4 text-micro text-muted-foreground">
                 <span>{preview.foot[0]}</span>
                 <span className="font-mono">{preview.foot[1]}</span>
               </div>
             </div>
-            {preview.extra && <div className="mx-auto mt-4 max-w-lg space-y-2 text-[12px]">{preview.extra}</div>}
+            {preview.extra && <div className="mx-auto mt-4 max-w-lg space-y-2 text-caption">{preview.extra}</div>}
           </div>
         )}
       </Modal>

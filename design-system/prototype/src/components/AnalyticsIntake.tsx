@@ -43,7 +43,7 @@ export function AnalyticsIntakeForm({ files, failed, busy, status, aiOn = false,
   const [dragging, setDragging] = useState(false);
   const reading = busy === 'reading';
   return (
-    <div className="space-y-4 px-5 py-4 text-[13px]">
+    <div className="space-y-4 px-5 py-4 text-ui">
       <div className="flex flex-wrap items-center gap-2">
         {aiOn ? <Badge tone="warn">Платно: разбор документов ≈55 ₽ и поиск цен до 30 ₽</Badge> : <Badge tone="success">Бесплатно: без ИИ</Badge>}
         <HelpTip
@@ -87,23 +87,23 @@ export function AnalyticsIntakeForm({ files, failed, busy, status, aiOn = false,
         <Button size="sm" variant="secondary" disabled={busy !== null} onClick={() => input.current?.click()}>
           Выбрать файлы
         </Button>
-        <p className="text-[11px] text-muted-foreground">PDF, Word, Excel, ZIP</p>
+        <p className="text-micro text-muted-foreground">PDF, Word, Excel, ZIP</p>
       </div>
 
       {busy === 'searching' && status && (
-        <p role="status" className="flex items-start gap-1.5 text-[12px]">
+        <p role="status" className="flex items-start gap-1.5 text-caption">
           <Loader2 className="mt-0.5 size-3.5 shrink-0 animate-spin text-muted-foreground" />
           <span className="break-words">{status}</span>
         </p>
       )}
       {error && (
-        <p role="alert" className="flex items-start gap-1.5 text-[12px] text-danger">
+        <p role="alert" className="flex items-start gap-1.5 text-caption text-danger">
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
           {error}
         </p>
       )}
       {failed && (
-        <p className="flex items-start gap-1.5 text-[12px] text-warn-foreground">
+        <p className="flex items-start gap-1.5 text-caption text-warn-foreground">
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
           <span className="break-words">{failed}</span>
         </p>
@@ -113,7 +113,7 @@ export function AnalyticsIntakeForm({ files, failed, busy, status, aiOn = false,
         <>
           <ul className="space-y-1.5" aria-label="Загруженные файлы">
             {files.map((f) => (
-              <li key={f.name} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-[12px]">
+              <li key={f.name} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-caption">
                 <FileText className="size-4 shrink-0 text-muted-foreground" />
                 <div className="min-w-0 flex-1">
                   <p className="break-words font-medium">{f.name}</p>
@@ -128,11 +128,11 @@ export function AnalyticsIntakeForm({ files, failed, busy, status, aiOn = false,
 
           <section aria-label="Что нашла программа" className="space-y-3">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_11rem]">
-              <label className="block text-[12px]">
+              <label className="block text-caption">
                 <span className="mb-1 block text-muted-foreground">Название</span>
                 <input type="text" value={fields.title} onChange={(e) => onField({ title: e.target.value })} placeholder="Название закупки" className={inputClass} />
               </label>
-              <label className="block text-[12px]">
+              <label className="block text-caption">
                 <span className="mb-1 block text-muted-foreground">Начальная цена</span>
                 <input
                   type="text"

@@ -82,7 +82,7 @@ export function Modal({
   // Окно — в конец страницы: внутри анимированного блока (transform) «fixed» считается от блока, а не от экрана.
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-6"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-[#0b0e14]/50 p-0 backdrop-blur-[3px] sm:items-center sm:p-6"
       onClick={onClose}
     >
       <div
@@ -92,7 +92,7 @@ export function Modal({
         aria-labelledby={titleId}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className="animate-fade-up flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-lg border border-border bg-card shadow-2xl outline-none sm:rounded-lg"
+        className="animate-fade-up flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-lg border border-border bg-card shadow-lg outline-none sm:rounded-lg"
       >
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-3.5">
           <div className="min-w-0">
@@ -105,7 +105,7 @@ export function Modal({
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
         {footer && (
-          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border bg-secondary/30 px-5 py-3">
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border bg-surface-sunken px-5 py-3">
             {footer}
           </div>
         )}
@@ -120,43 +120,50 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   size?: 'sm' | 'md';
   /** Для `ai`: идёт запрос к ИИ — вместо значка ИИ крутится индикатор. */
   busy?: boolean;
+  /** Идёт действие: перед текстом крутится индикатор, кнопка недоступна, на ней aria-busy. */
+  loading?: boolean;
 };
 
-export function Button({ variant = 'primary', size = 'md', busy, className, children, ...rest }: ButtonProps) {
+export function Button({ variant = 'primary', size = 'md', busy, loading, className, children, disabled, ...rest }: ButtonProps) {
   const base =
-    'inline-flex items-center justify-center gap-2 font-medium rounded-md transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-40 disabled:pointer-events-none whitespace-nowrap';
-  const sizes = { sm: 'text-[13px] h-8 px-3', md: 'text-sm h-9 px-4' };
+    'inline-flex items-center justify-center gap-2 font-medium rounded-md transition-[background-color,border-color,box-shadow,transform,opacity] duration-150 active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-40 disabled:pointer-events-none whitespace-nowrap';
+  const sizes = { sm: 'text-ui h-8 px-3', md: 'text-sm h-9 px-4' };
   const variants = {
-    primary: 'bg-primary text-primary-foreground hover:opacity-90 active:opacity-100',
-    secondary: 'bg-card text-foreground border border-border hover:bg-secondary',
+    // Главная: сплошной голубой с тонким бликом по верхней кромке и едва заметной тенью — кнопка «выступает», но не светится.
+    primary: 'bg-primary text-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.18),var(--elev-1)] hover:bg-primary-hover',
+    secondary: 'bg-card text-foreground border border-border-strong/70 shadow-xs hover:bg-secondary hover:border-border-strong',
     ghost: 'text-muted-foreground hover:text-foreground hover:bg-secondary',
-    warn: 'bg-warn text-warn-foreground hover:brightness-105',
+    // Тёмный коричневый текст на жёлтом — одинаково читается в обеих темах (в тёмной теме --warn-foreground светлый и на жёлтом пропадал).
+    warn: 'bg-warn text-[#3d2a05] shadow-xs hover:brightness-105',
     // Градиент бренда — как у кнопки чата: для платных и главных действий.
     accent:
       'bg-brand-gradient text-white shadow-md shadow-indigo-500/30 hover:-translate-y-px hover:brightness-110 hover:shadow-lg hover:shadow-indigo-500/40 active:translate-y-0',
     // Кнопка, которая вызывает ИИ: значок ИИ (искры) и градиент от голубого «Тендекса» к фиолетовому (владелец, 30.10.2026).
     ai: 'bg-brand-gradient text-white shadow-md shadow-[#2f5bff]/30 hover:-translate-y-px hover:brightness-110 hover:shadow-lg active:translate-y-0',
     // Свой цвет текста: в тёмной теме цвет ошибки светлый, и белая надпись на нём не читалась (2,8 : 1); у главной кнопки теперь голубой фон с белым текстом.
-    danger: 'bg-danger text-danger-foreground hover:opacity-90',
+    danger: 'bg-danger text-danger-foreground shadow-xs hover:opacity-90',
   };
+  const icon = size === 'sm' ? 'size-3.5' : 'size-4';
   return (
-    <button className={cx(base, sizes[size], variants[variant], className)} {...rest}>
-      {variant === 'ai' && (busy ? <Loader2 className={cx('animate-spin', size === 'sm' ? 'size-3.5' : 'size-4')} /> : <Sparkles className={size === 'sm' ? 'size-3.5' : 'size-4'} />)}
+    <button className={cx(base, sizes[size], variants[variant], className)} {...rest} disabled={disabled || loading} aria-busy={loading || undefined}>
+      {loading && variant !== 'ai' && <Loader2 className={cx('animate-spin', icon)} />}
+      {variant === 'ai' && (busy || loading ? <Loader2 className={cx('animate-spin', icon)} /> : <Sparkles className={icon} />)}
       {children}
     </button>
   );
 }
 
 // Поля ввода (гайдлайн): обычное — 36 пикселей и шрифт 14, компактное (плотные панели) — 32 и 13. Свои копии стиля в экранах не заводим.
-export const fieldBase = 'rounded-md border border-border bg-background outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground';
+export const fieldBase = 'rounded-md border border-border-strong/70 bg-field outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground/60 focus:border-primary focus:ring-[3px] focus:ring-primary/20';
 export function fieldClass(size: 'md' | 'sm' = 'md', extra = ''): string {
-  const own = size === 'md' ? 'h-9 w-full px-3 text-sm' : 'h-8 w-full px-2.5 text-[13px]';
+  const own = size === 'md' ? 'h-9 w-full px-3 text-sm' : 'h-8 w-full px-2.5 text-ui';
   return [own, fieldBase, extra].filter(Boolean).join(' ');
 }
 
-export function Card({ className, children }: { className?: string; children: ReactNode }) {
+// tone="sunken" — «колодец»: вложенная группа внутри карточки без второй рамки (шапка таблицы, сводка, поясняющий блок).
+export function Card({ className, children, tone = 'default' }: { className?: string; children: ReactNode; tone?: 'default' | 'sunken' }) {
   return (
-    <div className={cx('bg-card border border-border rounded-xl', className)}>
+    <div className={cx(tone === 'sunken' ? 'bg-surface-sunken border border-transparent rounded-xl' : 'bg-card border border-border rounded-xl', className)}>
       {children}
     </div>
   );
@@ -165,22 +172,24 @@ export function Card({ className, children }: { className?: string; children: Re
 export type Tone = 'neutral' | 'warn' | 'danger' | 'success' | 'info';
 
 // wrap — фраза, а не метка: переносится на строки и не шире места, где стоит (иначе на узком экране выезжает за край).
-export function Badge({ tone = 'neutral', wrap, children }: { tone?: Tone; wrap?: boolean; children: ReactNode }) {
+// dot — цветная точка перед словом: статус читается и без цвета плашки.
+export function Badge({ tone = 'neutral', wrap, dot, children }: { tone?: Tone; wrap?: boolean; dot?: boolean; children: ReactNode }) {
   const tones = {
-    neutral: 'bg-secondary text-muted-foreground border-border',
+    neutral: 'bg-secondary text-foreground-secondary border-border',
     warn: 'bg-warn-surface text-warn-foreground border-warn/40',
-    danger: 'bg-danger/10 text-danger border-danger/30',
-    success: 'bg-success/10 text-success border-success/30',
-    info: 'bg-info/10 text-info border-info/30',
+    danger: 'bg-danger-surface text-danger border-danger/25',
+    success: 'bg-success-surface text-success border-success/25',
+    info: 'bg-info-surface text-info border-info/25',
   };
   return (
     <span
       className={cx(
-        'inline-flex items-center gap-1 border px-2 py-0.5 text-[11px] font-medium tracking-tight',
+        'inline-flex items-center gap-1.5 border px-2 py-0.5 text-micro font-medium',
         wrap ? 'max-w-full rounded-xl text-left leading-snug' : 'whitespace-nowrap rounded-full leading-none',
         tones[tone],
       )}
     >
+      {dot && <Dot tone={tone} />}
       {children}
     </span>
   );
@@ -191,7 +200,7 @@ export function Soon({ className }: { className?: string }) {
   return (
     <span
       className={cx(
-        'inline-flex items-center rounded-full border border-dashed border-muted-foreground/50 px-1.5 py-px text-[10px] font-medium uppercase leading-none tracking-wide text-muted-foreground',
+        'inline-flex items-center rounded-full border border-dashed border-muted-foreground/50 px-1.5 py-px text-nano font-medium uppercase leading-none tracking-wide text-muted-foreground',
         className,
       )}
     >
@@ -293,7 +302,7 @@ export function Tooltip({
             ref={tip}
             role="tooltip"
             className={cx(
-              'animate-tip pointer-events-none fixed z-[100] w-max max-w-[260px] rounded-lg border border-border bg-card px-3 py-2 text-left font-sans text-[12px] font-normal normal-case leading-snug tracking-normal text-foreground shadow-xl',
+              'animate-tip pointer-events-none fixed z-[100] w-max max-w-[260px] rounded-lg bg-foreground px-3 py-2 text-left font-sans text-caption font-normal normal-case leading-snug tracking-normal text-background shadow-md',
               !pos && 'invisible',
             )}
             style={pos ? { top: pos.top, left: pos.left } : undefined}
@@ -415,7 +424,7 @@ export function Chip({
   disabled?: boolean;
   className?: string;
 }) {
-  const look = on ? 'border-primary bg-primary font-medium text-primary-foreground' : 'border-border bg-background hover:border-foreground/40 hover:bg-secondary';
+  const look = on ? 'border-primary bg-primary font-medium text-primary-foreground shadow-xs' : 'border-border-strong/60 bg-card text-foreground-secondary hover:border-border-strong hover:bg-secondary hover:text-foreground';
   const ring = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
   const body = (
     <>
@@ -426,14 +435,14 @@ export function Chip({
   );
   if (!onRemove) {
     return (
-      <button type="button" aria-pressed={on} disabled={disabled} onClick={onClick} className={cx('inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3.5 text-[13px] transition-colors disabled:opacity-60', look, ring, className)}>
+      <button type="button" aria-pressed={on} disabled={disabled} onClick={onClick} className={cx('inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3.5 text-ui transition-colors disabled:opacity-60', look, ring, className)}>
         {body}
       </button>
     );
   }
   const removeLabel = typeof label === 'string' ? `Удалить «${label}»` : 'Удалить';
   return (
-    <span className={cx('inline-flex min-h-8 items-center rounded-full border text-[13px] transition-colors', look, className)}>
+    <span className={cx('inline-flex min-h-8 items-center rounded-full border text-ui transition-colors', look, className)}>
       <button type="button" aria-pressed={on} onClick={onClick} className={cx('inline-flex min-h-7 items-center gap-1.5 rounded-full pl-3.5 pr-2', ring)}>
         {body}
       </button>
@@ -496,7 +505,7 @@ export function Tabs({
       role="tablist"
       onKeyDown={onKeyDown}
       className={cx(
-        'inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-lg border border-border bg-card p-1 shadow-sm',
+        'inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-lg border border-border bg-surface-sunken p-1',
         // Край размыт всегда — честный намёк, что ряд можно прокрутить, даже когда вкладок не видно за кадром не очень очевидно (на телефоне).
         '[mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)]',
         className,
@@ -518,8 +527,8 @@ export function Tabs({
             tabIndex={selected ? 0 : -1}
             onClick={() => onChange(item.key)}
             className={cx(
-              'flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              selected ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground',
+              'flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-ui font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              selected ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:bg-card/60 hover:text-foreground',
             )}
           >
             {item.label}
@@ -561,7 +570,7 @@ export function TabPanel({
 
 export function AIDisclaimer({ className }: { className?: string }) {
   return (
-    <p className={cx('flex items-center gap-1.5 text-[11px] text-muted-foreground', className)}>
+    <p className={cx('flex items-center gap-1.5 text-micro text-muted-foreground', className)}>
       <Info className="size-3 shrink-0" />
       ИИ-анализ носит справочный характер и может содержать ошибки — проверяйте документы перед подачей.
     </p>
@@ -600,14 +609,14 @@ export function Toast({
   return (
     <div
       role="status"
-      className="animate-fade-up fixed left-1/2 top-4 z-[60] flex w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 items-start gap-3 rounded-xl border border-border bg-card p-3.5 shadow-2xl"
+      className="animate-fade-up fixed left-1/2 top-4 z-[60] flex w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 items-start gap-3 rounded-xl border border-border bg-card p-3.5 shadow-lg"
     >
       <span className="bg-brand-gradient flex size-8 shrink-0 items-center justify-center rounded-full text-white">
         <Bell className="size-4" />
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">{title}</p>
-        <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">{text}</p>
+        <p className="mt-0.5 text-caption leading-snug text-muted-foreground">{text}</p>
         <Button size="sm" variant="secondary" className="mt-2" onClick={onAction}>
           {action}
         </Button>

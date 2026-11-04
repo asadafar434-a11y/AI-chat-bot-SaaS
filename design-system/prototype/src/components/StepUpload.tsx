@@ -119,12 +119,12 @@ export function StepUpload({
       </Card>
 
       {error && (
-        <p role="alert" className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-[13px] text-danger">
+        <p role="alert" className="flex items-start gap-2 rounded-md bg-danger/10 px-3 py-2 text-ui text-danger">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" /> <span className="min-w-0 break-words">{error}</span>
         </p>
       )}
       {notice && (
-        <p role="status" className="flex items-start gap-2 rounded-md bg-warn-surface/40 px-3 py-2 text-[13px] text-warn-foreground">
+        <p role="status" className="flex items-start gap-2 rounded-md bg-warn-surface/40 px-3 py-2 text-ui text-warn-foreground">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" /> <span className="min-w-0 break-words">{notice}</span>
         </p>
       )}
@@ -132,7 +132,7 @@ export function StepUpload({
       {files.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+            <p className="text-micro font-medium uppercase tracking-wider text-muted-foreground">
               Загружено · {files.length} {files.length === 1 ? 'файл' : files.length < 5 ? 'файла' : 'файлов'}
             </p>
             {ready && (
@@ -153,7 +153,7 @@ export function StepUpload({
               )}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{f.name}</p>
-                <p className={`font-mono text-[11px] ${f.warn ? 'text-warn-foreground' : 'text-muted-foreground'}`}>{f.meta}</p>
+                <p className={`text-micro ${f.warn ? 'text-warn-foreground' : 'text-muted-foreground'}`}>{f.meta}</p>
               </div>
               {onRemove && (
                 <button
@@ -173,7 +173,7 @@ export function StepUpload({
       {recognized && (
         <Card className="animate-fade-up space-y-4 bg-secondary/40 p-5">
           <div>
-            <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">Распознанная закупка</p>
+            <p className="text-micro font-medium uppercase tracking-wider text-muted-foreground">Распознанная закупка</p>
             <p className="mt-2 break-words text-lg font-bold leading-snug">{recognized.title}</p>
           </div>
           {/* Главное — крупно: цена и срок; закон и заказчик — тише. */}
@@ -182,8 +182,8 @@ export function StepUpload({
               .filter(([k]) => LEAD_FACTS.includes(k))
               .map(([k, v]) => (
                 <div key={k} className="min-w-0">
-                  <dt className="text-[12px] font-medium text-muted-foreground">{k}</dt>
-                  <dd className="mt-0.5 break-words font-mono text-2xl font-bold tracking-tight">{v}</dd>
+                  <dt className="text-caption font-medium text-muted-foreground">{k}</dt>
+                  <dd className="mt-0.5 break-words text-2xl font-bold tabular-nums tracking-tight">{v}</dd>
                 </div>
               ))}
           </dl>
@@ -193,7 +193,7 @@ export function StepUpload({
               .map(([k, v]) => (
                 <div key={k} className="min-w-0">
                   <dt className="text-muted-foreground">{k}</dt>
-                  <dd className="mt-0.5 break-words font-mono text-[12px] text-foreground">{v}</dd>
+                  <dd className="mt-0.5 break-words text-caption text-foreground">{v}</dd>
                 </div>
               ))}
           </dl>

@@ -555,7 +555,7 @@ test('диаграмма: график — две линии с метками �
   assert.match(out, /<path d="M[^"]+" fill="none" stroke="var\(--viz-1\)" stroke-width="2"/);
   assert.match(out, /<path d="M[^"]+" fill="none" stroke="var\(--viz-2\)" stroke-width="2"/);
   assert.match(out, /<details[^>]*>\s*<summary[^>]*>Таблица значений<\/summary>/);
-  assert.equal((out.match(/<tr>/g) ?? []).length, 7);
+  assert.equal((out.match(/<tr[\s>]/g) ?? []).length, 8, "шапка и 7 строк снижения цены");
   assert.match(t, /Не ниже [\d ]+ ₽ \(на \d+,\d % ниже начальной\)/);
 });
 
@@ -962,7 +962,7 @@ const factUi = (to = 'Севастополь', from = 'Москва', delivery =
 test('свои цифры: доставка — расстояние между центрами регионов, выбор «перевозчик / своя машина», пока нет тарифа — что вписать; блок раскрыт', () => {
   const out = factUi();
   const t = text(out);
-  assert.match(out, /<details class="text-\[12px\]" open="">/);
+  assert.match(out, /<details class="text-caption" open="">/);
   assert.match(t, /Свои цифры: доставка и курс валюты/);
   assert.match(t, /Доставка: Москва → Севастополь ≈ 1 652 км/);
   assert.match(t, /Дорога длиннее прямой в/);
@@ -1013,7 +1013,7 @@ test('свои цифры: курс загружен — курс на посл�
   assert.match(t, /за год за 5 дн\. курс вырастал до \+3,0 % \(с 02\.10\.2026 по 07\.10\.2026\)/);
   assert.match(t, /Обновить курс ЦБ/);
   assert.match(t, /Впишите: сумму в валюте\./);
-  assert.match(out, /<details class="text-\[12px\]" open="">/, 'нужно вписать сумму — блок раскрыт');
+  assert.match(out, /<details class="text-caption" open="">/, 'нужно вписать сумму — блок раскрыт');
   const full = text(factUi(null, null, {}, { series: USD_RATES, windowDays: '5', amount: '10000' }));
   assert.equal(full.includes('Впишите:'), false);
 });
@@ -1436,7 +1436,7 @@ test('ценовой бейдж в карточке: заголовок по с�
   const within = renderToStaticMarkup(h(mods.badgeChipUi.PriceBadgeChip, { badge: { status: 'within', title: 'Цена в рыночном диапазоне', missing: [], detail } }));
   assert.match(text(within), /Цена в рыночном диапазоне/);
   assert.match(text(within), /цен-аналогов 12 · \+3,1 % к РИЦ · источников: 2/);
-  assert.match(within, /bg-success\/10/);
+  assert.match(within, /bg-success-surface/);
   const below = renderToStaticMarkup(h(mods.badgeChipUi.PriceBadgeChip, { badge: { status: 'below', title: 'Цена существенно ниже рынка', missing: [], detail: { ...detail, pct: -22.4 } } }));
   assert.match(text(below), /−22,4 % к РИЦ/);
   assert.match(below, /bg-warn-surface/);
@@ -1503,7 +1503,7 @@ test('товары и закупочные цены: у позиции — на�
   assert.match(t, /shop3\.ru — 5 100 ₽\/т, 20\.10\.2026/);
   assert.match(t, /shop9\.ru — 5 150 ₽\/т, 19\.10\.2026 · «Уголь ДПК 6-13»/, 'название у поставщика показано, если отличается');
   assert.match(t, /Точные цены только по 1 из 3 позиций/, 'цены не по всем позициям — бейдж говорит это прямо');
-  assert.match(out, /bg-danger\/10 text-danger/, 'и он красный (владелец, 23.10.2026: «заметнее красным цветом или бейджик»)');
+  assert.match(out, /bg-danger-surface text-danger/, 'и он красный (владелец, 23.10.2026: «заметнее красным цветом или бейджик»)');
   assert.match(t, /закупка по найденным ценам: 7 650 000 ₽ \(по 1 из 3\)/);
   assert.match(t, /цены на 20\.10\.2026/);
   assert.match(out, /Не проверено/, 'метка достоверности: цены из интернета не проверены у поставщика');
@@ -1523,7 +1523,7 @@ test('товары и закупочные цены: цен меньше пят�
   // Цены по всем позициям — бейдж зелёный, строки «Без цены» нет.
   const all = priceCard([priceRow()]);
   assert.match(text(all), /Цены по всем 1 позиции/);
-  assert.match(all, /bg-success\/10/);
+  assert.match(all, /bg-success-surface/);
   assert.equal(text(all).includes('Без цены'), false);
   for (const state of ['none', 'not-searched', 'searching', 'off', 'failed']) {
     assert.equal(priceCard([priceRow({ state, median: null, range: null, n: 0, sources: [], cost: null })]), '', `состояние «${state}» — блока нет`);
@@ -1633,7 +1633,7 @@ test('себестоимость по составу работ: состав и
   assert.match(t, /Себестоимость по составу работ/);
   assert.match(t, /≈ 103 ₽ за тонну/, 'главное число — за единицу объёма');
   assert.match(t, /1[^\d]507[^\d]780 ₽ в месяц · 36[^\d]186[^\d]720 ₽ за 24 месяца · из них взносы 30,2 % — 117[^\d]780 ₽/);
-  assert.match(html, /bg-danger\/10[^>]*>Ставки найдены по 1 из 2 должностей и по 1 из 1 видов техники: сумма неполная, ненайденное в неё не входит</, 'ненайденное — красным бейджем');
+  assert.match(html, /bg-danger-surface[^>]*>Ставки найдены по 1 из 2 должностей и по 1 из 1 видов техники: сумма неполная, ненайденное в неё не входит</, 'ненайденное — красным бейджем');
   assert.match(t, /Кладовщик[\s\S]*65[^\d]000 ₽[\s\S]*390[^\d]000 ₽/);
   assert.match(html, /<a href="https:\/\/gorodrabot\.ru\/1"[^>]*rel="noopener noreferrer"[^>]*title="цитата с ценой"/, 'источник — ссылкой, цитата в подсказке');
   assert.match(html, /class="text-danger">не найдено</, 'у должности без ставки — «не найдено» красным');
@@ -1727,7 +1727,7 @@ test('проверка контрагента: форма (ИНН, ОГРН, н�
   assert.match(t, /Контакты — из открытых источников/);
   assert.match(t, /\+7 495 000-00-00/);
   assert.match(t, /2025[\s\S]*140,9 млрд ₽[\s\S]*−13,1 млрд ₽[\s\S]*161,3 млрд ₽[\s\S]*−51,3 млрд ₽/, 'отчётность по годам в одной строке');
-  assert.match(full, /class="font-mono text-danger">−13,1/, 'отрицательные суммы красным');
+  assert.match(full, /class="tabular-nums text-danger">−13,1/, 'отрицательные суммы красным');
   assert.match(full, /<a href="https:\/\/zakupki\.gov\.ru\/epz\/dishonestsupplier\/search\/results\.html\?searchString=1434031363"[^>]*rel="noopener noreferrer"/, 'РНП открывается с подставленным ИНН и безопасно');
   assert.match(t, /Проверить вручную — без капчи эти реестры не отдают/);
   assert.match(t, /Данные ЕГРЮЛ, Федресурс, ГИР БО ФНС на 25\.10\.2026 \d{2}:\d{2}\. Это сведения реестров, а не заключение о надёжности\./);

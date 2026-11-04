@@ -392,7 +392,7 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
       <div className="space-y-3 rounded-2xl border border-border bg-card p-5">
         <button
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2.5 py-1 text-[12px] font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2.5 py-1 text-caption font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
         >
           <ArrowLeft className="size-3" /> Аналитика
         </button>
@@ -407,9 +407,9 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
                   {nmck !== null ? (
                     <span className="font-mono text-lg font-bold tabular-nums">{purchase.price}</span>
                   ) : (
-                    <span className="text-[13px] text-muted-foreground">Начальной цены в документах нет</span>
+                    <span className="text-ui text-muted-foreground">Начальной цены в документах нет</span>
                   )}
-                  {nmck !== null && <span className="block text-[11px] text-muted-foreground">начальная цена</span>}
+                  {nmck !== null && <span className="block text-micro text-muted-foreground">начальная цена</span>}
                 </p>
               </div>
               {badge && (
@@ -448,7 +448,7 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
         analyze={onAnalyze ? { label: analyzed ? 'Перейти к анализу →' : 'Анализировать документы →', onClick: onAnalyze } : undefined}
       />
       {saveError && (
-        <p role="alert" className="text-[12px] text-danger">
+        <p role="alert" className="text-caption text-danger">
           {saveError}
         </p>
       )}
@@ -508,7 +508,7 @@ export function PurchaseAnalytics({ onBack, onAnalyze, onCosts }: { onBack: () =
         }
       >
         <div className="px-5 py-6">
-          <p className="text-[13px] text-muted-foreground">Закупка, её документы и расчёты будут удалены с этого компьютера. Это нельзя отменить.</p>
+          <p className="text-ui text-muted-foreground">Закупка, её документы и расчёты будут удалены с этого компьютера. Это нельзя отменить.</p>
         </div>
       </Modal>
     </div>

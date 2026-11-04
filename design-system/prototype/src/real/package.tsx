@@ -32,7 +32,7 @@ import { ExcelFormsBlock } from './excel-forms';
 // Документ, который ИИ составил по форме заказчика: заголовок, абзацы и таблицы; пропуски «[…]» — жёлтые.
 function PartBody({ doc }: { doc: PartDoc }) {
   return (
-    <div className="space-y-3 text-[13px] leading-relaxed">
+    <div className="space-y-3 text-ui leading-relaxed">
       <p className="text-center text-sm font-semibold">
         <MarkedText text={doc.title} />
       </p>
@@ -40,7 +40,7 @@ function PartBody({ doc }: { doc: PartDoc }) {
         if (b.type === 'table')
           return (
             <div key={i} className="overflow-x-auto">
-              <table className="w-full border-collapse text-[12px]">
+              <table className="w-full border-collapse text-caption">
                 <tbody>
                   {b.rows.map((row, r) => (
                     <tr key={r} className={r === 0 ? 'bg-secondary/40 font-medium' : ''}>
