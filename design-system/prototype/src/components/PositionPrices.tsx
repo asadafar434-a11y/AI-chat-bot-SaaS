@@ -25,14 +25,14 @@ function Row({ r }: { r: PositionPriceRow }) {
       </p>
       {r.state === 'found' && r.median !== null && r.range ? (
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-          <span className="font-mono text-xl font-bold tracking-tight text-success">{rub(r.median)}{unit}</span>
+          <span className="tabular-nums text-xl font-bold tracking-tight text-success">{rub(r.median)}{unit}</span>
           <span className="text-caption text-muted-foreground">
             закупка, без НДС · диапазон {rub(r.range.from)} – {rub(r.range.to)} · цен {r.n}
           </span>
         </div>
       ) : (
         <p className="text-ui">
-          <span className="font-mono font-bold">{r.range ? (r.range.from === r.range.to ? rub(r.range.from) : `${rub(r.range.from)} – ${rub(r.range.to)}`) : ''}{unit}</span>
+          <span className="tabular-nums font-bold">{r.range ? (r.range.from === r.range.to ? rub(r.range.from) : `${rub(r.range.from)} – ${rub(r.range.to)}`) : ''}{unit}</span>
           <span className="text-caption text-muted-foreground"> · найдено цен: {r.n}, для вывода нужно не меньше пяти</span>
         </p>
       )}
@@ -90,7 +90,7 @@ function AnalogRow({ rows }: { rows: PositionPriceRow[] }) {
         {rows.length === 1 && r.qty && <span className="font-normal text-muted-foreground"> · {glue(r.qty)}{r.unit ? ` ${r.unit}` : ''}</span>}
       </p>
       <p className="text-ui">
-        <span className="font-mono font-bold">{a.range.from === a.range.to ? rub(a.range.from) : `${rub(a.range.from)} – ${rub(a.range.to)}`}{unit}</span>
+        <span className="tabular-nums font-bold">{a.range.from === a.range.to ? rub(a.range.from) : `${rub(a.range.from)} – ${rub(a.range.to)}`}{unit}</span>
         <span className="text-caption text-muted-foreground"> · аналогов: {a.n}</span>
       </p>
       <ul className="space-y-0.5 text-caption text-muted-foreground">

@@ -47,23 +47,23 @@ function Table({ title, lines, unit }: { title: string; lines: CrewLine[]; unit:
     <div className="overflow-x-auto">
       <table className="w-full min-w-[560px] text-caption">
         <caption className="pb-1 text-left text-muted-foreground">{title}</caption>
-        <thead className="text-muted-foreground">
+        <thead className="bg-surface-sunken text-muted-foreground">
           <tr className="border-b border-border">
-            <th className="py-1 pr-2 text-left font-medium">{unit === 'чел.' ? 'Должность' : 'Техника'}</th>
-            <th className="px-2 py-1 text-right font-medium whitespace-nowrap">{unit}</th>
-            <th className="px-2 py-1 text-right font-medium whitespace-nowrap">В месяц на {unit === 'чел.' ? '1 чел.' : '1 ед.'}</th>
-            <th className="px-2 py-1 text-right font-medium whitespace-nowrap">Всего в месяц</th>
-            <th className="py-1 pl-2 text-left font-medium">Источники</th>
+            <th className="px-2 py-2 text-left font-medium">{unit === 'чел.' ? 'Должность' : 'Техника'}</th>
+            <th className="px-2 py-2 text-right font-medium whitespace-nowrap">{unit}</th>
+            <th className="px-2 py-2 text-right font-medium whitespace-nowrap">В месяц на {unit === 'чел.' ? '1 чел.' : '1 ед.'}</th>
+            <th className="px-2 py-2 text-right font-medium whitespace-nowrap">Всего в месяц</th>
+            <th className="px-2 py-2 text-left font-medium">Источники</th>
           </tr>
         </thead>
         <tbody>
           {lines.map((l) => (
             <tr key={l.key} className="border-b border-border/60 align-top last:border-0">
-              <td className="py-1 pr-2">{l.name}</td>
-              <td className="px-2 py-1 text-right font-mono">{l.count}</td>
-              <td className={cx('px-2 py-1 text-right font-mono whitespace-nowrap', l.monthly === null && 'text-danger')}>{l.monthly === null ? '—' : rub(l.monthly)}</td>
-              <td className="px-2 py-1 text-right font-mono whitespace-nowrap">{l.total === null ? '—' : rub(l.total)}</td>
-              <td className="py-1 pl-2">
+              <td className="px-2 py-2">{l.name}</td>
+              <td className="px-2 py-2 text-right tabular-nums">{l.count}</td>
+              <td className={cx('px-2 py-2 text-right tabular-nums whitespace-nowrap', l.monthly === null && 'text-danger')}>{l.monthly === null ? '—' : rub(l.monthly)}</td>
+              <td className="px-2 py-2 text-right tabular-nums whitespace-nowrap">{l.total === null ? '—' : rub(l.total)}</td>
+              <td className="px-2 py-2">
                 <Sources line={l} />
               </td>
             </tr>
@@ -107,9 +107,9 @@ export function CrewCostCard({ need, cost, state, saved, error, perUnitLabel }: 
         <div className="space-y-1">
           <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             {cost.perUnit !== null ? (
-              <span className="font-mono text-2xl font-bold tracking-tight">≈ {rub(cost.perUnit)} за {perUnitLabel ?? 'единицу объёма'}</span>
+              <span className="tabular-nums text-2xl font-bold tracking-tight">≈ {rub(cost.perUnit)} за {perUnitLabel ?? 'единицу объёма'}</span>
             ) : (
-              <span className="font-mono text-2xl font-bold tracking-tight">≈ {rub(cost.monthTotal)} в месяц</span>
+              <span className="tabular-nums text-2xl font-bold tracking-tight">≈ {rub(cost.monthTotal)} в месяц</span>
             )}
           </p>
           <p className="text-caption text-muted-foreground">

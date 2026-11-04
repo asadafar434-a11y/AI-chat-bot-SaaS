@@ -19,7 +19,7 @@ export function CustomerQuotesCard({ quotes, nmck, step }: { quotes: CustomerQuo
         />
       </div>
       <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="font-mono text-2xl font-bold tracking-tight">
+        <span className="tabular-nums text-2xl font-bold tracking-tight">
           {quoteMoney(quotes.min)} – {quoteMoney(quotes.max)}
         </span>
         <span className="text-caption text-muted-foreground">
@@ -32,7 +32,7 @@ export function CustomerQuotesCard({ quotes, nmck, step }: { quotes: CustomerQuo
         {quotes.quotes.map((q) => (
           <li key={q.label} className="flex items-baseline justify-between gap-3 py-1.5 first:pt-0 last:pb-0">
             <span className="text-muted-foreground">{q.label}</span>
-            <span className={q.price === quotes.min ? 'font-mono font-bold' : 'font-mono'}>{quoteMoney(q.price)}</span>
+            <span className={q.price === quotes.min ? 'tabular-nums font-bold' : 'tabular-nums'}>{quoteMoney(q.price)}</span>
           </li>
         ))}
       </ul>

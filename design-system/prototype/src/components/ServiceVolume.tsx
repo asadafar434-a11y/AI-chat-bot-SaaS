@@ -26,7 +26,7 @@ export function ServiceVolumeCard({ volume, nmck, costs }: { volume: ServiceVolu
         <CertaintyBadge kind="confirmed" />
       </div>
       <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="font-mono text-2xl font-bold tracking-tight">
+        <span className="tabular-nums text-2xl font-bold tracking-tight">
           {num(volume.total)} {volume.unitsLabel}
         </span>
         <span className="text-caption text-muted-foreground">
@@ -36,12 +36,12 @@ export function ServiceVolumeCard({ volume, nmck, costs }: { volume: ServiceVolu
       </p>
       {perUnit !== null && (
         <p className="text-ui">
-          Заказчик закладывает ≈ <span className="font-mono font-bold">{rub2(perUnit)}</span> за {volume.unit} (начальная цена ÷ объём).
+          Заказчик закладывает ≈ <span className="tabular-nums font-bold">{rub2(perUnit)}</span> за {volume.unit} (начальная цена ÷ объём).
         </p>
       )}
       {ownUnit !== null ? (
         <p className="text-ui">
-          Ваша себестоимость: <span className="font-mono font-bold">{rub2(ownUnit)}</span> за {volume.unit}
+          Ваша себестоимость: <span className="tabular-nums font-bold">{rub2(ownUnit)}</span> за {volume.unit}
           {perUnit !== null && (
             <span className={perUnit >= ownUnit ? 'text-muted-foreground' : 'font-semibold text-danger'}>
               {perUnit >= ownUnit ? ` · запас до цены заказчика ${rub2(perUnit - ownUnit)}` : ` · выше цены заказчика на ${rub2(ownUnit - perUnit)} — по начальной цене убыток`}

@@ -15,9 +15,9 @@ export type SpecIssue = { position: string; text: string; host: string | null; u
 
 const TONE = { good: 'success', warn: 'warn', danger: 'danger' } as const;
 const restClass = (n: number | null) => (n === null ? 'text-muted-foreground' : n >= 0 ? 'text-success' : 'text-danger');
-const num = 'px-2 py-1.5 text-right font-mono';
-const head = 'px-2 pb-1.5 text-right text-micro font-medium text-muted-foreground';
-const headLeft = 'px-2 pb-1.5 text-left text-micro font-medium text-muted-foreground';
+const num = 'whitespace-nowrap px-2 py-2 text-right tabular-nums';
+const head = 'px-2 py-2 text-right text-micro font-medium text-muted-foreground';
+const headLeft = 'px-2 py-2 text-left text-micro font-medium text-muted-foreground';
 const note = 'text-caption text-muted-foreground';
 const SHEET_ROWS = 10;
 // Три цены вверху блока — всегда цветные плашки (владелец, 29.10.2026: «делай акцентно всегда этот блок в плашке цветно»): минимум зелёным, средняя — главным голубым цветом, максимум — жёлтым. Цвета — токены темы, читаются в обеих темах.
@@ -102,8 +102,8 @@ export function ExecutionCostCard({
         )}
         {!incomplete && low.atNmck !== null && base.atNmck !== null && (
           <span className="text-ui">
-            при НМЦ: экономный <span className={`font-mono font-semibold ${restClass(low.atNmck)}`}>{signedRub(low.atNmck)}</span> · базовый{' '}
-            <span className={`font-mono font-semibold ${restClass(base.atNmck)}`}>{signedRub(base.atNmck)}</span>
+            при НМЦ: экономный <span className={`tabular-nums font-semibold ${restClass(low.atNmck)}`}>{signedRub(low.atNmck)}</span> · базовый{' '}
+            <span className={`tabular-nums font-semibold ${restClass(base.atNmck)}`}>{signedRub(base.atNmck)}</span>
           </span>
         )}
       </div>
@@ -117,7 +117,7 @@ export function ExecutionCostCard({
           ].map((k) => (
             <div key={k.label} className={`rounded-lg border p-3 ${PRICE_TONE[k.tone].box}`}>
               <p className={`text-caption font-medium ${PRICE_TONE[k.tone].label}`}>{k.label}</p>
-              <p className={`font-mono text-2xl font-bold tracking-tight ${PRICE_TONE[k.tone].value}`}>{rubText(k.value)}</p>
+              <p className={`tabular-nums text-2xl font-bold tracking-tight ${PRICE_TONE[k.tone].value}`}>{rubText(k.value)}</p>
               <p className={`text-caption ${PRICE_TONE[k.tone].label}`}>{k.hint}</p>
             </div>
           ))}
@@ -127,10 +127,10 @@ export function ExecutionCostCard({
 
       <Section n={2} title="Самые дорогие позиции">
         <table className="w-full table-fixed text-caption">
-          <thead>
+          <thead className="bg-surface-sunken">
             <tr>
               <th className={headLeft}>Позиция</th>
-              <th className={`${head} w-12`}>Кол-во</th>
+              <th className={`${head} w-16`}>Кол-во</th>
               <th className={`${head} hidden w-28 sm:table-cell`}>Минимум</th>
               <th className={`${head} w-24`}>Средняя</th>
               <th className={`${head} hidden w-28 sm:table-cell`}>Максимум</th>
@@ -139,7 +139,7 @@ export function ExecutionCostCard({
           <tbody className="divide-y divide-border">
             {cost.top.map((g) => (
               <tr key={g.label}>
-                <td className="break-words px-2 py-1.5">{g.label}</td>
+                <td className="break-words px-2 py-2">{g.label}</td>
                 <td className={num}>{g.qty.toLocaleString('ru-RU')}</td>
                 <td className={`${num} hidden sm:table-cell`}>{rubText(g.min)}</td>
                 <td className={`${num} font-semibold`}>{rubText(g.mean)}</td>
@@ -160,7 +160,7 @@ export function ExecutionCostCard({
           предложения перевозчиков.
         </p>
         <table className="w-full table-fixed text-caption">
-          <thead>
+          <thead className="bg-surface-sunken">
             <tr>
               <th className={`${headLeft} w-24`}>Сценарий</th>
               <th className={head}>Товары</th>
@@ -191,7 +191,7 @@ export function ExecutionCostCard({
       ) : (
       <Section n={4} title="По какой цене участвовать">
         <table className="w-full table-fixed text-caption">
-          <thead>
+          <thead className="bg-surface-sunken">
             <tr>
               <th className={`${headLeft} w-24`}>Сценарий</th>
               <th className={head}>Остаток при НМЦ</th>
@@ -216,18 +216,18 @@ export function ExecutionCostCard({
         {sheet && sheet.rows.length > 0 ? (
           <>
             <table className="w-full table-fixed text-caption">
-              <thead>
+              <thead className="bg-surface-sunken">
                 <tr>
                   <th className={headLeft}>Позиция</th>
-                  <th className={`${head} hidden w-32 sm:table-cell`}>У заказчика, за ед.</th>
-                  <th className={`${head} w-32`}>В интернете, за ед.</th>
+                  <th className={`${head} hidden w-44 sm:table-cell`}>У заказчика, за ед.</th>
+                  <th className={`${head} w-40`}>В интернете, за ед.</th>
                   <th className={`${head} w-28`}>В расчёте</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {sheet.rows.slice(0, SHEET_ROWS).map((r) => (
                   <tr key={r.id}>
-                    <td className="break-words px-2 py-1.5">
+                    <td className="break-words px-2 py-2">
                       {r.name}
                       {r.qty !== null && <span className="font-normal text-muted-foreground"> · {r.qty.toLocaleString('ru-RU')} шт.</span>}
                       {r.web && (

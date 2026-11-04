@@ -147,3 +147,14 @@ test('выпадающий список: родной select в общем ст�
   assert.match(out, /pointer-events-none/, 'стрелка не перехватывает нажатие');
   assert.match(html(h(Select, { dense: true }, h('option', null, 'A'))), /h-8 w-full px-2\.5 text-ui/);
 });
+
+test('блоки экрана закупки в «Аналитике»: суммы — Geist с цифрами одной ширины, а не моно; шапки таблиц — «колодец», столбцы чисел не переносятся', () => {
+  const read = (f) => readFileSync(path.join(root, 'src/components', f), 'utf8');
+  for (const file of ['ServiceVolume.tsx', 'CrewCost.tsx', 'ExecutionCost.tsx', 'PositionPrices.tsx', 'CustomerQuotes.tsx', 'AnalyticsSummary.tsx', 'AnalyticsChart.tsx', 'TenderRating.tsx']) {
+    assert.doesNotMatch(read(file), /\bfont-mono\b/, `${file}: суммы и числа — tabular-nums, моно только для кодов`);
+  }
+  const execution = read('ExecutionCost.tsx');
+  assert.match(execution, /const num = 'whitespace-nowrap px-2 py-2 text-right tabular-nums'/, 'число в ячейке не переносится');
+  assert.equal((execution.match(/<thead className="bg-surface-sunken">/g) ?? []).length, 4, 'у всех четырёх таблиц шапка — «колодец»');
+  assert.match(read('CrewCost.tsx'), /<thead className="bg-surface-sunken text-muted-foreground">/);
+});
