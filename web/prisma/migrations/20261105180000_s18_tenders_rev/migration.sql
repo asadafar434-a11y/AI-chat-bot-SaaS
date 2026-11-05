@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Tender" ADD COLUMN "rev" INTEGER NOT NULL DEFAULT 1;

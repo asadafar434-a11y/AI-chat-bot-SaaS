@@ -710,3 +710,29 @@ model PriceObservation {
   @@index([unit, observedAt])
   @@map("PriceObservation")
 }
+
+/// Закупки «Поиска закупок»: общий список для всех пользователей (как реестр ГИСП и цены — без организации). Раз в сутки сервер сам обновляет его из Ростендера
+/// (server/rostender/sync.ts): новые закупки добавляются карточкой с документами, закончившиеся по сроку удаляются. Сами файлы документов не хранятся — только ссылки.
+model Tender {
+  id         String    @id @default(cuid())
+  /// Номер закупки: номер ЕИС или собственный номер Ростендера («rt123»).
+  tenderId   String    @unique @db.VarChar(60)
+  /// Откуда карточка: «rostender».
+  source     String    @db.VarChar(20)
+  /// Номер закупки в самом сервисе (Ростендер): по нему видно, какие закупки из списка уже загружены, до запроса карточки.
+  externalId String?   @db.VarChar(40)
+  /// Окончание подачи заявок: по нему отбираются действующие и убираются закончившиеся.
+  deadline   DateTime? @db.Date
+  /// Карточка закупки (TenderListing) как JSON: название, цена, сроки, заказчик, документы.
+  data       Json
+  /// Версия набора полей карточки (CARD_REV в lib/rostender.ts): у карточек со старой версией полей меньше, сервер со временем загружает их заново.
+  rev        Int       @default(1)
+  /// Когда закупку последний раз видели в списках Ростендера: по самому свежему значению видно, когда было последнее обновление.
+  lastSeenAt DateTime  @default(now()) @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@index([deadline])
+  @@index([source, externalId])
+  @@map("Tender")
+}

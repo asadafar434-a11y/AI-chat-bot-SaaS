@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
-import { eisNumberUrl, SORT_LABELS, type SearchResult, type TenderFilters, type TenderListing, type TenderSort } from '@/lib/tender-search';
+import { useState } from 'react';
+import { eisNumberUrl, SORT_LABELS, type Facets, type SearchResult, type TenderFilters, type TenderListing, type TenderSort } from '@/lib/tender-search';
 import { plural } from '@/lib/plural';
-import { ArrowUpRight, Copy, Loader2, Plus, Search, Trash2, Upload } from '../lib/icons';
-import { Badge, Button, Card, Checkbox, Chip, HelpTip, fieldClass, fieldBase } from './ui';
+import { ArrowUpRight, ChevronDown, Copy, Download, FileText, Loader2, Mail, Phone, Search, Trash2 } from '../lib/icons';
+import { Alert, Select } from './data';
+import { Badge, Button, Card, Checkbox, Chip, HelpTip, Modal, fieldClass, fieldBase } from './ui';
 import { ScreenHeader } from './ScreenHeader';
 import { SummaryCard } from './SummaryCard';
 
@@ -29,41 +30,288 @@ const numberOrNull = (text: string): number | null => {
   return text.trim() !== '' && Number.isFinite(n) && n >= 0 ? n : null;
 };
 
-function Row({ l, today, onNew }: { l: TenderListing; today: string; onNew: () => void }) {
-  const left = l.deadline ? dayDiff(l.deadline, today) : null;
+const sizeText = (bytes: number | null) => (bytes === null ? '' : bytes >= 1_048_576 ? `${(bytes / 1_048_576).toFixed(1).replace('.', ',')} МБ` : `${Math.max(1, Math.round(bytes / 1024))} КБ`);
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+};
+
+/** Документы закупки: список файлов со ссылками и архив одним файлом. Раскрывается по нажатию: у карточки их бывает много. */
+function Docs({ l, defaultOpen = false }: { l: TenderListing; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const docs = l.docs ?? [];
+  if (docs.length === 0 && !l.archive) return null;
   return (
-    <li className="space-y-1.5 border-b border-border px-4 py-3 last:border-0">
-      <div className="flex items-start justify-between gap-x-4">
-        <p className="min-w-0 flex-1 break-words text-ui font-medium">{l.title}</p>
-        <span className={l.price !== null ? 'shrink-0 text-right text-lg font-bold tabular-nums' : 'shrink-0 text-right text-caption text-muted-foreground'}>{l.price !== null ? rub(l.price) : 'цена не указана'}</span>
+    <div className="rounded-lg border border-border bg-surface-sunken/60">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+        <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="inline-flex min-h-7 items-center gap-1.5 text-ui font-medium">
+          <FileText className="size-3.5 text-muted-foreground" />
+          Документы · {docs.length}
+          <ChevronDown className={`size-3.5 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+        {l.archive && (
+          <a href={l.archive} target="_blank" rel="noopener noreferrer" className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 text-caption font-medium hover:bg-secondary">
+            <Download className="size-3.5" /> Скачать всё архивом
+          </a>
+        )}
       </div>
-      {(l.law || l.method) && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {l.law && <Badge tone="neutral">{l.law}</Badge>}
-          {l.method && <Badge tone="neutral" wrap>{l.method}</Badge>}
-        </div>
+      {open && (
+        <ul className="divide-y divide-border border-t border-border">
+          {docs.map((d) => (
+            <li key={d.link}>
+              <a href={d.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 px-3 py-2 text-ui hover:bg-secondary/60">
+                <span className="min-w-0 flex-1 break-words">{d.title}</span>
+                {d.ext && <Badge tone="neutral">{d.ext}</Badge>}
+                {d.size !== null && <span className="shrink-0 text-micro tabular-nums text-muted-foreground">{sizeText(d.size)}</span>}
+                <Download className="size-3.5 shrink-0 text-muted-foreground" />
+              </a>
+            </li>
+          ))}
+        </ul>
       )}
-      {l.customer && <p className="break-words text-caption text-muted-foreground">{l.customer}</p>}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-        {l.deadline && (
-          <span className={`text-caption ${left !== null && left >= 0 && left <= 3 ? 'font-medium text-warn-foreground' : 'text-muted-foreground'}`}>
-            заявки до {ruDate(l.deadline)}
-            {left !== null && left >= 0 && ` · ${left === 0 ? 'сегодня последний день' : `осталось ${left} ${plural(left, 'день', 'дня', 'дней')}`}`}
-            {left !== null && left < 0 && ' · приём закончился'}
+    </div>
+  );
+}
+
+/** Номер закупки в ЕИС: из ссылки на карточку или сам номер, если он настоящий (19 цифр у 44-ФЗ, 11 у 223-ФЗ). */
+const eisNumberOf = (l: TenderListing): string | null => /(?:regNumber|reestrNumber)=(\d{11,19})/.exec(l.url ?? '')?.[1] ?? (/^(?:\d{19}|3\d{10})$/.test(l.id) ? l.id : null);
+
+const leftText = (left: number | null) => (left === null ? '' : left < 0 ? ' · приём закончился' : left === 0 ? ' · сегодня последний день' : ` · осталось ${left} ${plural(left, 'день', 'дня', 'дней')}`);
+
+/** Закупка в списке — компактная карточка: главное в три строки; всё остальное — в окне по нажатию. */
+function Row({ l, today, onOpen }: { l: TenderListing; today: string; onOpen: () => void }) {
+  const left = l.deadline ? dayDiff(l.deadline, today) : null;
+  const docs = l.docs?.length ?? 0;
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`Открыть закупку: ${l.title}`}
+        className="block w-full space-y-1.5 rounded-xl border border-border bg-card px-4 py-3 text-left transition-colors hover:border-border-strong hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <span className="flex items-start justify-between gap-x-4">
+          <span className="min-w-0 flex-1 break-words text-subtitle font-semibold">{l.title}</span>
+          <span className={l.price !== null ? 'shrink-0 text-right text-lg font-bold tabular-nums' : 'shrink-0 text-right text-caption text-muted-foreground'}>{l.price !== null ? rub(l.price) : 'цена не указана'}</span>
+        </span>
+        {(l.law || l.smp || l.method) && (
+          <span className="flex flex-wrap items-center gap-1.5">
+            {l.law && <Badge tone="neutral">{l.law}</Badge>}
+            {l.smp && <Badge tone="success">для МСП</Badge>}
+            {l.method && <Badge tone="neutral" wrap>{l.method}</Badge>}
           </span>
         )}
-        {l.publishedAt && <span className="text-caption text-muted-foreground">размещено {ruDate(l.publishedAt)}</span>}
-        <span className="font-mono text-micro text-muted-foreground">№ {l.id}</span>
-      </div>
-      <div className="flex flex-wrap items-center gap-2 pt-0.5">
-        <a href={l.url ?? eisNumberUrl(l.id)} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-ui font-medium hover:bg-secondary">
-          Открыть в ЕИС <ArrowUpRight className="size-3.5" />
-        </a>
-        <Button size="sm" variant="ghost" onClick={onNew}>
-          <Plus className="size-3.5" /> Загрузить документы
-        </Button>
-      </div>
+        {l.customer && <span className="line-clamp-1 block break-words text-caption text-muted-foreground">{l.customer}</span>}
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-caption text-muted-foreground">
+          {l.deadline && (
+            <span className={left !== null && left >= 0 && left <= 3 ? 'font-medium text-warn-foreground' : ''}>
+              заявки до {ruDate(l.deadline)}
+              {leftText(left)}
+            </span>
+          )}
+          {l.region && <span>{l.region}</span>}
+          {docs > 0 && <span>{docs} {plural(docs, 'документ', 'документа', 'документов')}</span>}
+        </span>
+      </button>
     </li>
+  );
+}
+
+function Fact({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0 space-y-0.5">
+      <dt className="text-micro text-muted-foreground">{label}</dt>
+      <dd className="break-words text-ui">{children}</dd>
+    </div>
+  );
+}
+
+function Block({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-2">
+      <h3 className="text-micro font-medium uppercase tracking-wider text-muted-foreground">{title}</h3>
+      {children}
+    </section>
+  );
+}
+
+/** Закупка целиком, в окне: шапка как в списке, сроки, заказчик и контакты, место, позиции, документы со ссылками. Показано только то, что есть в выгрузке. */
+export function TenderDetails({ l, today }: { l: TenderListing; today: string }) {
+  const left = l.deadline ? dayDiff(l.deadline, today) : null;
+  const positions = l.positions ?? [];
+  const more = (l.positionsTotal ?? positions.length) - positions.length;
+  const place = [l.city, l.place].filter((x, i, a) => x && a.indexOf(x) === i).join(' · ');
+  return (
+    <div className="space-y-5 px-5 py-4">
+        <div className="space-y-2">
+          <div className="flex items-start justify-between gap-x-4">
+            <p className="min-w-0 flex-1 break-words text-xl font-semibold">{l.title}</p>
+            <span className={l.price !== null ? 'shrink-0 text-right text-xl font-bold tabular-nums' : 'shrink-0 text-right text-caption text-muted-foreground'}>{l.price !== null ? rub(l.price) : 'цена не указана'}</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {l.law && <Badge tone="neutral">{l.law}</Badge>}
+            {l.method && <Badge tone="neutral" wrap>{l.method}</Badge>}
+            {l.smp && <Badge tone="success">для МСП</Badge>}
+            {l.platform && <Badge tone="info">{l.platform}</Badge>}
+            {l.stage && <Badge tone="neutral" dot>{l.stage}</Badge>}
+            {l.plan && <Badge tone="warn">план-график</Badge>}
+          </div>
+          {l.customer && (
+            <p className="break-words text-ui text-muted-foreground">
+              {l.customer}
+              {l.customerInn && <span className="tabular-nums"> · ИНН {l.customerInn}</span>}
+            </p>
+          )}
+        </div>
+
+        <Block title="Сроки">
+          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {l.deadline && (
+              <Fact label="Подача заявок до">
+                <span className={left !== null && left >= 0 && left <= 3 ? 'font-medium text-warn-foreground' : ''}>
+                  {ruDate(l.deadline)}
+                  {l.deadlineTime && `, ${l.deadlineTime} (МСК)`}
+                  {leftText(left)}
+                </span>
+              </Fact>
+            )}
+            {l.publishedAt && <Fact label="Размещено">{ruDate(l.publishedAt)}</Fact>}
+          </dl>
+        </Block>
+
+        {(place || l.region || (l.branches && l.branches.length > 0)) && (
+          <Block title="Где и что">
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {l.region && <Fact label="Регион">{l.region}</Fact>}
+              {place && <Fact label="Место поставки">{place}</Fact>}
+              {l.branches && l.branches.length > 0 && <Fact label="Отрасль">{l.branches.join('; ')}</Fact>}
+            </dl>
+          </Block>
+        )}
+
+        {l.contact && (
+          <Block title="Контакты заказчика">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-ui">
+              {l.contact.person && <span>{l.contact.person}</span>}
+              {l.contact.phone && (
+                <a href={`tel:${l.contact.phone.replace(/[^\d+]/g, '')}`} className="inline-flex items-center gap-1 hover:underline">
+                  <Phone className="size-3.5 text-muted-foreground" /> <span className="tabular-nums">{l.contact.phone}</span>
+                </a>
+              )}
+              {l.contact.email && (
+                <a href={`mailto:${l.contact.email}`} className="inline-flex items-center gap-1 break-all hover:underline">
+                  <Mail className="size-3.5 text-muted-foreground" /> {l.contact.email}
+                </a>
+              )}
+            </div>
+          </Block>
+        )}
+
+        {positions.length > 0 && (
+          <Block title={`Позиции · ${l.positionsTotal ?? positions.length}`}>
+            <ul className="divide-y divide-border rounded-lg border border-border">
+              {positions.map((p, i) => (
+                <li key={i} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5 px-3 py-2">
+                  <span className="min-w-0 flex-1 break-words text-ui">{p.name}</span>
+                  <span className="shrink-0 text-right text-caption tabular-nums text-muted-foreground">
+                    {p.quantity !== null && p.quantity !== undefined && `${new Intl.NumberFormat('ru-RU').format(p.quantity)}${p.unit ? ` ${p.unit}` : ''}`}
+                    {(p.quantity === null || p.quantity === undefined) && p.unit && p.unit}
+                    {p.price !== null && ` · ${rub(p.price)}`}
+                  </span>
+                  {(p.okpd2 || p.ktru) && (
+                    <span className="basis-full font-mono text-micro text-muted-foreground">
+                      {p.okpd2 && `ОКПД2 ${p.okpd2}`}
+                      {p.okpd2 && p.ktru && ' · '}
+                      {p.ktru && `КТРУ ${p.ktru}`}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {more > 0 && <p className="text-caption text-muted-foreground">и ещё {more} — полный список в документах закупки</p>}
+          </Block>
+        )}
+
+        {((l.docs?.length ?? 0) > 0 || l.archive) && (
+          <Block title="Документы">
+            <Docs l={l} defaultOpen />
+          </Block>
+        )}
+      </div>
+  );
+}
+
+function TenderModal({ l, today, onClose }: { l: TenderListing; today: string; onClose: () => void }) {
+  const eis = eisNumberOf(l);
+  const link = l.url ?? eisNumberUrl(l.id);
+  const host = hostOf(link);
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="Закупка"
+      subtitle={eis ? `№ ${eis}` : l.rostenderId ? `Ростендер № ${l.rostenderId}` : `№ ${l.id}`}
+      footer={
+        <a href={link} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-ui font-medium hover:bg-secondary">
+                {host.includes('rostender') ? 'Открыть на Ростендере' : 'Открыть в ЕИС'} <ArrowUpRight className="size-3.5" />
+              </a>
+      }
+    >
+      <TenderDetails l={l} today={today} />
+    </Modal>
+  );
+}
+
+export type RostenderUi = {
+  /** Задан ли ключ Ростендера на сервере (без него список не обновляется). null — ещё не спрашивали. */
+  configured: boolean | null;
+  /** Когда сервер последний раз обновлял список (ISO); null — ещё ни разу. */
+  updatedAt: string | null;
+  /** Сколько действующих закупок на сервере. */
+  total: number;
+  /** Сколько места занимает то, что загружено: карточки — текст на сервере, документы — размеры файлов из карточек (сами файлы не хранятся). */
+  totals?: { cards: number; cardsBytes: number; docs: number; docsBytes: number; docsNoSize: number };
+};
+
+const bytesText = (bytes: number) => (bytes >= 1_073_741_824 ? `${(bytes / 1_073_741_824).toFixed(2).replace('.', ',')} ГБ` : bytes >= 1_048_576 ? `${(bytes / 1_048_576).toFixed(1).replace('.', ',')} МБ` : `${Math.max(1, Math.round(bytes / 1024))} КБ`);
+
+/** Закупки сервера (Ростендер): обновляются сами раз в сутки, участник ничего не загружает — только строка о состоянии. */
+function RostenderLine({ r }: { r: RostenderUi }) {
+  if (r.configured === false && r.total === 0) {
+    return (
+      <Alert tone="info" title="Автообновление закупок не настроено">
+        Ключ Ростендера нужен только владельцу сервера: строка <span className="font-mono">ROSTENDER_API_KEY=ключ</span> в <span className="font-mono">web/.env.local</span>, затем перезапуск продукта.
+      </Alert>
+    );
+  }
+  if (r.total === 0) {
+    return <p className="text-caption text-muted-foreground">Закупки загружаются автоматически и обновляются раз в сутки — первая загрузка ещё идёт, загляните позже.</p>;
+  }
+  return (
+    <p className="text-caption text-muted-foreground">
+      Закупки обновляются автоматически раз в сутки
+      {r.updatedAt && ` · обновлено ${new Date(r.updatedAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`}
+      {' · '}
+      <span className="font-medium tabular-nums text-foreground">{r.total}</span> {plural(r.total, 'действующая закупка', 'действующие закупки', 'действующих закупок')}
+      {r.totals && r.totals.cards > 0 && (
+        <>
+          {' · документов '}
+          <span className="tabular-nums">{r.totals.docs}</span>
+          {r.totals.docsBytes > 0 && (
+            <>
+              {' ('}
+              <span className="tabular-nums">{bytesText(r.totals.docsBytes)}</span>
+              {r.totals.docsNoSize > 0 && `, у ${r.totals.docsNoSize} размер не назван`}
+              {')'}
+            </>
+          )}
+          {' — ссылки, сами файлы не скачиваются, пока вы их не откроете'}
+        </>
+      )}
+    </p>
   );
 }
 
@@ -76,12 +324,12 @@ export function TenderSearch({
   loadedAt,
   today,
   eisUrl,
-  bookmarklet,
-  onImport,
   importNote,
   onClear,
-  onNew,
   extension,
+  facets,
+  hasRostender = false,
+  rostender,
 }: {
   filters: TenderFilters;
   onFilters: (patch: Partial<TenderFilters>) => void;
@@ -92,88 +340,31 @@ export function TenderSearch({
   today: string;
   /** Ссылка на поиск ЕИС с теми же фильтрами. */
   eisUrl: string;
-  /** Адрес закладки «Скопировать закупки». */
-  bookmarklet: string;
+  /** Адрес закладки «Скопировать закупки» — загрузка из ЕИС скрыта с экрана 05.11.2026 по просьбе владельца, код остался. */
+  bookmarklet?: string;
   /** Текст таблицы: вставка или файл. Возвращает сообщение об итоге в importNote. */
-  onImport: (text: string) => void;
+  onImport?: (text: string) => void;
   importNote: { tone: 'info' | 'danger'; text: string } | null;
-  onClear: () => void;
-  onNew: () => void;
+  /** Очистить выгрузку из ЕИС (она в браузере). Нет — кнопки нет: закупки сервера очистить нельзя, он их обновляет сам. */
+  onClear?: () => void;
+  /** Больше не используется: кнопки «Загрузить документы» в списке нет (05.11.2026). */
+  onNew?: () => void;
   /** Расширение Chrome «поиск закупок в ЕИС»: стоит ли оно, идёт ли поиск, запуск. Нет — прежний путь через закладку. */
   extension?: { available: boolean; busy: boolean; onSearch: () => void };
+  /** Что есть в выгрузке: регионы, способы, площадки — для выпадающих списков. */
+  facets?: Facets;
+  /** В выгрузке есть закупки из Ростендера: тогда показываются фильтры «МСП», «с документами», «площадка», «срок». */
+  hasRostender?: boolean;
+  /** Закупки сервера (Ростендер): строка о состоянии автообновления. Нет — строки нет. */
+  rostender?: RostenderUi;
 }) {
-  const [paste, setPaste] = useState('');
   const [copied, setCopied] = useState(false);
-  const file = useRef<HTMLInputElement>(null);
-  const link = useRef<HTMLAnchorElement>(null);
-  // React не пускает «javascript:» в href: закладку ставим на ссылку напрямую.
-  useEffect(() => {
-    link.current?.setAttribute('href', bookmarklet);
-  }, [bookmarklet]);
+  const [opened, setOpened] = useState<TenderListing | null>(null);
   const has = result.total > 0;
-
-  const loadBody = (
-    <>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-subtitle font-bold">Загрузить закупки из ЕИС</span>
-            <HelpTip
-              align="start"
-              content="1) Нажмите «Найти в ЕИС». 2) Перетащите кнопку «Скопировать закупки» на панель закладок браузера (один раз). 3) Когда в ЕИС открыты результаты, нажмите эту закладку — таблица на странице (до 50 закупок) скопируется. 4) Вставьте её сюда. Закупки читаются на вашей стороне: наш сервер в ЕИС не ходит. Для следующих страниц ЕИС повторите."
-            />
-          </div>
-          <ol className="space-y-1 text-ui text-muted-foreground">
-            <li>1. «Найти в ЕИС» выше — откроются результаты.</li>
-            <li>
-              2. Нажмите закладку{' '}
-              <a ref={link} onClick={(e) => e.preventDefault()} draggable className="inline-flex h-8 cursor-grab items-center rounded-md border border-dashed border-foreground px-3 text-caption font-medium text-foreground">
-                Скопировать закупки
-              </a>{' '}
-              <span className="text-caption">(перетащите её на панель закладок один раз)</span>.
-            </li>
-            <li>3. Вставьте скопированное:</li>
-          </ol>
-          <textarea
-            value={paste}
-            onChange={(e) => setPaste(e.target.value)}
-            rows={3}
-            aria-label="Таблица закупок из ЕИС"
-            placeholder="Вставьте таблицу (Ctrl+V)"
-            className={`${fieldBase} w-full px-2 py-1.5 text-micro`}
-          />
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              size="sm"
-              disabled={paste.trim() === ''}
-              onClick={() => {
-                onImport(paste);
-                setPaste('');
-              }}
-            >
-              Загрузить
-            </Button>
-            <input
-              ref={file}
-              type="file"
-              accept=".csv,.tsv,.txt"
-              aria-label="Файл выгрузки закупок"
-              className="sr-only"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                e.target.value = '';
-                if (f) void f.text().then(onImport);
-              }}
-            />
-            <Button size="sm" variant="secondary" onClick={() => file.current?.click()}>
-              <Upload className="size-3.5" /> Файл CSV
-            </Button>
-          </div>
-          <p className="text-micro text-muted-foreground">Живая лента без выгрузки — скоро: нужен доступ к данным ЕИС с нашего сервера.</p>
-    </>
-  );
 
   // Итог фильтров в одну строку — виден, когда карточка свёрнута.
   const filterBrief =
-    [filters.query.trim() && `«${filters.query.trim()}»`, filters.customer.trim() && `заказчик: ${filters.customer.trim()}`, filters.law !== 'any' && `${filters.law}-ФЗ`, filters.activeOnly && 'приём заявок идёт'].filter(Boolean).join(' · ') || 'Фильтры не заданы';
+    [filters.query.trim() && `«${filters.query.trim()}»`, filters.customer.trim() && `заказчик: ${filters.customer.trim()}`, filters.law !== 'any' && (filters.law === 'commercial' ? 'коммерческие' : `${filters.law}-ФЗ`), filters.region && filters.region, filters.method && filters.method, filters.platform && filters.platform, filters.smp && 'для МСП', filters.withDocs && 'с документами', filters.daysLeft !== null && (filters.daysLeft === 1 ? 'последний день' : `ещё ${filters.daysLeft} дн.`), filters.activeOnly && 'приём заявок идёт'].filter(Boolean).join(' · ') || 'Фильтры не заданы';
 
   return (
     <div className="animate-fade-up space-y-4">
@@ -181,16 +372,18 @@ export function TenderSearch({
         icon="search"
         title="Поиск закупок"
         hint={
-          has ? `В выгрузке ${result.total} ${plural(result.total, 'закупка', 'закупки', 'закупок')}${loadedAt ? ` · загружена ${new Date(loadedAt).toLocaleDateString('ru-RU')}` : ''}` : 'Задайте фильтры, найдите закупки в ЕИС и загрузите их сюда.'
+          has ? (hasRostender ? `Закупок в списке: ${result.total}` : `В выгрузке ${result.total} ${plural(result.total, 'закупка', 'закупки', 'закупок')}${loadedAt ? ` · загружена ${new Date(loadedAt).toLocaleDateString('ru-RU')}` : ''}`) : rostender ? 'Закупки загружаются автоматически и обновляются раз в сутки.' : 'Задайте фильтры, найдите закупки в ЕИС и загрузите их сюда.'
         }
         aside={
-          has && (
+          has && onClear && (
             <Button size="sm" variant="ghost" onClick={onClear}>
               <Trash2 className="size-3.5" /> Очистить выгрузку
             </Button>
           )
         }
       />
+
+      {rostender && <RostenderLine r={rostender} />}
 
       <SummaryCard
         lead={<Search className="size-5 shrink-0 text-muted-foreground" />}
@@ -211,7 +404,17 @@ export function TenderSearch({
           <Chip on={filters.law === 'any'} onClick={() => onFilters({ law: 'any' })} label="44-ФЗ и 223-ФЗ" />
           <Chip on={filters.law === '44'} onClick={() => onFilters({ law: '44' })} label="44-ФЗ" />
           <Chip on={filters.law === '223'} onClick={() => onFilters({ law: '223' })} label="223-ФЗ" />
+          {hasRostender && <Chip on={filters.law === 'commercial'} onClick={() => onFilters({ law: 'commercial' })} label="Коммерческие" />}
         </div>
+        {hasRostender && (
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Срок подачи заявок">
+            <span className="text-micro text-muted-foreground">Заявки принимают:</span>
+            <Chip on={filters.daysLeft === null} onClick={() => onFilters({ daysLeft: null })} label="Любой срок" />
+            <Chip on={filters.daysLeft === 1} onClick={() => onFilters({ daysLeft: 1 })} label="Сегодня последний день" />
+            <Chip on={filters.daysLeft === 3} onClick={() => onFilters({ daysLeft: 3 })} label="Ещё 3 дня" />
+            <Chip on={filters.daysLeft === 7} onClick={() => onFilters({ daysLeft: 7 })} label="Ещё неделя" />
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-ui">
           <Checkbox checked={filters.activeOnly} onChange={(v) => onFilters({ activeOnly: v })}>
             Только приём заявок идёт
@@ -223,6 +426,56 @@ export function TenderSearch({
             <HelpTip align="start" content="ЕИС ищет слова и в названии, и в позициях внутри закупки. Галочка оставляет в списке только закупки, где слово есть в самом названии." />
           </span>
         </div>
+        {hasRostender && (
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-ui">
+            <Checkbox checked={filters.smp} onChange={(v) => onFilters({ smp: v })}>
+              Только для малого и среднего бизнеса
+            </Checkbox>
+            <Checkbox checked={filters.withDocs} onChange={(v) => onFilters({ withDocs: v })}>
+              Только с документами
+            </Checkbox>
+          </div>
+        )}
+        {facets && (facets.regions.length > 1 || facets.methods.length > 1 || facets.platforms.length > 1) && (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {facets.regions.length > 1 && (
+              <Field label="Регион">
+                <Select dense value={filters.region} onChange={(e) => onFilters({ region: e.target.value })}>
+                  <option value="">Все регионы</option>
+                  {facets.regions.map((f) => (
+                    <option key={f.value} value={f.value}>
+                      {f.value} · {f.count}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            )}
+            {facets.methods.length > 1 && (
+              <Field label="Способ закупки">
+                <Select dense value={filters.method} onChange={(e) => onFilters({ method: e.target.value })}>
+                  <option value="">Любой способ</option>
+                  {facets.methods.map((f) => (
+                    <option key={f.value} value={f.value}>
+                      {f.value} · {f.count}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            )}
+            {hasRostender && facets.platforms.length > 1 && (
+              <Field label="Площадка">
+                <Select dense value={filters.platform} onChange={(e) => onFilters({ platform: e.target.value })}>
+                  <option value="">Все площадки</option>
+                  {facets.platforms.map((f) => (
+                    <option key={f.value} value={f.value}>
+                      {f.value} · {f.count}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            )}
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Field label="Цена от, ₽">
             <input inputMode="numeric" value={filters.priceFrom ?? ''} onChange={(e) => onFilters({ priceFrom: numberOrNull(e.target.value) })} placeholder="0" className={`${inputClass} text-right tabular-nums`} />
@@ -291,20 +544,9 @@ export function TenderSearch({
       </div>
       </SummaryCard>
 
-      {extension?.available ? (
-        <Card className="p-4">
-          <details>
-            <summary className="cursor-pointer text-ui font-medium text-muted-foreground">Загрузка без расширения: закладка или вставка таблицы</summary>
-            <div className="mt-3 space-y-3">{loadBody}</div>
-          </details>
-        </Card>
-      ) : (
-        <Card className="space-y-3 p-4">{loadBody}</Card>
-      )}
-
       {has && (
-        <Card className="p-0">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-subtitle font-bold">
               Найдено: {result.items.length}
               {result.items.length > 100 && ' · показаны первые 100'}
@@ -321,21 +563,24 @@ export function TenderSearch({
             </label>
           </div>
           {result.items.length === 0 ? (
-            <p className="px-4 py-6 text-center text-ui text-muted-foreground">По этим фильтрам ничего нет. Ослабьте цену, даты или слова.</p>
+            <Card className="p-6">
+              <p className="text-center text-ui text-muted-foreground">По этим фильтрам ничего нет. Ослабьте цену, даты или слова.</p>
+            </Card>
           ) : (
-            <ul>
+            <ul className="space-y-4">
               {result.items.slice(0, 100).map((l) => (
-                <Row key={l.id} l={l} today={today} onNew={onNew} />
+                <Row key={l.id} l={l} today={today} onOpen={() => setOpened(l)} />
               ))}
             </ul>
           )}
+          {opened && <TenderModal l={opened} today={today} onClose={() => setOpened(null)} />}
           {(result.hiddenNoPrice > 0 || result.hiddenNoDate > 0) && (
-            <p className="border-t border-border px-4 py-2.5 text-micro text-muted-foreground">
+            <p className="text-micro text-muted-foreground">
               {result.hiddenNoPrice > 0 && `Скрыто без цены в выгрузке: ${result.hiddenNoPrice}. `}
               {result.hiddenNoDate > 0 && `Скрыто без даты размещения: ${result.hiddenNoDate}.`}
             </p>
           )}
-        </Card>
+        </div>
       )}
     </div>
   );

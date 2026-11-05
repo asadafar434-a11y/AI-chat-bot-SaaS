@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EIS_BOOKMARKLET } from '@/lib/eis-copy-script';
 import { extensionVersion, searchViaExtension } from '@/lib/eis-extension';
 import { importTenders } from '@/lib/tender-import';
-import { EMPTY_FILTERS, eisOrdersUrl, searchTenders, type TenderFilters, type TenderListing, type TenderSort } from '@/lib/tender-search';
+import { EMPTY_FILTERS, eisOrdersUrl, facetsOf, searchTenders, type TenderFilters, type TenderListing, type TenderSort } from '@/lib/tender-search';
 import { clearTenders, getTenders, saveTenders } from '@/lib/tender-store';
 import { plural } from '@/lib/plural';
-import { TenderSearch } from '../components/TenderSearch';
+import { TenderSearch, type RostenderUi } from '../components/TenderSearch';
 
 // «Поиск закупок» с настоящими данными: выгрузка и фильтры живут в браузере (lib/tender-store.ts), отбор — lib/tender-search.ts, чтение таблицы — lib/tender-import.ts.
 
@@ -13,6 +13,20 @@ const todayIso = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
+
+type ServerList = { configured: boolean; listings: TenderListing[]; total: number; updatedAt: string | null };
+
+// Список закупок с нашего сервера (/api/rostender, действие list): его раз в сутки сам обновляет сервер, ключ Ростендера сюда не приходит.
+async function serverList(): Promise<ServerList | null> {
+  try {
+    const res = await fetch('/api/rostender', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) });
+    if (!res.ok) return null;
+    const body = (await res.json()) as Partial<ServerList>;
+    return { configured: body.configured === true, listings: Array.isArray(body.listings) ? body.listings : [], total: typeof body.total === 'number' ? body.total : 0, updatedAt: typeof body.updatedAt === 'string' ? body.updatedAt : null };
+  } catch {
+    return null;
+  }
+}
 
 export function RealTenderSearch({ onNew }: { onNew: () => void }) {
   const [listings, setListings] = useState<TenderListing[]>([]);
@@ -31,12 +45,23 @@ export function RealTenderSearch({ onNew }: { onNew: () => void }) {
   }, [extension]);
   const today = useMemo(todayIso, []);
 
+  // Закупки сервера: при открытии экрана читаем общий список из базы. Не получилось (нет входа, сервер недоступен) — остальной поиск работает как раньше.
+  const [server, setServer] = useState<ServerList | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void serverList().then((r) => alive && setServer(r));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   useEffect(() => {
     let alive = true;
     void getTenders()
       .then((saved) => {
         if (!alive || !saved) return;
-        setListings(saved.listings);
+        // Закупки сервера в браузере не храним — они приходят свежими с сервера; здесь остаётся только выгрузка из ЕИС.
+        setListings(saved.listings.filter((l) => l.source !== 'rostender'));
         setLoadedAt(saved.loadedAt);
         setFilters(saved.filters);
         setSort(saved.sort);
@@ -56,7 +81,7 @@ export function RealTenderSearch({ onNew }: { onNew: () => void }) {
       first.current = false;
       return;
     }
-    void saveTenders({ listings, loadedAt, filters, sort }).catch(() => {});
+    void saveTenders({ listings: listings.filter((l) => l.source !== 'rostender'), loadedAt, filters, sort }).catch(() => {});
   }, [ready, listings, loadedAt, filters, sort]);
 
   const onImport = useCallback((text: string, replace = false) => {
@@ -102,7 +127,30 @@ export function RealTenderSearch({ onNew }: { onNew: () => void }) {
     }
   }, [eisUrl, onImport]);
 
-  const result = useMemo(() => searchTenders(listings, filters, sort, today), [listings, filters, sort, today]);
+  // Всё, что показываем: закупки сервера и выгрузка из ЕИС (если она есть в браузере). Та же закупка с сервера важнее.
+  const all = useMemo(() => {
+    const own = server?.listings ?? [];
+    const ids = new Set(own.map((l) => l.id));
+    return [...own, ...listings.filter((l) => !ids.has(l.id))];
+  }, [server, listings]);
+
+  // Сколько места занимают закупки сервера: карточки — текст в базе, документы — размеры файлов из карточек (сами файлы не хранятся).
+  const totals = useMemo(() => {
+    const own = server?.listings ?? [];
+    const docs = own.flatMap((l) => l.docs ?? []);
+    return {
+      cards: own.length,
+      cardsBytes: new TextEncoder().encode(JSON.stringify(own)).length,
+      docs: docs.length,
+      docsBytes: docs.reduce((sum, d) => sum + (d.size ?? 0), 0),
+      docsNoSize: docs.filter((d) => d.size === null).length,
+    };
+  }, [server]);
+  const rostender: RostenderUi | undefined = server ? { configured: server.configured, updatedAt: server.updatedAt, total: server.total, totals } : undefined;
+
+  const result = useMemo(() => searchTenders(all, filters, sort, today), [all, filters, sort, today]);
+  const facets = useMemo(() => facetsOf(all), [all]);
+  const hasRostender = useMemo(() => all.some((l) => l.source === 'rostender'), [all]);
 
   return (
     <TenderSearch
@@ -118,13 +166,20 @@ export function RealTenderSearch({ onNew }: { onNew: () => void }) {
       bookmarklet={EIS_BOOKMARKLET}
       onImport={onImport}
       importNote={note}
-      onClear={() => {
-        setListings([]);
-        setLoadedAt('');
-        setNote(null);
-        void clearTenders().catch(() => {});
-      }}
+      onClear={
+        listings.length === 0
+          ? undefined
+          : () => {
+              setListings([]);
+              setLoadedAt('');
+              setNote(null);
+              void clearTenders().catch(() => {});
+            }
+      }
       onNew={onNew}
+      facets={facets}
+      hasRostender={hasRostender}
+      rostender={rostender}
     />
   );
 }

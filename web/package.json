@@ -16,6 +16,7 @@
     "eis:extract": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/eis-extract.ts",
     "kb:folder": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/kb-folder.ts",
     "kb:laws": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/kb-laws.ts",
+    "tenders:sync": "node --env-file=.env.local --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/tenders-sync.ts",
     "owner:create": "node --env-file=.env.local --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/create-owner.ts",
     "market:import": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/market-import.ts",
     "market:collect": "node --env-file=.env.local --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-alias.mjs scripts/market-collect.ts",

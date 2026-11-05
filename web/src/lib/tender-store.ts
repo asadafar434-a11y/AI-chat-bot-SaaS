@@ -1,4 +1,5 @@
 import { STORES, transaction } from "@/lib/db";
+import { normalizeListing } from "@/lib/tender-normalize";
 import { EMPTY_FILTERS, type TenderFilters, type TenderListing, type TenderSort } from "@/lib/tender-search";
 
 // «Поиск закупок»: выгрузка закупок из ЕИС и последние фильтры лежат в браузере, в хранилище расчётов (как цены и зарплаты): «Удалить все данные» стирает их вместе с остальными.
@@ -16,19 +17,13 @@ const str = (v: unknown): string | null => (typeof v === "string" && v.trim() !=
 /** Из хранилища приводим к форме: испорченное поле заменяется пустым, а не ломает экран. */
 export function normalizeTenders(raw: Partial<SavedTenders> | null | undefined): SavedTenders {
   const f = (raw?.filters ?? {}) as Partial<TenderFilters>;
-  const listings = Array.isArray(raw?.listings)
-    ? raw.listings.flatMap((l): TenderListing[] => {
-        const id = str(l?.id);
-        if (!id) return [];
-        return [{ id, law: l.law === "44-ФЗ" || l.law === "223-ФЗ" ? l.law : null, title: str(l.title) ?? id, customer: str(l.customer), price: num(l.price), publishedAt: str(l.publishedAt), deadline: str(l.deadline), region: str(l.region), method: str(l.method), url: str(l.url) }];
-      })
-    : [];
+  const listings = Array.isArray(raw?.listings) ? raw.listings.flatMap((l) => normalizeListing(l) ?? []) : [];
   return {
     listings,
     loadedAt: str(raw?.loadedAt) ?? "",
     filters: {
       query: typeof f.query === "string" ? f.query : EMPTY_FILTERS.query,
-      law: f.law === "44" || f.law === "223" ? f.law : "any",
+      law: f.law === "44" || f.law === "223" || f.law === "commercial" ? f.law : "any",
       priceFrom: num(f.priceFrom),
       priceTo: num(f.priceTo),
       publishedFrom: str(f.publishedFrom),
@@ -38,6 +33,10 @@ export function normalizeTenders(raw: Partial<SavedTenders> | null | undefined):
       customer: typeof f.customer === "string" ? f.customer : "",
       region: typeof f.region === "string" ? f.region : "",
       method: typeof f.method === "string" ? f.method : "",
+      smp: f.smp === true,
+      withDocs: f.withDocs === true,
+      platform: typeof f.platform === "string" ? f.platform : "",
+      daysLeft: typeof f.daysLeft === "number" && f.daysLeft > 0 ? Math.round(f.daysLeft) : null,
     },
     sort: SORTS.includes(raw?.sort as TenderSort) ? (raw!.sort as TenderSort) : "deadline",
   };

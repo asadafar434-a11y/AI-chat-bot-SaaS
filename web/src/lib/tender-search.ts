@@ -3,6 +3,11 @@
 
 export type TenderLaw = "44-ФЗ" | "223-ФЗ";
 
+/** Документ закупки: название, ссылка на скачивание, тип файла и размер в байтах. */
+export type TenderPosition = { name: string; unit: string | null; price: number | null; quantity?: number | null; okpd2?: string | null; ktru?: string | null };
+
+export type TenderDoc = { title: string; link: string; ext: string | null; size: number | null };
+
 export type TenderListing = {
   /** Реестровый номер извещения; без него закупка не берётся. */
   id: string;
@@ -18,13 +23,43 @@ export type TenderListing = {
   region: string | null;
   method: string | null;
   url: string | null;
+  // Поля ниже есть только у закупок из Ростендера (lib/rostender.ts): у выгрузки из ЕИС их нет, и она работает как раньше.
+  source?: "rostender";
+  /** Номер закупки в Ростендере. */
+  rostenderId?: string;
+  /** Площадка (ЕИС, Росэлторг, …). */
+  platform?: string | null;
+  /** Этап закупки словами сервиса («Подача заявок»). */
+  stage?: string | null;
+  /** Закупка для малого и среднего бизнеса. */
+  smp?: boolean | null;
+  customerInn?: string | null;
+  contact?: { person: string | null; phone: string | null; email: string | null } | null;
+  /** Адрес или место поставки. */
+  place?: string | null;
+  /** Позиции закупки (до 30) и сколько их всего: название, единица, количество, цена и коды классификаторов. */
+  positions?: TenderPosition[];
+  positionsTotal?: number;
+  /** Время окончания подачи заявок («15:30», по Москве), если сервис его назвал. */
+  deadlineTime?: string | null;
+  /** Город места поставки. */
+  city?: string | null;
+  /** Отрасли закупки словами сервиса (до пяти). */
+  branches?: string[];
+  /** Это план-график, а не объявленная закупка. */
+  plan?: boolean;
+  /** Версия набора полей карточки: у карточек, загруженных раньше, полей меньше — сервер со временем обновляет их (`CARD_REV` в lib/rostender.ts). */
+  rev?: number;
+  /** Документы закупки и ссылка на архив со всеми файлами. */
+  docs?: TenderDoc[];
+  archive?: string | null;
 };
 
 export type TenderFilters = {
   /** Слова через пробел; «-слово» исключает; «"фраза в кавычках"» ищется целиком. */
   query: string;
-  /** any — оба закона. */
-  law: "any" | "44" | "223";
+  /** any — все; commercial — закупки не по 44-ФЗ и не по 223-ФЗ (коммерческие площадки). */
+  law: "any" | "44" | "223" | "commercial";
   priceFrom: number | null;
   priceTo: number | null;
   publishedFrom: string | null;
@@ -40,9 +75,17 @@ export type TenderFilters = {
   customer: string;
   region: string;
   method: string;
+  /** Только закупки для малого и среднего бизнеса. */
+  smp: boolean;
+  /** Только те, у которых есть документы. */
+  withDocs: boolean;
+  /** Площадка: точное название из списка. */
+  platform: string;
+  /** Заявки принимаются ещё не больше N дней (включая сегодня); null — без ограничения. */
+  daysLeft: number | null;
 };
 
-export const EMPTY_FILTERS: TenderFilters = { query: "", law: "any", priceFrom: null, priceTo: null, publishedFrom: null, publishedTo: null, activeOnly: true, titleOnly: false, customer: "", region: "", method: "" };
+export const EMPTY_FILTERS: TenderFilters = { query: "", law: "any", priceFrom: null, priceTo: null, publishedFrom: null, publishedTo: null, activeOnly: true, titleOnly: false, customer: "", region: "", method: "", smp: false, withDocs: false, platform: "", daysLeft: null };
 
 export type TenderSort = "deadline" | "newest" | "priceDesc" | "priceAsc";
 export const SORT_LABELS: Record<TenderSort, string> = { deadline: "Скоро заканчивается", newest: "Новые", priceDesc: "Дороже", priceAsc: "Дешевле" };
@@ -98,6 +141,26 @@ const includesText = (value: string | null, needle: string): boolean => !needle.
 
 // ——— Отбор ———
 
+/** Дата ГГГГ-ММ-ДД плюс N дней (по календарю, без часовых поясов). */
+export function addDays(iso: string, days: number): string {
+  const d = new Date(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10) + days));
+  return d.toISOString().slice(0, 10);
+}
+
+export type Facet = { value: string; count: number };
+export type Facets = { regions: Facet[]; methods: Facet[]; platforms: Facet[] };
+
+const countBy = (values: (string | null | undefined)[]): Facet[] => {
+  const map = new Map<string, number>();
+  for (const v of values) if (v && v.trim()) map.set(v, (map.get(v) ?? 0) + 1);
+  return [...map.entries()].map(([value, count]) => ({ value, count })).sort((a, b) => b.count - a.count || a.value.localeCompare(b.value, "ru"));
+};
+
+/** Что есть в выгрузке: регионы, способы и площадки с числом закупок — из этого строятся выпадающие списки фильтров, чтобы выбирать, а не печатать. */
+export function facetsOf(listings: TenderListing[]): Facets {
+  return { regions: countBy(listings.map((l) => l.region)), methods: countBy(listings.map((l) => l.method)), platforms: countBy(listings.map((l) => l.platform)) };
+}
+
 export type SearchResult = {
   items: TenderListing[];
   /** Сколько закупок было в выгрузке. */
@@ -116,7 +179,14 @@ export function searchTenders(listings: TenderListing[], filters: TenderFilters,
   let hiddenNoDate = 0;
   const items: TenderListing[] = [];
   for (const l of listings) {
-    if (filters.law !== "any" && l.law !== (filters.law === "44" ? "44-ФЗ" : "223-ФЗ")) continue;
+    if (filters.law === "commercial" ? l.law !== null : filters.law !== "any" && l.law !== (filters.law === "44" ? "44-ФЗ" : "223-ФЗ")) continue;
+    if (filters.smp && l.smp !== true) continue;
+    if (filters.withDocs && !(l.docs && l.docs.length > 0)) continue;
+    if (filters.platform && l.platform !== filters.platform) continue;
+    // «Заканчивается за N дней»: срок не назван — такую закупку не прячем, как и при «приём заявок идёт».
+    if (filters.daysLeft !== null && l.deadline) {
+      if (l.deadline < today || l.deadline > addDays(today, filters.daysLeft - 1)) continue;
+    }
     if (q.include.length > 0 || q.exclude.length > 0) {
       const haystack = wordsOf(l.title);
       const joined = haystack.join(" ");

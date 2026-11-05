@@ -84,7 +84,7 @@ test('причины риска: что сделать и источник у к
 
 const noop = () => {};
 const searchProps = (over = {}) => ({
-  filters: { query: '', law: 'any', priceFrom: null, priceTo: null, publishedFrom: null, publishedTo: null, activeOnly: true, titleOnly: false, customer: '', region: '', method: '' },
+  filters: { query: '', law: 'any', priceFrom: null, priceTo: null, publishedFrom: null, publishedTo: null, activeOnly: true, titleOnly: false, customer: '', region: '', method: '', smp: false, withDocs: false, platform: '', daysLeft: null },
   onFilters: noop,
   sort: 'deadline',
   onSort: noop,
@@ -100,15 +100,14 @@ const searchProps = (over = {}) => ({
   ...over,
 });
 
-test('«Поиск закупок»: без выгрузки — фильтры, «Найти в ЕИС» и три шага; закупок не выдумываем; «живая лента» — скоро', () => {
+test('«Поиск закупок»: без выгрузки — фильтры и «Найти в ЕИС»; закупок не выдумываем; загрузка из ЕИС (закладка, вставка, CSV) с экрана убрана 05.11.2026', () => {
   const out = html(h(search.TenderSearch, searchProps()));
   const plain = text(out);
   assert.match(plain, /Поиск закупок/);
   assert.match(plain, /44-ФЗ и 223-ФЗ/);
   assert.match(plain, /Только приём заявок идёт/);
   assert.match(plain, /Найти в ЕИС/);
-  assert.match(plain, /Скопировать закупки/);
-  assert.match(plain, /Живая лента без выгрузки — скоро/);
+  assert.doesNotMatch(plain, /Скопировать закупки|Живая лента без выгрузки|Файл CSV|Вставьте таблицу|Загрузить закупки из ЕИС/, 'загрузка из ЕИС скрыта по просьбе владельца');
   assert.match(plain, /Скопировать ссылку/);
   assert.match(plain, /ЕИС открывается не в каждом окне/);
   assert.match(out, /href="https:\/\/zakupki\.gov\.ru\/epz\/order\/extendedsearch\/results\.html/);
@@ -128,9 +127,8 @@ test('«Поиск закупок»: список — название, зака
   assert.match(plain, /3\s?304\s?140 ₽/);
   assert.match(plain, /заявки до 29\.10\.2026 · осталось 2 дня/);
   assert.match(plain, /цена не указана/);
-  assert.match(plain, /№ 32616515024/);
-  assert.match(out, /href="https:\/\/zakupki\.gov\.ru\/epz\/order\/x"/, 'своя ссылка закупки');
-  assert.match(out, /regNumber|searchString=32616515024/, 'без своей ссылки — поиск по номеру');
+  assert.doesNotMatch(plain, /№ 32616515024/, 'номер — в окне закупки, не в списке');
+  assert.doesNotMatch(plain, /Открыть в ЕИС|Открыть на Ростендере|Загрузить документы/, 'в списке этих кнопок нет (владелец, 05.11.2026)');
   assert.match(plain, /Скрыто без цены в выгрузке: 3/);
   assert.match(plain, /Очистить выгрузку/);
 });
@@ -185,7 +183,7 @@ test('«Поиск закупок»: с расширением Chrome — кно
   const plain = text(withExt);
   assert.match(plain, /Найти\s*Открыть в ЕИС/);
   assert.match(plain, /Расширение ищет в фоне: до трёх страниц ЕИС, до 150 закупок за раз/);
-  assert.match(withExt, /<details><summary[^>]*>Загрузка без расширения: закладка или вставка таблицы/);
+  assert.doesNotMatch(withExt, /Загрузка без расширения|Скопировать закупки/, 'блок загрузки из ЕИС скрыт');
   assert.doesNotMatch(plain, /Расширение для Chrome «Тендекс/);
 
   const busy = html(h(search.TenderSearch, searchProps({ extension: { available: true, busy: true, onSearch: () => {} } })));
@@ -194,4 +192,127 @@ test('«Поиск закупок»: с расширением Chrome — кно
 
   const note = text(html(h(search.TenderSearch, searchProps({ extension: { available: true, busy: false, onSearch: () => {} }, importNote: { tone: 'danger', text: 'ЕИС не открылся за 30 секунд.' } }))));
   assert.match(note, /ЕИС не открылся за 30 секунд\./);
+});
+
+// ——— «Поиск закупок» на Ростендере (05.11.2026) ———
+const ROS_LISTING = {
+  id: '0873500002326000924', law: '44-ФЗ', title: 'Оказание услуг по праздничному оформлению территорий', customer: 'ГКУ «Дирекция»', price: 13048317.81, publishedAt: '2026-10-28', deadline: '2026-10-29',
+  region: 'Москва', method: 'Электронный аукцион (44-ФЗ)', url: 'https://zakupki.gov.ru/epz/order/notice/ea20/view/common-info.html?regNumber=0873500002326000924',
+  source: 'rostender', rostenderId: '90210', platform: 'РТС-тендер', stage: 'Подача заявок', smp: true, customerInn: '7751322445',
+  contact: { person: 'Иванова А.', phone: '+7 495 000-00-00', email: 'zakaz@example.ru' }, place: 'г. Москва, ул. Тверская, д. 1',
+  positions: [{ name: 'Услуги по оформлению', unit: 'усл.', price: 1 }, { name: 'Монтаж', unit: 'шт', price: 2 }, { name: 'Демонтаж', unit: 'шт', price: 3 }, { name: 'Доставка', unit: 'шт', price: 4 }], positionsTotal: 4,
+  docs: [{ title: 'Извещение.pdf', link: 'https://rostender.info/files/1', ext: 'pdf', size: 120000 }, { title: 'Проект контракта', link: 'https://rostender.info/files/2', ext: 'docx', size: 3 * 1048576 }],
+  archive: 'https://rostender.info/files/90210.zip',
+};
+const rosUi = (over = {}) => ({ configured: true, updatedAt: '2026-11-05T09:30:00Z', total: 690, ...over });
+
+test('«Поиск закупок» на Ростендере: ручной загрузки нет — ни шаблонов, ни «Загрузить подборку», ни выбора 20/30/50; ключ в окне не вводится', () => {
+  const out = html(h(search.TenderSearch, searchProps({ rostender: rosUi() })));
+  const t = text(out);
+  for (const word of ['Загрузить подборку', 'Шаблон поиска', 'Сколько разных закупок взять', 'Ростендер — карточки с документами', 'осталось запросов']) assert.doesNotMatch(t, new RegExp(word), `«${word}» с экрана убрано`);
+  assert.equal(/<input[^>]*(api|key|ключ)/i.test(out), false, 'поля для ключа нет');
+});
+
+test('«Поиск закупок» на Ростендере: строка о том, что закупки обновляются сами раз в сутки, когда обновлено и сколько действующих', () => {
+  const t = text(html(h(search.TenderSearch, searchProps({ rostender: rosUi() }))));
+  assert.match(t, /Закупки обновляются автоматически раз в сутки/);
+  assert.match(t, /обновлено \d\d\.\d\d, \d\d:\d\d/);
+  assert.match(t, /690 действующих закупок/);
+  const first = text(html(h(search.TenderSearch, searchProps({ rostender: rosUi({ total: 0, updatedAt: null }) }))));
+  assert.match(first, /первая загрузка ещё идёт/);
+  const none = text(html(h(search.TenderSearch, searchProps({ rostender: rosUi({ configured: false, total: 0, updatedAt: null }) }))));
+  assert.match(none, /Автообновление закупок не настроено/);
+  assert.match(none, /ROSTENDER_API_KEY=ключ/);
+  assert.match(none, /web\/\.env\.local/);
+  assert.doesNotMatch(none, /Загрузить подборку/);
+});
+
+test('«Поиск закупок» на Ростендере: итог по загруженному — сколько документов и гигабайт; файлы не скачиваются; «Очистить выгрузку» только у выгрузки из ЕИС', () => {
+  const result = { items: [ROS_LISTING], total: 1, hiddenNoPrice: 0, hiddenNoDate: 0 };
+  const t = text(html(h(search.TenderSearch, searchProps({ result, onClear: undefined, rostender: rosUi({ totals: { cards: 200, cardsBytes: 900 * 1024, docs: 1500, docsBytes: 2.5 * 1073741824, docsNoSize: 4 } }) }))));
+  assert.match(t, /документов 1500 \(\s*2,50 ГБ\s*, у 4 размер не назван\)/);
+  assert.match(t, /сами файлы не скачиваются, пока вы их не откроете/);
+  assert.doesNotMatch(t, /Очистить выгрузку/, 'закупки сервера очистить нельзя — без onClear кнопки нет');
+  assert.match(text(html(h(search.TenderSearch, searchProps({ result, onClear: noop })))), /Очистить выгрузку/);
+});
+
+test('каждая закупка — отдельная карточка: свой блок со скруглением и рамкой, между ними промежуток, а не одна общая рамка со строками', () => {
+  const result = { items: [ROS_LISTING, { ...ROS_LISTING, id: '2', title: 'Вторая закупка' }, { ...ROS_LISTING, id: '3', title: 'Третья закупка' }], total: 3, hiddenNoPrice: 0, hiddenNoDate: 0 };
+  const out = html(h(search.TenderSearch, searchProps({ result, hasRostender: true })));
+  const list = out.slice(out.indexOf('<ul class="space-y-4">'));
+  assert.ok(out.includes('<ul class="space-y-4">'), 'список с промежутком между карточками');
+  const rows = list.split('<li>').slice(1);
+  assert.equal(rows.length, 3);
+  for (const row of rows) {
+    const head = row.slice(0, 400);
+    assert.match(head, /^<button type="button"/, 'вся карточка нажимается и открывает окно');
+    assert.match(head, /class="[^"]*\brounded-xl\b[^"]*"/);
+    assert.match(head, /class="[^"]*\bbg-card\b[^"]*"/);
+    assert.match(head, /class="[^"]*\bborder\b[^"]*"/, 'каждая закупка лежит в своей карточке');
+  }
+  assert.doesNotMatch(out, /border-b border-border px-4 py-3 last:border-0/, 'строк-разделителей внутри общей рамки нет');
+});
+
+test('закупка в списке — компактная карточка: заголовок крупнее, цена, закон и МСП, заказчик, срок, регион, число документов; контактов, позиций, ссылок и кнопок нет', () => {
+  const result = { items: [ROS_LISTING], total: 1, hiddenNoPrice: 0, hiddenNoDate: 0 };
+  const out = html(h(search.TenderSearch, searchProps({ result, hasRostender: true })));
+  const li = out.slice(out.indexOf('<ul class="space-y-4">'));
+  const t = text(li);
+  assert.match(li, /class="[^"]*\btext-subtitle\b[^"]*\bfont-semibold\b[^"]*"[^>]*>Оказание услуг/, 'заголовок крупнее прежнего');
+  assert.match(t, /13 048 318 ₽/);
+  assert.match(t, /44-ФЗ/);
+  assert.match(t, /для МСП/);
+  assert.match(t, /ГКУ «Дирекция»/);
+  assert.match(t, /заявки до 29\.10\.2026 · осталось 2 дня/);
+  assert.match(t, /Москва/);
+  assert.match(t, /2 документа/);
+  for (const word of ['ИНН', 'Место поставки', 'Позиции', 'Иванова', 'Скачать всё архивом', 'Открыть', 'Загрузить документы', 'РТС-тендер', 'Подача заявок']) assert.doesNotMatch(t, new RegExp(word), `«${word}» — только в окне закупки`);
+  assert.doesNotMatch(li, /href=/, 'в карточке списка ссылок нет — она сама открывает окно');
+});
+
+test('окно закупки: шапка как в списке, сроки с временем, заказчик и контакты, место и отрасль, позиции с количеством и кодами, документы со ссылками и архив', () => {
+  const l = { ...ROS_LISTING, deadlineTime: '15:30', city: 'Москва город', branches: ['Услуги связи'], rev: 2, positions: [{ name: 'Услуги по оформлению', unit: 'мес', price: null, quantity: 12, okpd2: '61.10.30.190', ktru: '61.10.30.190-00000317' }, { name: 'Монтаж', unit: 'шт', price: 2, quantity: null, okpd2: null, ktru: null }], positionsTotal: 5 };
+  const out = html(h(search.TenderDetails, { l, today: '2026-10-27' }));
+  const t = text(out);
+  assert.match(t, /Оказание услуг по праздничному оформлению территорий/);
+  assert.match(t, /13 048 318 ₽/);
+  for (const word of ['44-ФЗ', 'Электронный аукцион', 'для МСП', 'РТС-тендер', 'Подача заявок']) assert.match(t, new RegExp(word));
+  assert.match(t, /ГКУ «Дирекция» · ИНН 7751322445/);
+  assert.match(t, /Подача заявок до[\s\S]*29\.10\.2026, 15:30 \(МСК\) · осталось 2 дня/);
+  assert.match(t, /Размещено[\s\S]*28\.10\.2026/);
+  assert.match(t, /Регион[\s\S]*Москва/);
+  assert.match(t, /Место поставки[\s\S]*Москва город · г\. Москва, ул\. Тверская, д\. 1/);
+  assert.match(t, /Отрасль[\s\S]*Услуги связи/);
+  assert.match(t, /Иванова А\./);
+  assert.match(out, /href="tel:\+74950000000"/);
+  assert.match(out, /href="mailto:zakaz@example\.ru"/);
+  assert.match(t, /Позиции · 5/);
+  assert.match(t, /Услуги по оформлению[\s\S]*12 мес/);
+  assert.match(t, /ОКПД2 61\.10\.30\.190 · КТРУ 61\.10\.30\.190-00000317/);
+  assert.match(t, /Монтаж[\s\S]*шт · 2 ₽/);
+  assert.match(t, /и ещё 3 — полный список в документах закупки/);
+  assert.match(t, /Документы · 2/);
+  assert.match(out, /href="https:\/\/rostender\.info\/files\/90210\.zip"[^>]*rel="noopener noreferrer"/, 'архив одним файлом');
+  assert.match(out, /href="https:\/\/rostender\.info\/files\/1"/, 'документы раскрыты сразу, со ссылками');
+});
+
+test('окно закупки из ЕИС: только то, что есть в выгрузке, пустых блоков нет', () => {
+  const l = { id: '32616515024', law: '223-ФЗ', title: 'Разработка проектной документации', customer: 'ПАО «Россети»', price: 3304140, publishedAt: '2026-10-27', deadline: '2026-10-29', region: null, method: 'Иной способ', url: null };
+  const t = text(html(h(search.TenderDetails, { l, today: '2026-10-27' })));
+  assert.match(t, /Подача заявок до[\s\S]*29\.10\.2026 · осталось 2 дня/);
+  for (const word of ['Контакты заказчика', 'Позиции', 'Документы', 'Отрасль', 'Место поставки', 'Регион']) assert.doesNotMatch(t, new RegExp(word), `«${word}» — пусто, не показываем`);
+});
+
+
+test('фильтры под Ростендер: «Коммерческие», срок, только МСП, только с документами и выпадающие списки региона, способа и площадки — только когда в выгрузке есть такие закупки', () => {
+  const facets = { regions: [{ value: 'Москва', count: 5 }, { value: 'Тверская область', count: 2 }], methods: [{ value: 'Электронный аукцион', count: 4 }, { value: 'Конкурс', count: 3 }], platforms: [{ value: 'РТС-тендер', count: 3 }, { value: 'ЕИС', count: 4 }] };
+  const plain = text(html(h(search.TenderSearch, searchProps())));
+  for (const word of ['Коммерческие', 'Только для малого и среднего бизнеса', 'Только с документами', 'Сегодня последний день', 'Ещё 3 дня', 'Ещё неделя', 'Площадка']) assert.doesNotMatch(plain, new RegExp(word), `без Ростендера «${word}» не показываем`);
+  const out = html(h(search.TenderSearch, searchProps({ facets, hasRostender: true, filters: { ...searchProps().filters, smp: true, daysLeft: 3, platform: 'ЕИС', region: 'Москва' } })));
+  const t = text(out);
+  for (const word of ['Коммерческие', 'Только для малого и среднего бизнеса', 'Только с документами', 'Сегодня последний день', 'Ещё 3 дня', 'Ещё неделя', 'Регион', 'Способ закупки', 'Площадка']) assert.match(t, new RegExp(word), word);
+  assert.match(t, /Все регионы[\s\S]*Москва · 5[\s\S]*Тверская область · 2/);
+  assert.match(t, /Электронный аукцион · 4/);
+  assert.match(t, /ЕИС · 4/);
+  assert.match(t, /Москва/);
 });

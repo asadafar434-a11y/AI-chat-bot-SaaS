@@ -63,6 +63,9 @@ const LIMIT_MODELS = ["RateHit", "AiSpend"] as const;
  */
 const MARKET_MODELS = ["PriceObservation"] as const;
 
+/** Закупки «Поиска закупок» (Ростендер): общий список для всех пользователей, обновляется сервером раз в сутки; ни organizationId, ни связи с Organization нет — как у реестра и цен. */
+const TENDER_MODELS = ["Tender"] as const;
+
 /** Таблицы, которые заведены в более поздних этапах и не должны появляться сейчас. */
 const LATER_STAGE_MODELS = ["Payment", "pgboss"] as const;
 
@@ -78,8 +81,8 @@ function modelNames(): string[] {
   return [...schema.matchAll(/^model\s+(\w+)\s*\{/gm)].map((match) => match[1]);
 }
 
-test("в схеме ровно 23 модели: 11 приложения (S1), 4 аутентификации (S2), 2 базы знаний (S12), 3 реестра (S13), 2 счётчика лимитов (S14) и 1 ценовых наблюдений (S15)", () => {
-  assert.deepEqual(modelNames().sort(), [...S1_MODELS, ...S2_MODELS, ...KB_MODELS, ...REGISTRY_MODELS, ...LIMIT_MODELS, ...MARKET_MODELS].sort());
+test("в схеме ровно 24 модели: 11 приложения (S1), 4 аутентификации (S2), 2 базы знаний (S12), 3 реестра (S13), 2 счётчика лимитов (S14) и 1 ценовых наблюдений (S15)", () => {
+  assert.deepEqual(modelNames().sort(), [...S1_MODELS, ...S2_MODELS, ...KB_MODELS, ...REGISTRY_MODELS, ...LIMIT_MODELS, ...MARKET_MODELS, ...TENDER_MODELS].sort());
 });
 
 test("моделей более поздних этапов в схеме нет", () => {
@@ -95,7 +98,7 @@ test("моделей более поздних этапов в схеме нет
  * организациях, `UserProfile` принадлежит пользователю, а не арендатору. Таблицы Auth.js
  * привязаны к `userId` текущей сессии, а не к арендатору (data-model.md §7).
  */
-const TABLES_WITHOUT_ORG_ID = ["Organization", "User", "UserProfile", ...AUTH_MODELS, ...KB_MODELS, ...REGISTRY_MODELS, ...LIMIT_MODELS, ...MARKET_MODELS];
+const TABLES_WITHOUT_ORG_ID = ["Organization", "User", "UserProfile", ...AUTH_MODELS, ...KB_MODELS, ...REGISTRY_MODELS, ...LIMIT_MODELS, ...MARKET_MODELS, ...TENDER_MODELS];
 
 /**
  * Таблицы, у которых вместо `createdAt`/`updatedAt` собственные отметки времени:
