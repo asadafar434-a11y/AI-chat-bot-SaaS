@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { eisNumberUrl, SORT_LABELS, type Facets, type SearchResult, type TenderFilters, type TenderListing, type TenderSort } from '@/lib/tender-search';
 import { plural } from '@/lib/plural';
-import { ArrowUpRight, ChevronDown, Copy, Download, FileText, Loader2, Mail, Phone, Search, Trash2 } from '../lib/icons';
+import { AlertTriangle, ArrowUpRight, Building2, ChevronDown, Copy, Download, FileText, Info, Loader2, Mail, Phone, Search, Trash2 } from '../lib/icons';
 import { Alert, Select } from './data';
 import { Badge, Button, Card, Checkbox, Chip, HelpTip, Modal, fieldClass, fieldBase } from './ui';
 import { ScreenHeader } from './ScreenHeader';
@@ -138,109 +138,154 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-/** Закупка целиком, в окне: шапка как в списке, сроки, заказчик и контакты, место, позиции, документы со ссылками. Показано только то, что есть в выгрузке. */
+/** Строка «паспорта закупки»: подпись слева, значение справа. */
+function PassportRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-1 gap-x-4 gap-y-0.5 px-3 py-2 sm:grid-cols-[9rem_minmax(0,1fr)]">
+      <dt className="text-caption text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 break-words text-ui">{children}</dd>
+    </div>
+  );
+}
+
+/** Что стоит учесть до подачи — только то, что следует из данных закупки (срок, МСП, план-график, документы). */
+function considerations(l: TenderListing, left: number | null): { tone: 'warn' | 'danger' | 'info'; text: string }[] {
+  const out: { tone: 'warn' | 'danger' | 'info'; text: string }[] = [];
+  if (left !== null && left < 0) out.push({ tone: 'danger', text: 'Приём заявок закончился' });
+  else if (left !== null && left <= 3) out.push({ tone: 'warn', text: left === 0 ? 'Сегодня последний день подачи заявок' : `До конца приёма ${left} ${plural(left, 'день', 'дня', 'дней')} — на подготовку заявки времени мало` });
+  if (l.plan) out.push({ tone: 'warn', text: 'План-график: извещения ещё нет, заявку подать пока нельзя' });
+  if (l.smp) out.push({ tone: 'info', text: 'Закупка для МСП: участвовать могут только субъекты малого и среднего предпринимательства' });
+  const docs = l.docs?.length ?? 0;
+  if (docs > 0) out.push({ tone: 'info', text: `В закупке ${docs} ${plural(docs, 'документ', 'документа', 'документов')} — изучите требования до подачи` });
+  return out;
+}
+
+/** Закупка целиком, в окне: шапка, цена и срок плитками, позиции, паспорт закупки, что учесть, контакты, документы со ссылками. Показано только то, что есть в выгрузке. */
 export function TenderDetails({ l, today }: { l: TenderListing; today: string }) {
   const left = l.deadline ? dayDiff(l.deadline, today) : null;
+  const urgent = left !== null && left >= 0 && left <= 3;
   const positions = l.positions ?? [];
   const more = (l.positionsTotal ?? positions.length) - positions.length;
   const place = [l.city, l.place].filter((x, i, a) => x && a.indexOf(x) === i).join(' · ');
+  const eis = eisNumberOf(l);
+  const number = eis ?? (l.rostenderId ? `Ростендер № ${l.rostenderId}` : null);
+  const notes = considerations(l, left);
+  const hasPassport = Boolean(number || l.stage || l.law || l.method || l.platform || l.region || place || (l.branches && l.branches.length > 0) || l.publishedAt);
   return (
     <div className="space-y-5 px-5 py-4">
-        <div className="space-y-2">
-          <div className="flex items-start justify-between gap-x-4">
-            <p className="min-w-0 flex-1 break-words text-xl font-semibold">{l.title}</p>
-            <span className={l.price !== null ? 'shrink-0 text-right text-xl font-bold tabular-nums' : 'shrink-0 text-right text-caption text-muted-foreground'}>{l.price !== null ? rub(l.price) : 'цена не указана'}</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {l.law && <Badge tone="neutral">{l.law}</Badge>}
-            {l.method && <Badge tone="neutral" wrap>{l.method}</Badge>}
-            {l.smp && <Badge tone="success">для МСП</Badge>}
-            {l.platform && <Badge tone="info">{l.platform}</Badge>}
-            {l.stage && <Badge tone="neutral" dot>{l.stage}</Badge>}
-            {l.plan && <Badge tone="warn">план-график</Badge>}
-          </div>
-          {l.customer && (
-            <p className="break-words text-ui text-muted-foreground">
+      <div className="space-y-2.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {l.law && <Badge tone="neutral">{l.law}</Badge>}
+          {l.smp && <Badge tone="success">для МСП</Badge>}
+          {l.plan && <Badge tone="warn">план-график</Badge>}
+          {l.stage && <Badge tone="neutral" dot>{l.stage}</Badge>}
+        </div>
+        <p className="break-words text-xl font-semibold leading-snug">{l.title}</p>
+        {l.customer && (
+          <p className="flex items-start gap-1.5 break-words text-ui text-muted-foreground">
+            <Building2 className="mt-0.5 size-3.5 shrink-0" />
+            <span className="min-w-0">
               {l.customer}
               {l.customerInn && <span className="tabular-nums"> · ИНН {l.customerInn}</span>}
-            </p>
-          )}
-        </div>
-
-        <Block title="Сроки">
-          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {l.deadline && (
-              <Fact label="Подача заявок до">
-                <span className={left !== null && left >= 0 && left <= 3 ? 'font-medium text-warn-foreground' : ''}>
-                  {ruDate(l.deadline)}
-                  {l.deadlineTime && `, ${l.deadlineTime} (МСК)`}
-                  {leftText(left)}
-                </span>
-              </Fact>
-            )}
-            {l.publishedAt && <Fact label="Размещено">{ruDate(l.publishedAt)}</Fact>}
-          </dl>
-        </Block>
-
-        {(place || l.region || (l.branches && l.branches.length > 0)) && (
-          <Block title="Где и что">
-            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {l.region && <Fact label="Регион">{l.region}</Fact>}
-              {place && <Fact label="Место поставки">{place}</Fact>}
-              {l.branches && l.branches.length > 0 && <Fact label="Отрасль">{l.branches.join('; ')}</Fact>}
-            </dl>
-          </Block>
-        )}
-
-        {l.contact && (
-          <Block title="Контакты заказчика">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-ui">
-              {l.contact.person && <span>{l.contact.person}</span>}
-              {l.contact.phone && (
-                <a href={`tel:${l.contact.phone.replace(/[^\d+]/g, '')}`} className="inline-flex items-center gap-1 hover:underline">
-                  <Phone className="size-3.5 text-muted-foreground" /> <span className="tabular-nums">{l.contact.phone}</span>
-                </a>
-              )}
-              {l.contact.email && (
-                <a href={`mailto:${l.contact.email}`} className="inline-flex items-center gap-1 break-all hover:underline">
-                  <Mail className="size-3.5 text-muted-foreground" /> {l.contact.email}
-                </a>
-              )}
-            </div>
-          </Block>
-        )}
-
-        {positions.length > 0 && (
-          <Block title={`Позиции · ${l.positionsTotal ?? positions.length}`}>
-            <ul className="divide-y divide-border rounded-lg border border-border">
-              {positions.map((p, i) => (
-                <li key={i} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5 px-3 py-2">
-                  <span className="min-w-0 flex-1 break-words text-ui">{p.name}</span>
-                  <span className="shrink-0 text-right text-caption tabular-nums text-muted-foreground">
-                    {p.quantity !== null && p.quantity !== undefined && `${new Intl.NumberFormat('ru-RU').format(p.quantity)}${p.unit ? ` ${p.unit}` : ''}`}
-                    {(p.quantity === null || p.quantity === undefined) && p.unit && p.unit}
-                    {p.price !== null && ` · ${rub(p.price)}`}
-                  </span>
-                  {(p.okpd2 || p.ktru) && (
-                    <span className="basis-full font-mono text-micro text-muted-foreground">
-                      {p.okpd2 && `ОКПД2 ${p.okpd2}`}
-                      {p.okpd2 && p.ktru && ' · '}
-                      {p.ktru && `КТРУ ${p.ktru}`}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-            {more > 0 && <p className="text-caption text-muted-foreground">и ещё {more} — полный список в документах закупки</p>}
-          </Block>
-        )}
-
-        {((l.docs?.length ?? 0) > 0 || l.archive) && (
-          <Block title="Документы">
-            <Docs l={l} defaultOpen />
-          </Block>
+            </span>
+          </p>
         )}
       </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="space-y-1 rounded-xl border border-border bg-surface-sunken px-4 py-3">
+          <p className="text-micro font-medium uppercase tracking-wider text-muted-foreground">Начальная цена</p>
+          <p className={l.price !== null ? 'text-2xl font-bold tabular-nums' : 'text-ui text-muted-foreground'}>{l.price !== null ? rub(l.price) : 'не указана'}</p>
+        </div>
+        {l.deadline && (
+          <div className={`space-y-1 rounded-xl border px-4 py-3 ${urgent ? 'border-warn/40 bg-warn-surface' : 'border-border bg-surface-sunken'}`}>
+            <p className="text-micro font-medium uppercase tracking-wider text-muted-foreground">Подача заявок до</p>
+            <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <span className="text-2xl font-bold tabular-nums">{ruDate(l.deadline)}</span>
+              {l.deadlineTime && <span className="text-ui tabular-nums text-muted-foreground">{l.deadlineTime} (МСК)</span>}
+            </p>
+            {left !== null && <p className={urgent ? 'text-caption font-medium text-warn-foreground' : 'text-caption text-muted-foreground'}>{leftText(left).replace(/^ · /, '')}</p>}
+          </div>
+        )}
+      </div>
+
+      {positions.length > 0 && (
+        <Block title={`Позиции · ${l.positionsTotal ?? positions.length}`}>
+          <ul className="divide-y divide-border rounded-xl border border-border">
+            {positions.map((p, i) => (
+              <li key={i} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5 px-3 py-2.5">
+                <span className="min-w-0 flex-1 break-words text-ui font-medium">{p.name}</span>
+                <span className="shrink-0 text-right text-caption tabular-nums text-muted-foreground">
+                  {p.quantity !== null && p.quantity !== undefined && `${new Intl.NumberFormat('ru-RU').format(p.quantity)}${p.unit ? ` ${p.unit}` : ''}`}
+                  {(p.quantity === null || p.quantity === undefined) && p.unit && p.unit}
+                  {p.price !== null && ` · ${rub(p.price)}`}
+                </span>
+                {(p.okpd2 || p.ktru) && (
+                  <span className="flex basis-full flex-wrap gap-1.5 pt-0.5">
+                    {p.okpd2 && <span className="rounded-md bg-primary-soft px-1.5 py-0.5 font-mono text-micro text-primary">ОКПД2 {p.okpd2}</span>}
+                    {p.ktru && <span className="rounded-md bg-secondary px-1.5 py-0.5 font-mono text-micro text-foreground-secondary">КТРУ {p.ktru}</span>}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+          {more > 0 && <p className="text-caption text-muted-foreground">и ещё {more} — полный список в документах закупки</p>}
+        </Block>
+      )}
+
+      {hasPassport && (
+        <Block title="Паспорт закупки">
+          <dl className="divide-y divide-border rounded-xl border border-border">
+            {number && <PassportRow label="Номер закупки"><span className="tabular-nums">{number}</span></PassportRow>}
+            {l.stage && <PassportRow label="Статус">{l.stage}</PassportRow>}
+            {l.law && <PassportRow label="Закон">{l.law}</PassportRow>}
+            {l.method && <PassportRow label="Способ закупки">{l.method}</PassportRow>}
+            {l.region && <PassportRow label="Регион">{l.region}</PassportRow>}
+            {place && <PassportRow label="Место поставки">{place}</PassportRow>}
+            {l.branches && l.branches.length > 0 && <PassportRow label="Отрасль">{l.branches.join('; ')}</PassportRow>}
+            {l.publishedAt && <PassportRow label="Размещено"><span className="tabular-nums">{ruDate(l.publishedAt)}</span></PassportRow>}
+            {l.platform && <PassportRow label="Площадка">{l.platform}</PassportRow>}
+          </dl>
+        </Block>
+      )}
+
+      {notes.length > 0 && (
+        <Block title="Что учесть">
+          <ul className="space-y-1.5">
+            {notes.map((n) => (
+              <li key={n.text} className="flex items-start gap-2 text-ui">
+                {n.tone === 'info' ? <Info className="mt-0.5 size-4 shrink-0 text-info" /> : <AlertTriangle className={`mt-0.5 size-4 shrink-0 ${n.tone === 'danger' ? 'text-danger' : 'text-warn-foreground'}`} />}
+                <span className="min-w-0 break-words">{n.text}</span>
+              </li>
+            ))}
+          </ul>
+        </Block>
+      )}
+
+      {l.contact && (
+        <Block title="Контакты заказчика">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-border px-3 py-2.5 text-ui">
+            {l.contact.person && <span className="font-medium">{l.contact.person}</span>}
+            {l.contact.phone && (
+              <a href={`tel:${l.contact.phone.replace(/[^\d+]/g, '')}`} className="inline-flex items-center gap-1 hover:underline">
+                <Phone className="size-3.5 text-muted-foreground" /> <span className="tabular-nums">{l.contact.phone}</span>
+              </a>
+            )}
+            {l.contact.email && (
+              <a href={`mailto:${l.contact.email}`} className="inline-flex items-center gap-1 break-all hover:underline">
+                <Mail className="size-3.5 text-muted-foreground" /> {l.contact.email}
+              </a>
+            )}
+          </div>
+        </Block>
+      )}
+
+      {((l.docs?.length ?? 0) > 0 || l.archive) && (
+        <Block title="Документы">
+          <Docs l={l} defaultOpen />
+        </Block>
+      )}
+    </div>
   );
 }
 
