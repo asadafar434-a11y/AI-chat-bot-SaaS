@@ -3,6 +3,7 @@ import { Check, Upload, ScanSearch, Calculator, ShieldAlert, PackageCheck, Arrow
 import { Sidebar, type View } from './components/Sidebar';
 import { TendersDashboard } from './components/TendersDashboard';
 import { RealTenderSearch } from './real/tender-search';
+import { RealFavorites } from './real/favorites-view';
 import { BidHistory } from './components/BidHistory';
 import { Profile } from './components/Profile';
 import { Settings } from './components/Settings';
@@ -51,7 +52,7 @@ function parseHash(): { view: View; activeId: string | null; step: number; analy
   }
   if (first === 'new') return { view: 'workflow', activeId: null, step: 0, analyticsId: null };
   if (first === 'analytics') return { view: 'analytics', activeId: null, step: 0, analyticsId: second ?? null };
-  if (first === 'calculator' || first === 'search' || first === 'history' || first === 'profile' || first === 'settings' || first === 'tariffs') {
+  if (first === 'calculator' || first === 'search' || first === 'favorites' || first === 'history' || first === 'profile' || first === 'settings' || first === 'tariffs') {
     return { view: first, activeId: null, step: 0, analyticsId: null };
   }
   return { view: 'tenders', activeId: null, step: 0, analyticsId: null };
@@ -214,6 +215,7 @@ function Product() {
               ))}
             {view === 'calculator' && <CalculatorScreen purchases={purchases} />}
             {view === 'search' && <RealTenderSearch onNew={newTender} />}
+            {view === 'favorites' && <RealFavorites onSearch={() => setView('search')} />}
             {view === 'history' && <BidHistory purchases={purchases} />}
             {view === 'profile' && <Profile />}
             {view === 'settings' && <Settings dark={dark} setDark={setDark} />}

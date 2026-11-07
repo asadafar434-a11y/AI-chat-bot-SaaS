@@ -1,7 +1,7 @@
 import { useId, type ReactNode } from 'react';
 import { cx } from './ui';
 
-export type SectionIconName = 'analytics' | 'calculator' | 'cart' | 'company' | 'history' | 'search' | 'settings' | 'tariffs';
+export type SectionIconName = 'analytics' | 'calculator' | 'cart' | 'company' | 'favorites' | 'history' | 'search' | 'settings' | 'tariffs';
 
 // Значки разделов — синее «стекло» с мягким объёмом: свет сверху, глубокий синий снизу.
 // Рисуем сами, чтобы набор выглядел одинаково, не зависел от системных эмодзи и шрифтов и совпадал с брендом.
@@ -37,6 +37,13 @@ const icon = (blue: string, light: string): Record<SectionIconName, ReactNode> =
       <circle cx="24" cy="33" r="2.2" fill="#fff" opacity=".88" />
       <rect x="28" y="31" width="5" height="4" rx="2" fill="#fff" opacity=".88" />
       <ellipse cx="17" cy="12" rx="2.2" ry="1.3" fill={light} />
+    </>
+  ),
+  favorites: (
+    <>
+      <path d="M24 40.5 9.6 26.6C5.4 22.5 6 15.8 10.6 12.6c3.7-2.6 8.5-1.7 11 1.6L24 17l2.4-2.8c2.5-3.3 7.3-4.2 11-1.6 4.6 3.2 5.2 9.9 1 14L24 40.5Z" fill={blue} />
+      <path d="M13 17.6c1.2-2 3.6-2.8 5.7-2" fill="none" stroke="#fff" strokeOpacity=".5" strokeWidth="2.6" strokeLinecap="round" />
+      <ellipse cx="17" cy="14" rx="3" ry="1.6" fill={light} opacity=".7" />
     </>
   ),
   search: (

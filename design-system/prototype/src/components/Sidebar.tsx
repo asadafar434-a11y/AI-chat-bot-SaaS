@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { BarChart2, Bell, Briefcase, Building2, Calculator, ChevronRight, Clock, Cog, History, MoreHorizontal, Moon, Plus, Search, Sun, Wallet, X } from '../lib/icons';
+import { BarChart2, Bell, Briefcase, Building2, Calculator, ChevronRight, Clock, Cog, Heart, History, MoreHorizontal, Moon, Plus, Search, Sun, Wallet, X } from '../lib/icons';
 import { useAccount } from '../lib/account';
 import { Button, Soon, Tooltip, IconButton, cx, useDialogFocus } from './ui';
 import { BrandMark } from './BrandMark';
 import { AiSwitch } from './AiSwitch';
 
-export type View = 'tenders' | 'analytics' | 'calculator' | 'search' | 'history' | 'profile' | 'settings' | 'tariffs' | 'workflow';
+export type View = 'tenders' | 'analytics' | 'calculator' | 'search' | 'favorites' | 'history' | 'profile' | 'settings' | 'tariffs' | 'workflow';
 
 // Уведомление о проверке специалистом по одной заявке.
 export type Notice = { id: string; title: string; status: 'sent' | 'replied'; read: boolean };
@@ -16,6 +16,7 @@ const nav: { id: View; label: string; icon: typeof Briefcase; soon?: string }[] 
   { id: 'analytics', label: 'Аналитика', icon: BarChart2 },
   { id: 'calculator', label: 'Калькулятор', icon: Calculator },
   { id: 'search', label: 'Поиск закупок', icon: Search },
+  { id: 'favorites', label: 'Избранное', icon: Heart },
   { id: 'history', label: 'История заявок', icon: History },
   { id: 'tariffs', label: 'Тарифы', icon: Wallet },
   { id: 'settings', label: 'Настройки', icon: Cog },
@@ -69,6 +70,7 @@ const bar: { id: View; label: string; icon: typeof Briefcase }[] = [
   { id: 'analytics', label: 'Аналитика', icon: BarChart2 },
   { id: 'calculator', label: 'Калькулятор', icon: Calculator },
   { id: 'search', label: 'Поиск', icon: Search },
+  { id: 'favorites', label: 'Избранное', icon: Heart },
   { id: 'history', label: 'История', icon: History },
   { id: 'tariffs', label: 'Тарифы', icon: Wallet },
   { id: 'settings', label: 'Настройки', icon: Cog },

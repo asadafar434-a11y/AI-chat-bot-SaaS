@@ -6,6 +6,7 @@ import { EMPTY_FILTERS, eisOrdersUrl, facetsOf, searchTenders, type TenderFilter
 import { clearTenders, getTenders, saveTenders } from '@/lib/tender-store';
 import { plural } from '@/lib/plural';
 import { TenderSearch, type RostenderUi } from '../components/TenderSearch';
+import { useFavorites } from './favorites';
 
 // «Поиск закупок» с настоящими данными: выгрузка и фильтры живут в браузере (lib/tender-store.ts), отбор — lib/tender-search.ts, чтение таблицы — lib/tender-import.ts.
 
@@ -44,6 +45,7 @@ export function RealTenderSearch({ onNew }: { onNew: () => void }) {
     return () => window.clearTimeout(t);
   }, [extension]);
   const today = useMemo(todayIso, []);
+  const fav = useFavorites();
 
   // Закупки сервера: при открытии экрана читаем общий список из базы. Не получилось (нет входа, сервер недоступен) — остальной поиск работает как раньше.
   const [server, setServer] = useState<ServerList | null>(null);
@@ -180,6 +182,7 @@ export function RealTenderSearch({ onNew }: { onNew: () => void }) {
       facets={facets}
       hasRostender={hasRostender}
       rostender={rostender}
+      favorites={{ has: fav.has, toggle: fav.toggle }}
     />
   );
 }

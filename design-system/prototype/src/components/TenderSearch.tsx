@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { eisNumberUrl, SORT_LABELS, type Facets, type SearchResult, type TenderFilters, type TenderListing, type TenderSort } from '@/lib/tender-search';
 import { plural } from '@/lib/plural';
-import { AlertTriangle, ArrowUpRight, Building2, ChevronDown, Copy, Download, FileText, Info, Loader2, Mail, Phone, Search, Trash2 } from '../lib/icons';
+import { AlertTriangle, ArrowUpRight, Building2, ChevronDown, Copy, Download, FileText, Heart, Info, Loader2, Mail, Phone, Search, Trash2 } from '../lib/icons';
 import { Alert, Select } from './data';
-import { Badge, Button, Card, Checkbox, Chip, HelpTip, Modal, fieldClass, fieldBase } from './ui';
+import { Badge, Button, Card, Checkbox, Chip, HelpTip, IconButton, Modal, fieldClass, fieldBase } from './ui';
 import { ScreenHeader } from './ScreenHeader';
 import { SummaryCard } from './SummaryCard';
 
@@ -81,12 +81,24 @@ const eisNumberOf = (l: TenderListing): string | null => /(?:regNumber|reestrNum
 
 const leftText = (left: number | null) => (left === null ? '' : left < 0 ? ' · приём закончился' : left === 0 ? ' · сегодня последний день' : ` · осталось ${left} ${plural(left, 'день', 'дня', 'дней')}`);
 
-/** Закупка в списке — компактная карточка: главное в три строки; всё остальное — в окне по нажатию. */
-function Row({ l, today, onOpen }: { l: TenderListing; today: string; onOpen: () => void }) {
+/** Избранное: состояние и переключатель для одной закупки. */
+export type FavoriteUi = { on: boolean; toggle: () => void };
+
+/** Сердечко на карточке: нажатие добавляет закупку в «Избранное» или убирает. Заполненное — в избранном. */
+function HeartButton({ on, onToggle, className }: { on: boolean; onToggle: () => void; className?: string }) {
+  return (
+    <IconButton label={on ? 'Убрать из избранного' : 'В избранное'} aria-pressed={on} onClick={onToggle} side="top" align="end" dismissOnClick className={className}>
+      <Heart className={`size-4 ${on ? 'fill-primary text-primary' : ''}`} />
+    </IconButton>
+  );
+}
+
+/** Закупка в списке — компактная карточка: главное в три строки; всё остальное — в окне по нажатию. Сердечко — в правом нижнем углу. */
+export function TenderCard({ l, today, onOpen, favorite }: { l: TenderListing; today: string; onOpen: () => void; favorite?: FavoriteUi }) {
   const left = l.deadline ? dayDiff(l.deadline, today) : null;
   const docs = l.docs?.length ?? 0;
   return (
-    <li>
+    <li className="relative">
       <button
         type="button"
         onClick={onOpen}
@@ -105,7 +117,7 @@ function Row({ l, today, onOpen }: { l: TenderListing; today: string; onOpen: ()
           </span>
         )}
         {l.customer && <span className="line-clamp-1 block break-words text-caption text-muted-foreground">{l.customer}</span>}
-        <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-caption text-muted-foreground">
+        <span className="flex min-h-7 flex-wrap items-center gap-x-3 gap-y-0.5 pr-9 text-caption text-muted-foreground">
           {l.deadline && (
             <span className={left !== null && left >= 0 && left <= 3 ? 'font-medium text-warn-foreground' : ''}>
               заявки до {ruDate(l.deadline)}
@@ -116,6 +128,11 @@ function Row({ l, today, onOpen }: { l: TenderListing; today: string; onOpen: ()
           {docs > 0 && <span>{docs} {plural(docs, 'документ', 'документа', 'документов')}</span>}
         </span>
       </button>
+      {favorite && (
+        <div className="absolute bottom-2 right-2">
+          <HeartButton on={favorite.on} onToggle={favorite.toggle} className="size-8" />
+        </div>
+      )}
     </li>
   );
 }
@@ -289,7 +306,8 @@ export function TenderDetails({ l, today }: { l: TenderListing; today: string })
   );
 }
 
-function TenderModal({ l, today, onClose }: { l: TenderListing; today: string; onClose: () => void }) {
+/** Окно закупки: все данные и внизу — «В избранное» и ссылка на закупку. */
+export function TenderModal({ l, today, onClose, favorite }: { l: TenderListing; today: string; onClose: () => void; favorite?: FavoriteUi }) {
   const eis = eisNumberOf(l);
   const link = l.url ?? eisNumberUrl(l.id);
   const host = hostOf(link);
@@ -300,9 +318,21 @@ function TenderModal({ l, today, onClose }: { l: TenderListing; today: string; o
       title="Закупка"
       subtitle={eis ? `№ ${eis}` : l.rostenderId ? `Ростендер № ${l.rostenderId}` : `№ ${l.id}`}
       footer={
-        <a href={link} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-ui font-medium hover:bg-secondary">
-                {host.includes('rostender') ? 'Открыть на Ростендере' : 'Открыть в ЕИС'} <ArrowUpRight className="size-3.5" />
-              </a>
+        <>
+          {favorite && (
+            <button
+              type="button"
+              onClick={favorite.toggle}
+              aria-pressed={favorite.on}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-ui font-medium hover:bg-secondary"
+            >
+              <Heart className={`size-3.5 ${favorite.on ? 'fill-primary text-primary' : ''}`} /> {favorite.on ? 'В избранном' : 'В избранное'}
+            </button>
+          )}
+          <a href={link} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-ui font-medium hover:bg-secondary">
+            {host.includes('rostender') ? 'Открыть на Ростендере' : 'Открыть в ЕИС'} <ArrowUpRight className="size-3.5" />
+          </a>
+        </>
       }
     >
       <TenderDetails l={l} today={today} />
@@ -375,6 +405,7 @@ export function TenderSearch({
   facets,
   hasRostender = false,
   rostender,
+  favorites,
 }: {
   filters: TenderFilters;
   onFilters: (patch: Partial<TenderFilters>) => void;
@@ -402,6 +433,8 @@ export function TenderSearch({
   hasRostender?: boolean;
   /** Закупки сервера (Ростендер): строка о состоянии автообновления. Нет — строки нет. */
   rostender?: RostenderUi;
+  /** «Избранное»: сердечко на карточках и в окне закупки. Нет — сердечек нет. */
+  favorites?: { has: (id: string) => boolean; toggle: (l: TenderListing) => void };
 }) {
   const [copied, setCopied] = useState(false);
   const [opened, setOpened] = useState<TenderListing | null>(null);
@@ -614,11 +647,11 @@ export function TenderSearch({
           ) : (
             <ul className="space-y-4">
               {result.items.slice(0, 100).map((l) => (
-                <Row key={l.id} l={l} today={today} onOpen={() => setOpened(l)} />
+                <TenderCard key={l.id} l={l} today={today} onOpen={() => setOpened(l)} favorite={favorites && { on: favorites.has(l.id), toggle: () => favorites.toggle(l) }} />
               ))}
             </ul>
           )}
-          {opened && <TenderModal l={opened} today={today} onClose={() => setOpened(null)} />}
+          {opened && <TenderModal l={opened} today={today} onClose={() => setOpened(null)} favorite={favorites && { on: favorites.has(opened.id), toggle: () => favorites.toggle(opened) }} />}
           {(result.hiddenNoPrice > 0 || result.hiddenNoDate > 0) && (
             <p className="text-micro text-muted-foreground">
               {result.hiddenNoPrice > 0 && `Скрыто без цены в выгрузке: ${result.hiddenNoPrice}. `}

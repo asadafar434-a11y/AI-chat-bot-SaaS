@@ -10,6 +10,7 @@ const root = path.resolve(import.meta.dirname, '..');
 let server;
 let review;
 let search;
+let favorites;
 
 before(async () => {
   server = await createServer({
@@ -22,6 +23,7 @@ before(async () => {
   });
   review = await server.ssrLoadModule('/src/components/StepReview.tsx');
   search = await server.ssrLoadModule('/src/components/TenderSearch.tsx');
+  favorites = await server.ssrLoadModule('/src/components/Favorites.tsx');
 });
 
 after(async () => {
@@ -241,7 +243,7 @@ test('каждая закупка — отдельная карточка: св�
   const out = html(h(search.TenderSearch, searchProps({ result, hasRostender: true })));
   const list = out.slice(out.indexOf('<ul class="space-y-4">'));
   assert.ok(out.includes('<ul class="space-y-4">'), 'список с промежутком между карточками');
-  const rows = list.split('<li>').slice(1);
+  const rows = list.split('<li class="relative">').slice(1);
   assert.equal(rows.length, 3);
   for (const row of rows) {
     const head = row.slice(0, 400);
@@ -324,4 +326,38 @@ test('фильтры под Ростендер: «Коммерческие», с
   assert.match(t, /Электронный аукцион · 4/);
   assert.match(t, /ЕИС · 4/);
   assert.match(t, /Москва/);
+});
+
+test('сердечко на карточке: в списке — «В избранное», в избранном заполнено «Убрать из избранного»; кнопка не вложена в кнопку-карточку; без favorites сердечек нет', () => {
+  const l = { ...ROS_LISTING, deadline: '2026-10-29' };
+  const result = { items: [l], total: 1, hiddenNoPrice: 0, hiddenNoDate: 0 };
+  const plain = html(h(search.TenderSearch, searchProps({ result, hasRostender: true })));
+  assert.doesNotMatch(plain, /В избранное|Убрать из избранного/, 'без избранного сердечек нет');
+  const off = html(h(search.TenderSearch, searchProps({ result, hasRostender: true, favorites: { has: () => false, toggle: () => {} } })));
+  assert.match(off, /aria-label="В избранное"[^>]*aria-pressed="false"|aria-pressed="false"[^>]*aria-label="В избранное"/);
+  const on = html(h(search.TenderSearch, searchProps({ result, hasRostender: true, favorites: { has: () => true, toggle: () => {} } })));
+  assert.match(on, /aria-label="Убрать из избранного"[^>]*aria-pressed="true"|aria-pressed="true"[^>]*aria-label="Убрать из избранного"/);
+  assert.match(on, /fill-primary/, 'в избранном сердечко закрашено');
+  const li = on.slice(on.indexOf('<ul class="space-y-4">'));
+  const card = li.slice(li.indexOf('<button'), li.indexOf('</button>') + 9);
+  assert.doesNotMatch(card.slice(7), /<button/, 'внутри кнопки-карточки других кнопок нет');
+});
+
+test('«Избранное»: пусто — подсказка и кнопка к поиску; есть закупки — те же карточки с закрашенным сердечком, число и «новые сверху»; пока не прочитано — ожидание', () => {
+  const noop = () => {};
+  const empty = text(html(h(favorites.Favorites, { items: [], ready: true, today: '2026-10-27', onToggle: noop, onSearch: noop })));
+  assert.match(empty, /Избранное/);
+  assert.match(empty, /В избранном пока пусто/);
+  assert.match(empty, /Нажмите сердечко на карточке закупки в «Поиске закупок»/);
+  assert.match(empty, /Перейти к поиску закупок/);
+  const wait = text(html(h(favorites.Favorites, { items: [], ready: false, today: '2026-10-27', onToggle: noop, onSearch: noop })));
+  assert.match(wait, /Читаю избранное/);
+  assert.doesNotMatch(wait, /пока пусто/, 'пока не прочитано — не говорим, что пусто');
+  const items = [{ listing: ROS_LISTING, addedAt: '2026-10-27T10:00:00Z' }, { listing: { ...ROS_LISTING, id: '2', title: 'Поставка бумаги' }, addedAt: '2026-10-26T10:00:00Z' }];
+  const out = html(h(favorites.Favorites, { items, ready: true, today: '2026-10-27', onToggle: noop, onSearch: noop }));
+  const t = text(out);
+  assert.match(t, /2 закупки · новые сверху/);
+  assert.match(t, /Оказание услуг по праздничному оформлению территорий/);
+  assert.match(t, /Поставка бумаги/);
+  assert.equal((out.match(/aria-label="Убрать из избранного"/g) ?? []).length, 2, 'у каждой карточки сердечко закрашено');
 });
